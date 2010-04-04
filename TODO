@@ -1,0 +1,23 @@
+* init team list 
+  - delete team instances
+  - read wikipedia
+  - add team
+  Team: name, shortname, flag
+
+* init game list
+  - delete game instances
+  - read wikipedia
+  - add game
+  Game: 
+  
+* game admin interface
+  - list games /games
+  - edit single game
+  - group games
+
+* user login/admin/invite
+  - google login
+  - store user locally
+  - store bets
+  - facebook connect (LONG SHOT)
+  - open ID (LONGER SHOT)

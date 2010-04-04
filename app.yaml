@@ -1,0 +1,14 @@
+application: xhometool
+version: 1
+runtime: python
+api_version: 1
+
+handlers:
+- url: /style
+  static_dir: view/style
+
+- url: /img
+  static_dir: view/img
+
+- url: .*
+  script: main.py

@@ -1,0 +1,38 @@
+body { background-color: rgb(102, 102, 153); font-family: Verdana; font-size: 10pt; }
+
+body, div, img, h1, h2, h3, p, table, tr, td, a, input, form { margin: 0px; padding: 0px; border-style: none; }
+
+table { border-collapse: collapse; }
+
+#main { width: 988px; font-family: Verdana; font-size: 10pt; background-color: rgb(187, 187, 204); }
+
+#sportagline { background-color: rgb(102, 102, 153); text-align: justify; padding-bottom: 4px;}
+
+#head { padding: 2px; border-bottom: 5px solid black; background-color: white; text-align: center; }
+
+#userline { padding: 2px; border-bottom: 5px solid black; border-top: 5px solid black; background-color: white; text-align: right; }
+
+#menuline { padding: 2px; border-bottom: 1px dotted black; background-color: rgb(192, 192, 192); text-align: left; }
+#submenuline { padding: 2px; border-bottom: 1px dotted black; background-color: rgb(224, 224, 224); text-align: left; }
+
+#foot { padding: 2px; border-top: 5px solid black; background-color: white; text-align: center; }
+
+#maincontent { font-family: Verdana; font-size: 10pt; background-color: rgb(187, 187, 204); text-align:left; padding: 5px; }
+
+.selected { border-bottom: 4px solid white; }
+.unselected { border-bottom: 4px solid rgb(102, 102, 153); }
+.selected:hover { border-bottom: 4px solid rgb(127, 127, 127); }
+.unselected:hover { border-bottom: 4px solid black; }
+
+input { border: 1px solid rgb(192, 192, 192); border-bottom: 1px solid black; border-right: 1px solid black; background-color: transparent; }
+
+a { color: black; }
+
+form { display: inline; }
+
+#maincontent table.group { width: 100%; }
+#maincontent table th { background-color: rgb(77, 77, 115); color: white; padding: 2px; font-family: Verdana; font-size: 10pt; font-weight: bold; border: 1px solid rgb(77, 77, 115); }
+#maincontent table td { padding: 2px; font-family: Verdana; font-size: 10pt; border: 1px solid rgb(77, 77, 115); }
+#maincontent table tr.line0 { background-color: rgb(221, 221, 229); }
+#maincontent table tr.line1 { background-color: rgb(255, 255, 255); }
+#maincontent h2 { padding-top: 10px; }
