@@ -66,6 +66,11 @@ class AdminHandler(MyRequestHandler):
             return
         print self.request.uri
     
+    def init_fifa_team(self, team):
+        """Create team if not exists."""
+        
+        #new_team = Team(name=team['name'])
+    
     def init_fifa_tree(self):
         fifa2010 = GroupGame.get_by_key_name("fifa2010")
         if fifa2010 is None:
@@ -78,8 +83,11 @@ class AdminHandler(MyRequestHandler):
             kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", group=fifa2010)
         
         games = fifa.get_games("index")
-        
-        self.response.out.write(fifa2010)
+        print games
+        for game in games:
+            self.init_fifa_team(game['home_team'])
+            self.init_fifa_team(game['away_team'])
+        #self.response.out.write(fifa2010)
     
     def get(self, admin, id):
         if not users.is_current_user_admin():
