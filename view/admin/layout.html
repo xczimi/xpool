@@ -1,0 +1,15 @@
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" >
+{% load i18n %}
+<head>
+<title>xHomePool - Administration</title>
+<meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+<link rel="stylesheet" href="/style/ebtipp.css" type="text/css" />
+</head>
+<body><div align="center"><div id="main"><div id="head">{% trans "Ez itt a mi kis tippelő környezetünk nagy adminisztrációs felülete." %}</div>
+<div id="userline">{% include "../userline.html" %}</div>
+<div id="menuline">{% include "menuline.html" %}</div>
+<div id="maincontent">
+{% block content %}<h1>{% trans "EB-Tipp, jól!" %}</h1>{% endblock %}
+</div>
+<div id="foot">{% include "../footer.html" %}</div></div></div></body>
+</html>

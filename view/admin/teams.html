@@ -1,0 +1,8 @@
+{% extends "layout.html" %}{% load i18n %}
+{% block content %}<h1>{% trans "Csapatok" %}</h1>
+<ul>
+{% for team in teams %}
+<li>team.name</li>
+{% endfor %}
+</ul>
+{% endblock %}

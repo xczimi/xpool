@@ -1,0 +1,42 @@
+{% extends "layout.html" %}{% load i18n %}
+{% block content %}{% blocktrans %}
+<h1>EB-Tipp góltotó játék szabályai</h1>
+<h2>1. Miaszösz?</h2>
+"Ez itt a mi kis tippelő környezetünk." Avagy, ez az oldal egy haveri alapon működő góltotó játékot üzemeltet. A résztvevők a 2008-as foci EB mérkőzéseinek végeredményére tippelnek, és a tipp minőségétől függően pontokat gyűjtenek. Az nyer, aki többet.
+
+<h2>2. De hogy?</h2>
+Minden mérkőzés számszerű végeredményét kell megtippelni, a legördülő menükből a megfelelő számokat kiválasztva. A tipp a mérkőzés rendes játékidejének végeredményére szól (90. perc). Speciális esetben, amikor a két résztvevő csapat továbbjutása múlik az eredményen, úgy amennyiben a mérkőzésre döntetlent tippel a játékos, úgy külön kell tippelni a továbbjutóra, azaz a hosszabbítás, ill. büntetőrúgások győztesére. Lásd még az <a href="http://www.uefa.com/newsfiles/19079.pdf">EB hivatalos szabálykönyvét (PDF)</a>
+
+<h2>3. Ki nyer ma?</h2>
+Az értékelés a végeredmény függvényében a következő tételek szuperpozíciójából áll (hazai csapatként az elöl listázott csapat értendő):
+<ul>
+<li>1-x-2 eltalálása (a csapatok által elért pont): 2 pont.
+</li><li>Hazai lőtt gól eltalálása: 1 pont. (Amennyiben a hazai csapat legalább 4 gólt ér el a mérkőzésen, úgy az 1 pont akkor jár, ha a játékos is legalább 4 hazai gólt tippelt.)
+</li><li>Vendég lőtt gól eltalálása: 1 pont. (Amennyiben a hazai csapat legalább 4 gólt ér el a mérkőzésen, úgy az 1 pont akkor jár, ha a játékos is legalább 4 hazai gólt tippelt.)
+</li><li>Bónusz:<br>
+      A megfelelő fordulók (csoportmérkőzések, negyeddöntők, elődöntők, döntő) végén mérkőzésenként átlagban 1 pont szerezhető a következő elv alapján:
+      Minden olyan csapat-párra, melyek egymás ellen versenyeztek (egy csoportban voltak, ill. egymás ellen játszottak a legjobb 8 között) akkor jár pont egy játékosnak, ha a tippjei alapján kialakuló sorrendben (a 8 között ez kétféle lehet, a csoportmeccseken csoportonként 4!=24) a két csapat olyan sorrendben végez, amilyenben az EB tényleges eredményei alapján. A sorrend eldöntéséhez lásd az EB hivatalos szabálykönyvét (PDF).
+</ul>
+<h2>4. Disclaimer</h2>
+Ne csalj, Boborján! Mi elsősorban játszani szeretnénk, olyanok ellen, akik hasonló céllal vannak az oldalon.
+<br>
+(Hogy ne lehessen az előny megőrzésére játszani, a saját tipp véglegesítéséig az ellenfeleké sem tekinthető meg. Kivétel, ha többen összedolgoznak, de akkor ők kapják is be.)
+
+<h2>5. Részvétel a játékban</h2>
+A játékban részt venni meghívásos alapon lehet. A meghívót e-mailben küldi a rendszer, ezért kell hozzá egy ilyen cím.
+
+<h2>6. Határidők</h2>
+A torna a következő tippelési egységekre bomlik:
+<ul>
+<li>első 8 csoportmeccs</li>
+<li>második 8 csoportmeccs</li>
+<li>harmadik 8 csoportmeccs</li>
+<li>negyeddöntők</li>
+<li>elődöntők</li>
+<li>döntő</li>
+</ul>
+Egy egység mérkőzéseire az első találkozó napján déli 12 óráig lehet tippelni (szerveridő szerint). Ez azonban módosulhat, az aktuális határidők megtalálhatóak a tippjeim oldalon.
+
+<h2>7. Műsorváltozás, kezelőfelület, GyIK</h2>
+Tessék írni az adminisztrátornak (cím alant)
+{% endblocktrans %}{% endblock %}
