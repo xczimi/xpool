@@ -10,5 +10,8 @@ handlers:
 - url: /img
   static_dir: view/img
 
+- url: /favicon.ico
+  static_dir: view/img
+  
 - url: .*
   script: main.py
