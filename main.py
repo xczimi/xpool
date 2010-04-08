@@ -2,37 +2,44 @@
 #
 # Copyright 2010 Peter Czimmermann  <xczimi@gmail.com>
 #
-
+import re
 from google.appengine.api import users
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 from google.appengine.ext.webapp import template
 
+from django.template import TemplateDoesNotExist
+
 class MyRequestHandler(webapp.RequestHandler):
+    template_values = None
     def post(self, *args):
         action = self.request.get('action')
         if 'auth/logout' == action:
             self.redirect(users.create_logout_url('/'))
-            return
+            return True
         elif 'auth/login' == action:
             self.redirect(users.create_login_url(self.request.uri))
-            return 
+            return True
         return False
 
-    def template_values(self):
-        return {'user' : users.get_current_user(),'is_admin' : users.is_current_user_admin()}
+    def get(self, *args):
+        self.template_values = {'user' : users.get_current_user(),'is_admin' : users.is_current_user_admin()}
+        
+    def render(self, tpl = "index"):
+        try:
+            self.response.out.write(template.render('view/'+tpl+'.html', self.template_values, debug=True))
+        except TemplateDoesNotExist:
+            self.template_values['error'] = tpl
+            self.response.out.write(template.render('view/error.html', self.template_values, debug=True))
+        except:
+            raise
 
 class MainHandler(MyRequestHandler):
     def get(self, page):
-        template_values = self.template_values()
+        MyRequestHandler.get(self, page)
         if '' == page:
             page = "index"
-        try:
-            self.response.out.write(template.render('view/'+page+'.html', template_values, debug=True))
-        #except TemplateDoesNotExist:
-        except:
-            #self.redirect('/')
-            raise
+        self.render(page)
 
 from google.appengine.ext import db
 from google.appengine.ext.db import polymodel
@@ -41,6 +48,7 @@ class Team(db.Model):
     name = db.StringProperty(required=True)
     flag = db.StringProperty()
     short = db.StringProperty()
+    href = db.StringProperty()
 
 class Game(polymodel.PolyModel):
     group = db.SelfReferenceProperty(collection_name="game_set")
@@ -54,21 +62,27 @@ class SingleGame(Game):
     homeTeam = db.ReferenceProperty(Team,collection_name="homegame_set")
     awayTeam = db.ReferenceProperty(Team,collection_name="awaygame_set")
 
-import fifa
 
-class FifaImport():
-    def list_teams(self, games):
-        pass
+import fifa
 
 class AdminHandler(MyRequestHandler):
     def post(self, admin, *args):
-        if None == MyRequestHandler.post(self):
+        if MyRequestHandler.post(self):
             return
         print self.request.uri
-    
+        
     def init_fifa_team(self, team):
         """Create team if not exists."""
         
+        team_stored = Team.all().filter('name =',team['name']).get()
+        if team_stored is None:
+            team_stored = Team(name=team['name'])
+
+        short_match = re.search(r'([a-z]{3})\.gif$',team['flag'])
+        team_stored.flag = team['flag']
+        team_stored.short = short_match.group(1)
+        team_stored.href = team['href']
+        team_stored.put()
         #new_team = Team(name=team['name'])
     
     def init_fifa_tree(self):
@@ -83,34 +97,36 @@ class AdminHandler(MyRequestHandler):
             kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", group=fifa2010)
         
         games = fifa.get_games("index")
-        print games
         for game in games:
             self.init_fifa_team(game['home_team'])
             self.init_fifa_team(game['away_team'])
-        #self.response.out.write(fifa2010)
-    
-    def get(self, admin, id):
+
+    def get(self, *args):
+        MyRequestHandler.get(self)
         if not users.is_current_user_admin():
             self.redirect('/')
             return
-        
-        template_values = self.template_values()
-        if "fifa" == admin:
-            self.init_fifa_tree()
-        elif "team" == admin:
-            if "" == id:
-                template_values['teams'] = Team.all()
-                self.response.out.write(template.render('view/admin/teams.html', template_values))
-            else:
-                template_values['team'] = Team.get(id)
-                self.response.out.write(template.render('view/admin/team.html', template_values))
+        if len(args) > 0:
+            admin = args[0]
+            if "fifa" == admin:
+                self.init_fifa_tree()
+            elif "team" == admin:
+                if len(args) > 1:
+                    self.template_values['team'] = Team.all().filter('short =',args[1]).get()
+                    self.render('admin/team')
+                else:
+                    self.template_values['teams'] = Team.all()
+                    self.render('admin/teams')
         else:
             fifa2010 = GroupGame.get_by_key_name("fifa2010")
-            self.response.out.write(template.render('view/admin/layout.html', template_values, debug=True))
-
+            self.render('admin/layout')
 
 def main():
-    application = webapp.WSGIApplication([('/admin/?(.*)/?(.*)', AdminHandler),('/favicon.ico',webapp.RequestHandler),('/(.*)', MainHandler)],
+    application = webapp.WSGIApplication([('/favicon.ico',webapp.RequestHandler),
+                    ('/admin/(team)/(.*)', AdminHandler),
+                    ('/admin/(.*)', AdminHandler),
+                    ('/admin', AdminHandler),
+                    ('/(.*)', MainHandler)],
                                        debug=True)
     util.run_wsgi_app(application)
 

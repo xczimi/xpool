@@ -33,6 +33,7 @@ def get_team(match, home_or_away):
     if not team_href is None:
         new_team['name'] = td_value
         new_team['flag'] = xpath.findvalue('td/a[@href="'+team_href+'"]/img/@src',match)
+        new_team['href'] = team_href
     elif re.match(r'^[12][A-H]$', td_value):
         new_team['reference'] = {'rank': int(td_value[0]) , 'game_ref' : "Group "+td_value[1]}
     elif re.match(r'W([0-9]+)$', td_value):
