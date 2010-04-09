@@ -45,9 +45,9 @@ from google.appengine.ext import db
 from google.appengine.ext.db import polymodel
 
 class User(db.Model):
-    name = db.StringProperty()
+    name = db.StringProperty(required=True)
     nick = db.StringProperty()
-    email = db.StringProperty()
+    email = db.StringProperty(required=True)
     password = db.StringProperty()
     authcode = db.StringProperty()
 
