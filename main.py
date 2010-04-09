@@ -61,7 +61,7 @@ class SingleGame(Game):
     fifaId = db.IntegerProperty()
     homeTeam = db.ReferenceProperty(Team,collection_name="homegame_set")
     awayTeam = db.ReferenceProperty(Team,collection_name="awaygame_set")
-
+    location = db.StringProperty()
 
 import fifa
 
@@ -83,23 +83,57 @@ class AdminHandler(MyRequestHandler):
         team_stored.short = short_match.group(1)
         team_stored.href = team['href']
         team_stored.put()
-        #new_team = Team(name=team['name'])
+        
+        return team_stored
     
-    def init_fifa_tree(self):
+    def init_fifa_group(self, group_name):
+        """Create group if not exists."""
+
+        group_stored = GroupGame.all().filter('name =',group_name).get()
+        if group_stored is None:
+            group_stored = GroupGame(name=group_name)
+        
+        group_stored.group=GroupGame.get_by_key_name("groupstage")
+        group_stored.put()
+        return group_stored
+        
+    def init_fifa_group_game(self, game):
+        """Create game if not exists."""
+        
+        group = self.init_fifa_group(game['group'])
+        game_stored = SingleGame.all().filter('id =',game['id']).get()
+        if game_stored is None:
+            game_stored = SingleGame(fifaId=int(game['id']),group=self.fifa_groupstage())
+        
+        game_stored.time = game['time']
+        game_stored.location = game['location']
+        game_stored.group = self.init_fifa_group(game['group'])
+        game_stored.homeTeam = self.init_fifa_team(game['home_team'])
+        game_stored.awayTeam = self.init_fifa_team(game['away_team'])
+        game_stored.put()
+    
+    def fifa_root(self):
         fifa2010 = GroupGame.get_by_key_name("fifa2010")
         if fifa2010 is None:
             fifa2010 = GroupGame.get_or_insert(key_name="fifa2010", name="FIFA 2010")
+        return fifa2010
+    
+    def fifa_groupstage(self):
         groupstage = GroupGame.get_by_key_name("groupstage")
         if groupstage is None:
-            groupstage = GroupGame.get_or_insert(key_name="groupstage", name="Group Stage", group=fifa2010)
+            groupstage = GroupGame.get_or_insert(key_name="groupstage", name="Group Stage", group=self.fifa_root())
+        return groupstage
+
+    def fifa_kostage(self):
         kostage = GroupGame.get_by_key_name("kostage")
         if kostage is None:
-            kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", group=fifa2010)
-        
+            kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", group=self.fifa_root())
+        return kostage
+    
+    def init_fifa_tree(self):
         games = fifa.get_games("index")
         for game in games:
-            self.init_fifa_team(game['home_team'])
-            self.init_fifa_team(game['away_team'])
+            self.init_fifa_group_game(game)
 
     def get(self, *args):
         MyRequestHandler.get(self)
@@ -110,6 +144,7 @@ class AdminHandler(MyRequestHandler):
             admin = args[0]
             if "fifa" == admin:
                 self.init_fifa_tree()
+                self.redirect('/admin/team')
             elif "team" == admin:
                 if len(args) > 1:
                     self.template_values['team'] = Team.all().filter('short =',args[1]).get()
@@ -117,6 +152,13 @@ class AdminHandler(MyRequestHandler):
                 else:
                     self.template_values['teams'] = Team.all()
                     self.render('admin/teams')
+            elif "game" == admin:
+                if len(args) > 1:
+                    pass
+                else:
+                    self.template_values['groupgames'] = GroupGame.all()
+                    self.template_values['singlegames'] = SingleGame.all()
+                    self.render('admin/games')
         else:
             fifa2010 = GroupGame.get_by_key_name("fifa2010")
             self.render('admin/layout')

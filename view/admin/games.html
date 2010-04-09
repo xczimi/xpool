@@ -1,8 +1,13 @@
 {% extends "layout.html" %}{% load i18n %}
-{% block content %}<h1>{% trans "Csapatok" %}</h1>
+{% block content %}<h1>{% trans "Mérkőzések" %}</h1>
 <ul>
-{% for team in teams %}
-<li><img src="http://www.fifa.com/{{ team.flag }}"> {{ team.name }} ({{ team.short }})</li>
+{% for game in groupgames %}
+<li>{{ game.name }} ({{ game.group.name }})</li>
 {% endfor %}
 </ul>
-{% endblock %}
+<ul>
+{% for game in singlegames %}
+<li>{{ game.homeTeam.short }} vs {{ game.awayTeam.short }} {{ game.time }} {{  game.location }} ({{ game.group.name }})</li>
+{% endfor %}
+</ul>
+{% endblock %} 

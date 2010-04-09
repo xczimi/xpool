@@ -5,6 +5,11 @@
 <li>short: {{ team.short }}</li>
 <li>flag: {{ team.flag }}</li>
 <li><a href="http://www.fifa.com{{ team.href }}">FIFA</a></li>
+{% for game in team.homegame_set %}
+<li> vs {{ game.awayTeam.short }} {{ game.time }} {{  game.location }} ({{ game.group.name }})</li>
+{% endfor %}
+{% for game in team.awaygame_set %}
+<li> @ {{ game.homeTeam.short }} {{ game.time }} {{  game.location }} ({{ game.group.name }})</li>
+{% endfor %}
 </ul>
-{{ id }}
 {% endblock %}
