@@ -5,19 +5,24 @@ DONE * init team list
   Team: name, shortname, flag
 
 GROUP DONE * init game list
-  - delete game instances
-  - read wikipedia
-  - add game
-  Game: 
+
+* init ko stage?
+
+* display games nicely
   
 * game admin interface
   DONE - list games /games
   LOW PRIO - edit single game
   LOW PRIO - group games
+  - parse results (from fifa.com, memcache!)
 
 * user login/admin/invite
   DONE - google login
-  - store user locally
+  - send invite (email+md5 in url)
+  - register (store user locally)
+  - local login
+  - account admin
+  - user groups (join, create (password))
   - store bets
   - facebook connect (LONG SHOT)
   - open ID (EVEN LONGER SHOT)
