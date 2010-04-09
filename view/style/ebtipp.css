@@ -15,7 +15,7 @@ table { border-collapse: collapse; }
 #menuline { padding: 2px; border-bottom: 1px dotted black; background-color: rgb(192, 192, 192); text-align: left; }
 #submenuline { padding: 2px; border-bottom: 1px dotted black; background-color: rgb(224, 224, 224); text-align: left; }
 
-#foot { padding: 2px; border-top: 5px solid black; height: 32px; background-color: white; text-align: center; }
+#foot { padding: 2px;  border-top: 5px solid black; height: 32px; background-color: white; text-align: center; vertical-align: bottom; }
 
 #maincontent { font-family: Verdana; font-size: 10pt; background-color: rgb(187, 187, 204); text-align:left; padding: 5px; }
 

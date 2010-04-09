@@ -12,8 +12,8 @@ GROUP DONE * init game list
   
 * game admin interface
   DONE - list games /games
-  - edit single game
-  - group games
+  LOW PRIO - edit single game
+  LOW PRIO - group games
 
 * user login/admin/invite
   DONE - google login
