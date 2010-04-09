@@ -44,6 +44,13 @@ class MainHandler(MyRequestHandler):
 from google.appengine.ext import db
 from google.appengine.ext.db import polymodel
 
+class User(db.Model):
+    name = db.StringProperty()
+    nick = db.StringProperty()
+    email = db.StringProperty()
+    password = db.StringProperty()
+    authcode = db.StringProperty()
+
 class Team(db.Model):
     name = db.StringProperty(required=True)
     flag = db.StringProperty()
