@@ -138,7 +138,7 @@ class AdminHandler(MyRequestHandler):
     def get(self, *args):
         MyRequestHandler.get(self)
         if not users.is_current_user_admin():
-            self.redirect('/')
+            self.redirect(users.create_login_url(self.request.uri))
             return
         if len(args) > 0:
             admin = args[0]
@@ -159,8 +159,9 @@ class AdminHandler(MyRequestHandler):
                     self.template_values['groupgames'] = GroupGame.all()
                     self.template_values['singlegames'] = SingleGame.all()
                     self.render('admin/games')
+            else:
+                self.render('admin/layout')
         else:
-            fifa2010 = GroupGame.get_by_key_name("fifa2010")
             self.render('admin/layout')
 
 def main():
