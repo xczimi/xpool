@@ -2,6 +2,7 @@
 #
 # Copyright 2010 Peter Czimmermann  <xczimi@gmail.com>
 #
+import Cookie
 import re
 from google.appengine.api import users
 from google.appengine.ext import webapp
@@ -44,10 +45,11 @@ class MainHandler(MyRequestHandler):
 from google.appengine.ext import db
 from google.appengine.ext.db import polymodel
 
-class User(db.Model):
-    name = db.StringProperty(required=True)
-    nick = db.StringProperty()
-    email = db.StringProperty(required=True)
+class LocalUser(db.Model):
+    email = db.EmailProperty(required=True)
+    nick = db.StringProperty(required=True)
+    name = db.StringProperty()
+    google_user = db.UserProperty()
     password = db.StringProperty()
     authcode = db.StringProperty()
 

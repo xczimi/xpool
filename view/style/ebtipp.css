@@ -32,7 +32,7 @@ a { color: black; }
 
 #menuline li { display: inline; border: 1px solid rgb(192, 192, 192); border-bottom: 1px solid black; border-right: 1px solid black; background-color: white; padding: 1px; margin: 1px; }
 
-#menuline li a { text-decoration: none; }
+#menuline li a { text-decoration: none; cursor: default; }
 
 form { display: inline; }
 
