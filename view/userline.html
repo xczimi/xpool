@@ -7,13 +7,13 @@
 <input type="submit" value='{% trans "mégis kilépek!" %}'>
 </form>
 </span>
-{% if not user.google_user %}
 <span id="login_google">
+{% if not user.google_user %}
 <form method='post' name='google_loginform'><input type='hidden' name='action' value='auth/glogin' /></form>
 <a href="#" onclick='forms.google_loginform.submit();'>Google connect (kép)</a>
-</span>
-{% endif %}
+{% else %}{% trans "linked to" %} {{ user.google_user }}{% endif %}
 {% else %}
+</span>
 <span id="login_local">
 {% trans "Nem igazán vagy belépve." %}
 <form method='post'>
