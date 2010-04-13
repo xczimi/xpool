@@ -59,8 +59,8 @@ class MyRequestHandler(webapp.RequestHandler):
     
     def login_local(self, email, password):
         self.loggedin_user = LocalUser.all().filter('email = ',email).filter('password = ',password).get()
-        if self.loggedin_user is None:
-            self.redirect('/loginerror')
+        if self.loggedin_user is None or password == '':
+            self.redirect('/')
         else:
             self.set_session_email(self.loggedin_user.email)
             self.redirect('/')
@@ -73,7 +73,7 @@ class MyRequestHandler(webapp.RequestHandler):
                 self.loggedin_user = LocalUser(email=google_user.email(),
                     google_user=google_user,
                     nick=google_user.nickname(),
-                    password=u'tompika',
+                    password='',
                     full_name='')
                 self.loggedin_user.put()                
             elif not self.loggedin_user.google_user == google_user:
@@ -121,6 +121,8 @@ class MainHandler(MyRequestHandler):
         return True
     
     def refer_user(self, email, nick, full_name):
+        if not mail.is_email_valid(email):
+            return
         referral = LocalUser(email=email,nick=nick,full_name=full_name,referrer=self.current_user())
         referral.authcode = str(uuid.uuid1().hex)
         self.get_template_values()
