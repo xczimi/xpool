@@ -62,8 +62,8 @@ class MyRequestHandler(webapp.RequestHandler):
         else:
             self.set_session_email(self.loggedin_user.email)
             self.redirect('/')
-        
-    def get(self, *args):
+    
+    def current_user(self):
         if users.get_current_user():
             google_user = users.get_current_user()
             self.loggedin_user = LocalUser.all().filter('google_user = ',google_user).get()
@@ -75,7 +75,10 @@ class MyRequestHandler(webapp.RequestHandler):
                 self.loggedin_user.put()
         else:
             self.loggedin_user = LocalUser.all().filter('email = ',self.get_session_email()).get()
-        self.template_values = {'user' : self.loggedin_user, 'is_admin' : users.is_current_user_admin()}
+        return self.loggedin_user
+    
+    def get(self, *args):
+        self.template_values = {'user' : self.current_user(), 'is_admin' : users.is_current_user_admin()}
         
     def render(self, tpl = "index"):
         try:
@@ -92,11 +95,27 @@ class MainHandler(MyRequestHandler):
             return
         action = self.request.get('action')
         if 'user/profile' == action:
-            pass
-            #self.save_profile()
+            self.save_profile(email = self.request.get('email'),
+                                nick = self.request.get('nick'),
+                                full_name = self.request.get('full_name'))
+            if '' != self.request.get('password') and self.request.get('password') == self.request.get('password_check'):
+                self.change_password(new_password = self.request.get('password'))
+            self.redirect(self.request.uri)
         else:
             return False
         return True
+        
+    def save_profile(self, email, nick, full_name):
+        user = self.current_user()
+        user.email = email
+        user.nick = nick
+        user.full_name = full_name
+        user.put()
+
+    def change_password(self, new_password):
+        user = self.current_user()
+        user.password = new_password
+        user.put()
     
     def get(self, page):
         MyRequestHandler.get(self, page)
