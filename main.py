@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: UTF-8 -*-
 #
 # Copyright 2010 Peter Czimmermann  <xczimi@gmail.com>
 #
@@ -7,6 +8,7 @@ import uuid
 import re
 from google.appengine.api import users
 from google.appengine.api import memcache
+from google.appengine.api import mail
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 from google.appengine.ext.webapp import template
@@ -36,7 +38,7 @@ class MyRequestHandler(webapp.RequestHandler):
     def get_session(self):
         if self.session['id'] is None:
             if self.request.cookies.get('xhomesession') is None:
-                self.session['id'] = str(uuid.uuid4())
+                self.session['id'] = uuid.uuid1().hex
                 session = Cookie.SimpleCookie()
                 session['xhomesession'] = self.session['id']
                 self.response.headers.add_header('Set-Cookie', session['xhomesession'].OutputString())
@@ -68,7 +70,11 @@ class MyRequestHandler(webapp.RequestHandler):
             google_user = users.get_current_user()
             self.loggedin_user = LocalUser.all().filter('google_user = ',google_user).get()
             if self.loggedin_user is None:
-                self.loggedin_user = LocalUser(email=google_user.email(),google_user=google_user,nick=google_user.nickname(),password=u'tompika')
+                self.loggedin_user = LocalUser(email=google_user.email(),
+                    google_user=google_user,
+                    nick=google_user.nickname(),
+                    password=u'tompika',
+                    full_name='')
                 self.loggedin_user.put()                
             elif not self.loggedin_user.google_user == google_user:
                 self.loggedin_user.google_user = google_user
@@ -77,8 +83,12 @@ class MyRequestHandler(webapp.RequestHandler):
             self.loggedin_user = LocalUser.all().filter('email = ',self.get_session_email()).get()
         return self.loggedin_user
     
-    def get(self, *args):
+    def get_template_values(self):
         self.template_values = {'user' : self.current_user(), 'is_admin' : users.is_current_user_admin()}
+        return self.template_values
+    
+    def get(self, *args):
+        self.get_template_values()
         
     def render(self, tpl = "index"):
         try:
@@ -101,10 +111,27 @@ class MainHandler(MyRequestHandler):
             if '' != self.request.get('password') and self.request.get('password') == self.request.get('password_check'):
                 self.change_password(new_password = self.request.get('password'))
             self.redirect(self.request.uri)
+        elif 'user/refer' == action:
+            self.refer_user(email = self.request.get('email'),
+                        nick = self.request.get('nick'),
+                        full_name = self.request.get('full_name'))
+            self.redirect(self.request.uri)
         else:
             return False
         return True
-        
+    
+    def refer_user(self, email, nick, full_name):
+        referral = LocalUser(email=email,nick=nick,full_name=full_name,referrer=self.current_user())
+        referral.authcode = str(uuid.uuid1().hex)
+        self.get_template_values()
+        self.template_values['referral'] = referral
+        self.template_values['auth_url'] = self.request.host_url + '/referral/' + referral.authcode
+        referral.put()
+        mail.send_mail(sender = 'Peter Czimmermann <xczimi@gmail.com>',
+                to = referral.full_name + u'<' + referral.email + u'>',
+                subject = _(u"xHomePool meghívó"), 
+                body = template.render('view/referral.email', self.template_values, debug=True))
+
     def save_profile(self, email, nick, full_name):
         user = self.current_user()
         user.email = email
@@ -133,6 +160,7 @@ class LocalUser(db.Model):
     google_user = db.UserProperty()
     password = db.StringProperty()
     authcode = db.StringProperty()
+    referrer = db.SelfReferenceProperty(collection_name="referral_set")
     def __str__(self):
         if self.nick:
             return self.nick.encode('utf-8')
@@ -253,6 +281,12 @@ class AdminHandler(MyRequestHandler):
                     self.template_values['groupgames'] = GroupGame.all()
                     self.template_values['singlegames'] = SingleGame.all()
                     self.render('admin/games')
+            elif "user" == admin:
+                if len(args) > 1:
+                    pass
+                else:
+                    self.template_values['users'] = LocalUser.all()
+                    self.render('admin/users')
             else:
                 self.render('admin/layout')
         else:

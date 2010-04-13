@@ -1,0 +1,13 @@
+Szia {{ referral.nick }} !
+
+{{ user.nick }} ( {{ user.full_name }} &lt; {{ user.email }} &gt; ) meghívott az xHomePool rendszerbe.
+
+Ezzel a linkkel tudod aktiválni magad az oldalon:
+
+{{ auth_url }}
+
+Sok sikert!
+
+üdv,
+Czimi
+<xczimi@gmail.com>

@@ -1,0 +1,8 @@
+{% extends "layout.html" %}{% load i18n %}
+{% block content %}<h1>{% trans "Felhasználók" %}</h1>
+<ul>
+{% for localuser in users %}
+<li>{{ localuser.email }} (auth:{{ localuser.authcode }} nick:{{localuser.nick}} full:{{localuser.full_name}} google:{{localuser.google_user}})</li>
+{% endfor %}
+</ul>
+{% endblock %}
