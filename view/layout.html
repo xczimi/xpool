@@ -5,7 +5,8 @@
 <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
 <link rel="stylesheet" href="/style/ebtipp.css" type="text/css" />
 </head>
-<body><div align="center"><div id="main"><div id="head">{% trans "Ez itt a mi kis tippelő környezetünk." %}</div>
+<body><div align="center"><div id="main"><div id="head">{% trans "Ez itt a mi kis tippelő környezetünk." %}
+<span id="language_selector"><form method='post'><select name='lang' onchange='this.form.submit();'><option>{% trans "nyelv" %}</option><option value='hu'>magyar</option><option value='en'>English</option></select></form></span></div>
 <div id="userline">{% include "userline.html" %}</div>
 <div id="menuline">{% include "menuline.html" %}</div>
 <div id="maincontent">

@@ -3,8 +3,10 @@
 # Copyright 2010 Peter Czimmermann  <xczimi@gmail.com>
 #
 import Cookie
+import uuid
 import re
 from google.appengine.api import users
+from google.appengine.api import memcache
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 from google.appengine.ext.webapp import template
@@ -12,19 +14,68 @@ from google.appengine.ext.webapp import template
 from django.template import TemplateDoesNotExist
 
 class MyRequestHandler(webapp.RequestHandler):
+    session = {'id':None,'email':None}
+    loggedin_user = None
     template_values = None
     def post(self, *args):
         action = self.request.get('action')
         if 'auth/logout' == action:
-            self.redirect(users.create_logout_url('/'))
-            return True
-        elif 'auth/login' == action:
+            if not users.get_current_user() is None:
+                self.redirect(users.create_logout_url('/'))
+            else:
+                self.set_session_email(None)
+                self.redirect('/')
+        elif 'auth/glogin' == action:
             self.redirect(users.create_login_url(self.request.uri))
-            return True
-        return False
-
+        elif 'auth/login' == action:
+            self.login_local(self.request.get('email'),self.request.get('password'))
+        else:
+            return False
+        return True
+    
+    def get_session(self):
+        if self.session['id'] is None:
+            if self.request.cookies.get('xhomesession') is None:
+                self.session['id'] = str(uuid.uuid4())
+                session = Cookie.SimpleCookie()
+                session['xhomesession'] = self.session['id']
+                self.response.headers.add_header('Set-Cookie', session['xhomesession'].OutputString())
+            else:
+                self.session['id'] = self.request.cookies.get('xhomesession')
+        if self.session['email'] is None:
+            self.session['email'] = memcache.get(self.session['id'])
+        return self.session
+        
+    def set_session_email(self, local_user_email):
+        session = self.get_session()
+        session['email'] = local_user_email
+        memcache.set(session['id'],session['email'])
+    
+    def get_session_email(self):
+        session = self.get_session()
+        return session['email']
+    
+    def login_local(self, email, password):
+        self.loggedin_user = LocalUser.all().filter('email = ',email).filter('password = ',password).get()
+        if self.loggedin_user is None:
+            self.redirect('/loginerror')
+        else:
+            self.set_session_email(self.loggedin_user.email)
+            self.redirect('/')
+        
     def get(self, *args):
-        self.template_values = {'user' : users.get_current_user(),'is_admin' : users.is_current_user_admin()}
+        if users.get_current_user():
+            google_user = users.get_current_user()
+            self.loggedin_user = LocalUser.all().filter('google_user = ',google_user).get()
+            if self.loggedin_user is None:
+                self.loggedin_user = LocalUser(email=google_user.email(),google_user=google_user,nick=google_user.nickname(),password=u'tompika')
+                self.loggedin_user.put()                
+            elif not self.loggedin_user.google_user == google_user:
+                self.loggedin_user.google_user = google_user
+                self.loggedin_user.put()
+        else:
+            self.loggedin_user = LocalUser.all().filter('email = ',self.get_session_email()).get()
+        self.template_values = {'user' : self.loggedin_user, 'is_admin' : users.is_current_user_admin()}
         
     def render(self, tpl = "index"):
         try:
@@ -36,6 +87,17 @@ class MyRequestHandler(webapp.RequestHandler):
             raise
 
 class MainHandler(MyRequestHandler):
+    def post(self, *args):
+        if MyRequestHandler.post(self):
+            return
+        action = self.request.get('action')
+        if 'user/profile' == action:
+            pass
+            #self.save_profile()
+        else:
+            return False
+        return True
+    
     def get(self, page):
         MyRequestHandler.get(self, page)
         if '' == page:
@@ -47,11 +109,15 @@ from google.appengine.ext.db import polymodel
 
 class LocalUser(db.Model):
     email = db.EmailProperty(required=True)
-    nick = db.StringProperty(required=True)
-    name = db.StringProperty()
+    nick = db.StringProperty()
+    full_name = db.StringProperty()
     google_user = db.UserProperty()
     password = db.StringProperty()
     authcode = db.StringProperty()
+    def __str__(self):
+        if self.nick:
+            return self.nick.encode('utf-8')
+        return self.email.encode('utf-8')
 
 class Team(db.Model):
     name = db.StringProperty(required=True)

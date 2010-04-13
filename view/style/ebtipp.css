@@ -8,9 +8,13 @@ table { border-collapse: collapse; }
 
 #sportagline { background-color: rgb(102, 102, 153); text-align: justify; padding-bottom: 4px;}
 
-#head { padding: 2px; border-bottom: 5px solid black; background-color: white; text-align: center; }
+#head { padding: 2px; border-bottom: 5px solid black; background-color: white; text-align: center; height: 1.5em; }
+
+#head #language_selector { float: right; }
 
 #userline { padding: 2px; border-bottom: 5px solid black; border-top: 5px solid black; background-color: white; text-align: right; }
+
+#userline #login_google { float: left; }
 
 #menuline { padding: 2px; border-bottom: 1px dotted black; background-color: rgb(192, 192, 192); text-align: left; }
 #submenuline { padding: 2px; border-bottom: 1px dotted black; background-color: rgb(224, 224, 224); text-align: left; }

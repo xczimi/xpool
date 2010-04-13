@@ -1,0 +1,15 @@
+{% extends "layout.html" %}{% load i18n %}
+{% block content %}
+<h1>{% trans "Személyes adatok" %}</h1>
+<form method='post'>
+<input type="hidden" name="action" value="user/profile">
+<table>
+<tr class="line0"><td>{% trans "E-mail" %}</td><td><input name="email" size="32" value="{{ user.email }}"></td></tr>
+<tr class="line1"><td>{% trans "Nick" %}</td><td><input name="nick" size="32" value="{{ user.nick }}"></td></td></tr>
+<tr class="line0"><td>{% trans "Teljes név" %}</td><td><input name="full_name" size="32" value="{{ user.full_name }}"></td></tr>
+<tr class="line1"><td>{% trans "Új jelszó" %}</td><td><input name="password" size="32" value="" type="password"></td></tr>
+<tr class="line0"><td>{% trans "Jelszó újra" %}</td><td><input name="password_check" size="32" value="" type="password"></td></tr>
+<tr><td colspan="2"><input type="submit" value='{% trans "rajta hát!" %}'></td></tr>
+</table>
+</form>
+{% endblock %}

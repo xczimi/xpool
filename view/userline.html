@@ -1,21 +1,30 @@
 {% load i18n %}
 {% if user %}
+<span id="logout">
 <form method='post'>
-{% blocktrans %}Hello {{ user }}! Be vagy lépve {% endblocktrans %}
+{% blocktrans %}Helló {{ user }}! Be vagy lépve {% endblocktrans %}
 <input type='hidden' name='action' value='auth/logout'>
 <input type="submit" value='{% trans "mégis kilépek!" %}'>
 </form>
+</span>
+{% if not user.google_user %}
+<span id="login_google">
+<form method='post' name='google_loginform'><input type='hidden' name='action' value='auth/glogin' /></form>
+<a href="#" onclick='forms.google_loginform.submit();'>Google connect (kép)</a>
+</span>
+{% endif %}
 {% else %}
+<span id="login_local">
 {% trans "Nem igazán vagy belépve." %}
 <form method='post'>
 <input type='hidden' name='action' value='auth/login'>
-<!--u:&nbsp;<input id="username" name="username" size="10" size="10">&nbsp;p:&nbsp;<input type="password" id="password" name="password" size="10" maxlength="32">-->
+u:&nbsp;<input id="email" name="email" size="10" size="10">&nbsp;
+p:&nbsp;<input type="password" id="password" name="password" size="10" maxlength="32">
 <input type="submit" value="{% trans 'de én szeretném!' %}">
 </form>
-<form method='post'>
-<input type='hidden' name='action' value='auth/login'>
-<!--u:&nbsp;<input id="username" name="username" size="10" size="10">&nbsp;p:&nbsp;<input type="password" id="password" name="password" size="10" maxlength="32">-->
-<input type="submit" value="{% trans 'de én szeretném!' %}">
-</form>
+</span>
+<span id="login_google">
+<form method='post' name='google_loginform'><input type='hidden' name='action' value='auth/glogin' /></form>
+<a href="#" onclick='forms.google_loginform.submit();'>Google login (kép)</a>
+</span>
 {% endif %}
-<form method='post'><select name='lang' onchange='this.form.submit();'><option>{% trans "nyelv" %}</option><option value='hu'>magyar</option><option value='en'>English</option></select></form>
