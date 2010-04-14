@@ -23,6 +23,8 @@ table { border-collapse: collapse; }
 
 #maincontent { font-family: Verdana; font-size: 10pt; background-color: rgb(187, 187, 204); text-align:left; padding: 5px; }
 
+#message { background-color: red; color: black; }
+
 .selected { border-bottom: 4px solid white; }
 .unselected { border-bottom: 4px solid rgb(102, 102, 153); }
 .selected:hover { border-bottom: 4px solid rgb(127, 127, 127); }
