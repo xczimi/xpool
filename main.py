@@ -15,6 +15,42 @@ from google.appengine.ext.webapp import template
 
 from django.template import TemplateDoesNotExist
 
+from google.appengine.ext import db
+from google.appengine.ext.db import polymodel
+
+class LocalUser(db.Model):
+    email = db.EmailProperty(required=True)
+    nick = db.StringProperty()
+    full_name = db.StringProperty()
+    google_user = db.UserProperty()
+    password = db.StringProperty()
+    authcode = db.StringProperty()
+    referrer = db.SelfReferenceProperty(collection_name="referral_set")
+    def __str__(self):
+        if self.nick: return self.nick.encode('utf-8')
+        return self.email.encode('utf-8')
+
+class Team(db.Model):
+    name = db.StringProperty(required=True)
+    flag = db.StringProperty()
+    short = db.StringProperty()
+    href = db.StringProperty()
+
+class Game(polymodel.PolyModel):
+    group = db.SelfReferenceProperty(collection_name="game_set")
+    time = db.DateTimeProperty()
+
+class GroupGame(Game):
+    name = db.StringProperty(required=True)
+
+class SingleGame(Game):
+    fifaId = db.IntegerProperty()
+    homeTeam = db.ReferenceProperty(Team,collection_name="homegame_set")
+    awayTeam = db.ReferenceProperty(Team,collection_name="awaygame_set")
+    location = db.StringProperty()
+
+import fifa
+  
 class MyRequestHandler(webapp.RequestHandler):
     session = {'id':None,'email':None}
     loggedin_user = None
@@ -44,8 +80,7 @@ class MyRequestHandler(webapp.RequestHandler):
                 self.response.headers.add_header('Set-Cookie', session['xhomesession'].OutputString())
             else:
                 self.session['id'] = self.request.cookies.get('xhomesession')
-        if self.session['email'] is None:
-            self.session['email'] = memcache.get(self.session['id'])
+        if self.session['email'] is None: self.session['email'] = memcache.get(self.session['id'])
         return self.session
         
     def set_session_email(self, local_user_email):
@@ -86,10 +121,7 @@ class MyRequestHandler(webapp.RequestHandler):
     def get_template_values(self):
         self.template_values = {'user' : self.current_user(), 'is_admin' : users.is_current_user_admin()}
         return self.template_values
-    
-    def get(self, *args):
-        self.get_template_values()
-        
+           
     def render(self, tpl = "index"):
         try:
             self.response.out.write(template.render('view/'+tpl+'.html', self.template_values, debug=True))
@@ -101,8 +133,7 @@ class MyRequestHandler(webapp.RequestHandler):
 
 class MainHandler(MyRequestHandler):
     def post(self, *args):
-        if MyRequestHandler.post(self):
-            return
+        if MyRequestHandler.post(self): return
         action = self.request.get('action')
         if 'user/profile' == action:
             self.save_profile(email = self.request.get('email'),
@@ -121,8 +152,7 @@ class MainHandler(MyRequestHandler):
         return True
     
     def refer_user(self, email, nick, full_name):
-        if not mail.is_email_valid(email):
-            return
+        if not mail.is_email_valid(email): return
         referral = LocalUser(email=email,nick=nick,full_name=full_name,referrer=self.current_user())
         referral.authcode = str(uuid.uuid1().hex)
         self.get_template_values()
@@ -148,60 +178,19 @@ class MainHandler(MyRequestHandler):
     
     def get(self, page):
         MyRequestHandler.get(self, page)
-        if '' == page:
-            page = "index"
+        if '' == page: page = "index"
         self.render(page)
-
-from google.appengine.ext import db
-from google.appengine.ext.db import polymodel
-
-class LocalUser(db.Model):
-    email = db.EmailProperty(required=True)
-    nick = db.StringProperty()
-    full_name = db.StringProperty()
-    google_user = db.UserProperty()
-    password = db.StringProperty()
-    authcode = db.StringProperty()
-    referrer = db.SelfReferenceProperty(collection_name="referral_set")
-    def __str__(self):
-        if self.nick:
-            return self.nick.encode('utf-8')
-        return self.email.encode('utf-8')
-
-class Team(db.Model):
-    name = db.StringProperty(required=True)
-    flag = db.StringProperty()
-    short = db.StringProperty()
-    href = db.StringProperty()
-
-class Game(polymodel.PolyModel):
-    group = db.SelfReferenceProperty(collection_name="game_set")
-    time = db.DateTimeProperty()
-
-class GroupGame(Game):
-    name = db.StringProperty(required=True)
-
-class SingleGame(Game):
-    fifaId = db.IntegerProperty()
-    homeTeam = db.ReferenceProperty(Team,collection_name="homegame_set")
-    awayTeam = db.ReferenceProperty(Team,collection_name="awaygame_set")
-    location = db.StringProperty()
-
-import fifa
 
 class AdminHandler(MyRequestHandler):
     def post(self, admin, *args):
-        if MyRequestHandler.post(self):
-            return
+        if MyRequestHandler.post(self): return
         print self.request.uri
         
     def init_fifa_team(self, team):
         """Create team if not exists."""
         
         team_stored = Team.all().filter('name =',team['name']).get()
-        if team_stored is None:
-            team_stored = Team(name=team['name'])
-
+        if team_stored is None: team_stored = Team(name=team['name'])
         short_match = re.search(r'([a-z]{3})\.gif$',team['flag'])
         team_stored.flag = team['flag']
         team_stored.short = short_match.group(1)
@@ -214,8 +203,7 @@ class AdminHandler(MyRequestHandler):
         """Create group if not exists."""
 
         group_stored = GroupGame.all().filter('name =',group_name).get()
-        if group_stored is None:
-            group_stored = GroupGame(name=group_name)
+        if group_stored is None: group_stored = GroupGame(name=group_name)
         
         group_stored.group=GroupGame.get_by_key_name("groupstage")
         group_stored.put()
@@ -226,8 +214,7 @@ class AdminHandler(MyRequestHandler):
         
         group = self.init_fifa_group(game['group'])
         game_stored = SingleGame.all().filter('id =',game['id']).get()
-        if game_stored is None:
-            game_stored = SingleGame(fifaId=int(game['id']),group=self.fifa_groupstage())
+        if game_stored is None: game_stored = SingleGame(fifaId=int(game['id']),group=self.fifa_groupstage())
         
         game_stored.time = game['time']
         game_stored.location = game['location']
@@ -238,29 +225,25 @@ class AdminHandler(MyRequestHandler):
     
     def fifa_root(self):
         fifa2010 = GroupGame.get_by_key_name("fifa2010")
-        if fifa2010 is None:
-            fifa2010 = GroupGame.get_or_insert(key_name="fifa2010", name="FIFA 2010")
+        if fifa2010 is None: fifa2010 = GroupGame.get_or_insert(key_name="fifa2010", name="FIFA 2010")
         return fifa2010
     
     def fifa_groupstage(self):
         groupstage = GroupGame.get_by_key_name("groupstage")
-        if groupstage is None:
-            groupstage = GroupGame.get_or_insert(key_name="groupstage", name="Group Stage", group=self.fifa_root())
+        if groupstage is None: groupstage = GroupGame.get_or_insert(key_name="groupstage", name="Group Stage", group=self.fifa_root())
         return groupstage
 
     def fifa_kostage(self):
         kostage = GroupGame.get_by_key_name("kostage")
-        if kostage is None:
-            kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", group=self.fifa_root())
+        if kostage is None: kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", group=self.fifa_root())
         return kostage
     
     def init_fifa_tree(self):
         games = fifa.get_games("index")
-        for game in games:
-            self.init_fifa_group_game(game)
+        for game in games: self.init_fifa_group_game(game)
 
     def get(self, *args):
-        MyRequestHandler.get(self)
+        self.get_template_values()
         if not users.is_current_user_admin():
             self.redirect(users.create_login_url(self.request.uri))
             return
