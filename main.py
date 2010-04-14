@@ -287,7 +287,7 @@ class AdminHandler(MyRequestHandler):
         """Create game if not exists."""
         
         group = self.init_fifa_group(game['group'])
-        game_stored = SingleGame.all().filter('fifaId =',game['id']).get()
+        game_stored = SingleGame.all().filter('fifaId =',int(game['id'])).get()
         if game_stored is None: game_stored = SingleGame(fifaId=int(game['id']),group=self.fifa_groupstage())
         
         game_stored.time = game['time']
