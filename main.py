@@ -50,20 +50,17 @@ class SingleGame(Game):
     location = db.StringProperty()
 
 import fifa
-  
+
 class MyRequestHandler(webapp.RequestHandler):
-    session = {'id':None,'email':None}
+    session = None
     loggedin_user = None
     template_values = None
     def post(self, *args):
         action = self.request.get('action')
         if 'auth/logout' == action:
-            if not users.get_current_user() is None:
-                self.redirect(users.create_logout_url('/'))
-            else:
-                self.set_session_email(None)
-                self.redirect('/')
+            self.logout()
         elif 'auth/glogin' == action:
+            self.set_session_message(_('Sikeres belépés google'))
             self.redirect(users.create_login_url(self.request.uri))
         elif 'auth/login' == action:
             self.login_local(self.request.get('email'),self.request.get('password'))
@@ -71,55 +68,122 @@ class MyRequestHandler(webapp.RequestHandler):
             return False
         return True
     
+    def logout(self):
+        self.set_session_email(None)
+        if users.get_current_user() is not None:
+            self.set_session_message(_('Sikeres kilépés google'))
+            self.redirect(users.create_logout_url(self.request.uri))
+        else:
+            self.set_session_message(_('Sikeres kilépés'))
+            self.redirect(self.request.uri)
+        
+    def get_cookie(self, name):
+        return self.request.cookies.get(name)
+    
+    def set_cookie(self, name, value):
+        session = Cookie.SimpleCookie()
+        session[name] = value
+        self.response.headers.add_header('Set-Cookie', session[name].OutputString())
+    
     def get_session(self):
-        if self.session['id'] is None:
-            if self.request.cookies.get('xhomesession') is None:
-                self.session['id'] = uuid.uuid1().hex
-                session = Cookie.SimpleCookie()
-                session['xhomesession'] = self.session['id']
-                self.response.headers.add_header('Set-Cookie', session['xhomesession'].OutputString())
+        if self.session is None:
+            cookie_session_id = self.get_cookie('xhomesessionid')
+            if cookie_session_id is None:
+                session_id = uuid.uuid1().hex
+                self.set_cookie('xhomesessionid',session_id)
             else:
-                self.session['id'] = self.request.cookies.get('xhomesession')
-        if self.session['email'] is None: self.session['email'] = memcache.get(self.session['id'])
+                session_id = cookie_session_id
+            self.session = memcache.get(session_id)
+        if self.session is None:
+            self.session = {'id':session_id}
+            self.write_session(self.session)
         return self.session
+
+    def write_session(self, session):
+        memcache.set(session['id'],session)
         
     def set_session_email(self, local_user_email):
         session = self.get_session()
         session['email'] = local_user_email
-        memcache.set(session['id'],session['email'])
-    
+        self.write_session(session)
+        
+    def set_session_message(self, message):
+        session = self.get_session()
+        session['message'] = message
+        self.write_session(session)
+        
     def get_session_email(self):
         session = self.get_session()
-        return session['email']
+        try:
+            return session['email']
+        except:
+            return None
+
+    def get_session_message(self):
+        session = self.get_session()
+        try:
+            if session['message'] is None: return ''
+            return session['message']
+        except:
+            return ''
     
     def login_local(self, email, password):
         self.loggedin_user = LocalUser.all().filter('email = ',email).filter('password = ',password).get()
         if self.loggedin_user is None or password == '':
+            self.set_session_message(_('Próbálj újra belépni'))
             self.redirect('/')
         else:
             self.set_session_email(self.loggedin_user.email)
+            self.set_session_message(_('Sikeres belépés'))
             self.redirect('/')
     
-    def current_user(self):
-        if users.get_current_user():
-            google_user = users.get_current_user()
-            self.loggedin_user = LocalUser.all().filter('google_user = ',google_user).get()
-            if self.loggedin_user is None:
-                self.loggedin_user = LocalUser(email=google_user.email(),
-                    google_user=google_user,
-                    nick=google_user.nickname(),
-                    password='',
-                    full_name='')
-                self.loggedin_user.put()                
-            elif not self.loggedin_user.google_user == google_user:
-                self.loggedin_user.google_user = google_user
-                self.loggedin_user.put()
+    def login_authcode(self, authcode):
+        self.loggedin_user = LocalUser.all().filter('authcode = ',authcode).get()
+        if self.loggedin_user is None or authcode == '':
+            self.set_session_message(_('Rossz kód'))
+            self.redirect('/')
         else:
+            self.set_session_email(self.loggedin_user.email)
+            self.set_session_message(_('Sikeres visszaigazolás, állíts be jelszót!'))
+            self.redirect('/profile')
+    
+    def current_user(self):
+        google_user = users.get_current_user()
+        
+        if not self.loggedin_user and self.get_session_email(): 
+            # find session based logged in user
             self.loggedin_user = LocalUser.all().filter('email = ',self.get_session_email()).get()
+
+        if not self.loggedin_user:
+            if google_user:
+                # find the local user based on google_user link
+                self.loggedin_user = LocalUser.all().filter('google_user = ',google_user).get()
+                if not self.loggedin_user:
+                    # find the local user based on google_user's email
+                    self.loggedin_user = LocalUser.all().filter('email =',google_user.email()).get()
+                    if not self.loggedin_user:
+                        # create a new local user for the google_user
+                        self.loggedin_user = LocalUser(email=google_user.email(),
+                            nick=google_user.nickname(),
+                            google_user=google_user,
+                            password='',
+                            full_name='')
+                    else:
+                        # link the google and local users together
+                        self.loggedin_user.google_user = google_user
+                    self.loggedin_user.put()
+        else:
+            if google_user:
+                # link the google and local users together
+                if self.loggedin_user.google_user != google_user:
+                    self.loggedin_user.google_user = google_user
+                    self.loggedin_user.put()
         return self.loggedin_user
     
     def get_template_values(self):
-        self.template_values = {'user' : self.current_user(), 'is_admin' : users.is_current_user_admin()}
+        message = self.get_session_message()
+        self.template_values = {'user' : self.current_user(), 'is_admin' : users.is_current_user_admin(), 'message': message}
+        if message is not None: self.set_session_message(None)
         return self.template_values
            
     def render(self, tpl = "index"):
@@ -153,6 +217,9 @@ class MainHandler(MyRequestHandler):
     
     def refer_user(self, email, nick, full_name):
         if not mail.is_email_valid(email): return
+        if LocalUser.all().filter('email =',email).count() is not None:
+            self.set_session_message(_('Már van ilyen felhasználó'))
+            return
         referral = LocalUser(email=email,nick=nick,full_name=full_name,referrer=self.current_user())
         referral.authcode = str(uuid.uuid1().hex)
         self.get_template_values()
@@ -174,13 +241,20 @@ class MainHandler(MyRequestHandler):
     def change_password(self, new_password):
         user = self.current_user()
         user.password = new_password
+        user.authcode = None
         user.put()
     
     def get(self, page):
-        MyRequestHandler.get(self, page)
+        self.get_template_values()
         if '' == page: page = "index"
         self.render(page)
 
+class ReferralHandler(MainHandler):
+    def get(self, authcode):
+        if self.current_user():
+            self.logout()
+        self.login_authcode(authcode)
+    
 class AdminHandler(MyRequestHandler):
     def post(self, admin, *args):
         if MyRequestHandler.post(self): return
@@ -282,8 +356,8 @@ def main():
                     ('/admin/(team)/(.*)', AdminHandler),
                     ('/admin/(.*)', AdminHandler),
                     ('/admin', AdminHandler),
-                    ('/(.*)', MainHandler)],
-                                       debug=True)
+                    ('/referrer/(.*)', ReferralHandler),
+                    ('/(.*)', MainHandler)],debug=True)
     util.run_wsgi_app(application)
 
 if __name__ == '__main__':

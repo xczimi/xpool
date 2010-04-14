@@ -11,9 +11,9 @@
 {% if not user.google_user %}
 <form method='post' name='google_loginform'><input type='hidden' name='action' value='auth/glogin' /></form>
 <a href="#" onclick='forms.google_loginform.submit();'>Google connect (kép)</a>
-{% else %}{% trans "linked to" %} {{ user.google_user }}{% endif %}
-{% else %}
+{% else %}{% trans "Google linked to" %} {{ user.google_user }}{% endif %}
 </span>
+{% else %}
 <span id="login_local">
 {% trans "Nem igazán vagy belépve." %}
 <form method='post'>
