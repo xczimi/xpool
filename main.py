@@ -69,13 +69,16 @@ class MyRequestHandler(webapp.RequestHandler):
         return True
     
     def logout(self):
-        self.set_session_email(None)
-        if users.get_current_user() is not None:
-            self.set_session_message(_('Sikeres kilépés google'))
-            self.redirect(users.create_logout_url(self.request.uri))
-        else:
-            self.set_session_message(_('Sikeres kilépés'))
-            self.redirect(self.request.uri)
+        if self.current_user():
+            self.set_session_email(None)
+            if users.get_current_user():
+                self.set_session_message(_('Sikeres kilépés google'))
+                self.redirect(users.create_logout_url(self.request.uri))
+            else:
+                self.set_session_message(_('Sikeres kilépés'))
+                self.redirect(self.request.uri)
+            return True
+        return False
         
     def get_cookie(self, name):
         return self.request.cookies.get(name)
@@ -217,7 +220,7 @@ class MainHandler(MyRequestHandler):
     
     def refer_user(self, email, nick, full_name):
         if not mail.is_email_valid(email): return
-        if LocalUser.all().filter('email =',email).count() is not None:
+        if LocalUser.all().filter('email =',email).count() > 0:
             self.set_session_message(_('Már van ilyen felhasználó'))
             return
         referral = LocalUser(email=email,nick=nick,full_name=full_name,referrer=self.current_user())
@@ -230,6 +233,7 @@ class MainHandler(MyRequestHandler):
                 to = referral.full_name + u'<' + referral.email + u'>',
                 subject = _(u"xHomePool meghívó"), 
                 body = template.render('view/referral.email', self.template_values, debug=True))
+        self.set_session_message(_('Meghívó elküldve'))
 
     def save_profile(self, email, nick, full_name):
         user = self.current_user()
@@ -251,8 +255,8 @@ class MainHandler(MyRequestHandler):
 
 class ReferralHandler(MainHandler):
     def get(self, authcode):
-        if self.current_user():
-            self.logout()
+        if self.logout():
+            return
         self.login_authcode(authcode)
     
 class AdminHandler(MyRequestHandler):
