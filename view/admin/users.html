@@ -1,5 +1,5 @@
 {% extends "layout.html" %}{% load i18n %}
-{% block content %}<h1>{% trans "Felhasználók" %}</h1>
+{% block content %}<h1>{% trans "Users" %}</h1>
 <ul>
 {% for localuser in users %}
 <li>{{ localuser.email }} (<a href='{% url MainHandler "referrer" %}/{{ localuser.authcode }}'>auth</a> nick:{{localuser.nick}} full:{{localuser.full_name}} google:{{localuser.google_user}})</li>

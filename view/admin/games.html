@@ -1,5 +1,5 @@
 {% extends "layout.html" %}{% load i18n %}
-{% block content %}<h1>{% trans "Mérkőzések" %}</h1>
+{% block content %}<h1>{% trans "Games" %}</h1>
 <ul>
 {% for game in groupgames %}
 <li>{{ game.name }} ({{ game.group.name }})</li>
