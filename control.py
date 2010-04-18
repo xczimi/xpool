@@ -31,7 +31,7 @@ class MyRequestHandler(webapp.RequestHandler):
         if 'auth/logout' == action:
             self.logout()
         elif 'auth/glogin' == action:
-            self.set_session_message(_('Sikeres belépés google'))
+            self.set_session_message(_('Sucessful google login'))
             self.redirect(users.create_login_url(self.request.uri))
         elif 'auth/login' == action:
             self.login_local(self.request.get('email'),self.request.get('password'))
@@ -43,10 +43,10 @@ class MyRequestHandler(webapp.RequestHandler):
         if self.current_user():
             self.set_session_email(None)
             if users.get_current_user():
-                self.set_session_message(_('Sikeres kilépés google'))
+                self.set_session_message(_('Successful google logout'))
                 self.redirect(users.create_logout_url(self.request.uri))
             else:
-                self.set_session_message(_('Sikeres kilépés'))
+                self.set_session_message(_('Successful logout'))
                 self.redirect(self.request.uri)
             return True
         return False
@@ -104,21 +104,21 @@ class MyRequestHandler(webapp.RequestHandler):
     def login_local(self, email, password):
         self.loggedin_user = LocalUser.all().filter('email = ',email).filter('password = ',password).get()
         if self.loggedin_user is None or password == '':
-            self.set_session_message(_('Próbálj újra belépni'))
+            self.set_session_message(_('Failed to log you in, try it again!'))
             self.redirect('/')
         else:
             self.set_session_email(self.loggedin_user.email)
-            self.set_session_message(_('Sikeres belépés'))
+            self.set_session_message(_('Successful login'))
             self.redirect('/')
     
     def login_authcode(self, authcode):
         self.loggedin_user = LocalUser.all().filter('authcode = ',authcode).get()
         if self.loggedin_user is None or authcode == '':
-            self.set_session_message(_('Rossz kód'))
+            self.set_session_message(_('Invalid auth code'))
             self.redirect('/')
         else:
             self.set_session_email(self.loggedin_user.email)
-            self.set_session_message(_('Sikeres visszaigazolás, állíts be jelszót!'))
+            self.set_session_message(_('Successful referral, set your password, or link your google account!'))
             self.redirect('/profile')
     
     def current_user(self):
@@ -192,7 +192,7 @@ class MainHandler(MyRequestHandler):
     def refer_user(self, email, nick, full_name):
         if not mail.is_email_valid(email): return
         if LocalUser.all().filter('email =',email).count() > 0:
-            self.set_session_message(_('Már van ilyen felhasználó'))
+            self.set_session_message(_('This user is already in the system (based on email)!'))
             return
         referral = LocalUser(email=email,nick=nick,full_name=full_name,referrer=self.current_user())
         referral.authcode = str(uuid.uuid1().hex)
@@ -201,10 +201,10 @@ class MainHandler(MyRequestHandler):
         self.template_values['auth_url'] = self.request.host_url + '/referral/' + referral.authcode
         referral.put()
         mail.send_mail(sender = 'Peter Czimmermann <xczimi@gmail.com>',
-                to = referral.full_name + u'<' + referral.email + u'>',
-                subject = _(u"xHomePool meghívó"), 
-                body = template.render('view/referral.email', self.template_values, debug=True))
-        self.set_session_message(_('Meghívó elküldve'))
+                to = referral.full_name + u' <' + referral.email + u'>',
+                subject = _(u"xHomePool invitation"), 
+                body = template.render('view/referral.email.html', self.template_values, debug=True))
+        self.set_session_message(_('Invitation sent')+' '+self.template_values['auth_url'])
 
     def save_profile(self, email, nick, full_name):
         user = self.current_user()

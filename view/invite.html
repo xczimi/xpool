@@ -1,14 +1,14 @@
 {% extends "layout.html" %}{% load i18n %}
 {% block content %}
-<h1>{% trans "Meghívó" %}</h1>
+<h1>{% trans "Invitation" %}</h1>
 <form method='post'>
 <input type="hidden" name="action" value="user/refer" />
 <input type="hidden" name="referrer" value="{{ user.key }}" />
 <table>
 <tr class="line0"><td>{% trans "E-mail" %}</td><td><input name="email" size="32" value=""></td></tr>
 <tr class="line1"><td>{% trans "Nick" %}</td><td><input name="nick" size="32" value=""></td></td></tr>
-<tr class="line0"><td>{% trans "Teljes név" %}</td><td><input name="full_name" size="32" value=""></td></tr>
-<tr><td colspan="2"><input type="submit" value='{% trans "elküldöm a meghívót, ami a spam folderben köthet ki." %}'></td></tr>
+<tr class="line0"><td>{% trans "Full name" %}</td><td><input name="full_name" size="32" value=""></td></tr>
+<tr><td colspan="2"><input type="submit" value='{% trans "send the invite which may end up in the spam folder." %}'></td></tr>
 </table>
 </form>
 {% endblock %}

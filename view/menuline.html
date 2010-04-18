@@ -1,12 +1,11 @@
 {% load i18n %}
-<ul><li><a href="/today">{% trans 'Aktuális' %}</a></li>
-<li><a href="/games">{% trans 'Menetrend' %}</a></li>
-<li><a href="/mytips">{% trans 'Tippjeim' %}</a></li>
-<li><a href="/alltips">{% trans 'Összes tipp' %}</a></li>
-<li><a href="/tippverseny">{% trans 'Tippverseny' %}</a></li>
-<!-- li><a href="/grafikon">{% trans 'Grafikon' %}</a></li> -->
-<li><a href="/profile">{% trans 'Adataim' %}</a></li>
-<li><a href="/invite">{% trans 'Meghívó' %}</a></li>
-<li><a href="/rules">{% trans 'Szabályok' %}</a></li>
+<ul><li><a href="/today">{% trans 'Fresh' %}</a></li>
+<li><a href="/games">{% trans 'Schedule' %}</a></li>
+<li><a href="/mytips">{% trans 'Bets' %}</a></li>
+<li><a href="/alltips">{% trans 'All bets' %}</a></li>
+<li><a href="/tippverseny">{% trans 'Scoreboard' %}</a></li>
+<li><a href="/profile">{% trans 'Profile' %}</a></li>
+<li><a href="/invite">{% trans 'Invite' %}</a></li>
+<li><a href="/rules">{% trans 'Rules' %}</a></li>
 {% if is_admin %}<li><a href="/admin">{% trans 'Admin' %}</a></li>{% endif %}
 </ul>
