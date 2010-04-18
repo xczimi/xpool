@@ -188,6 +188,12 @@ class MyRequestHandler(webapp.RequestHandler):
             raise
 
 class MainHandler(MyRequestHandler):
+    def get(self, page):
+        self.get_template_values()
+        if '' == page: page = "index"
+        self.render(page)
+    
+class UserHandler(MyRequestHandler):
     def post(self, *args):
         if MyRequestHandler.post(self): return
         action = self.request.get('action')
@@ -238,10 +244,12 @@ class MainHandler(MyRequestHandler):
         user.authcode = None
         user.put()
     
-    def get(self, page):
+class GamesHandler(MainHandler):
+    def get(self, filter=''):
         self.get_template_values()
-        if '' == page: page = "index"
-        self.render(page)
+        self.template_values['game'] = AdminHandler.fifa_root()
+        self.template_values['groupstage'] = AdminHandler.fifa_groupstage()
+        self.render('games')
 
 class ReferralHandler(MainHandler):
     def get(self, authcode):
@@ -291,24 +299,28 @@ class AdminHandler(MyRequestHandler):
         game_stored.awayTeam = self.init_fifa_team(game['away_team'])
         game_stored.put()
     
+    @classmethod
     def fifa_root(self):
         fifa2010 = GroupGame.get_by_key_name("fifa2010")
         if fifa2010 is None: fifa2010 = GroupGame.get_or_insert(key_name="fifa2010", name="FIFA 2010")
         return fifa2010
     
+    @classmethod
     def fifa_groupstage(self):
         groupstage = GroupGame.get_by_key_name("groupstage")
         if groupstage is None: groupstage = GroupGame.get_or_insert(key_name="groupstage", name="Group Stage", group=self.fifa_root())
         return groupstage
 
+    @classmethod
     def fifa_kostage(self):
         kostage = GroupGame.get_by_key_name("kostage")
         if kostage is None: kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", group=self.fifa_root())
         return kostage
     
     def init_fifa_tree(self):
-        games = fifa.get_games("index")
-        for game in games: self.init_fifa_group_game(game)
+        groupgames = fifa.get_games("index")
+        for game in groupgames: self.init_fifa_group_game(game)
+        self.fifa_kostage()
 
     def get(self, *args):
         self.get_template_values()
@@ -345,14 +357,3 @@ class AdminHandler(MyRequestHandler):
         else:
             self.render('admin/layout')
 
-def main():
-    application = webapp.WSGIApplication([('/favicon.ico',webapp.RequestHandler),
-                    ('/admin/(team)/(.*)', AdminHandler),
-                    ('/admin/(.*)', AdminHandler),
-                    ('/admin', AdminHandler),
-                    ('/referrer/(.*)', ReferralHandler),
-                    ('/(.*)', MainHandler)],debug=True)
-    util.run_wsgi_app(application)
-
-if __name__ == '__main__':
-    main()

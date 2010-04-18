@@ -1,0 +1,13 @@
+{% extends "layout.html" %}{% load i18n %}
+{% block content %}
+<h1>{{game.name}}</h1>
+<h2>{{groupstage.name}}</h2>
+{% for group in groupstage.game_set %}
+<h3>{{group.name}}</h3>
+<table>
+{% for game in group.game_set %}
+<tr><td>{{ game.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ game.awayTeam.flag }}" /></td><td>{{ game.awayTeam.name }}</td><td>{{ game.time }}</td><td>{{  game.location }}</td></tr>
+{% endfor %}
+</table>
+{% endfor %}
+{% endblock %} 
