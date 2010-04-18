@@ -1,0 +1,205 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: xHomePool v1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2010-04-17 17:43-0700\n"
+"PO-Revision-Date: 2010-04-17 17:50-0800\n"
+"Last-Translator: Peter Czimmermann <xczimi@gmail.com>\n"
+"Language-Team: Czimi & Co <xczimi@gmail.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-Language: en\n"
+"X-Poedit-SourceCharset: utf-8\n"
+
+#: control.py:34
+msgid "Sucessful google login"
+msgstr "Sucessful google login"
+
+#: control.py:46
+msgid "Successful google logout"
+msgstr "Successful google logout"
+
+#: control.py:49
+msgid "Successful logout"
+msgstr "Successful logout"
+
+#: control.py:107
+msgid "Failed to log you in, try it again!"
+msgstr "Failed to log you in, try it again!"
+
+#: control.py:111
+msgid "Successful login"
+msgstr "Successful login"
+
+#: control.py:117
+msgid "Invalid auth code"
+msgstr "Invalid auth code"
+
+#: control.py:121
+msgid "Successful referral, set your password, or link your google account!"
+msgstr "Successful referral, set your password, or link your google account!"
+
+#: control.py:195
+msgid "This user is already in the system (based on email)!"
+msgstr "This user is already in the system (based on email)!"
+
+#: control.py:205
+msgid "xHomePool invitation"
+msgstr "xHomePool invitation"
+
+#: control.py:207
+msgid "Invitation sent"
+msgstr "Invitation sent"
+
+#: view/userline.html:5
+#, python-format
+msgid "Hi %(user)s! You are inside. "
+msgstr "Hi %(user)s! You are inside. "
+
+#: view/userline.html:7
+msgid "get me outside!"
+msgstr "get me outside!"
+
+#: view/userline.html:14
+msgid "Google linked to"
+msgstr "Google linked to"
+
+#: view/userline.html:18
+msgid "You are outside."
+msgstr "You are outside."
+
+#: view/userline.html:23
+msgid "let me in!"
+msgstr "let me in!"
+
+#: view/profile.html:3
+#: view/menuline.html:7
+msgid "Profile"
+msgstr "Profile"
+
+#: view/profile.html:7
+#: view/invite.html:8
+msgid "E-mail"
+msgstr "E-mail"
+
+#: view/profile.html:8
+#: view/invite.html:9
+msgid "Nick"
+msgstr "Nick"
+
+#: view/profile.html:9
+#: view/invite.html:10
+msgid "Full name"
+msgstr "Full name"
+
+#: view/profile.html:10
+msgid "New password"
+msgstr "New password"
+
+#: view/profile.html:11
+msgid "Password again"
+msgstr "Password again"
+
+#: view/profile.html:12
+msgid "do it!"
+msgstr "do it!"
+
+#: view/footer.html:1
+msgid "Server time"
+msgstr "Server time"
+
+#: view/index.html:2
+#: view/layout.html:14
+#: view/admin/layout.html:12
+msgid "xHomePool, eh!"
+msgstr "xHomePool, eh!"
+
+#: view/index.html:3
+msgid "Hi there!"
+msgstr "Hi there!"
+
+#: view/menuline.html:2
+msgid "Fresh"
+msgstr "Fresh"
+
+#: view/menuline.html:3
+msgid "Schedule"
+msgstr "Schedule"
+
+#: view/menuline.html:4
+msgid "Bets"
+msgstr "Bets"
+
+#: view/menuline.html:5
+msgid "All bets"
+msgstr "All bets"
+
+#: view/menuline.html:6
+msgid "Scoreboard"
+msgstr "Scoreboard"
+
+#: view/menuline.html:8
+msgid "Invite"
+msgstr "Invite"
+
+#: view/menuline.html:9
+msgid "Rules"
+msgstr "Rules"
+
+#: view/menuline.html:10
+msgid "Admin"
+msgstr "Admin"
+
+#: view/layout.html:8
+msgid "This is our little friendly pool."
+msgstr "This is our little friendly pool."
+
+#: view/layout.html:9
+msgid "language"
+msgstr "language"
+
+#: view/error.html:2
+msgid "EB-Tipp, rosszul!"
+msgstr "EB-Tipp, rosszul!"
+
+#: view/invite.html:3
+msgid "Invitation"
+msgstr "Invitation"
+
+#: view/invite.html:11
+msgid "send the invite which may end up in the spam folder."
+msgstr "send the invite which may end up in the spam folder."
+
+#: view/admin/menuline.html:3
+msgid "Main"
+msgstr "Main"
+
+#: view/admin/menuline.html:4
+#: view/admin/teams.html:2
+msgid "Teams"
+msgstr "Teams"
+
+#: view/admin/menuline.html:5
+#: view/admin/games.html:2
+msgid "Games"
+msgstr "Games"
+
+#: view/admin/menuline.html:6
+#: view/admin/users.html:2
+msgid "Users"
+msgstr "Users"
+
+#: view/admin/menuline.html:7
+msgid "Fifa"
+msgstr "Fifa"
+
+#: view/admin/layout.html:8
+msgid "This is the admin interface."
+msgstr "This is the admin interface."
+

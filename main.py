@@ -8,6 +8,20 @@ from google.appengine.ext.webapp import util
 
 import control 
 
+import os
+from django.conf import settings
+try:
+    settings.configure()
+except:
+    pass
+settings.LANGUAGE_CODE = 'en'
+settings.USE_I18N = True
+appdir = os.path.abspath( os.path.dirname( __file__ ) )
+settings.LOCALE_PATHS = ( 
+    os.path.join( appdir, 'locale' ),
+ )
+from django.utils.translation import *
+
 def main():
     application = webapp.WSGIApplication([('/favicon.ico',webapp.RequestHandler),
                     ('/admin/(team)/(.*)', control.AdminHandler),

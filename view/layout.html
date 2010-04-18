@@ -6,7 +6,7 @@
 <link rel="stylesheet" href="/style/ebtipp.css" type="text/css" />
 </head>
 <body><div align="center"><div id="main"><div id="head">{% trans "This is our little friendly pool." %}
-<span id="language_selector"><form method='post'><select name='lang' onchange='this.form.submit();'><option>{% trans "language" %}</option><option value='hu'>magyar</option><option value='en'>English</option></select></form></span></div>
+<span id="language_selector"><form method='post'><input type='hidden' name='action' value='language' /><select name='language' onchange='this.form.submit();'><option>{% trans "language" %}</option><option value='hu'>magyar</option><option value='en'>English</option></select></form></span></div>
 <div id="userline">{% include "userline.html" %}</div>
 <div id="menuline">{% include "menuline.html" %}</div>
 <div id="maincontent">

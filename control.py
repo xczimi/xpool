@@ -14,6 +14,7 @@ from google.appengine.ext.webapp import util
 from google.appengine.ext.webapp import template
 
 from django.template import TemplateDoesNotExist
+from django.utils import translation
 
 from google.appengine.ext import db
 from google.appengine.ext.db import polymodel
@@ -35,6 +36,9 @@ class MyRequestHandler(webapp.RequestHandler):
             self.redirect(users.create_login_url(self.request.uri))
         elif 'auth/login' == action:
             self.login_local(self.request.get('email'),self.request.get('password'))
+        elif 'language' == action:
+            self.set_session_language(self.request.get('language'))
+            self.redirect(self.request.uri)
         else:
             return False
         return True
@@ -85,6 +89,11 @@ class MyRequestHandler(webapp.RequestHandler):
         session = self.get_session()
         session['message'] = message
         self.write_session(session)
+
+    def set_session_language(self, language):
+        session = self.get_session()
+        session['language'] = language
+        self.write_session(session)
         
     def get_session_email(self):
         session = self.get_session()
@@ -100,6 +109,14 @@ class MyRequestHandler(webapp.RequestHandler):
             return session['message']
         except:
             return ''
+
+    def get_session_language(self):
+        session = self.get_session()
+        try:
+            if session['language'] is None: return 'en'
+            return session['language']
+        except:
+            return 'en'
     
     def login_local(self, email, password):
         self.loggedin_user = LocalUser.all().filter('email = ',email).filter('password = ',password).get()
@@ -161,6 +178,7 @@ class MyRequestHandler(webapp.RequestHandler):
         return self.template_values
            
     def render(self, tpl = "index"):
+        translation.activate(self.get_session_language())
         try:
             self.response.out.write(template.render('view/'+tpl+'.html', self.template_values, debug=True))
         except TemplateDoesNotExist:
@@ -200,6 +218,7 @@ class MainHandler(MyRequestHandler):
         self.template_values['referral'] = referral
         self.template_values['auth_url'] = self.request.host_url + '/referral/' + referral.authcode
         referral.put()
+        translation.activate(self.get_session_language())
         mail.send_mail(sender = 'Peter Czimmermann <xczimi@gmail.com>',
                 to = referral.full_name + u' <' + referral.email + u'>',
                 subject = _(u"xHomePool invitation"), 

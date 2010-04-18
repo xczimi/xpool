@@ -1,0 +1,281 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: xHomePool v1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2010-04-17 18:29-0700\n"
+"PO-Revision-Date: 2010-04-17 18:31-0800\n"
+"Last-Translator: Peter Czimmermann <xczimi@gmail.com>\n"
+"Language-Team: Czimi & Co <xczimi@gmail.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Poedit-Language: hu\n"
+"X-Poedit-SourceCharset: utf-8\n"
+
+#: control.py:35
+msgid "Sucessful google login"
+msgstr "Sikeres google belépés"
+
+#: control.py:50
+msgid "Successful google logout"
+msgstr "Sikeres google kilépés"
+
+#: control.py:53
+msgid "Successful logout"
+msgstr "Sikeres kilépés"
+
+#: control.py:124
+msgid "Failed to log you in, try it again!"
+msgstr "Belépés nem sikerült, próbáld újra!"
+
+#: control.py:128
+msgid "Successful login"
+msgstr "Sikeres belépés"
+
+#: control.py:134
+msgid "Invalid auth code"
+msgstr "Helytelen kód"
+
+#: control.py:138
+msgid "Successful referral, set your password, or link your google account!"
+msgstr "Sikeres belépés, állíts be jelszót!"
+
+#: control.py:213
+msgid "This user is already in the system (based on email)!"
+msgstr "Ez a felhasználó már benne van a tutiban!"
+
+#: control.py:224
+msgid "xHomePool invitation"
+msgstr "xHomePool meghívó"
+
+#: control.py:226
+msgid "Invitation sent"
+msgstr "Meghívó elküldve."
+
+#: view/userline.html:5
+#, python-format
+msgid "Hi %(user)s! You are inside. "
+msgstr "Helló %(user)s! benn vagy!"
+
+#: view/userline.html:7
+msgid "get me outside!"
+msgstr "Engedj ki!"
+
+#: view/userline.html:14
+msgid "Google linked to"
+msgstr "Google link: "
+
+#: view/userline.html:18
+msgid "You are outside."
+msgstr "Kint vagy."
+
+#: view/userline.html:23
+msgid "let me in!"
+msgstr "engedj be!"
+
+#: view/profile.html:3
+#: view/menuline.html:7
+msgid "Profile"
+msgstr "Adatok"
+
+#: view/profile.html:7
+#: view/invite.html:8
+msgid "E-mail"
+msgstr "E-mail"
+
+#: view/profile.html:8
+#: view/invite.html:9
+msgid "Nick"
+msgstr "Becenév"
+
+#: view/profile.html:9
+#: view/invite.html:10
+msgid "Full name"
+msgstr "Teljes név"
+
+#: view/profile.html:10
+msgid "New password"
+msgstr "Új jelszó"
+
+#: view/profile.html:11
+msgid "Password again"
+msgstr "Jelszó újra"
+
+#: view/profile.html:12
+msgid "do it!"
+msgstr "csináld!"
+
+#: view/footer.html:1
+msgid "Server time"
+msgstr "Szerveridő"
+
+#: view/index.html:2
+#: view/layout.html:14
+#: view/admin/layout.html:12
+msgid "xHomePool, eh!"
+msgstr "xHomePool, jól!"
+
+#: view/index.html:3
+msgid "Hi there!"
+msgstr "Szevasztok!"
+
+#: view/menuline.html:2
+msgid "Fresh"
+msgstr "Aktuális"
+
+#: view/menuline.html:3
+msgid "Schedule"
+msgstr "Menetrend"
+
+#: view/menuline.html:4
+msgid "Bets"
+msgstr "Tippjeim"
+
+#: view/menuline.html:5
+msgid "All bets"
+msgstr "Összes tipp"
+
+#: view/menuline.html:6
+msgid "Scoreboard"
+msgstr "Tippverseny"
+
+#: view/menuline.html:8
+msgid "Invite"
+msgstr "Meghívó"
+
+#: view/menuline.html:9
+msgid "Rules"
+msgstr "Szabályok"
+
+#: view/menuline.html:10
+msgid "Admin"
+msgstr "Admin"
+
+#: view/referral.email.html:1
+#, python-format
+msgid ""
+"Hi %(referral.nick)s,\n"
+"\n"
+"%(user.nick)s ( %(user.full_name)s &lt; %(user.email)s &gt; ) has invited you to xHomePool.\n"
+"\n"
+"This link will let you in: %(auth_url)s\n"
+"\n"
+"Up until setting a password, you can use this link to get in.\n"
+"\n"
+"Good luck!\n"
+"\n"
+"regards,\n"
+"Czimi <xczimi@gmail.com>"
+msgstr ""
+"Szia %(referral.nick)s!\n"
+"\n"
+"%(user.nick)s ( %(user.full_name)s &lt; %(user.email)s &gt; ) meghívott az xHomePool rendszerbe.\n"
+"\n"
+"Ezzel a linkkel tudod aktiválni magad az oldalon:\n"
+"%(auth_url)s\n"
+"\n"
+"A link addig használható, amíg nem állítasz be jelszót magadnak.\n"
+"\n"
+"Sok sikert!\n"
+"\n"
+"üdv,\n"
+"Czimi <xczimi@gmail.com>"
+
+#: view/layout.html:8
+msgid "This is our little friendly pool."
+msgstr "Ez a mi kis baráti tippelő környezetünk"
+
+#: view/layout.html:9
+msgid "language"
+msgstr "nyelv"
+
+#: view/rules.html:2
+msgid ""
+"\n"
+"<h1>EC predict the score game</h1>\n"
+"<h2>1. What the hell?</h2>\n"
+"This page is doing the administration for a predict-the-score game of some friends (and friends' friends, of course). Players try to guess the scores of the matches of the UEFA Euro 2008, and collect points based on how good they are at it.\n"
+"<br>\n"
+"<h2>2. How?</h2>\n"
+"The exact score of every match is to be predicted, by choosing the appropriate numbers from the drop-down lists. The bet is evaluated based on the score of the game AFTER THE END OF THE SECOND HALF (90 mins). In certain scenarios when a non-draw score is required to decide which team qualifies, then, if the player bets on a tie, the team to qualify (after extra time, penalty shootout etc.) has to be predicted separately. See also the <a href=\"http://www.uefa.com/newsfiles/19079.pdf\">official regulations of the UEFA Euro 2008 (PDF)</a>.\n"
+"\n"
+"<h2>3. Who wins?</h2>\n"
+"Well, hopefully all participants. A bit more precisely, who gathers the most points. By every bet, points can be won the following way (home team is the team listed first in a match listing):\n"
+"<ul>\n"
+"<li>Predicting Win-Draw-Loss correctly: 2 points.</li>\n"
+"<li>Guessing the score of the home team correctly: 1 point. (In case the home team scores at least 4 goals in a game, then 1 point is awarded to players predicting at least 4 home goals.)</li>\n"
+"<li>Guessing the score of the visitor team correctly: 1 point. (In case the visitor team scores at least 4 goals in a game, then 1 point is awarded to players predicting at least 4 visitor goals.)</li>\n"
+"<li>Bonus:<br>\n"
+"After every round (group stage, 1/4 finals, 1/2 finals, final) there is on average 1 more point per game to be won based on the following principles:\n"
+"<br>\n"
+"For every pair of teams which directly competed aganst each other (were in the same group, or played a knock-out game, respectively) 1 point is awarded to the player if in the rankings based on his/her predictions (in the knock-out stage, there are two possible rank orderings, in te group stage it is 4!=24), the two teams finish in the order as they do based on the results of the UEFA Euro 2008. To see how orders are determined, please consult the official regulations (PDF).\n"
+"</li></ul>\n"
+"<h2>4. Disclaimer</h2>\n"
+"Please don't cheat! We would only like to play a good game, and we prefer to do this against people with similar preferences.\n"
+"<br>\n"
+"To avoid strategic betting made in order to preserve one's advantage at later stages of the game, a player cannot watch other players' bets until they finalize it. Except, of course, for the case when more people collude in order to get around this but then they should not have signed up in the first place. Finalizing bets can be done by checking the box adjacent to the drop-downs where one selects the score guessed.\n"
+"<br>\n"
+"<h2>5. Participation</h2>\n"
+"...is based on invitation. The system sends the invitationin email, so an email address is in fact needed to play.\n"
+"\n"
+"<h2>6. Deadlines</h2>\n"
+"There are several \"betting units\" of the tournament:\n"
+"<ul>\n"
+"</li><li> 8 group-stage games\n"
+"</li><li>second 8 group-stage games\n"
+"</li><li>third 8 group-stage games\n"
+"</li><li>quarterfinals\n"
+"</li><li>semifinals\n"
+"</li><li>final</li>\n"
+"</ul>\n"
+"Predictions concerning games of a betting unit can be made prior to 12pm on the day of the first game in the unit. This deadline may change, though - the current deadlines are always posted on the \"My Bets\" page.\n"
+"<h2>7. Help,FAQ,whatever</h2>\n"
+"Please email the admin team (see below).\n"
+msgstr ""
+"\n"
+"<h1>EB-Tipp góltotó játék szabályai</h1><h2>1. Miaszösz?</h2>\"Ez itt a mi kis tippelő környezetünk.\" Avagy, ez az oldal egy haveri alapon működő góltotó játékot üzemeltet. A résztvevők a 2008-as foci EB mérkőzéseinek végeredményére tippelnek, és a tipp minőségétől függően pontokat gyűjtenek. Az nyer, aki többet.<h2>2. De hogy?</h2>Minden mérkőzés számszerű végeredményét kell megtippelni, a legördülő menükből a megfelelő számokat kiválasztva. A tipp a mérkőzés rendes játékidejének végeredményére szól (90. perc). Speciális esetben, amikor a két résztvevő csapat továbbjutása múlik az eredményen, úgy amennyiben a mérkőzésre döntetlent tippel a játékos, úgy külön kell tippelni a továbbjutóra, azaz a hosszabbítás, ill. büntetőrúgások győztesére. Lásd még az <a href=\"http://www.uefa.com/newsfiles/19079.pdf\">EB hivatalos szabálykönyvét (PDF)</a><h2>3. Ki nyer ma?</h2>Az értékelés a végeredmény függvényében a következő tételek szuperpozíciójából áll (hazai csapatként az elöl listázott csapat értendő):<ul><li>1-x-2 eltalálása (a csapatok által elért pont): 2 pont.</li><li>Hazai lőtt gól eltalálása: 1 pont. (Amennyiben a hazai csapat legalább 4 gólt ér el a mérkőzésen, úgy az 1 pont akkor jár, ha a játékos is legalább 4 hazai gólt tippelt.)</li><li>Vendég lőtt gól eltalálása: 1 pont. (Amennyiben a hazai csapat legalább 4 gólt ér el a mérkőzésen, úgy az 1 pont akkor jár, ha a játékos is legalább 4 hazai gólt tippelt.)</li><li>Bónusz:<br>      A megfelelő fordulók (csoportmérkőzések, negyeddöntők, elődöntők, döntő) végén mérkőzésenként átlagban 1 pont szerezhető a következő elv alapján:      Minden olyan csapat-párra, melyek egymás ellen versenyeztek (egy csoportban voltak, ill. egymás ellen játszottak a legjobb 8 között) akkor jár pont egy játékosnak, ha a tippjei alapján kialakuló sorrendben (a 8 között ez kétféle lehet, a csoportmeccseken csoportonként 4!=24) a két csapat olyan sorrendben végez, amilyenben az EB tényleges eredményei alapján. A sorrend eldöntéséhez lásd az EB hivatalos szabálykönyvét (PDF).</ul><h2>4. Disclaimer</h2>Ne csalj, Boborján! Mi elsősorban játszani szeretnénk, olyanok ellen, akik hasonló céllal vannak az oldalon.<br>(Hogy ne lehessen az előny megőrzésére játszani, a saját tipp véglegesítéséig az ellenfeleké sem tekinthető meg. Kivétel, ha többen összedolgoznak, de akkor ők kapják is be.)<h2>5. Részvétel a játékban</h2>A játékban részt venni meghívásos alapon lehet. A meghívót e-mailben küldi a rendszer, ezért kell hozzá egy ilyen cím.<h2>6. Határidők</h2>A torna a következő tippelési egységekre bomlik:<ul><li>első 8 csoportmeccs</li><li>második 8 csoportmeccs</li><li>harmadik 8 csoportmeccs</li><li>negyeddöntők</li><li>elődöntők</li><li>döntő</li></ul>Egy egység mérkőzéseire az első találkozó napján déli 12 óráig lehet tippelni (szerveridő szerint). Ez azonban módosulhat, az aktuális határidők megtalálhatóak a tippjeim oldalon.<h2>7. Műsorváltozás, kezelőfelület, GyIK</h2>Tessék írni az adminisztrátornak (cím alant)\n"
+
+#: view/error.html:2
+msgid "EB-Tipp, rosszul!"
+msgstr "xHomePool, fail!"
+
+#: view/invite.html:3
+msgid "Invitation"
+msgstr "Meghívó"
+
+#: view/invite.html:11
+msgid "send the invite which may end up in the spam folder."
+msgstr "küldd el a meghívót, ami lehet hogy spamként végzi..."
+
+#: view/admin/menuline.html:3
+msgid "Main"
+msgstr "Főoldal"
+
+#: view/admin/menuline.html:4
+#: view/admin/teams.html:2
+msgid "Teams"
+msgstr "Csapatok"
+
+#: view/admin/menuline.html:5
+#: view/admin/games.html:2
+msgid "Games"
+msgstr "Meccsek"
+
+#: view/admin/menuline.html:6
+#: view/admin/users.html:2
+msgid "Users"
+msgstr "Felhasználók"
+
+#: view/admin/menuline.html:7
+msgid "Fifa"
+msgstr "Fifa"
+
+#: view/admin/layout.html:8
+msgid "This is the admin interface."
+msgstr "Ez az admin felület"
+
