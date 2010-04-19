@@ -174,7 +174,11 @@ class MyRequestHandler(webapp.RequestHandler):
     
     def get_template_values(self):
         message = self.get_session_message()
-        self.template_values = {'user' : self.current_user(), 'is_admin' : users.is_current_user_admin(), 'message': message}
+        if self.template_values is None:
+            self.template_values = {
+                'user' : self.current_user(), 
+                'is_admin' : users.is_current_user_admin(), 
+                'message': message}
         if message is not None: self.set_session_message(None)
         return self.template_values
            
@@ -189,12 +193,18 @@ class MyRequestHandler(webapp.RequestHandler):
             raise
 
 class MainHandler(MyRequestHandler):
+    login_required = False
     def get(self, page):
         self.get_template_values()
+        if self.login_required and not self.current_user():
+            self.template_values['message'] = _("Login required")
+            self.render('index')
+            return
         if '' == page: page = "index"
         self.render(page)
     
-class UserHandler(MyRequestHandler):
+class UserHandler(MainHandler):
+    login_required = True
     def post(self, *args):
         if MyRequestHandler.post(self): return
         action = self.request.get('action')
@@ -256,12 +266,18 @@ class GamesHandler(MainHandler):
         for game in groupgame.game_set.order('name'):
             self.add_games(game)
         
-    def get(self, filter='', subfilter=''):
+    def get(self, filter=''):
         self.get_template_values()
         if filter == '': filter = Fifa2010().tournament.key()
         self.add_games(GroupGame.get(filter))
         self.template_values['games'] = self.games
-        self.render('games')
+        MainHandler.get(self,'games')
+
+class MyTipsHandler(MainHandler):
+    login_required = True
+    def get(self, filter=''):
+        self.get_template_values()
+        MainHandler.get(self,'index')
 
 class ReferralHandler(MainHandler):
     def get(self, authcode):
