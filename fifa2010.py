@@ -68,6 +68,7 @@ class Fifa2010(object):
         game_stored.awayTeam = self.init_team(game['away_team'])
         game_stored.put()
 
+       
     @classmethod
     def init_tree(self):
         # try to create that stuff safely
@@ -79,11 +80,3 @@ class Fifa2010(object):
         groupgames = fifa.get_games("index")
         for game in groupgames: self.init_group_game(game)
 
-    @classmethod
-    def single_game_result(self, user):
-        def get_result(self):
-            result = self.result_set.filter('user = ',user).get()
-            if result is None:
-                result = Result(user=user,singlegame=self)
-            return result
-        return get_result

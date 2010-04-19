@@ -42,6 +42,11 @@ class Game(polymodel.PolyModel):
 class GroupGame(Game):
     name = db.StringProperty(required=True)
     upgroup = db.SelfReferenceProperty(collection_name="game_set")
+    _games = None
+    def games(self):
+        if self._games is None:
+            self._games = self.singlegame_set.fetch(100)
+        return self._games
     def level(self):
         if self.upgroup is None: return 1
         return self.upgroup.level() + 1
