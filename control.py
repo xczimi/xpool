@@ -245,7 +245,6 @@ class UserHandler(MyRequestHandler):
         user.authcode = None
         user.put()
     
-import urllib
 class GamesHandler(MainHandler):
     games = []
     def add_games(self, groupgame, level=1):
@@ -253,14 +252,15 @@ class GamesHandler(MainHandler):
         
         This method is implemented here to remove the recursion from the view. """
         self.games = self.games + [{'level':level,'game':groupgame}]
-#        self.games = self.games + [[level,groupgame]]
         for game in groupgame.game_set:
             if isinstance(game,GroupGame):
                 self.add_games(game, level+1)
         
     def get(self, filter='', subfilter=''):
         self.get_template_values()
-        self.add_games(Fifa2010().tournament)
+        if filter == '':
+            filter = Fifa2010().tournament.key()
+        self.add_games(GroupGame.get(filter))
         self.template_values['games'] = self.games
         self.render('games')
 

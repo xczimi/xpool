@@ -2,7 +2,11 @@
 {% block content %}
 {% for levelgame in games %}
 {% if levelgame.game.name %}
-<h{{ levelgame.level }}>{{ levelgame.game.name }}</h{{ levelgame.level }}>
+<h{{ levelgame.level }}>
+{% if forloop.first %}{% if levelgame.game.group %}
+<a href="/games/{{ levelgame.game.group.key }}">{{ levelgame.game.group.name }}</a> &gt;
+{% endif %}{% endif %}
+<a href="/games/{{ levelgame.game.key }}">{{ levelgame.game.name }}</a></h{{ levelgame.level }}>
 {% endif %}
 {% for game in levelgame.game.game_set %}{% if not game.name %}
 {% if forloop.first %}<table>
