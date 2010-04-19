@@ -1,13 +1,24 @@
 {% extends "layout.html" %}{% load i18n %}
 {% block content %}
-<h1>{{game.name}}</h1>
-<h2>{{groupstage.name}}</h2>
-{% for group in groupstage.game_set %}
-<h3>{{group.name}}</h3>
-<table>
-{% for game in group.game_set %}
-<tr><td>{{ game.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ game.awayTeam.flag }}" /></td><td>{{ game.awayTeam.name }}</td><td>{{ game.time }}</td><td>{{  game.location }}</td></tr>
+{% for levelgame in games %}
+{% if levelgame.game.name %}
+<h{{ levelgame.level }}>{{ levelgame.game.name }}</h{{ levelgame.level }}>
+{% endif %}
+{% for game in levelgame.game.game_set %}{% if not game.name %}
+{% if forloop.first %}<table>
+<thead>
+<tr>
+<th class="home teamColumn">{% trans "home team" %}</th>
+<th class="pairColumn">&nbsp;&ndash;&nbsp;</th>
+<th class="away teamColumn">{% trans "away team" %}</th>
+<th class="timeColumn">{% trans "kick off" %}</th>
+<th class="venueColumn">{% trans "Stadium" %}</th></tr>
+</thead>
+<tbody>
+{% endif %}
+<tr><td class="home">{{ game.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ game.awayTeam.flag }}" /></td><td class="away">{{ game.awayTeam.name }}</td><td>{{ game.time }}</td><td>{{  game.location }}</td></tr>
+{% if forloop.last %}</tbody>
+</table>{% endif %}
+{% endif %}{% endfor %}
 {% endfor %}
-</table>
-{% endfor %}
-{% endblock %} 
+{% endblock %}

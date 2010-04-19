@@ -28,7 +28,9 @@ def main():
                     ('/admin/(.*)', control.AdminHandler),
                     ('/admin', control.AdminHandler),
                     ('/referrer/(.*)', control.ReferralHandler),
-                    ('/games/?(.*)', control.GamesHandler),                    
+                    ('/games/(.*)/(.*)', control.GamesHandler),
+                    ('/games/(.*)', control.GamesHandler),
+                    ('/games', control.GamesHandler),
                     ('/(.*)', control.MainHandler)],debug=True)
     util.run_wsgi_app(application)
 

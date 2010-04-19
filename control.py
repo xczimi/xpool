@@ -22,6 +22,7 @@ from google.appengine.ext.db import polymodel
 from model import LocalUser, Team, Game, GroupGame, SingleGame
 
 import fifa
+from fifa2010 import Fifa2010
 
 class MyRequestHandler(webapp.RequestHandler):
     session = None
@@ -244,11 +245,23 @@ class UserHandler(MyRequestHandler):
         user.authcode = None
         user.put()
     
+import urllib
 class GamesHandler(MainHandler):
-    def get(self, filter=''):
+    games = []
+    def add_games(self, groupgame, level=1):
+        """ List groupgames with depth information.
+        
+        This method is implemented here to remove the recursion from the view. """
+        self.games = self.games + [{'level':level,'game':groupgame}]
+#        self.games = self.games + [[level,groupgame]]
+        for game in groupgame.game_set:
+            if isinstance(game,GroupGame):
+                self.add_games(game, level+1)
+        
+    def get(self, filter='', subfilter=''):
         self.get_template_values()
-        self.template_values['game'] = AdminHandler.fifa_root()
-        self.template_values['groupstage'] = AdminHandler.fifa_groupstage()
+        self.add_games(Fifa2010().tournament)
+        self.template_values['games'] = self.games
         self.render('games')
 
 class ReferralHandler(MainHandler):
@@ -256,72 +269,12 @@ class ReferralHandler(MainHandler):
         if self.logout():
             return
         self.login_authcode(authcode)
-    
+
 class AdminHandler(MyRequestHandler):
     def post(self, admin, *args):
         if MyRequestHandler.post(self): return
         print self.request.uri
         
-    def init_fifa_team(self, team):
-        """Create team if not exists."""
-        
-        team_stored = Team.all().filter('name =',team['name']).get()
-        if team_stored is None: team_stored = Team(name=team['name'])
-        short_match = re.search(r'([a-z]{3})\.gif$',team['flag'])
-        team_stored.flag = team['flag']
-        team_stored.short = short_match.group(1)
-        team_stored.href = team['href']
-        team_stored.put()
-        
-        return team_stored
-    
-    def init_fifa_group(self, group_name):
-        """Create group if not exists."""
-
-        group_stored = GroupGame.all().filter('name =',group_name).get()
-        if group_stored is None: group_stored = GroupGame(name=group_name)
-        
-        group_stored.group=GroupGame.get_by_key_name("groupstage")
-        group_stored.put()
-        return group_stored
-        
-    def init_fifa_group_game(self, game):
-        """Create game if not exists."""
-        
-        group = self.init_fifa_group(game['group'])
-        game_stored = SingleGame.all().filter('fifaId =',int(game['id'])).get()
-        if game_stored is None: game_stored = SingleGame(fifaId=int(game['id']),group=self.fifa_groupstage())
-        
-        game_stored.time = game['time']
-        game_stored.location = game['location']
-        game_stored.group = self.init_fifa_group(game['group'])
-        game_stored.homeTeam = self.init_fifa_team(game['home_team'])
-        game_stored.awayTeam = self.init_fifa_team(game['away_team'])
-        game_stored.put()
-    
-    @classmethod
-    def fifa_root(self):
-        fifa2010 = GroupGame.get_by_key_name("fifa2010")
-        if fifa2010 is None: fifa2010 = GroupGame.get_or_insert(key_name="fifa2010", name="FIFA 2010")
-        return fifa2010
-    
-    @classmethod
-    def fifa_groupstage(self):
-        groupstage = GroupGame.get_by_key_name("groupstage")
-        if groupstage is None: groupstage = GroupGame.get_or_insert(key_name="groupstage", name="Group Stage", group=self.fifa_root())
-        return groupstage
-
-    @classmethod
-    def fifa_kostage(self):
-        kostage = GroupGame.get_by_key_name("kostage")
-        if kostage is None: kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", group=self.fifa_root())
-        return kostage
-    
-    def init_fifa_tree(self):
-        groupgames = fifa.get_games("index")
-        for game in groupgames: self.init_fifa_group_game(game)
-        self.fifa_kostage()
-
     def get(self, *args):
         self.get_template_values()
         if not users.is_current_user_admin():
@@ -330,7 +283,7 @@ class AdminHandler(MyRequestHandler):
         if len(args) > 0:
             admin = args[0]
             if "fifa" == admin:
-                self.init_fifa_tree()
+                Fifa2010.init_tree()
                 self.redirect('/admin/team')
             elif "team" == admin:
                 if len(args) > 1:
@@ -356,4 +309,5 @@ class AdminHandler(MyRequestHandler):
                 self.render('admin/layout')
         else:
             self.render('admin/layout')
+
 

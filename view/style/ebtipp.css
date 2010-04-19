@@ -48,3 +48,11 @@ form { display: inline; }
 #maincontent table tr.line0 { background-color: rgb(221, 221, 229); }
 #maincontent table tr.line1 { background-color: rgb(255, 255, 255); }
 #maincontent h2 { padding-top: 10px; }
+#maincontent h3 { padding-top: 5px; }
+
+#maincontent table th.teamColumn { width : 150px; }
+#maincontent table .home { text-align: right; }
+#maincontent table .away { text-align: left; }
+#maincontent table th.pairColumn { width : 50px; }
+#maincontent table th.timeColumn { width : 150px; }
+#maincontent table th.venueColumn { width : 250px; }
