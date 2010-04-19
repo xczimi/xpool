@@ -1,7 +1,7 @@
 from google.appengine.ext import db
 from google.appengine.ext.db import polymodel
 
-from model import Team, Game, GroupGame, SingleGame
+from model import Team, Game, GroupGame, SingleGame, LocalUser, Result
 
 import fifa
 import re
@@ -14,6 +14,7 @@ class Fifa2010(object):
     tournament = None
     groupstage = None
     kostage = None
+    result = None
 
     def __init__(self):
         self.__dict__ = self.__shared_state
@@ -22,6 +23,7 @@ class Fifa2010(object):
         if self.tournament is None: self.tournament = GroupGame.get_by_key_name("fifa2010")
         if self.groupstage is None: self.groupstage = GroupGame.get_by_key_name("groupstage")
         if self.kostage is None: self.kostage = GroupGame.get_by_key_name("kostage")
+        if self.result is None: self.result = LocalUser.get_by_key_name("result")
         
     @classmethod
     def get_group(cls, key):
@@ -72,7 +74,16 @@ class Fifa2010(object):
         if Fifa2010().tournament is None: Fifa2010().tournament = GroupGame.get_or_insert(key_name="fifa2010", name="FIFA 2010")
         if Fifa2010().groupstage is None: Fifa2010().groupstage = GroupGame.get_or_insert(key_name="groupstage", name="Group Stage", upgroup = Fifa2010().tournament)
         if Fifa2010().kostage is None: Fifa2010().kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", upgroup = Fifa2010().tournament)
+        if Fifa2010().result is None: Fifa2010().result = LocalUser.get_or_insert(key_name="result", email="fifa@fifa.com", password='fifa')
         
         groupgames = fifa.get_games("index")
         for game in groupgames: self.init_group_game(game)
 
+    @classmethod
+    def single_game_result(self, user):
+        def get_result(self):
+            result = self.result_set.filter('user = ',user).get()
+            if result is None:
+                result = Result(user=user,singlegame=self)
+            return result
+        return get_result

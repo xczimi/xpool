@@ -52,4 +52,16 @@ class SingleGame(Game):
     awayTeam = db.ReferenceProperty(Team,collection_name="awaygame_set")
     location = db.StringProperty()
     group = db.ReferenceProperty(GroupGame,collection_name="singlegame_set")
-    
+
+from datetime import datetime
+class Result(db.Model):
+    user = db.ReferenceProperty(LocalUser, collection_name="result_set", required=True)
+    singlegame = db.ReferenceProperty(SingleGame, collection_name="result_set", required=True)
+    homeScore = db.IntegerProperty()
+    awayScore = db.IntegerProperty()
+    locked = db.BooleanProperty(default=False)
+    def editable(self):
+        return datetime.utcnow() < self.singlegame.time
+    @classmethod
+    def score_list(self):
+        return range(10)

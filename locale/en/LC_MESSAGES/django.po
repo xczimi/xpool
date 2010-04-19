@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: xHomePool v1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2010-04-18 19:45-0700\n"
-"PO-Revision-Date: 2010-04-18 19:46-0800\n"
+"POT-Creation-Date: 2010-04-18 23:13-0700\n"
+"PO-Revision-Date: 2010-04-18 23:14-0800\n"
 "Last-Translator: Peter Czimmermann <xczimi@gmail.com>\n"
 "Language-Team: Czimi & Co <xczimi@gmail.com>\n"
 "MIME-Version: 1.0\n"
@@ -17,43 +17,47 @@ msgstr ""
 "X-Poedit-Language: en\n"
 "X-Poedit-SourceCharset: utf-8\n"
 
-#: control.py:36
+#: control.py:37
 msgid "Sucessful google login"
 msgstr "Sucessful google login"
 
-#: control.py:51
+#: control.py:52
 msgid "Successful google logout"
 msgstr "Successful google logout"
 
-#: control.py:54
+#: control.py:55
 msgid "Successful logout"
 msgstr "Successful logout"
 
-#: control.py:125
+#: control.py:126
 msgid "Failed to log you in, try it again!"
 msgstr "Failed to log you in, try it again!"
 
-#: control.py:129
+#: control.py:130
 msgid "Successful login"
 msgstr "Successful login"
 
-#: control.py:135
+#: control.py:136
 msgid "Invalid auth code"
 msgstr "Invalid auth code"
 
-#: control.py:139
+#: control.py:140
 msgid "Successful referral, set your password, or link your google account!"
 msgstr "Successful referral, set your password, or link your google account!"
 
-#: control.py:220
+#: control.py:201
+msgid "Login required"
+msgstr "Login required"
+
+#: control.py:231
 msgid "This user is already in the system (based on email)!"
 msgstr "This user is already in the system (based on email)!"
 
-#: control.py:231
+#: control.py:242
 msgid "xHomePool invitation"
 msgstr "xHomePool invitation"
 
-#: control.py:233
+#: control.py:244
 msgid "Invitation sent"
 msgstr "Invitation sent"
 
@@ -277,19 +281,22 @@ msgstr ""
 "<h2>7. Help,FAQ,whatever</h2>\n"
 "Please email the admin team (see below).\n"
 
-#: view/games.html:11
+#: view/games.html:10
+#: view/mytips.html:11
 msgid "home team"
 msgstr "home team"
 
-#: view/games.html:13
+#: view/games.html:12
+#: view/mytips.html:13
 msgid "away team"
 msgstr "away team"
 
-#: view/games.html:14
+#: view/games.html:13
+#: view/mytips.html:14
 msgid "kick off"
 msgstr "kick off"
 
-#: view/games.html:15
+#: view/games.html:14
 msgid "Stadium"
 msgstr "stadium"
 
@@ -304,6 +311,18 @@ msgstr "Invitation"
 #: view/invite.html:11
 msgid "send the invite which may end up in the spam folder."
 msgstr "send the invite which may end up in the spam folder."
+
+#: view/mytips.html:15
+msgid "result"
+msgstr "result"
+
+#: view/mytips.html:16
+msgid "bet (pt)"
+msgstr "bet (pt)"
+
+#: view/mytips.html:19
+msgid "save"
+msgstr "save"
 
 #: view/admin/menuline.html:3
 msgid "Main"

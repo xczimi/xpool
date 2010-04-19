@@ -22,7 +22,7 @@
 {% endif %}
 <tr class="{% cycle line0,line1 %}"><td class="home">{{ singlegame.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ singlegame.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ singlegame.awayTeam.flag }}" /></td><td class="away">{{ singlegame.awayTeam.name }}</td><td>{{ singlegame.time }}</td>
 <td class="resultColumn">{% if singlegame.result.locked %}{{ singlegame.result.homeScore }}&nbsp;&ndash;&nbsp;{{ singlegame.result.awayScore }}{% endif %}</td>
-<td class="betColumn">{% if singlegame.bet.locked or not singlegame.bet.editable %}
+<td class="betColumn">{% if singlegame.bet.locked or singlegame.result.locked or not singlegame.bet.editable %}
 {{ singlegame.bet.homeScore }}&nbsp;&ndash;&nbsp;{{ singlegame.bet.awayScore }}
 {% else %}<select name="homeScore.{{singlegame.key}}">{% for gol in scorelist %}<option value="{{gol}}" {% ifequal gol singlegame.bet.homeScore %} selected="selected" {% endifequal %} >{{gol}}</option>{% endfor %}</select>
 &nbsp;&ndash;&nbsp;

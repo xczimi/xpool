@@ -53,6 +53,10 @@ form { display: inline; }
 #maincontent table th.teamColumn { width : 150px; }
 #maincontent table .home { text-align: right; }
 #maincontent table .away { text-align: left; }
-#maincontent table th.pairColumn { width : 50px; }
+#maincontent table th.pairColumn { width : 50px; text-align: center; }
 #maincontent table th.timeColumn { width : 150px; }
 #maincontent table th.venueColumn { width : 250px; }
+
+#maincontent table .resultColumn { text-align: center; width: 7ex; }
+#maincontent table .betColumn { text-align: center; }
+#maincontent table .saveColumn { text-align: right; }

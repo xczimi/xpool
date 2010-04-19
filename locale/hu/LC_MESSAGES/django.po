@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: xHomePool v1\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2010-04-18 19:44-0700\n"
-"PO-Revision-Date: 2010-04-18 19:45-0800\n"
+"POT-Creation-Date: 2010-04-18 23:13-0700\n"
+"PO-Revision-Date: 2010-04-18 23:14-0800\n"
 "Last-Translator: Peter Czimmermann <xczimi@gmail.com>\n"
 "Language-Team: Czimi & Co <xczimi@gmail.com>\n"
 "MIME-Version: 1.0\n"
@@ -17,43 +17,47 @@ msgstr ""
 "X-Poedit-Language: hu\n"
 "X-Poedit-SourceCharset: utf-8\n"
 
-#: control.py:36
+#: control.py:37
 msgid "Sucessful google login"
 msgstr "Sikeres google belépés"
 
-#: control.py:51
+#: control.py:52
 msgid "Successful google logout"
 msgstr "Sikeres google kilépés"
 
-#: control.py:54
+#: control.py:55
 msgid "Successful logout"
 msgstr "Sikeres kilépés"
 
-#: control.py:125
+#: control.py:126
 msgid "Failed to log you in, try it again!"
 msgstr "Belépés nem sikerült, próbáld újra!"
 
-#: control.py:129
+#: control.py:130
 msgid "Successful login"
 msgstr "Sikeres belépés"
 
-#: control.py:135
+#: control.py:136
 msgid "Invalid auth code"
 msgstr "Helytelen kód"
 
-#: control.py:139
+#: control.py:140
 msgid "Successful referral, set your password, or link your google account!"
 msgstr "Sikeres belépés, állíts be jelszót!"
 
-#: control.py:220
+#: control.py:201
+msgid "Login required"
+msgstr "Belépés szükséges"
+
+#: control.py:231
 msgid "This user is already in the system (based on email)!"
 msgstr "Ez a felhasználó már benne van a tutiban!"
 
-#: control.py:231
+#: control.py:242
 msgid "xHomePool invitation"
 msgstr "xHomePool meghívó"
 
-#: control.py:233
+#: control.py:244
 msgid "Invitation sent"
 msgstr "Meghívó elküldve."
 
@@ -240,19 +244,22 @@ msgstr ""
 "\n"
 "<h1>EB-Tipp góltotó játék szabályai</h1><h2>1. Miaszösz?</h2>\"Ez itt a mi kis tippelő környezetünk.\" Avagy, ez az oldal egy haveri alapon működő góltotó játékot üzemeltet. A résztvevők a 2008-as foci EB mérkőzéseinek végeredményére tippelnek, és a tipp minőségétől függően pontokat gyűjtenek. Az nyer, aki többet.<h2>2. De hogy?</h2>Minden mérkőzés számszerű végeredményét kell megtippelni, a legördülő menükből a megfelelő számokat kiválasztva. A tipp a mérkőzés rendes játékidejének végeredményére szól (90. perc). Speciális esetben, amikor a két résztvevő csapat továbbjutása múlik az eredményen, úgy amennyiben a mérkőzésre döntetlent tippel a játékos, úgy külön kell tippelni a továbbjutóra, azaz a hosszabbítás, ill. büntetőrúgások győztesére. Lásd még az <a href=\"http://www.uefa.com/newsfiles/19079.pdf\">EB hivatalos szabálykönyvét (PDF)</a><h2>3. Ki nyer ma?</h2>Az értékelés a végeredmény függvényében a következő tételek szuperpozíciójából áll (hazai csapatként az elöl listázott csapat értendő):<ul><li>1-x-2 eltalálása (a csapatok által elért pont): 2 pont.</li><li>Hazai lőtt gól eltalálása: 1 pont. (Amennyiben a hazai csapat legalább 4 gólt ér el a mérkőzésen, úgy az 1 pont akkor jár, ha a játékos is legalább 4 hazai gólt tippelt.)</li><li>Vendég lőtt gól eltalálása: 1 pont. (Amennyiben a hazai csapat legalább 4 gólt ér el a mérkőzésen, úgy az 1 pont akkor jár, ha a játékos is legalább 4 hazai gólt tippelt.)</li><li>Bónusz:<br>      A megfelelő fordulók (csoportmérkőzések, negyeddöntők, elődöntők, döntő) végén mérkőzésenként átlagban 1 pont szerezhető a következő elv alapján:      Minden olyan csapat-párra, melyek egymás ellen versenyeztek (egy csoportban voltak, ill. egymás ellen játszottak a legjobb 8 között) akkor jár pont egy játékosnak, ha a tippjei alapján kialakuló sorrendben (a 8 között ez kétféle lehet, a csoportmeccseken csoportonként 4!=24) a két csapat olyan sorrendben végez, amilyenben az EB tényleges eredményei alapján. A sorrend eldöntéséhez lásd az EB hivatalos szabálykönyvét (PDF).</ul><h2>4. Disclaimer</h2>Ne csalj, Boborján! Mi elsősorban játszani szeretnénk, olyanok ellen, akik hasonló céllal vannak az oldalon.<br>(Hogy ne lehessen az előny megőrzésére játszani, a saját tipp véglegesítéséig az ellenfeleké sem tekinthető meg. Kivétel, ha többen összedolgoznak, de akkor ők kapják is be.)<h2>5. Részvétel a játékban</h2>A játékban részt venni meghívásos alapon lehet. A meghívót e-mailben küldi a rendszer, ezért kell hozzá egy ilyen cím.<h2>6. Határidők</h2>A torna a következő tippelési egységekre bomlik:<ul><li>első 8 csoportmeccs</li><li>második 8 csoportmeccs</li><li>harmadik 8 csoportmeccs</li><li>negyeddöntők</li><li>elődöntők</li><li>döntő</li></ul>Egy egység mérkőzéseire az első találkozó napján déli 12 óráig lehet tippelni (szerveridő szerint). Ez azonban módosulhat, az aktuális határidők megtalálhatóak a tippjeim oldalon.<h2>7. Műsorváltozás, kezelőfelület, GyIK</h2>Tessék írni az adminisztrátornak (cím alant)\n"
 
-#: view/games.html:11
+#: view/games.html:10
+#: view/mytips.html:11
 msgid "home team"
 msgstr "hazai csapat"
 
-#: view/games.html:13
+#: view/games.html:12
+#: view/mytips.html:13
 msgid "away team"
 msgstr "vendég csapat"
 
-#: view/games.html:14
+#: view/games.html:13
+#: view/mytips.html:14
 msgid "kick off"
 msgstr "kezdés"
 
-#: view/games.html:15
+#: view/games.html:14
 msgid "Stadium"
 msgstr "stadion"
 
@@ -267,6 +274,18 @@ msgstr "Meghívó"
 #: view/invite.html:11
 msgid "send the invite which may end up in the spam folder."
 msgstr "küldd el a meghívót, ami lehet hogy spamként végzi..."
+
+#: view/mytips.html:15
+msgid "result"
+msgstr "eredmény"
+
+#: view/mytips.html:16
+msgid "bet (pt)"
+msgstr "tipp (pont)"
+
+#: view/mytips.html:19
+msgid "save"
+msgstr "mentés"
 
 #: view/admin/menuline.html:3
 msgid "Main"

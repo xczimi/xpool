@@ -15,7 +15,7 @@
 </thead>
 <tbody>
 {% endif %}
-<tr><td class="home">{{ singlegame.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ singlegame.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ singlegame.awayTeam.flag }}" /></td><td class="away">{{ singlegame.awayTeam.name }}</td><td>{{ singlegame.time }}</td><td>{{  singlegame.location }}</td></tr>
+<tr class="{% cycle line0,line1 %}"><td class="home">{{ singlegame.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ singlegame.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ singlegame.awayTeam.flag }}" /></td><td class="away">{{ singlegame.awayTeam.name }}</td><td>{{ singlegame.time }}</td><td>{{  singlegame.location }}</td></tr>
 {% if forloop.last %}</tbody></table>{% endif %}
 {% endfor %}
 {% endfor %}

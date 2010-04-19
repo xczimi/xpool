@@ -31,6 +31,7 @@ def main():
                     ('/games/(.*)', control.GamesHandler),
                     ('/games', control.GamesHandler),
                     ('/mytips', control.MyTipsHandler),
+                    ('/mytips/(.*)', control.MyTipsHandler),
                     ('/(profile|invite)', control.UserHandler),
                     ('/(.*)', control.MainHandler)],debug=True)
     util.run_wsgi_app(application)

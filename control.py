@@ -19,10 +19,11 @@ from django.utils import translation
 from google.appengine.ext import db
 from google.appengine.ext.db import polymodel
 
-from model import LocalUser, Team, Game, GroupGame, SingleGame
+from model import LocalUser, Team, Game, GroupGame, SingleGame, Result
 
 import fifa
 from fifa2010 import Fifa2010
+
 
 class MyRequestHandler(webapp.RequestHandler):
     session = None
@@ -273,11 +274,48 @@ class GamesHandler(MainHandler):
         self.template_values['games'] = self.games
         MainHandler.get(self,'games')
 
-class MyTipsHandler(MainHandler):
+
+class MyTipsHandler(GamesHandler):
     login_required = True
+    def post(self, *args):
+        if GamesHandler.post(self): return
+        action = self.request.get('action')
+        if 'mytips/save' == action:
+            self.save(self.current_user())
+            self.redirect(self.request.uri)
+        else:
+            return False
+        return True
+
+    def save(self, user):
+        SingleGame.bet = Fifa2010.single_game_result(user)
+        for argument in self.request.arguments():
+            match = re.match(r'^(homeScore|awayScore)\.(.*)$', argument)
+            if match:
+                name, key = match.groups()
+                result = SingleGame.get(key).bet()
+                if self.request.get(argument) > '':
+                    if name == 'homeScore':
+                        result.homeScore = int(self.request.get(argument))
+                    elif name == 'awayScore':
+                        result.awayScore = int(self.request.get(argument))
+                    result.put()
+            match = re.match(r'^lock\.(.*)$', argument)
+            if match:
+                result = SingleGame.get(match.group(1)).bet()
+                if result.homeScore >= 0 and result.awayScore >= 0:
+                    result.locked = True
+                    result.put()
+
     def get(self, filter=''):
         self.get_template_values()
-        MainHandler.get(self,'index')
+        if filter == '': filter = Fifa2010().tournament.key()
+        self.add_games(GroupGame.get(filter))
+        self.template_values['games'] = self.games
+        SingleGame.result = Fifa2010.single_game_result(Fifa2010().result)
+        SingleGame.bet = Fifa2010.single_game_result(self.current_user())
+        self.template_values['scorelist'] = [''] + Result.score_list()
+        MainHandler.get(self,'mytips')
 
 class ReferralHandler(MainHandler):
     def get(self, authcode):
