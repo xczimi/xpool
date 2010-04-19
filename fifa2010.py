@@ -3,6 +3,10 @@ from google.appengine.ext.db import polymodel
 
 from model import Team, Game, GroupGame, SingleGame
 
+import fifa
+import re
+
+
 class Fifa2010(object):
     """ Fifa2010 class should hold all the FIFA 2010 WC specific knowledge. """
     __shared_state = {}
