@@ -3,7 +3,7 @@
 {% for groupgame in games %}
 <h{{ groupgame.level }}>
 {% if forloop.first %}{% if groupgame.upgroup %}<a href="/games/{{ groupgame.upgroup.key }}">{{ groupgame.upgroup.name }}</a> &gt;{% endif %}{% endif %}<a href="/games/{{ groupgame.key }}">{{ groupgame.name }}</a></h{{ groupgame.level }}>
-{% for singlegame in groupgame.singlegame_set %}
+{% for singlegame in groupgame.games %}
 {% if forloop.first %}<table>
 <thead>
 <tr>

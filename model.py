@@ -45,7 +45,7 @@ class GroupGame(Game):
     _games = None
     def games(self):
         if self._games is None:
-            self._games = self.singlegame_set.fetch(100)
+            self._games = self.singlegame_set.order('time').fetch(100)
         return self._games
     def level(self):
         if self.upgroup is None: return 1

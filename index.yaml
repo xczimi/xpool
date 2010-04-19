@@ -17,5 +17,10 @@ indexes:
 
 - kind: Game
   properties:
+  - name: group
+  - name: time
+
+- kind: Game
+  properties:
   - name: upgroup
   - name: name
