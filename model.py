@@ -37,14 +37,19 @@ class Team(db.Model):
     href = db.StringProperty()
 
 class Game(polymodel.PolyModel):
-    group = db.SelfReferenceProperty(collection_name="game_set")
     time = db.DateTimeProperty()
 
 class GroupGame(Game):
     name = db.StringProperty(required=True)
+    upgroup = db.SelfReferenceProperty(collection_name="game_set")
+    def level(self):
+        if self.upgroup is None: return 1
+        return self.upgroup.level() + 1
 
 class SingleGame(Game):
     fifaId = db.IntegerProperty()
     homeTeam = db.ReferenceProperty(Team,collection_name="homegame_set")
     awayTeam = db.ReferenceProperty(Team,collection_name="awaygame_set")
     location = db.StringProperty()
+    group = db.ReferenceProperty(GroupGame,collection_name="singlegame_set")
+    

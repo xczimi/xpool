@@ -47,7 +47,7 @@ class Fifa2010(object):
 
         group_stored = GroupGame.all().filter('name =',group_name).get()
         if group_stored is None: 
-            group_stored = GroupGame(name=group_name, group = Fifa2010().groupstage)
+            group_stored = GroupGame(name=group_name, upgroup = Fifa2010().groupstage)
             group_stored.put()
         return group_stored
         
@@ -70,8 +70,8 @@ class Fifa2010(object):
     def init_tree(self):
         # try to create that stuff safely
         if Fifa2010().tournament is None: Fifa2010().tournament = GroupGame.get_or_insert(key_name="fifa2010", name="FIFA 2010")
-        if Fifa2010().groupstage is None: Fifa2010().groupstage = GroupGame.get_or_insert(key_name="groupstage", name="Group Stage", group = Fifa2010().tournament)
-        if Fifa2010().kostage is None: Fifa2010().kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", group = Fifa2010().tournament)
+        if Fifa2010().groupstage is None: Fifa2010().groupstage = GroupGame.get_or_insert(key_name="groupstage", name="Group Stage", upgroup = Fifa2010().tournament)
+        if Fifa2010().kostage is None: Fifa2010().kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", upgroup = Fifa2010().tournament)
         
         groupgames = fifa.get_games("index")
         for game in groupgames: self.init_group_game(game)

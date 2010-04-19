@@ -247,19 +247,18 @@ class UserHandler(MyRequestHandler):
     
 class GamesHandler(MainHandler):
     games = []
-    def add_games(self, groupgame, level=1):
+    def add_games(self, groupgame):
         """ List groupgames with depth information.
         
-        This method is implemented here to remove the recursion from the view. """
-        self.games = self.games + [{'level':level,'game':groupgame}]
-        for game in groupgame.game_set:
-            if isinstance(game,GroupGame):
-                self.add_games(game, level+1)
+        This method is implemented here to remove the recursion from the view.
+        Practically a wide tree search. """
+        self.games = self.games + [groupgame]
+        for game in groupgame.game_set.order('name'):
+            self.add_games(game)
         
     def get(self, filter='', subfilter=''):
         self.get_template_values()
-        if filter == '':
-            filter = Fifa2010().tournament.key()
+        if filter == '': filter = Fifa2010().tournament.key()
         self.add_games(GroupGame.get(filter))
         self.template_values['games'] = self.games
         self.render('games')

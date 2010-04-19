@@ -1,14 +1,9 @@
 {% extends "layout.html" %}{% load i18n %}
 {% block content %}
-{% for levelgame in games %}
-{% if levelgame.game.name %}
-<h{{ levelgame.level }}>
-{% if forloop.first %}{% if levelgame.game.group %}
-<a href="/games/{{ levelgame.game.group.key }}">{{ levelgame.game.group.name }}</a> &gt;
-{% endif %}{% endif %}
-<a href="/games/{{ levelgame.game.key }}">{{ levelgame.game.name }}</a></h{{ levelgame.level }}>
-{% endif %}
-{% for game in levelgame.game.game_set %}{% if not game.name %}
+{% for groupgame in games %}
+<h{{ groupgame.level }}>
+{% if forloop.first %}{% if groupgame.upgroup %}<a href="/games/{{ groupgame.upgroup.key }}">{{ groupgame.upgroup.name }}</a> &gt;{% endif %}{% endif %}<a href="/games/{{ groupgame.key }}">{{ groupgame.name }}</a></h{{ groupgame.level }}>
+{% for singlegame in groupgame.singlegame_set %}
 {% if forloop.first %}<table>
 <thead>
 <tr>
@@ -20,9 +15,8 @@
 </thead>
 <tbody>
 {% endif %}
-<tr><td class="home">{{ game.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ game.awayTeam.flag }}" /></td><td class="away">{{ game.awayTeam.name }}</td><td>{{ game.time }}</td><td>{{  game.location }}</td></tr>
-{% if forloop.last %}</tbody>
-</table>{% endif %}
-{% endif %}{% endfor %}
+<tr><td class="home">{{ singlegame.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ singlegame.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ singlegame.awayTeam.flag }}" /></td><td class="away">{{ singlegame.awayTeam.name }}</td><td>{{ singlegame.time }}</td><td>{{  singlegame.location }}</td></tr>
+{% if forloop.last %}</tbody></table>{% endif %}
+{% endfor %}
 {% endfor %}
 {% endblock %}
