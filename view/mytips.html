@@ -1,0 +1,38 @@
+{% extends "layout.html" %}{% load i18n %}
+{% block content %}
+<form method="post"><input name="action" value="mytips/save" type="hidden"/>
+{% for groupgame in games %}
+<h{{ groupgame.level }}>
+{% if forloop.first %}{% if groupgame.upgroup %}<a href="/mytips/{{ groupgame.upgroup.key }}">{{ groupgame.upgroup.name }}</a> &gt;{% endif %}{% endif %}<a href="/mytips/{{ groupgame.key }}">{{ groupgame.name }}</a></h{{ groupgame.level }}>
+{% for singlegame in groupgame.singlegame_set %}
+{% if forloop.first %}<table>
+<thead>
+<tr>
+<th class="home teamColumn">{% trans "home team" %}</th>
+<th class="pairColumn">&nbsp;&ndash;&nbsp;</th>
+<th class="away teamColumn">{% trans "away team" %}</th>
+<th class="timeColumn">{% trans "kick off" %}</th>
+<th class="resultColumn">{% trans "result" %}</th>
+<th class="betColumn">{% trans "bet (pt)" %}</th></tr>
+</thead>
+<tfoot>
+<tr><td colspan="6" class="saveColumn"><input type="submit" value="{% trans 'save' %}"></td></tr>
+</tfoot>
+<tbody>
+{% endif %}
+<tr class="{% cycle line0,line1 %}"><td class="home">{{ singlegame.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ singlegame.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ singlegame.awayTeam.flag }}" /></td><td class="away">{{ singlegame.awayTeam.name }}</td><td>{{ singlegame.time }}</td>
+<td class="resultColumn">{% if singlegame.result.locked %}{{ singlegame.result.homeScore }}&nbsp;&ndash;&nbsp;{{ singlegame.result.awayScore }}{% endif %}</td>
+<td class="betColumn">{% if singlegame.bet.locked or not singlegame.bet.editable %}
+{{ singlegame.bet.homeScore }}&nbsp;&ndash;&nbsp;{{ singlegame.bet.awayScore }}
+{% else %}<select name="homeScore.{{singlegame.key}}">{% for gol in scorelist %}<option value="{{gol}}" {% ifequal gol singlegame.bet.homeScore %} selected="selected" {% endifequal %} >{{gol}}</option>{% endfor %}</select>
+&nbsp;&ndash;&nbsp;
+<select name="awayScore.{{singlegame.key}}">{% for gol in scorelist %}<option value="{{gol}}" {% ifequal gol singlegame.bet.awayScore %} selected="selected" {% endifequal %} >{{gol}}</option>{% endfor %}</select>
+<input type="checkbox" name="lock.{{singlegame.key}}" />
+{% endif %}
+</td>
+</tr>
+{% if forloop.last %}</tbody></table>{% endif %}
+{% endfor %}
+{% endfor %}
+</form>
+{% endblock %}
