@@ -24,3 +24,8 @@ indexes:
   properties:
   - name: upgroup
   - name: name
+
+- kind: Game
+  properties:
+  - name: upgroup
+  - name: time

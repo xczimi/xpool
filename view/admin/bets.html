@@ -2,7 +2,7 @@
 {% block content %}<h1>{% trans "Bets" %}</h1>
 <ul>
 {% for bet in bets %}
-<li>{{ bet.user.email }} {{ bet.singlegame.homeTeam.short }}&nbsp;&ndash;&nbsp;{{ bet.singlegame.awayTeam.short }} {{ bet.homeScore }}&nbsp;&ndash;&nbsp;{{ bet.awayScore }}</li>
+<li>{{ bet.user.email }} {{ bet.singlegame.homeTeam.short }}&nbsp;&ndash;&nbsp;{{ bet.singlegame.awayTeam.short }} {{ bet.homeScore }}&nbsp;&ndash;&nbsp;{{ bet.awayScore }}&nbsp;{{ bet.locked }}</li>
 {% endfor %}
 </ul>
 {% endblock %}

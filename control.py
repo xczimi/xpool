@@ -44,7 +44,7 @@ class MyRequestHandler(webapp.RequestHandler):
         else:
             return False
         return True
-    
+
     def logout(self):
         if self.current_user():
             self.set_session_email(None)
@@ -56,15 +56,15 @@ class MyRequestHandler(webapp.RequestHandler):
                 self.redirect(self.request.uri)
             return True
         return False
-        
+
     def get_cookie(self, name):
         return self.request.cookies.get(name)
-    
+
     def set_cookie(self, name, value):
         session = Cookie.SimpleCookie()
         session[name] = value
         self.response.headers.add_header('Set-Cookie', session[name].OutputString())
-    
+
     def get_session(self):
         if self.session is None:
             cookie_session_id = self.get_cookie('xhomesessionid')
@@ -81,12 +81,12 @@ class MyRequestHandler(webapp.RequestHandler):
 
     def write_session(self, session):
         memcache.set(session['id'],session)
-        
+
     def set_session_email(self, local_user_email):
         session = self.get_session()
         session['email'] = local_user_email
         self.write_session(session)
-        
+
     def set_session_message(self, message):
         session = self.get_session()
         session['message'] = message
@@ -96,7 +96,7 @@ class MyRequestHandler(webapp.RequestHandler):
         session = self.get_session()
         session['language'] = language
         self.write_session(session)
-        
+
     def get_session_email(self):
         session = self.get_session()
         try:
@@ -119,7 +119,7 @@ class MyRequestHandler(webapp.RequestHandler):
             return session['language']
         except:
             return 'en'
-    
+
     def login_local(self, email, password):
         self.loggedin_user = LocalUser.all().filter('email = ',email).filter('password = ',password).get()
         if self.loggedin_user is None or password == '':
@@ -129,7 +129,7 @@ class MyRequestHandler(webapp.RequestHandler):
             self.set_session_email(self.loggedin_user.email)
             self.set_session_message(_('Successful login'))
             self.redirect('/')
-    
+
     def login_authcode(self, authcode):
         self.loggedin_user = LocalUser.all().filter('authcode = ',authcode).get()
         if self.loggedin_user is None or authcode == '':
@@ -139,11 +139,11 @@ class MyRequestHandler(webapp.RequestHandler):
             self.set_session_email(self.loggedin_user.email)
             self.set_session_message(_('Successful referral, set your password, or link your google account!'))
             self.redirect('/profile')
-    
+
     def current_user(self):
         google_user = users.get_current_user()
-        
-        if not self.loggedin_user and self.get_session_email(): 
+
+        if not self.loggedin_user and self.get_session_email():
             # find session based logged in user
             self.loggedin_user = LocalUser.all().filter('email = ',self.get_session_email()).get()
 
@@ -172,17 +172,17 @@ class MyRequestHandler(webapp.RequestHandler):
                     self.loggedin_user.google_user = google_user
                     self.loggedin_user.put()
         return self.loggedin_user
-    
+
     def get_template_values(self):
         message = self.get_session_message()
         if self.template_values is None:
             self.template_values = {
-                'user' : self.current_user(), 
-                'is_admin' : users.is_current_user_admin(), 
+                'user' : self.current_user(),
+                'is_admin' : users.is_current_user_admin(),
                 'message': message}
         if message is not None: self.set_session_message(None)
         return self.template_values
-           
+
     def render(self, tpl = "index"):
         translation.activate(self.get_session_language())
         try:
@@ -203,7 +203,7 @@ class MainHandler(MyRequestHandler):
             return
         if '' == page: page = "index"
         self.render(page)
-    
+
 class UserHandler(MainHandler):
     login_required = True
     def post(self, *args):
@@ -224,7 +224,7 @@ class UserHandler(MainHandler):
         else:
             return False
         return True
-    
+
     def refer_user(self, email, nick, full_name):
         if not mail.is_email_valid(email): return
         if LocalUser.all().filter('email =',email).count() > 0:
@@ -239,7 +239,7 @@ class UserHandler(MainHandler):
         translation.activate(self.get_session_language())
         mail.send_mail(sender = 'Peter Czimmermann <xczimi@gmail.com>',
                 to = referral.full_name + u' <' + referral.email + u'>',
-                subject = _(u"xHomePool invitation"), 
+                subject = _(u"xHomePool invitation"),
                 body = template.render('view/referral.email.html', self.template_values, debug=True))
         self.set_session_message(_('Invitation sent')+' '+self.template_values['auth_url'])
 
@@ -255,18 +255,18 @@ class UserHandler(MainHandler):
         user.password = new_password
         user.authcode = None
         user.put()
-    
+
 class GamesHandler(MainHandler):
     games = []
     def add_games(self, groupgame):
         """ List groupgames with depth information.
-        
+
         This method is implemented here to remove the recursion from the view.
         Practically a wide tree search. """
         self.games = self.games + [groupgame]
         for game in groupgame.game_set.order('name'):
             self.add_games(game)
-        
+
     def get(self, filter=''):
         self.get_template_values()
         if filter == '': filter = Fifa2010().tournament.key()
@@ -288,7 +288,7 @@ class MyTipsHandler(GamesHandler):
         return True
 
     def save(self, user):
-        results_by_singlegame = self.get_results(user)
+        results_by_singlegame = user.results()
         for argument in self.request.arguments():
             match = re.match(r'^(homeScore|awayScore)\.(.*)$', argument)
             if match:
@@ -296,7 +296,7 @@ class MyTipsHandler(GamesHandler):
                 if key not in results_by_singlegame:
                     results_by_singlegame[key] = Result(singlegame=SingleGame.get(key), user=user)
                 result = results_by_singlegame[key]
-                    
+
                 if self.request.get(argument) > '':
                     if name == 'homeScore':
                         result.homeScore = int(self.request.get(argument))
@@ -305,21 +305,17 @@ class MyTipsHandler(GamesHandler):
                     result.put()
             match = re.match(r'^lock\.(.*)$', argument)
             if match:
-                result = results_by_singlegame[match.group(1)]
-                if result.homeScore >= 0 and result.awayScore >= 0:
-                    result.locked = True
-                    result.put()
-                    
-    def get_results(self, user):
-        results_by_singlegame = {}
-        results = Result.all().filter('user = ',user).fetch(SingleGame.all().count())
-        for result in results: results_by_singlegame[str(result.singlegame.key())] = result
-        return results_by_singlegame
-    
+                key = match.group(1)
+                if key in results_by_singlegame:
+                    result = results_by_singlegame[key]
+                    if result.homeScore >= 0 and result.awayScore >= 0:
+                        result.locked = True
+                        result.put()
+
     def add_result(self, name, user):
-        results_by_singlegame = self.get_results(user)
+        results_by_singlegame = user.results()
         for game in self.games:
-            for singlegame in game.games():
+            for singlegame in game.singlegames():
                 key = str(singlegame.key())
                 try:
                     result = results_by_singlegame[key]
@@ -332,10 +328,10 @@ class MyTipsHandler(GamesHandler):
         if filter == '': filter = Fifa2010().tournament.key()
         self.add_games(GroupGame.get(filter))
         self.template_values['games'] = self.games
-        
-        self.add_result('result', Fifa2010().result)
+
         self.add_result('bet', self.current_user())
-        
+        self.add_result('result', Fifa2010().result)
+
         self.template_values['scorelist'] = [''] + Result.score_list()
         MainHandler.get(self,'mytips')
 
@@ -349,7 +345,7 @@ class AdminHandler(MyRequestHandler):
     def post(self, admin, *args):
         if MyRequestHandler.post(self): return
         print self.request.uri
-        
+
     def get(self, *args):
         self.get_template_values()
         if not users.is_current_user_admin():
@@ -390,5 +386,3 @@ class AdminHandler(MyRequestHandler):
                 self.render('admin/layout')
         else:
             self.render('admin/layout')
-
-

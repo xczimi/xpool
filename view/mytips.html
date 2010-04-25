@@ -4,7 +4,7 @@
 {% for groupgame in games %}
 <h{{ groupgame.level }}>
 {% if forloop.first %}{% if groupgame.upgroup %}<a href="/mytips/{{ groupgame.upgroup.key }}">{{ groupgame.upgroup.name }}</a> &gt;{% endif %}{% endif %}<a href="/mytips/{{ groupgame.key }}">{{ groupgame.name }}</a></h{{ groupgame.level }}>
-{% for singlegame in groupgame.games %}
+{% for singlegame in groupgame.singlegames %}
 {% if forloop.first %}<table>
 <thead>
 <tr>
@@ -28,7 +28,7 @@
 &nbsp;&ndash;&nbsp;
 <select name="awayScore.{{singlegame.key}}">{% for gol in scorelist %}<option value="{{gol}}" {% ifequal gol singlegame.bet.awayScore %} selected="selected" {% endifequal %} >{{gol}}</option>{% endfor %}</select>
 <input type="checkbox" name="lock.{{singlegame.key}}" />
-{% endif %}
+{% endif %}&nbsp;({{ singlegame.bet.point }})&nbsp;
 </td>
 </tr>
 {% if forloop.last %}</tbody></table>{% endif %}

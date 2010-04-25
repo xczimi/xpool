@@ -1,19 +1,16 @@
-SEMI DONE * init ko stage
+* calculate and store? points
+* calculate and store? standings
+* more rich current_user with memcache
 
-* display games nicely
-  
-* game admin interface
-  LOW PRIO - edit single game
-  LOW PRIO - group games
-  - parse results (from fifa.com, memcache!)
+* entry limitations per group or per part per group or per game?
 
-* user login/admin/invite
-  - account admin ?
-  - user groups (join, create (password))
-  - store bets
-  - facebook connect (LONG SHOT)
-  - open ID (EVEN LONGER SHOT)
-  
-* calculate points/standings
+* ko stage parse and display
 
-* localization (i18n)
+* parse results from fifa.com
+
+* user groups (create/join)
+
+* translate country names
+
+- facebook connect (LONG SHOT)
+- open ID (EVEN LONGER SHOT)
