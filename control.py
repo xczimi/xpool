@@ -286,7 +286,7 @@ class MyTipsHandler(GamesHandler):
         return True
 
     @need_login
-    def save_current():
+    def save_current(self):
         return self.save(self.current_user())
 
     def save(self, user):
