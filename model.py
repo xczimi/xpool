@@ -130,22 +130,12 @@ class Result(db.Model):
         reference_user = LocalUser.reference()
         return reference_user.singlegame_result(self.singlegame)
 
-    def point(self, multiplier=1):
-        point = 0
-        result = self.reference()
-        if self.homeScore >=0 and self.homeScore == result.homeScore: point = point + 1
-        elif self.homeScore > 4 and result.homeScore > 4: point = point + 1
-        if self.awayScore >=0 and self.awayScore == result.awayScore: point = point + 1
-        elif self.awayScore > 4 and result.awayScore > 4: point = point + 1
-        if self.home_w() and result.home_w(): point = point + 2
-        elif self.home_d() and result.home_d(): point = point + 2
-        elif self.home_l() and result.home_l(): point = point + 2
-        return point * multiplier
-
     def point(self, bet, multiplier=1):
         point = 0
         if bet.homeScore >=0 and bet.homeScore == self.homeScore: point = point + 1
+        elif bet.homeScore > 4 and self.homeScore > 4: point = point + 1
         if bet.awayScore >=0 and bet.awayScore == self.awayScore: point = point + 1
+        elif bet.homeScore > 4 and self.homeScore > 4: point = point + 1
         if bet.home_w() and self.home_w(): point = point + 2
         elif bet.home_d() and self.home_d(): point = point + 2
         elif bet.home_l() and self.home_l(): point = point + 2
