@@ -24,6 +24,17 @@ from model import LocalUser, Team, Game, GroupGame, SingleGame, Result
 import fifa
 from fifa2010 import Fifa2010
 
+def need_login(func):
+    """ Decorator for MyRequestHandler controller classes to force some login. """
+    def with_login(self, *args):
+        if not self.current_user():
+            self.get_template_values()
+            self.template_values['message'] = _("Login required")
+            self.render('index')
+            return
+        func(self, *args)
+    return with_login
+
 
 class MyRequestHandler(webapp.RequestHandler):
     session = None
@@ -194,18 +205,17 @@ class MyRequestHandler(webapp.RequestHandler):
             raise
 
 class MainHandler(MyRequestHandler):
-    login_required = False
     def get(self, page):
         self.get_template_values()
-        if self.login_required and not self.current_user():
-            self.template_values['message'] = _("Login required")
-            self.render('index')
-            return
         if '' == page: page = "index"
         self.render(page)
 
 class UserHandler(MainHandler):
-    login_required = True
+    @need_login
+    def get(self, page):
+        MainHandler.get(self, page)
+
+    @need_login
     def post(self, *args):
         if MyRequestHandler.post(self): return
         action = self.request.get('action')
@@ -257,26 +267,15 @@ class UserHandler(MainHandler):
         user.put()
 
 class GamesHandler(MainHandler):
-    games = []
-    def add_games(self, groupgame):
-        """ List groupgames with depth information.
-
-        This method is implemented here to remove the recursion from the view.
-        Practically a wide tree search. """
-        self.games = self.games + [groupgame]
-        for game in groupgame.game_set.order('name'):
-            self.add_games(game)
-
     def get(self, filter=''):
         self.get_template_values()
         if filter == '': filter = Fifa2010().tournament.key()
-        self.add_games(GroupGame.get(filter))
-        self.template_values['games'] = self.games
+        self.template_values['games'] = GroupGame.get(filter).widewalk()
         MainHandler.get(self,'games')
 
 
 class MyTipsHandler(GamesHandler):
-    login_required = True
+    @need_login
     def post(self, *args):
         if GamesHandler.post(self): return
         action = self.request.get('action')
@@ -288,50 +287,50 @@ class MyTipsHandler(GamesHandler):
         return True
 
     def save(self, user):
-        results_by_singlegame = user.results()
+        results = self.current_user().results()
         for argument in self.request.arguments():
             match = re.match(r'^(homeScore|awayScore)\.(.*)$', argument)
             if match:
                 name, key = match.groups()
-                if key not in results_by_singlegame:
-                    results_by_singlegame[key] = Result(singlegame=SingleGame.get(key), user=user)
-                result = results_by_singlegame[key]
-
-                if self.request.get(argument) > '':
+                try:
+                    result = self.current_user().singlegame_result(SingleGame.get(key))
+                except db.BadKeyError:
+                    continue
+                if self.request.get(argument) != '':
                     if name == 'homeScore':
                         result.homeScore = int(self.request.get(argument))
                     elif name == 'awayScore':
                         result.awayScore = int(self.request.get(argument))
                     result.put()
+        for argument in self.request.arguments():
             match = re.match(r'^lock\.(.*)$', argument)
             if match:
                 key = match.group(1)
-                if key in results_by_singlegame:
-                    result = results_by_singlegame[key]
-                    if result.homeScore >= 0 and result.awayScore >= 0:
-                        result.locked = True
-                        result.put()
+                result = self.current_user().singlegame_result(SingleGame.get(key))
+                if result.homeScore >= 0 and result.awayScore >= 0:
+                    result.locked = True
+                    result.put()
 
-    def add_result(self, name, user):
-        results_by_singlegame = user.results()
-        for game in self.games:
-            for singlegame in game.singlegames():
-                key = str(singlegame.key())
-                try:
-                    result = results_by_singlegame[key]
-                except KeyError:
-                    result = Result(singlegame=singlegame, user=user)
-                singlegame.__dict__[name] = result
-
+    @need_login
     def get(self, filter=''):
         self.get_template_values()
         if filter == '': filter = Fifa2010().tournament.key()
-        self.add_games(GroupGame.get(filter))
-        self.template_values['games'] = self.games
 
-        self.add_result('bet', self.current_user())
-        self.add_result('result', Fifa2010().result)
+        mytips_games = []
+        for game in GroupGame.get(filter).widewalk():
+            groupgame = {'game':game,'singlegames':[]}
+            for singlegame in game.singlegames():
+                bet = self.current_user().singlegame_result(singlegame)
+                result = Fifa2010().result.singlegame_result(singlegame)
+                point = result.point(bet)
+                groupgame['singlegames'].append({
+                    'game':singlegame,
+                    'bet':bet,
+                    'result':result,
+                    'point':point})
+            mytips_games.append(groupgame)
 
+        self.template_values['games'] = mytips_games
         self.template_values['scorelist'] = [''] + Result.score_list()
         MainHandler.get(self,'mytips')
 
@@ -342,10 +341,7 @@ class ReferralHandler(MainHandler):
         self.login_authcode(authcode)
 
 class AdminHandler(MyRequestHandler):
-    def post(self, admin, *args):
-        if MyRequestHandler.post(self): return
-        print self.request.uri
-
+    @need_login
     def get(self, *args):
         self.get_template_values()
         if not users.is_current_user_admin():

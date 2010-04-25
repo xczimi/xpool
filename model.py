@@ -47,22 +47,15 @@ class LocalUser(db.Model):
         return results
 
     def singlegame_result(self, singlegame):
-        try:
-            return self.results()[str(singlegame.key())]
-        except KeyError:
-            return None
+        if not str(singlegame.key()) in self.results():
+            self.results()[str(singlegame.key())] = Result(user=self,singlegame=singlegame)
+        return self.results()[str(singlegame.key())]
 
     def point(self):
         point = 0
         for bet in self.results():
             point = point + bet.point()
         return point
-
-    reference_key_name = 'result'
-
-    @classmethod
-    def reference(cls):
-        cls.get_by_key_name(cls.reference_key_name)
 
 class Team(db.Model):
     name = db.StringProperty(required=True)
@@ -88,6 +81,17 @@ class GroupGame(Game):
     @cached
     def groupgames(self):
         return self.game_set.order('name').fetch(GroupGame.all().count())
+
+    @cached
+    def widewalk(self):
+        """ List groupgames with depth information.
+
+        This method is implemented here to remove the recursion from the view.
+        Practically a wide tree search. """
+        games = [self]
+        for game in self.game_set.order('name'):
+            games.extend(game.widewalk())
+        return games
 
 class SingleGame(Game):
     fifaId = db.IntegerProperty()
@@ -130,8 +134,20 @@ class Result(db.Model):
         point = 0
         result = self.reference()
         if self.homeScore >=0 and self.homeScore == result.homeScore: point = point + 1
+        elif self.homeScore > 4 and result.homeScore > 4: point = point + 1
         if self.awayScore >=0 and self.awayScore == result.awayScore: point = point + 1
+        elif self.awayScore > 4 and result.awayScore > 4: point = point + 1
         if self.home_w() and result.home_w(): point = point + 2
         elif self.home_d() and result.home_d(): point = point + 2
         elif self.home_l() and result.home_l(): point = point + 2
         return point * multiplier
+
+    def point(self, bet, multiplier=1):
+        point = 0
+        if bet.homeScore >=0 and bet.homeScore == self.homeScore: point = point + 1
+        if bet.awayScore >=0 and bet.awayScore == self.awayScore: point = point + 1
+        if bet.home_w() and self.home_w(): point = point + 2
+        elif bet.home_d() and self.home_d(): point = point + 2
+        elif bet.home_l() and self.home_l(): point = point + 2
+        return point * multiplier
+
