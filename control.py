@@ -135,11 +135,11 @@ class MyRequestHandler(webapp.RequestHandler):
         self.loggedin_user = LocalUser.all().filter('email = ',email).filter('password = ',password).get()
         if self.loggedin_user is None or password == '':
             self.set_session_message(_('Failed to log you in, try it again!'))
-            self.redirect('/')
+            self.redirect(self.request.uri)
         else:
             self.set_session_email(self.loggedin_user.email)
             self.set_session_message(_('Successful login'))
-            self.redirect('/')
+            self.redirect(self.request.uri)
 
     def login_authcode(self, authcode):
         self.loggedin_user = LocalUser.all().filter('authcode = ',authcode).get()
@@ -275,25 +275,28 @@ class GamesHandler(MainHandler):
 
 
 class MyTipsHandler(GamesHandler):
-    @need_login
     def post(self, *args):
         if GamesHandler.post(self): return
         action = self.request.get('action')
         if 'mytips/save' == action:
-            self.save(self.current_user())
+            self.save_current()
             self.redirect(self.request.uri)
         else:
             return False
         return True
 
+    @need_login
+    def save_current():
+        return self.save(self.current_user())
+
     def save(self, user):
-        results = self.current_user().results()
+        results = user.results()
         for argument in self.request.arguments():
             match = re.match(r'^(homeScore|awayScore)\.(.*)$', argument)
             if match:
                 name, key = match.groups()
                 try:
-                    result = self.current_user().singlegame_result(SingleGame.get(key))
+                    result = user.singlegame_result(SingleGame.get(key))
                 except db.BadKeyError:
                     continue
                 if self.request.get(argument) != '':
