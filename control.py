@@ -24,6 +24,8 @@ from model import LocalUser, Team, Game, GroupGame, SingleGame, Result
 import fifa
 from fifa2010 import Fifa2010
 
+import pool
+
 def need_login(func):
     """ Decorator for MyRequestHandler controller classes to force some login. """
     def with_login(self, *args):
@@ -325,16 +327,19 @@ class MyTipsHandler(GamesHandler):
             for singlegame in game.singlegames():
                 bet = self.current_user().singlegame_result(singlegame)
                 result = Fifa2010().result.singlegame_result(singlegame)
-                point = result.point(bet)
+                point = pool.singlegame_result_point(bet, result)
                 groupgame['singlegames'].append({
                     'game':singlegame,
                     'bet':bet,
                     'result':result,
                     'point':point})
             mytips_games.append(groupgame)
+            #print game.get_ranking(self.current_user())
 
         self.template_values['games'] = mytips_games
         self.template_values['scorelist'] = [''] + Result.score_list()
+
+
         MainHandler.get(self,'mytips')
 
 class ReferralHandler(MainHandler):

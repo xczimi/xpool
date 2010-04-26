@@ -51,17 +51,23 @@ class LocalUser(db.Model):
             self.results()[str(singlegame.key())] = Result(user=self,singlegame=singlegame)
         return self.results()[str(singlegame.key())]
 
-    def point(self):
-        point = 0
-        for bet in self.results():
-            point = point + bet.point()
-        return point
 
 class Team(db.Model):
     name = db.StringProperty(required=True)
     flag = db.StringProperty()
     short = db.StringProperty()
     href = db.StringProperty()
+
+class TeamRanking:
+    team = None
+    w = 0
+    d = 0
+    l = 0
+    gf = 0
+    ga = 0
+    def __init__(self, *args, **namedargs):
+        self.__dict__ = namedargs
+    def pt(self): return 3 * w + d
 
 class Game(polymodel.PolyModel):
     time = db.DateTimeProperty()
@@ -93,6 +99,15 @@ class GroupGame(Game):
             games.extend(game.widewalk())
         return games
 
+    def get_ranking(self, user, singlegames = None):
+        rankings = []
+        if singlegames is None: singlegames = self.singlegames()
+        for singlegame in singlegames:
+            result = user.singlegame_result(singlegame)
+            for team in [singlegame.homeTeam, singlegame.awayTeam]:
+                rankings.append(result.team_ranking(team))
+        return rankings
+
 class SingleGame(Game):
     fifaId = db.IntegerProperty()
     homeTeam = db.ReferenceProperty(Team,collection_name="homegame_set")
@@ -108,6 +123,7 @@ class SingleGame(Game):
         return results
 
 from datetime import datetime
+
 class Result(db.Model):
     user = db.ReferenceProperty(LocalUser, collection_name="result_set", required=True)
     singlegame = db.ReferenceProperty(SingleGame, collection_name="result_set", required=True)
@@ -125,19 +141,31 @@ class Result(db.Model):
     def home_w(self): return self.homeScore >=0 and self.homeScore > self.awayScore
     def home_d(self): return self.homeScore >=0 and self.homeScore == self.awayScore
     def home_l(self): return self.homeScore >=0 and self.homeScore < self.awayScore
-
-    def reference(self):
-        reference_user = LocalUser.reference()
-        return reference_user.singlegame_result(self.singlegame)
-
-    def point(self, bet, multiplier=1):
-        point = 0
-        if bet.homeScore >=0 and bet.homeScore == self.homeScore: point = point + 1
-        elif bet.homeScore > 4 and self.homeScore > 4: point = point + 1
-        if bet.awayScore >=0 and bet.awayScore == self.awayScore: point = point + 1
-        elif bet.homeScore > 4 and self.homeScore > 4: point = point + 1
-        if bet.home_w() and self.home_w(): point = point + 2
-        elif bet.home_d() and self.home_d(): point = point + 2
-        elif bet.home_l() and self.home_l(): point = point + 2
-        return point * multiplier
+    def team_w(self, team):
+        if self.singlegame.homeTeam == team: return self.home_w()
+        if self.singlegame.awayTeam == team: return self.home_l()
+        return False
+    def team_d(self, team):
+        if self.singlegame.homeTeam == team: return self.home_d()
+        if self.singlegame.awayTeam == team: return self.home_d()
+        return False
+    def team_l(self, team):
+        if self.singlegame.homeTeam == team: return self.home_l()
+        if self.singlegame.awayTeam == team: return self.home_w()
+        return False
+    def team_gf(self, team):
+        if self.singlegame.homeTeam == team: return self.homeScore
+        if self.singlegame.awayTeam == team: return self.awayScore
+        return None
+    def team_ga(self, team):
+        if self.singlegame.homeTeam == team: return self.awayScore
+        if self.singlegame.awayTeam == team: return self.homeScore
+        return None
+    def team_ranking(self, team):
+        return TeamRanking(team=team,
+            w=self.team_w(team),
+            d=self.team_d(team),
+            l=self.team_l(team),
+            gf=self.team_gf(team),
+            ga=self.team_ga(team))
 
