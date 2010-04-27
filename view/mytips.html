@@ -33,7 +33,16 @@
 {% endif %}&nbsp;({{ singlegame.point }})&nbsp;
 </td>
 </tr>
-{% if forloop.last %}</tbody></table>{% endif %}
+{% if forloop.last %}</tbody></table>
+<table>
+<tbody>
+<thead><tr><th>{% trans "Team" %}</th><th>{% trans "W-D-L" %}</th><th>{% trans "GF-GA" %}</th><th>{% trans "P" %}</th><th>&nbsp;</th></tr></thead>
+{% for ranking in groupgame.bet_ranking %}
+<tr><td><img src="http://www.fifa.com{{ ranking.team.flag }}" /></td><td>{{ranking.w}}-{{ranking.d}}-{{ranking.l}}</td><td>{{ranking.gf}}-{{ranking.ga}}</td><td>{{ranking.pt}}</td><td>&nbsp;</td></tr>
+{% endfor %}
+</tbody>
+</table>
+{% endif %}
 {% endfor %}
 {% endfor %}
 </form>

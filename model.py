@@ -57,17 +57,30 @@ class Team(db.Model):
     flag = db.StringProperty()
     short = db.StringProperty()
     href = db.StringProperty()
+    def strkey(self):
+        return str(self.key())
 
-class TeamRanking:
+class TeamGroupRank:
     team = None
-    w = 0
-    d = 0
-    l = 0
-    gf = 0
-    ga = 0
-    def __init__(self, *args, **namedargs):
-        self.__dict__ = namedargs
-    def pt(self): return 3 * w + d
+    rank = {}
+    def __init__(self, team, w=0, d=0, l=0, gf=0, ga=0):
+        self.team, self.w, self.d, self.l, self.gf, self.ga = team, w, d, l, gf, ga
+        self.pt = 3 * w + d
+
+    def __add__(self,other):
+        return TeamGroupRank(self.team,
+            self.w+other.w, self.d+other.d, self.l+other.l,
+            self.gf+other.gf, self.ga+other.ga)
+
+    def __cmp__(self,other):
+        if self.pt < other.pt: return -1
+        if self.pt > other.pt: return 1
+        if self.gf - self.ga < other.gf - other.ga: return -1
+        if self.gf - self.ga > other.gf - other.ga: return 1
+        if self.gf < other.gf: return -1
+        if self.gf > other.gf: return 1
+        return 0
+
 
 class Game(polymodel.PolyModel):
     time = db.DateTimeProperty()
@@ -90,23 +103,21 @@ class GroupGame(Game):
 
     @cached
     def widewalk(self):
-        """ List groupgames with depth information.
-
-        This method is implemented here to remove the recursion from the view.
-        Practically a wide tree search. """
+        """ List groupgames as a wide tree full walkthrough. """
         games = [self]
         for game in self.game_set.order('name'):
             games.extend(game.widewalk())
         return games
 
-    def get_ranking(self, user, singlegames = None):
-        rankings = []
+    def get_ranks(self, user, singlegames = None):
         if singlegames is None: singlegames = self.singlegames()
-        for singlegame in singlegames:
-            result = user.singlegame_result(singlegame)
-            for team in [singlegame.homeTeam, singlegame.awayTeam]:
-                rankings.append(result.team_ranking(team))
-        return rankings
+        ranks = [reduce(TeamGroupRank.__add__,                              # sum up ranks
+            filter(lambda x: x.team.strkey() == strteamkey,                 # of the team
+                reduce(lambda x,y: x+y,                                     # concat ranks
+                    (singlegame.get_ranks(user) for singlegame in singlegames )))) # from the singlegames by the user
+            for strteamkey in frozenset([singlegame.homeTeam.strkey() for singlegame in singlegames])] # the set of teams
+        ranks.sort(reverse=True) # sort the ranks
+        return ranks
 
 class SingleGame(Game):
     fifaId = db.IntegerProperty()
@@ -121,6 +132,10 @@ class SingleGame(Game):
         for result in self.result_set.all().fetch(LocalUser.all().count()):
             results[str(result.user.key())] = result
         return results
+
+    def get_ranks(self, user):
+        result = user.singlegame_result(self)
+        return result.get_ranks()
 
 from datetime import datetime
 
@@ -138,34 +153,31 @@ class Result(db.Model):
     def score_list(self):
         return range(10)
 
-    def home_w(self): return self.homeScore >=0 and self.homeScore > self.awayScore
-    def home_d(self): return self.homeScore >=0 and self.homeScore == self.awayScore
-    def home_l(self): return self.homeScore >=0 and self.homeScore < self.awayScore
-    def team_w(self, team):
-        if self.singlegame.homeTeam == team: return self.home_w()
-        if self.singlegame.awayTeam == team: return self.home_l()
-        return False
-    def team_d(self, team):
-        if self.singlegame.homeTeam == team: return self.home_d()
-        if self.singlegame.awayTeam == team: return self.home_d()
-        return False
-    def team_l(self, team):
-        if self.singlegame.homeTeam == team: return self.home_l()
-        if self.singlegame.awayTeam == team: return self.home_w()
-        return False
-    def team_gf(self, team):
-        if self.singlegame.homeTeam == team: return self.homeScore
-        if self.singlegame.awayTeam == team: return self.awayScore
-        return None
-    def team_ga(self, team):
-        if self.singlegame.homeTeam == team: return self.awayScore
-        if self.singlegame.awayTeam == team: return self.homeScore
-        return None
-    def team_ranking(self, team):
-        return TeamRanking(team=team,
-            w=self.team_w(team),
-            d=self.team_d(team),
-            l=self.team_l(team),
-            gf=self.team_gf(team),
-            ga=self.team_ga(team))
+    def home_w(self):
+        if self.homeScore >=0 and self.homeScore > self.awayScore: return 1
+        else: return 0
 
+    def home_d(self):
+        if self.homeScore >=0 and self.homeScore == self.awayScore: return 1
+        else: return 0
+
+    def home_l(self):
+        if self.homeScore >=0 and self.homeScore < self.awayScore: return 1
+        else: return 0
+
+    def home_gf(self):
+        if self.homeScore >=0: return self.homeScore
+        return 0
+
+    def home_ga(self):
+        if self.awayScore >=0: return self.awayScore
+        return 0
+
+    def get_ranks(self):
+        return [TeamGroupRank(team=self.singlegame.homeTeam,
+                    w=self.home_w(),d=self.home_d(),l=self.home_l(),
+                    gf=self.home_gf(),ga=self.home_ga()
+                ),TeamGroupRank(team=self.singlegame.awayTeam,
+                    w=self.home_l(),d=self.home_d(),l=self.home_w(),
+                    gf=self.home_ga(),ga=self.home_gf()
+                )]

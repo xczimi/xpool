@@ -1,5 +1,5 @@
-* calculate and store? points
 * calculate and store? standings
+* calculate and store? points
 * more rich current_user with memcache
 
 * entry limitations per group or per part per group or per game?
