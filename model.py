@@ -57,12 +57,16 @@ class Team(db.Model):
     flag = db.StringProperty()
     short = db.StringProperty()
     href = db.StringProperty()
-    def strkey(self):
-        return str(self.key())
+    def __hash__(self):
+        id_match = re.match(r'^/worldcup/teams/team=([0-9]+)/index.html$', self.href)
+        return int(id_match.group(1))
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
 
 class TeamGroupRank:
     team = None
-    rank = {}
+    tie = None
     def __init__(self, team, w=0, d=0, l=0, gf=0, ga=0):
         self.team, self.w, self.d, self.l, self.gf, self.ga = team, w, d, l, gf, ga
         self.pt = 3 * w + d
@@ -71,6 +75,12 @@ class TeamGroupRank:
         return TeamGroupRank(self.team,
             self.w+other.w, self.d+other.d, self.l+other.l,
             self.gf+other.gf, self.ga+other.ga)
+
+    def __hash__(self):
+        """ Helps to create a set to find ties. """
+        return self.gf + 1000 * (
+                (self.gf - self.ga + 500) + 1000 * (
+                    self.pt ))
 
     def __cmp__(self,other):
         if self.pt < other.pt: return -1
@@ -109,15 +119,50 @@ class GroupGame(Game):
             games.extend(game.widewalk())
         return games
 
-    def get_ranks(self, user, singlegames = None):
-        if singlegames is None: singlegames = self.singlegames()
-        ranks = [reduce(TeamGroupRank.__add__,                              # sum up ranks
-            filter(lambda x: x.team.strkey() == strteamkey,                 # of the team
-                reduce(lambda x,y: x+y,                                     # concat ranks
-                    (singlegame.get_ranks(user) for singlegame in singlegames )))) # from the singlegames by the user
-            for strteamkey in frozenset([singlegame.homeTeam.strkey() for singlegame in singlegames])] # the set of teams
+    def teams(self):
+        return set(
+            [singlegame.homeTeam for singlegame in self.singlegames()] +
+            [singlegame.awayTeam for singlegame in self.singlegames()])
+
+    def get_ranks(self, user):
+        ranks = [
+            reduce(TeamGroupRank.__add__,                                              # sum up ranks
+                filter(lambda x: x.team == team,                                       # for the team
+                    reduce(lambda x,y: x + y,                                          # "join" all ranks into a single list
+                        (singlegame.get_ranks(user) for singlegame in self.singlegames() )))) # from the singlegames by the user
+            for team in self.teams()]  # the set of teams
         ranks.sort(reverse=True) # sort the ranks
-        return ranks
+
+        ranks_set = set(ranks)
+        if len(ranks_set) == len(ranks): return ranks
+        #print "Tie breaking rules 4,5,6"
+
+        ranks_set_list = [rank for rank in ranks_set]
+        ranks_set_list.sort(reverse=True)
+        ranks_no_tie = []
+        #print ranks_set_list
+        for rank_tie in ranks_set_list:
+            tie_teams = [rank.team for rank in ranks if rank == rank_tie]
+            if len(tie_teams) == 1:
+                for rank in ranks:
+                    if rank.team == tie_teams[0]:
+                        ranks_no_tie.append(rank)
+            else:
+                tie_ranks = [
+                    reduce(TeamGroupRank.__add__,                                              # sum up ranks
+                        filter(lambda x: x.team == team,                                       # for the team
+                            reduce(lambda x,y: x + y,                                          # "join" all ranks into a single list
+                                (singlegame.get_ranks(user)
+                                    for singlegame in self.singlegames()
+                                        if singlegame.homeTeam in tie_teams and singlegame.awayTeam in tie_teams))))
+                    for team in tie_teams]
+                tie_ranks.sort(reverse=True)
+                for tie_rank in tie_ranks:
+                    for rank in ranks:
+                        if rank.team == tie_rank.team:
+                            rank.tie = tie_rank
+                            ranks_no_tie.append(rank)
+        return ranks_no_tie
 
 class SingleGame(Game):
     fifaId = db.IntegerProperty()
@@ -173,11 +218,15 @@ class Result(db.Model):
         if self.awayScore >=0: return self.awayScore
         return 0
 
-    def get_ranks(self):
-        return [TeamGroupRank(team=self.singlegame.homeTeam,
+    def get_home_rank(self):
+        return TeamGroupRank(team=self.singlegame.homeTeam,
                     w=self.home_w(),d=self.home_d(),l=self.home_l(),
                     gf=self.home_gf(),ga=self.home_ga()
-                ),TeamGroupRank(team=self.singlegame.awayTeam,
+                )
+    def get_away_rank(self):
+        return TeamGroupRank(team=self.singlegame.awayTeam,
                     w=self.home_l(),d=self.home_d(),l=self.home_w(),
                     gf=self.home_ga(),ga=self.home_gf()
-                )]
+                )
+    def get_ranks(self):
+        return [self.get_home_rank(),self.get_away_rank()]
