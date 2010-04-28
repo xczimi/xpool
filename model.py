@@ -39,17 +39,30 @@ class LocalUser(db.Model):
         return self.email.encode('utf-8')
 
     @cached
-    def results(self):
+    def singleresults(self):
         """ Returns a dict of the users Result objects keyed by the singlegame (cached). """
         results = {}
-        for result in self.result_set.fetch(SingleGame.all().count()):
+        for result in self.singleresult_set.fetch(SingleGame.all().count()):
             results[str(result.singlegame.key())] = result
         return results
 
+    @cached
+    def groupresults(self):
+        """ Returns a dict of the users Result objects keyed by the singlegame (cached). """
+        results = {}
+        for result in self.groupresult_set.fetch(GroupGame.all().count()):
+            results[str(result.groupgame.key())] = result
+        return results
+
     def singlegame_result(self, singlegame):
-        if not str(singlegame.key()) in self.results():
-            self.results()[str(singlegame.key())] = Result(user=self,singlegame=singlegame)
-        return self.results()[str(singlegame.key())]
+        if not str(singlegame.key()) in self.singleresults():
+            self.singleresults()[str(singlegame.key())] = Result(user=self,singlegame=singlegame)
+        return self.singleresults()[str(singlegame.key())]
+
+    def groupgame_result(self, groupgame):
+        if not str(groupgame.key()) in self.groupresults():
+            self.groupresults()[str(groupgame.key())] = Result(user=self,groupgame=groupgame)
+        return self.singleresults()[str(groupgame.key())]
 
 
 class Team(db.Model):
@@ -124,50 +137,6 @@ class GroupGame(Game):
             [singlegame.homeTeam for singlegame in self.singlegames()] +
             [singlegame.awayTeam for singlegame in self.singlegames()])
 
-    def get_ranks(self, user):
-        ranks = [
-            reduce(TeamGroupRank.__add__,                                              # sum up ranks
-                filter(lambda x: x.team == team,                                       # for the team
-                    reduce(lambda x,y: x + y,                                          # "join" all ranks into a single list
-                        (singlegame.get_ranks(user) for singlegame in self.singlegames() )))) # from the singlegames by the user
-            for team in self.teams()]  # the set of teams
-        ranks.sort(reverse=True) # sort the ranks
-
-        ranks_set = set(ranks)
-        if len(ranks_set) == len(ranks): return ranks,
-        #print "Tie breaking rules 4,5,6"
-
-        ranks_set_list = [rank for rank in ranks_set]
-        ranks_set_list.sort(reverse=True)
-        ranks_no_tie = []
-
-        tie_draws = []
-        #print ranks_set_list
-        for rank_tie in ranks_set_list:
-            tie_teams = [rank.team for rank in ranks if rank == rank_tie]
-            if len(tie_teams) == 1:
-                for rank in ranks:
-                    if rank.team == tie_teams[0]:
-                        ranks_no_tie.append(rank)
-            else:
-                tie_ranks = [
-                    reduce(TeamGroupRank.__add__,                                              # sum up ranks
-                        filter(lambda x: x.team == team,                                       # for the team
-                            reduce(lambda x,y: x + y,                                          # "join" all ranks into a single list
-                                (singlegame.get_ranks(user)
-                                    for singlegame in self.singlegames()
-                                        if singlegame.homeTeam in tie_teams and singlegame.awayTeam in tie_teams))))
-                    for team in tie_teams]
-                tie_ranks.sort(reverse=True)
-                if len(set(tie_ranks)) != len(tie_ranks):
-                    tie_draws.append(tie_teams)
-                for tie_rank in tie_ranks:
-                    for rank in ranks:
-                        if rank.team == tie_rank.team:
-                            rank.tie = tie_rank
-                            ranks_no_tie.append(rank)
-        return ranks_no_tie, tie_draws
-
 class SingleGame(Game):
     fifaId = db.IntegerProperty()
     homeTeam = db.ReferenceProperty(Team,collection_name="homegame_set")
@@ -189,7 +158,7 @@ class SingleGame(Game):
 from datetime import datetime
 
 class Result(db.Model):
-    user = db.ReferenceProperty(LocalUser, collection_name="result_set", required=True)
+    user = db.ReferenceProperty(LocalUser, collection_name="singleresult_set", required=True)
     singlegame = db.ReferenceProperty(SingleGame, collection_name="result_set", required=True)
     homeScore = db.IntegerProperty()
     awayScore = db.IntegerProperty()
@@ -237,3 +206,54 @@ class Result(db.Model):
 
 class GroupResult(db.Model):
     user = db.ReferenceProperty(LocalUser, collection_name="groupresult_set", required=True)
+    groupgame = db.ReferenceProperty(GroupGame, collection_name="result_set", required=True)
+    tie_resolutions = None # undefined
+
+    @cached
+    def get_ranks(self):
+        ranks = [
+            reduce(TeamGroupRank.__add__,                                              # sum up ranks
+                filter(lambda x: x.team == team,                                       # for the team
+                    reduce(lambda x,y: x + y,                                          # "join" all ranks into a single list
+                        (singlegame.get_ranks(self.user) for singlegame in self.groupgame.singlegames() )))) # from the singlegames by the user
+            for team in self.groupgame.teams()]  # the set of teams
+        ranks.sort(reverse=True) # sort the ranks
+
+        ranks_set = set(ranks)
+        if len(ranks_set) == len(ranks): return ranks, None
+        #print "Tie breaking rules 4,5,6"
+
+        ranks_set_list = [rank for rank in ranks_set]
+        ranks_set_list.sort(reverse=True)
+        ranks_no_tie = []
+
+        tie_draws = []
+        #print ranks_set_list
+        for rank_tie in ranks_set_list:
+            tie_teams = [rank.team for rank in ranks if rank == rank_tie]
+            if len(tie_teams) == 1:
+                for rank in ranks:
+                    if rank.team == tie_teams[0]:
+                        ranks_no_tie.append(rank)
+            else:
+                tie_ranks = [
+                    reduce(TeamGroupRank.__add__,                                              # sum up ranks
+                        filter(lambda x: x.team == team,                                       # for the team
+                            reduce(lambda x,y: x + y,                                          # "join" all ranks into a single list
+                                (singlegame.get_ranks(self.user)
+                                    for singlegame in self.groupgame.singlegames()
+                                        if singlegame.homeTeam in tie_teams and singlegame.awayTeam in tie_teams))))
+                    for team in tie_teams]
+                tie_ranks.sort(reverse=True)
+                if len(set(tie_ranks)) != len(tie_ranks):
+                    tie_draws.append(tie_teams)
+                for tie_rank in tie_ranks:
+                    for rank in ranks:
+                        if rank.team == tie_rank.team:
+                            rank.tie = tie_rank
+                            ranks_no_tie.append(rank)
+        return ranks_no_tie, tie_draws
+
+
+class TeamResult(db.Model):
+    pass
