@@ -134,12 +134,14 @@ class GroupGame(Game):
         ranks.sort(reverse=True) # sort the ranks
 
         ranks_set = set(ranks)
-        if len(ranks_set) == len(ranks): return ranks
+        if len(ranks_set) == len(ranks): return ranks,
         #print "Tie breaking rules 4,5,6"
 
         ranks_set_list = [rank for rank in ranks_set]
         ranks_set_list.sort(reverse=True)
         ranks_no_tie = []
+
+        tie_draws = []
         #print ranks_set_list
         for rank_tie in ranks_set_list:
             tie_teams = [rank.team for rank in ranks if rank == rank_tie]
@@ -157,12 +159,14 @@ class GroupGame(Game):
                                         if singlegame.homeTeam in tie_teams and singlegame.awayTeam in tie_teams))))
                     for team in tie_teams]
                 tie_ranks.sort(reverse=True)
+                if len(set(tie_ranks)) != len(tie_ranks):
+                    tie_draws.append(tie_teams)
                 for tie_rank in tie_ranks:
                     for rank in ranks:
                         if rank.team == tie_rank.team:
                             rank.tie = tie_rank
                             ranks_no_tie.append(rank)
-        return ranks_no_tie
+        return ranks_no_tie, tie_draws
 
 class SingleGame(Game):
     fifaId = db.IntegerProperty()
@@ -230,3 +234,6 @@ class Result(db.Model):
                 )
     def get_ranks(self):
         return [self.get_home_rank(),self.get_away_rank()]
+
+class GroupResult(db.Model):
+    user = db.ReferenceProperty(LocalUser, collection_name="groupresult_set", required=True)
