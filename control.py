@@ -334,11 +334,12 @@ class MyTipsHandler(GamesHandler):
                     'result':result,
                     'point':point})
             mytips_games.append(groupgame)
-            groupbet = GroupResult(user=self.current_user(), groupgame=game)
-            groupresult = GroupResult(user=Fifa2010().result, groupgame=game)
+            groupbet = self.current_user().groupgame_result(game)
+            groupresult = Fifa2010().result.groupgame_result(game)
             #groupgame['bet_ranking'], groupgame['bet_draws'] = game.get_ranks(self.current_user())
             groupgame['bet_ranking'], groupgame['bet_draws'] = groupbet.get_ranks()
             groupgame['result_ranking'], groupgame['result_draws'] = groupresult.get_ranks()
+
 
         self.template_values['games'] = mytips_games
         self.template_values['scorelist'] = [''] + Result.score_list()
