@@ -1,7 +1,7 @@
 from google.appengine.ext import db
 from google.appengine.ext.db import polymodel
 
-from model import Team, Game, GroupGame, SingleGame, LocalUser, Result
+from model import Team, GroupGame, SingleGame, LocalUser, Result
 
 import fifa
 import re

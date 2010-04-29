@@ -105,11 +105,7 @@ class TeamGroupRank:
         if self.gf > other.gf: return 1
         return 0
 
-
-class Game(polymodel.PolyModel):
-    time = db.DateTimeProperty()
-
-class GroupGame(Game):
+class GroupGame(db.Model):
     name = db.StringProperty(required=True)
     upgroup = db.SelfReferenceProperty(collection_name="game_set")
 
@@ -139,7 +135,8 @@ class GroupGame(Game):
             [singlegame.homeTeam for singlegame in self.singlegames()] +
             [singlegame.awayTeam for singlegame in self.singlegames()])
 
-class SingleGame(Game):
+class SingleGame(db.Model):
+    time = db.DateTimeProperty()
     fifaId = db.IntegerProperty()
     homeTeam = db.ReferenceProperty(Team,collection_name="homegame_set")
     awayTeam = db.ReferenceProperty(Team,collection_name="awaygame_set")

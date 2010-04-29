@@ -10,22 +10,12 @@ indexes:
 # automatically uploaded to the admin console when you next deploy
 # your application using appcfg.py.
 
-- kind: Game
-  properties:
-  - name: group
-  - name: name
-
-- kind: Game
-  properties:
-  - name: group
-  - name: time
-
-- kind: Game
+- kind: GroupGame
   properties:
   - name: upgroup
   - name: name
 
-- kind: Game
+- kind: SingleGame
   properties:
-  - name: upgroup
+  - name: group
   - name: time

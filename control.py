@@ -19,7 +19,7 @@ from django.utils import translation
 from google.appengine.ext import db
 from google.appengine.ext.db import polymodel
 
-from model import LocalUser, Team, Game, GroupGame, SingleGame, Result, GroupResult
+from model import LocalUser, Team, GroupGame, SingleGame, Result, GroupResult
 
 import fifa
 from fifa2010 import Fifa2010
