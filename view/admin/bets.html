@@ -4,5 +4,10 @@
 {% for bet in bets %}
 <li>{{ bet.user.email }} {{ bet.singlegame.homeTeam.short }}&nbsp;&ndash;&nbsp;{{ bet.singlegame.awayTeam.short }} {{ bet.homeScore }}&nbsp;&ndash;&nbsp;{{ bet.awayScore }}&nbsp;{{ bet.locked }}</li>
 {% endfor %}
+</ul><h1>{% trans "Group Bets" %}</h1>
+<ul>
+{% for bet in groupbets %}
+<li>{{ bet.user.email }} {{ bet.groupgame.name }} {% for team in bet.draw_order %}[{{ forloop.counter0 }}. {{ team }}]{% endfor %} locked: {{ bet.locked }}</li>
+{% endfor %}
 </ul>
 {% endblock %}

@@ -54,12 +54,12 @@
     <thead><tr><th>{% trans "Team" %}</th><th>{% trans "W-D-L" %}</th><th>{% trans "GF-GA" %}</th><th>{% trans "P" %}</th><th>{% trans "tie" %}</th></tr></thead>
     {% for ranking in groupgame.bet_ranking %}
     <tr><td><img src="http://www.fifa.com{{ ranking.team.flag }}" /></td><td>{{ranking.w}}&ndash;{{ranking.d}}&ndash;{{ranking.l}}</td><td>{{ranking.gf}}&ndash;{{ranking.ga}}</td><td>{{ranking.pt}}</td><td>{% if ranking.tie %}{{ranking.tie.pt}} ({{ranking.tie.gf}}&ndash;{{ranking.tie.ga}}){% endif %}
-    {% if ranking.draw %}<select name="draw.{{groupgame.key}}.{{forloop.counter0}}">{% for team in ranking.draw %}<option value="{{team.name}}">{{team.name}}</option>{% endfor %}</select><input type="checkbox" name="grouplock.{{groupgame.key}}" />{% endif %}
+    {% if ranking.draw %}{% if not groupgame.bet.locked %}<select name="draw.{{groupgame.game.key}}.{{forloop.counter0}}">{% for team in ranking.draw %}<option value="{{team.name}}" {% ifequal team.name ranking.team.name %} selected="selected"{% endifequal %}>{{team.name}}</option>{% endfor %}</select>{% else %} draw{% endif %}{% endif %}
     </td></tr>
     {% endfor %}
     </tbody>
     </table>
-    &nbsp;({{ groupgame.point }})&nbsp;
+    <input type="checkbox" name="grouplock.{{groupgame.game.key}}" />&nbsp;({{ groupgame.point }})&nbsp;
 
 </td></tr></tfoot>
 </table>

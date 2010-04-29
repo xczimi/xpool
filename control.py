@@ -316,6 +316,27 @@ class MyTipsHandler(GamesHandler):
                     result.locked = True
                     result.put()
 
+        groupinit = []
+        for argument in self.request.arguments():
+            match = re.match(r'^draw\.(.*)\.([0-9]+)$', argument)
+            if match:
+                key, idx = match.groups()
+                try:
+                    groupresult = user.groupgame_result(GroupGame.get(key))
+                except db.BadKeyError:
+                    continue
+                if groupresult not in groupinit:
+                    groupinit.append(groupresult)
+                    groupresult.draw_order = [rank.team.name for rank in groupresult.get_ranks()]
+                groupresult.draw_order[int(idx)] = self.request.get(argument)
+        for groupresult in groupinit:
+            if len(set(groupresult.draw_order)) == len(groupresult.draw_order):
+                if "grouplock." + str(groupresult.groupgame.key()) in self.request.arguments():
+                    groupresult.locked = True
+                groupresult.put()
+            else:
+                self.set_session_message(_('Illegal draw'))
+
     @need_login
     def get(self, filter=''):
         self.get_template_values()
@@ -337,6 +358,7 @@ class MyTipsHandler(GamesHandler):
             groupbet = self.current_user().groupgame_result(game)
             groupresult = Fifa2010().result.groupgame_result(game)
             #groupgame['bet_ranking'], groupgame['bet_draws'] = game.get_ranks(self.current_user())
+            groupgame['bet'] = groupbet
             groupgame['bet_ranking'] = groupbet.get_ranks()
             groupgame['result_ranking'] = groupresult.get_ranks()
             groupgame['point'] = pool.groupgame_result_point(groupbet, groupresult)
@@ -390,6 +412,7 @@ class AdminHandler(MyRequestHandler):
                     pass
                 else:
                     self.template_values['bets'] = Result.all()
+                    self.template_values['groupbets'] = GroupResult.all()
                     self.render('admin/bets')
             else:
                 self.render('admin/layout')

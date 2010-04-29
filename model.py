@@ -209,7 +209,7 @@ class Result(db.Model):
 class GroupResult(db.Model):
     user = db.ReferenceProperty(LocalUser, collection_name="groupresult_set", required=True)
     groupgame = db.ReferenceProperty(GroupGame, collection_name="result_set", required=True)
-    draw_order = db.StringListProperty()
+    draw_order = db.StringListProperty() # list of the team names
     locked = db.BooleanProperty()
 
     def get_draw_order(self):
