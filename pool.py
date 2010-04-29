@@ -9,6 +9,10 @@ def singlegame_result_point(bet, result):
     if bet.home_d() == result.home_d(): point = point + 2
     return point
 
-
-
-
+def groupgame_result_point(bet, result):
+    point = 0
+    def count_orders(xs,ys):
+        x_order_set = set((x,y) for x in xs for y in xs  if xs.index(x) < xs.index(y))
+        y_order_set = set((x,y) for x in ys for y in ys  if ys.index(x) < ys.index(y))
+        return len(x_order_set.intersection(y_order_set))
+    return count_orders([tgr.team.short for tgr in bet.get_ranks()],[tgr.team.short for tgr in result.get_ranks()])

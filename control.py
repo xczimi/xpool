@@ -339,6 +339,7 @@ class MyTipsHandler(GamesHandler):
             #groupgame['bet_ranking'], groupgame['bet_draws'] = game.get_ranks(self.current_user())
             groupgame['bet_ranking'] = groupbet.get_ranks()
             groupgame['result_ranking'] = groupresult.get_ranks()
+            groupgame['point'] = pool.groupgame_result_point(groupbet, groupresult)
 
         self.template_values['games'] = mytips_games
         self.template_values['scorelist'] = [''] + Result.score_list()

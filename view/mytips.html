@@ -33,23 +33,35 @@
 {% endif %}&nbsp;({{ singlegame.point }})&nbsp;
 </td>
 </tr>
-{% if forloop.last %}</tbody></table>
-<table>
-<tbody>
-<thead><tr><th>{% trans "Team" %}</th><th>{% trans "W-D-L" %}</th><th>{% trans "GF-GA" %}</th><th>{% trans "P" %}</th><th>{% trans "tie" %}</th></tr></thead>
-{% for ranking in groupgame.bet_ranking %}
-<tr><td><img src="http://www.fifa.com{{ ranking.team.flag }}" /></td><td>{{ranking.w}}&ndash;{{ranking.d}}&ndash;{{ranking.l}}</td><td>{{ranking.gf}}&ndash;{{ranking.ga}}</td><td>{{ranking.pt}}</td><td>{% if ranking.tie %}{{ranking.tie.pt}} ({{ranking.tie.gf}}&ndash;{{ranking.tie.ga}}){% endif %}</td></tr>
-{% endfor %}
+{% if forloop.last %}
 </tbody>
-</table>
+<tfoot><tr><td colspan="4">&nbsp;</td>
+<td valign="top" class="result_ranking"> 
 
-<table>
-<tbody>
-<thead><tr><th>{% trans "Team" %}</th><th>{% trans "W-D-L" %}</th><th>{% trans "GF-GA" %}</th><th>{% trans "P" %}</th><th>{% trans "tie" %}</th></tr></thead>
-{% for ranking in groupgame.result_ranking %}
-<tr><td><img src="http://www.fifa.com{{ ranking.team.flag }}" /></td><td>{{ranking.w}}&ndash;{{ranking.d}}&ndash;{{ranking.l}}</td><td>{{ranking.gf}}&ndash;{{ranking.ga}}</td><td>{{ranking.pt}}</td><td>{% if ranking.tie %}{{ranking.tie.pt}} ({{ranking.tie.gf}}&ndash;{{ranking.tie.ga}}){% endif %}</td></tr>
-{% endfor %}
-</tbody>
+    <table>
+    <tbody>
+    <thead><tr><th>{% trans "Team" %}</th></tr></thead>
+    {% for ranking in groupgame.result_ranking %}
+    <tr><td><img src="http://www.fifa.com{{ ranking.team.flag }}" /></td></tr>
+    {% endfor %}
+    </tbody>
+    </table>
+ </td>
+<td valign="top" class="bet_ranking">
+
+    <table>
+    <tbody>
+    <thead><tr><th>{% trans "Team" %}</th><th>{% trans "W-D-L" %}</th><th>{% trans "GF-GA" %}</th><th>{% trans "P" %}</th><th>{% trans "tie" %}</th></tr></thead>
+    {% for ranking in groupgame.bet_ranking %}
+    <tr><td><img src="http://www.fifa.com{{ ranking.team.flag }}" /></td><td>{{ranking.w}}&ndash;{{ranking.d}}&ndash;{{ranking.l}}</td><td>{{ranking.gf}}&ndash;{{ranking.ga}}</td><td>{{ranking.pt}}</td><td>{% if ranking.tie %}{{ranking.tie.pt}} ({{ranking.tie.gf}}&ndash;{{ranking.tie.ga}}){% endif %}
+    {% if ranking.draw %}<select name="draw.{{groupgame.key}}.{{forloop.counter0}}">{% for team in ranking.draw %}<option value="{{team.name}}">{{team.name}}</option>{% endfor %}</select><input type="checkbox" name="grouplock.{{groupgame.key}}" />{% endif %}
+    </td></tr>
+    {% endfor %}
+    </tbody>
+    </table>
+    &nbsp;({{ groupgame.point }})&nbsp;
+
+</td></tr></tfoot>
 </table>
 
 {% endif %}

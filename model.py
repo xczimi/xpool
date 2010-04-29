@@ -133,6 +133,7 @@ class GroupGame(Game):
             games.extend(game.widewalk())
         return games
 
+    @cached
     def teams(self):
         return set(
             [singlegame.homeTeam for singlegame in self.singlegames()] +
@@ -209,6 +210,7 @@ class GroupResult(db.Model):
     user = db.ReferenceProperty(LocalUser, collection_name="groupresult_set", required=True)
     groupgame = db.ReferenceProperty(GroupGame, collection_name="result_set", required=True)
     draw_order = db.StringListProperty()
+    locked = db.BooleanProperty()
 
     def get_draw_order(self):
         if self.draw_order is None or len(self.draw_order) == 0:
@@ -229,7 +231,7 @@ class GroupResult(db.Model):
 
         # check for ties
         ranks_set = set(ranks)
-        if len(ranks_set) == len(ranks): return ranks, None
+        if len(ranks_set) == len(ranks): return ranks
 
         # team ordering rules 4,5,6
 
@@ -279,7 +281,3 @@ class GroupResult(db.Model):
                                 rank.tie = tie_rank
                                 ranks_no_tie.append(rank)
         return ranks_no_tie
-
-
-class TeamResult(db.Model):
-    pass

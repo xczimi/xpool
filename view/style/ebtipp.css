@@ -4,7 +4,7 @@ body, div, img, h1, h2, h3, p, table, tr, td, a, input, form { margin: 0px; padd
 
 table { border-collapse: collapse; }
 
-#main { width: 988px; font-family: Verdana; font-size: 10pt; background-color: rgb(187, 187, 204); }
+#main { width: 80%; font-family: Verdana; font-size: 10pt; background-color: rgb(187, 187, 204); }
 
 #sportagline { background-color: rgb(102, 102, 153); text-align: justify; padding-bottom: 4px;}
 
