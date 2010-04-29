@@ -1,18 +1,18 @@
 def singlegame_result_point(bet, result):
     point = 0
-    if not result.locked: return 0
+    if not result.locked or not bet.locked: return 0
     if bet.homeScore >=0 and bet.homeScore == result.homeScore: point = point + 1
     elif bet.homeScore > 4 and result.homeScore > 4: point = point + 1
     if bet.awayScore >=0 and bet.awayScore == result.awayScore: point = point + 1
     elif bet.homeScore > 4 and result.homeScore > 4: point = point + 1
-    if bet.home_w() == result.home_w(): point = point + 1
-    if bet.home_l() == result.home_l(): point = point + 1
-    if bet.home_d() == result.home_d(): point = point + 2
+    if bet.home_w() == 1 and result.home_w() == 1: point = point + 2
+    if bet.home_l() == 1 and result.home_l() == 1: point = point + 2
+    if bet.home_d() == 1 and result.home_d() == 1: point = point + 2
     return point
 
 def groupgame_result_point(bet, result):
     point = 0
-    if not result.locked: return 0
+    if not result.locked or not bet.locked: return 0
     def count_orders(xs,ys):
         x_order_set = set((x,y) for x in xs for y in xs  if xs.index(x) < xs.index(y))
         y_order_set = set((x,y) for x in ys for y in ys  if ys.index(x) < ys.index(y))
