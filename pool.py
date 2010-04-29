@@ -19,11 +19,16 @@ def groupgame_result_point(bet, result):
         return len(x_order_set.intersection(y_order_set))
     return count_orders([tgr.team.short for tgr in bet.get_ranks()],[tgr.team.short for tgr in result.get_ranks()])
 
-def score_group(user, result, game):
+def score_group(user, resultuser, game):
     point = 0
     for groupgame in game.groupgames():
-        point = point + score_group(user, result, groupgame)
+        point = point + score_group(user, resultuser, groupgame)
     for singlegame in game.singlegames():
-        point = point + singlegame_result_point(user.singlegame_result(singlegame), result.singlegame_result(singlegame))
-    point = point + groupgame_result_point(user.groupgame_result(game), result.groupgame_result(game))
+        point = point + singlegame_result_point(user.singlegame_result(singlegame), resultuser.singlegame_result(singlegame))
+    point = point + groupgame_result_point(user.groupgame_result(game), resultuser.groupgame_result(game))
     return point
+
+def scoreboard(users, resultuser, game):
+    scoreboard = [{'user':user,'score':score_group(user,resultuser,game)} for user in users if str(user.key()) != str(resultuser.key())]
+    scoreboard.sort(reverse=True,key=lambda x: x['score'])
+    return scoreboard

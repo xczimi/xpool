@@ -369,6 +369,15 @@ class MyTipsHandler(GamesHandler):
 
         MainHandler.get(self,'mytips')
 
+class PoolHandler(MainHandler):
+    def get(self, filter = ''):
+        self.get_template_values()
+        if filter == '': filter = Fifa2010().tournament.key()
+        groupgame = GroupGame.get(filter)
+        self.template_values['groupgame'] = groupgame
+        self.template_values['scoreboard'] = pool.scoreboard(LocalUser.all().fetch(100), Fifa2010().result, groupgame)
+        MainHandler.get(self,'scoreboard')
+
 class ReferralHandler(MainHandler):
     def get(self, authcode):
         if self.logout():

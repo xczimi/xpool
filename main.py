@@ -30,6 +30,7 @@ def main():
                     ('/referrer/(.*)', control.ReferralHandler),
                     ('/games/(.*)', control.GamesHandler),
                     ('/games', control.GamesHandler),
+                    ('/scoreboard/?(.*)',control.PoolHandler),
                     ('/mytips', control.MyTipsHandler),
                     ('/mytips/(.*)', control.MyTipsHandler),
                     ('/(profile|invite)', control.UserHandler),
