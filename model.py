@@ -215,16 +215,8 @@ class GroupResult(db.Model):
             self.draw_order = [team.name for team in self.groupgame.teams()]
         return self.draw_order
 
-    def get_ranks(self):
-        ranks, draws = self.get_ranks_draws()
-        return ranks
-
-    def get_draws(self):
-        ranks, draws = self.get_ranks_draws()
-        return draws
-        
     @cached
-    def get_ranks_draws(self):
+    def get_ranks(self):
         # team ordering rules 1,2,3
         ranks = [
             reduce(TeamGroupRank.__add__,                                       # sum up ranks
@@ -246,7 +238,6 @@ class GroupResult(db.Model):
         ranks_set_list.sort(reverse=True)
         ranks_no_tie = []
 
-        tie_draws = []
         for rank_tie in ranks_set_list:
             tie_teams = [rank.team for rank in ranks if rank == rank_tie]
             if len(tie_teams) == 1:
@@ -254,8 +245,6 @@ class GroupResult(db.Model):
                 for rank in ranks:
                     if rank.team == tie_teams[0]:
                         ranks_no_tie.append(rank)
-                # no tie, no draw
-                tie_draws.append([])
             else:
                 # apply team ordering rules 1,2,3 to the games played among the tied teams
                 tie_ranks = [
@@ -279,18 +268,17 @@ class GroupResult(db.Model):
                                 for rank in ranks:
                                     if draw_rank.team.name == draw and draw_rank == tie_rank and rank.team == draw_rank.team:
                                         rank.tie = tie_rank
-                                        ranks_no_tie.append(rank)
                                         # yes tie, yes draw
-                                        tie_draws.append(draw_teams)
+                                        rank.draw = draw_teams
+                                        ranks_no_tie.append(rank)
+
                 else:
                     for tie_rank in tie_ranks:
                         for rank in ranks:
                             if rank.team == tie_rank.team:
                                 rank.tie = tie_rank
                                 ranks_no_tie.append(rank)
-                                # yes tie, no draw
-                                tie_draws.append([])
-        return ranks_no_tie, tie_draws
+        return ranks_no_tie
 
 
 class TeamResult(db.Model):
