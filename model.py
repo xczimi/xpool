@@ -219,6 +219,10 @@ class GroupResult(db.Model):
 
     @cached
     def get_ranks(self):
+        """ Calculate the group standings. 
+        
+        This turned into one ugly beast.
+        """
         # team ordering rules 1,2,3
         ranks = [
             reduce(TeamGroupRank.__add__,                                       # sum up ranks

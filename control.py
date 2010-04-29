@@ -406,6 +406,7 @@ class AdminHandler(MyRequestHandler):
                     pass
                 else:
                     self.template_values['users'] = LocalUser.all()
+                    #print pool.score_group(self.current_user(),Fifa2010().result,Fifa2010().tournament)
                     self.render('admin/users')
             elif "result" == admin:
                 if len(args) > 1:

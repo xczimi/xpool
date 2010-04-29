@@ -1,8 +1,12 @@
-* calculate and store? standings
-* calculate and store? points
-* more rich current_user with memcache
+* scoreboard
 
-* entry limitations per group or per part per group or per game?
+* locking/timing input check/show others bets?
+
+* fresh
+
+* iPhone RO version?
+
+* more rich current_user with memcache
 
 * ko stage parse and display
 
@@ -12,5 +16,5 @@
 
 * translate country names
 
-- facebook connect (LONG SHOT)
+- facebook connect (NOT THAT LONG SHOT)
 - open ID (EVEN LONGER SHOT)
