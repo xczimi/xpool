@@ -6,6 +6,8 @@
 import Cookie
 import uuid
 import re
+from datetime import datetime
+
 from google.appengine.api import users
 from google.appengine.api import memcache
 from google.appengine.api import mail
@@ -352,12 +354,13 @@ class MyTipsHandler(GamesHandler):
                 groupgame['singlegames'].append({
                     'game':singlegame,
                     'bet':bet,
+                    'editable': not bet.locked and not result.locked and datetime.utcnow() < game.groupstart(),
                     'result':result,
                     'point':point})
             mytips_games.append(groupgame)
             groupbet = self.current_user().groupgame_result(game)
             groupresult = Fifa2010().result.groupgame_result(game)
-            #groupgame['bet_ranking'], groupgame['bet_draws'] = game.get_ranks(self.current_user())
+            groupgame['editable'] = not groupbet.locked and not groupresult.locked and datetime.utcnow() < game.groupstart()
             groupgame['bet'] = groupbet
             groupgame['bet_ranking'] = groupbet.get_ranks()
             groupgame['result_ranking'] = groupresult.get_ranks()

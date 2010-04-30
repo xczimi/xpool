@@ -18,6 +18,8 @@ from django.template import TemplateDoesNotExist
 from google.appengine.ext import db
 from google.appengine.ext.db import polymodel
 
+from datetime import datetime
+
 def cached(func):
     def cached_func(self):
         cache_prop = '_'+func.__name__
@@ -134,6 +136,10 @@ class GroupGame(db.Model):
         return set(
             [singlegame.homeTeam for singlegame in self.singlegames()] +
             [singlegame.awayTeam for singlegame in self.singlegames()])
+
+    #@cached
+    def groupstart(self):
+        return reduce(min,[group.groupstart() for group in self.groupgames()] + [single.time for single in self.singlegames()], datetime.max)
 
 class SingleGame(db.Model):
     time = db.DateTimeProperty()

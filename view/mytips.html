@@ -5,7 +5,9 @@
 <h{{ groupgame.game.level }}>
 {% if forloop.first %}{% if groupgame.game.upgroup %}<a href="/mytips/{{ groupgame.game.upgroup.key }}">{{ groupgame.game.upgroup.name }}</a> &gt;{% endif %}{% endif %}<a href="/mytips/{{ groupgame.game.key }}">{{ groupgame.game.name }}</a></h{{ groupgame.game.level }}>
 {% for singlegame in groupgame.singlegames %}
-{% if forloop.first %}<table>
+{% if forloop.first %}
+{% trans "Betting closes:" %} {{ groupgame.game.groupstart }}
+<table>
 <thead>
 <tr>
 <th class="home teamColumn">{% trans "home team" %}</th>
@@ -15,15 +17,17 @@
 <th class="resultColumn">{% trans "result" %}</th>
 <th class="betColumn">{% trans "bet (pt)" %}</th></tr>
 </thead>
+{% if groupgame.editable %}
 <tfoot>
 <tr><td colspan="6" class="saveColumn"><input type="submit" value="{% trans 'save' %}"></td></tr>
 </tfoot>
+{% endif %}
 <tbody>
 {% endif %}
 <tr class="{% cycle line0,line1 %}"><td class="home">{{ singlegame.game.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ singlegame.game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ singlegame.game.awayTeam.flag }}" /></td><td class="away">{{ singlegame.game.awayTeam.name }}</td><td>{{ singlegame.game.time }}</td>
 <td class="resultColumn">{% if singlegame.result.locked %}{{ singlegame.result.homeScore }}&nbsp;&ndash;&nbsp;{{ singlegame.result.awayScore }}{% endif %}
 </td>
-<td class="betColumn">{% if singlegame.result.locked or singlegame.bet.locked or not singlegame.bet.editable %}
+<td class="betColumn">{% if not singlegame.editable %}
 {{ singlegame.bet.homeScore }}&nbsp;&ndash;&nbsp;{{ singlegame.bet.awayScore }}
 {% else %}
 <select name="homeScore.{{singlegame.game.key}}">{% for gol in scorelist %}<option value="{{gol}}" {% ifequal gol singlegame.bet.homeScore %} selected="selected" {% endifequal %} >{{gol}}</option>{% endfor %}</select>
@@ -54,12 +58,12 @@
     <thead><tr><th>{% trans "Team" %}</th><th>{% trans "W-D-L" %}</th><th>{% trans "GF-GA" %}</th><th>{% trans "P" %}</th><th>{% trans "tie" %}</th></tr></thead>
     {% for ranking in groupgame.bet_ranking %}
     <tr><td><img src="http://www.fifa.com{{ ranking.team.flag }}" /></td><td>{{ranking.w}}&ndash;{{ranking.d}}&ndash;{{ranking.l}}</td><td>{{ranking.gf}}&ndash;{{ranking.ga}}</td><td>{{ranking.pt}}</td><td>{% if ranking.tie %}{{ranking.tie.pt}} ({{ranking.tie.gf}}&ndash;{{ranking.tie.ga}}){% endif %}
-    {% if ranking.draw %}{% if not groupgame.bet.locked %}<select name="draw.{{groupgame.game.key}}.{{forloop.counter0}}">{% for team in ranking.draw %}<option value="{{team.name}}" {% ifequal team.name ranking.team.name %} selected="selected"{% endifequal %}>{{team.name}}</option>{% endfor %}</select>{% else %} draw{% endif %}{% endif %}
+    {% if ranking.draw %}{% if groupgame.editable %}<select name="draw.{{groupgame.game.key}}.{{forloop.counter0}}">{% for team in ranking.draw %}<option value="{{team.name}}" {% ifequal team.name ranking.team.name %} selected="selected"{% endifequal %}>{{team.name}}</option>{% endfor %}</select>{% else %} draw{% endif %}{% endif %}
     </td></tr>
     {% endfor %}
     </tbody>
     </table>
-    <input type="checkbox" name="grouplock.{{groupgame.game.key}}" />&nbsp;({{ groupgame.point }})&nbsp;
+    {% if groupgame.editable %}    <input type="checkbox" name="grouplock.{{groupgame.game.key}}" />{% endif %}&nbsp;({{ groupgame.point }})&nbsp;
 
 </td></tr></tfoot>
 </table>
