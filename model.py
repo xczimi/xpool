@@ -127,7 +127,9 @@ class GroupGame(db.Model):
     def widewalk(self):
         """ List groupgames as a wide tree full walkthrough. """
         games = [self]
-        for game in self.game_set.order('name'):
+        subgames = [game for game in self.game_set.order('name')]
+        subgames.sort(key=GroupGame.groupstart)
+        for game in subgames:
             games.extend(game.widewalk())
         return games
 
@@ -137,7 +139,7 @@ class GroupGame(db.Model):
             [singlegame.homeTeam for singlegame in self.singlegames()] +
             [singlegame.awayTeam for singlegame in self.singlegames()])
 
-    #@cached
+    @cached
     def groupstart(self):
         return reduce(min,[group.groupstart() for group in self.groupgames()] + [single.time for single in self.singlegames()], datetime.max)
 
