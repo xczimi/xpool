@@ -369,9 +369,45 @@ class MyTipsHandler(GamesHandler):
         self.template_values['games'] = mytips_games
         self.template_values['scorelist'] = [''] + Result.score_list()
 
-
         MainHandler.get(self,'mytips')
 
+class AllTipsHandler(GamesHandler):
+    @need_login
+    def singlegame_tips(self, singlegame, users):
+        tips = {}
+        for user in users:
+            results = singlegame.results()
+            for result in results:
+                if results[result].user.key() == user.key():
+                    tips[user.key()] = results[result]
+                else:
+                    tips[user.key()] = {}
+        return tips
+    def get(self, filter=''):
+        self.get_template_values()
+        if filter == '': filter = Fifa2010().tournament.key()
+
+        group = GroupGame.get(filter)
+        if(len(group.singlegames()) > 0):
+            users = [user for user in LocalUser.all().fetch(LocalUser.all().count())]
+            self.template_values['groupgame'] = group
+            self.template_values['users'] = users
+            self.template_values['alltips'] = [{
+                'game':singlegame,
+                'result':Fifa2010().result.singlegame_result(singlegame),
+                # give me the result or {} of the singlegame for each user
+                'tips': self.singlegame_tips(singlegame, users)
+                } for singlegame in group.singlegames()]
+            print "XVZG"
+            print self.template_values
+            MainHandler.get(self,'alltips')
+        else:
+            games = []
+            for game in group.widewalk():
+                games.append({'game':game,'singlegames':[]})
+            self.template_values['games'] = games
+            MainHandler.get(self,'alltips_tree')
+    
 class PoolHandler(MainHandler):
     def get(self, filter = ''):
         self.get_template_values()

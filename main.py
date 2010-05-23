@@ -31,6 +31,8 @@ def main():
                     ('/games/(.*)', control.GamesHandler),
                     ('/games', control.GamesHandler),
                     ('/scoreboard/?(.*)',control.PoolHandler),
+                    ('/alltips', control.AllTipsHandler),
+                    ('/alltips/(.*)', control.AllTipsHandler),
                     ('/mytips', control.MyTipsHandler),
                     ('/mytips/(.*)', control.MyTipsHandler),
                     ('/(profile|invite)', control.UserHandler),

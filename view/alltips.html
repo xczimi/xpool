@@ -1,0 +1,25 @@
+{% extends "layout.html" %}{% load i18n %}
+{% block content %}
+<h{{ groupgame.level }}>
+{% if groupgame.upgroup %}<a href="/alltips/{{ groupgame.upgroup.key }}">{{ groupgame.upgroup.name }}</a> &gt;{% endif %}<a href="/alltips/{{ groupgame.key }}">{{ groupgame.name }}</a></h{{ groupgame.level }}>
+<table>
+<thead>
+<tr>
+<th class="home teamColumn">{% trans "home team" %}</th>
+<th class="pairColumn">&nbsp;&ndash;&nbsp;</th>
+<th class="away teamColumn">{% trans "away team" %}</th>
+<th class="timeColumn">{% trans "kick off" %}</th>
+<th class="resultColumn">{% trans "result" %}</th>
+{% for user in users %}
+<th class="betColumn {% cycle col0,col1 %}">{{ user }}</th>
+{% endfor %}
+</tr></thead>
+<tbody>
+{% for gametips in alltips %}
+<tr class="{% cycle line0,line1 %}"><td class="home">{{ gametips.game.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ gametips.game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ gametips.game.awayTeam.flag }}" /></td><td class="away">{{ gametips.game.awayTeam.name }}</td><td>{{ gametips.game.time }}</td>
+<td class="resultColumn">{% if gametips.result.locked %}{{ gametips.result.homeScore }}&nbsp;&ndash;&nbsp;{{ gametips.result.awayScore }}{% endif %}</td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+{% endblock %}

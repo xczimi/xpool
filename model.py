@@ -154,13 +154,16 @@ class SingleGame(db.Model):
     @cached
     def results(self):
         results = {}
-        for result in self.result_set.all().fetch(LocalUser.all().count()):
+        for result in self.result_set.fetch(LocalUser.all().count()):
             results[str(result.user.key())] = result
         return results
 
     def get_ranks(self, user):
         result = user.singlegame_result(self)
         return result.get_ranks()
+
+class UndecidedTeam(db.Model):
+    group = db.ReferenceProperty(GroupGame)
 
 from datetime import datetime
 
