@@ -127,7 +127,9 @@ class GroupGame(db.Model):
     def widewalk(self):
         """ List groupgames as a wide tree full walkthrough. """
         games = [self]
-        for game in self.game_set.order('name'):
+        subgames = [game for game in self.game_set.order('name')]
+        subgames.sort(key=GroupGame.groupstart)
+        for game in subgames:
             games.extend(game.widewalk())
         return games
 
@@ -137,7 +139,7 @@ class GroupGame(db.Model):
             [singlegame.homeTeam for singlegame in self.singlegames()] +
             [singlegame.awayTeam for singlegame in self.singlegames()])
 
-    #@cached
+    @cached
     def groupstart(self):
         return reduce(min,[group.groupstart() for group in self.groupgames()] + [single.time for single in self.singlegames()], datetime.max)
 
@@ -152,13 +154,16 @@ class SingleGame(db.Model):
     @cached
     def results(self):
         results = {}
-        for result in self.result_set.all().fetch(LocalUser.all().count()):
+        for result in self.result_set.fetch(LocalUser.all().count()):
             results[str(result.user.key())] = result
         return results
 
     def get_ranks(self, user):
         result = user.singlegame_result(self)
         return result.get_ranks()
+
+class UndecidedTeam(db.Model):
+    group = db.ReferenceProperty(GroupGame)
 
 from datetime import datetime
 

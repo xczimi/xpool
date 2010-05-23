@@ -1,0 +1,7 @@
+{% extends "layout.html" %}{% load i18n %}
+{% block content %}
+{% for groupgame in games %}
+<h{{ groupgame.game.level }}>
+{% if forloop.first %}{% if groupgame.game.upgroup %}<a href="/alltips/{{ groupgame.game.upgroup.key }}">{{ groupgame.game.upgroup.name }}</a> &gt;{% endif %}{% endif %}<a href="/alltips/{{ groupgame.game.key }}">{{ groupgame.game.name }}</a></h{{ groupgame.game.level }}>
+{% endfor %}
+{% endblock %}
