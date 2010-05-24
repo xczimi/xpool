@@ -376,7 +376,6 @@ class AllTipsHandler(GamesHandler):
         tips = []
         results = singlegame.results()
         for user in users:
-            hastip = False
             if str(user.key()) in results:
                 tips.append(results[str(user.key())])
             else:
@@ -395,7 +394,7 @@ class AllTipsHandler(GamesHandler):
             self.template_values['alltips'] = [{
                 'game':singlegame,
                 'tips': self.singlegame_tips(singlegame, users)
-                } for singlegame in group.singlegames()]
+                } for singlegame in group.singlegames() if self.current_user().singlegame_result(singlegame)]
             MainHandler.get(self,'alltips')
         else:
             games = []
