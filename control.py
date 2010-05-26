@@ -372,17 +372,16 @@ class MyTipsHandler(GamesHandler):
         MainHandler.get(self,'mytips')
 
 class AllTipsHandler(GamesHandler):
-    @need_login
     def singlegame_tips(self, singlegame, users):
-        tips = {}
+        tips = []
+        results = singlegame.results()
         for user in users:
-            results = singlegame.results()
-            for result in results:
-                if results[result].user.key() == user.key():
-                    tips[user.key()] = results[result]
-                else:
-                    tips[user.key()] = {}
+            if str(user.key()) in results:
+                tips.append(results[str(user.key())])
+            else:
+                tips.append({})
         return tips
+    @need_login
     def get(self, filter=''):
         self.get_template_values()
         if filter == '': filter = Fifa2010().tournament.key()
@@ -394,12 +393,8 @@ class AllTipsHandler(GamesHandler):
             self.template_values['users'] = users
             self.template_values['alltips'] = [{
                 'game':singlegame,
-                'result':Fifa2010().result.singlegame_result(singlegame),
-                # give me the result or {} of the singlegame for each user
                 'tips': self.singlegame_tips(singlegame, users)
-                } for singlegame in group.singlegames()]
-            print "XVZG"
-            print self.template_values
+                } for singlegame in group.singlegames() if self.current_user().singlegame_result(singlegame)]
             MainHandler.get(self,'alltips')
         else:
             games = []
