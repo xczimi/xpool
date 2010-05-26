@@ -36,6 +36,7 @@ class LocalUser(db.Model):
     password = db.StringProperty()
     authcode = db.StringProperty()
     referrer = db.SelfReferenceProperty(collection_name="referral_set")
+    #groups = db.ListProperty(db.Key)
     def __str__(self):
         if self.nick: return self.nick.encode('utf-8')
         return self.email.encode('utf-8')
@@ -66,6 +67,10 @@ class LocalUser(db.Model):
             self.groupresults()[str(groupgame.key())] = GroupResult(user=self,groupgame=groupgame)
         return self.groupresults()[str(groupgame.key())]
 
+class LocalUserGroup(db.Model):
+    name = db.StringProperty(required=True)
+    root = db.ReferenceProperty(LocalUser,required=True)
+    password = db.StringProperty()
 
 class Team(db.Model):
     name = db.StringProperty(required=True)
@@ -173,9 +178,6 @@ class Result(db.Model):
     homeScore = db.IntegerProperty()
     awayScore = db.IntegerProperty()
     locked = db.BooleanProperty(default=False)
-    def editable(self):
-        """ This probably should be in the control (as it's only valid for regular users Results). """
-        return datetime.utcnow() < self.singlegame.time
 
     @classmethod
     def score_list(self):
