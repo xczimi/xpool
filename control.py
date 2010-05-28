@@ -6,7 +6,7 @@
 import Cookie
 import uuid
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from google.appengine.api import users
 from google.appengine.api import memcache
@@ -27,6 +27,8 @@ import fifa
 from fifa2010 import Fifa2010
 
 import pool
+
+NOW = datetime.utcnow()
 
 def need_login(func):
     """ Decorator for MyRequestHandler controller classes to force some login. """
@@ -277,6 +279,26 @@ class GamesHandler(MainHandler):
         self.template_values['games'] = GroupGame.get(filter).widewalk()
         MainHandler.get(self,'games')
 
+class TodayHandler(MainHandler):
+    def get(self, filter=''):
+        self.get_template_values()
+        if filter == '': filter = Fifa2010().tournament.key()
+        singlegames = SingleGame.all().filter('time >=',NOW+timedelta(days=-2)).filter('time <=',NOW+timedelta(days=2)).order('time').fetch(12)
+        if self.current_user():
+            self.template_values['games'] = [{
+                'game':singlegame,
+                'bet':self.current_user().singlegame_result(singlegame),
+                'result':Fifa2010().result.singlegame_result(singlegame),
+                'point':pool.singlegame_result_point(self.current_user().singlegame_result(singlegame), Fifa2010().result.singlegame_result(singlegame))
+                } for singlegame in singlegames]
+        else:
+            self.template_values['games'] = [{
+                'game':singlegame,
+                'bet':{'locked':False},
+                'result':Fifa2010().result.singlegame_result(singlegame)
+                } for singlegame in singlegames]
+        MainHandler.get(self,'today')
+
 
 class MyTipsHandler(GamesHandler):
     def post(self, *args):
@@ -354,13 +376,13 @@ class MyTipsHandler(GamesHandler):
                 groupgame['singlegames'].append({
                     'game':singlegame,
                     'bet':bet,
-                    'editable': not bet.locked and not result.locked and datetime.utcnow() < game.groupstart(),
+                    'editable': not bet.locked and not result.locked and NOW < game.groupstart(),
                     'result':result,
                     'point':point})
             mytips_games.append(groupgame)
             groupbet = self.current_user().groupgame_result(game)
             groupresult = Fifa2010().result.groupgame_result(game)
-            groupgame['editable'] = not groupbet.locked and not groupresult.locked and datetime.utcnow() < game.groupstart()
+            groupgame['editable'] = not groupbet.locked and not groupresult.locked and NOW < game.groupstart()
             groupgame['bet'] = groupbet
             groupgame['bet_ranking'] = groupbet.get_ranks()
             groupgame['result_ranking'] = groupresult.get_ranks()
