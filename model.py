@@ -12,6 +12,7 @@ from google.appengine.api import mail
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 from google.appengine.ext.webapp import template
+from google.appengine.api import memcache
 
 from django.template import TemplateDoesNotExist
 
@@ -26,6 +27,16 @@ def cached(func):
         if cache_prop not in self.__dict__:
             self.__dict__[cache_prop] = func(self)
         return self.__dict__[cache_prop]
+    return cached_func
+
+def perm_cached(func):
+    def cached_func(self):
+        cache_key = self.__class__.__name__ + "/" + str(self.key()) + "/" + func.__name__
+        data = memcache.get(cache_key)
+        if data is None:
+            data = func(self)
+            memcache.add(cache_key, data)
+        return data
     return cached_func
 
 class LocalUser(db.Model):
@@ -120,15 +131,15 @@ class GroupGame(db.Model):
         if self.upgroup is None: return 1
         return self.upgroup.level() + 1
 
-    @cached
+    @perm_cached
     def singlegames(self):
         return self.singlegame_set.order('time').fetch(SingleGame.all().count())
 
-    @cached
+    @perm_cached
     def groupgames(self):
         return self.game_set.order('name').fetch(GroupGame.all().count())
 
-    @cached
+    @perm_cached
     def widewalk(self):
         """ List groupgames as a wide tree full walkthrough. """
         games = [self]
@@ -138,13 +149,13 @@ class GroupGame(db.Model):
             games.extend(game.widewalk())
         return games
 
-    @cached
+    @perm_cached
     def teams(self):
         return set(
             [singlegame.homeTeam for singlegame in self.singlegames()] +
             [singlegame.awayTeam for singlegame in self.singlegames()])
 
-    @cached
+    @perm_cached
     def groupstart(self):
         return reduce(min,[group.groupstart() for group in self.groupgames()] + [single.time for single in self.singlegames()], datetime.max)
 
