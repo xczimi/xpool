@@ -49,7 +49,7 @@ class Fifa2010(object):
 
         group_stored = GroupGame.all().filter('name =',group_name).get()
         if group_stored is None:
-            group_stored = GroupGame(name=group_name, upgroup = upgroup)
+            group_stored = GroupGame(name=group_name, upgroup_ref = upgroup)
             group_stored.put()
         return group_stored
 
@@ -63,9 +63,9 @@ class Fifa2010(object):
 
         game_stored.time = game['time']
         game_stored.location = game['location']
-        game_stored.group = group
-        game_stored.homeTeam = self.init_team(game['home_team'])
-        game_stored.awayTeam = self.init_team(game['away_team'])
+        game_stored.group_ref = group
+        game_stored.homeTeam_ref = self.init_team(game['home_team'])
+        game_stored.awayTeam_ref = self.init_team(game['away_team'])
         game_stored.put()
 
     @classmethod
@@ -86,8 +86,8 @@ class Fifa2010(object):
     def init_tree(self):
         # try to create that stuff safely
         if Fifa2010().tournament is None: Fifa2010().tournament = GroupGame.get_or_insert(key_name="fifa2010", name="FIFA 2010")
-        if Fifa2010().groupstage is None: Fifa2010().groupstage = GroupGame.get_or_insert(key_name="groupstage", name="Group Stage", upgroup = Fifa2010().tournament)
-        if Fifa2010().kostage is None: Fifa2010().kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", upgroup = Fifa2010().tournament)
+        if Fifa2010().groupstage is None: Fifa2010().groupstage = GroupGame.get_or_insert(key_name="groupstage", name="Group Stage", upgroup_ref = Fifa2010().tournament)
+        if Fifa2010().kostage is None: Fifa2010().kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", upgroup_ref = Fifa2010().tournament)
         if Fifa2010().result is None: Fifa2010().result = LocalUser.get_or_insert(key_name="result", email="fifa@fifa.com", password='fifa')
         groupgames = fifa.get_games("index")
         for game in groupgames: self.init_group_game(game)

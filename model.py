@@ -39,6 +39,22 @@ def perm_cached(func):
         return data
     return cached_func
 
+def perm_cached_class(func):
+    _cache = {}
+    def cached_func(self):
+        cache_key = self.__name__ + "/" + func.__name__
+        if cache_key in _cache:
+            return _cache[cache_key]
+        data = memcache.get(cache_key)
+        if data is None:
+            data = func(self)
+            memcache.add(cache_key, data)
+        _cache[cache_key] = data
+        return data
+    return cached_func
+
+MAX_USER = 256
+
 class LocalUser(db.Model):
     email = db.EmailProperty(required=True)
     nick = db.StringProperty()
@@ -83,6 +99,8 @@ class LocalUserGroup(db.Model):
     root = db.ReferenceProperty(LocalUser,required=True)
     password = db.StringProperty()
 
+MAX_TEAMS = 256
+
 class Team(db.Model):
     name = db.StringProperty(required=True)
     flag = db.StringProperty()
@@ -94,6 +112,14 @@ class Team(db.Model):
 
     def __eq__(self, other):
         return self.__hash__() == other.__hash__()
+
+    @classmethod
+    @perm_cached_class
+    def everything(self):
+        teams = {}
+        for team in Team.all().fetch(MAX_TEAMS):
+            teams[str(team.key())] = team
+        return teams
 
 class TeamGroupRank:
     team = None
@@ -123,49 +149,111 @@ class TeamGroupRank:
         if self.gf > other.gf: return 1
         return 0
 
+MAX_GAMES = 256
+
 class GroupGame(db.Model):
     name = db.StringProperty(required=True)
-    upgroup = db.SelfReferenceProperty(collection_name="game_set")
+    upgroup_ref = db.SelfReferenceProperty(collection_name="game_set")
+
+    def upgroup_key(self):
+        return GroupGame.upgroup_ref.get_value_for_datastore(self)
+
+    def upgroup(self):
+        try:
+            return self.everything()[str(self.upgroup_key())]
+        except KeyError:
+            return None
 
     def level(self):
-        if self.upgroup is None: return 1
-        return self.upgroup.level() + 1
+        if self.upgroup() is None: return 1
+        return self.upgroup().level() + 1
 
-    @perm_cached
+    @classmethod
+    @perm_cached_class
+    def everything(self):
+        games = {}
+        for game in GroupGame.all().fetch(MAX_GAMES):
+            games[str(game.key())] = game
+        return games
+
+    @cached
     def singlegames(self):
-        return self.singlegame_set.order('time').fetch(SingleGame.all().count())
+        singlegames = [singlegame for singlegame in SingleGame.everything().itervalues() if self.key() == singlegame.group_key()]
+        singlegames.sort(cmp=lambda x,y: cmp(x.time, y.time))
+        return singlegames
 
-    @perm_cached
+    @cached
     def groupgames(self):
-        return self.game_set.order('name').fetch(GroupGame.all().count())
+        groupgames = self.subgames()
+        groupgames.sort(cmp=lambda x,y: cmp(x.name, y.name))
+        return groupgames
+
+    @cached
+    def subgames(self):
+        return [game for game in GroupGame.everything().itervalues() if self.key() == game.upgroup_key()]
 
     @perm_cached
     def widewalk(self):
         """ List groupgames as a wide tree full walkthrough. """
         games = [self]
-        subgames = [game for game in self.game_set.order('name')]
+        subgames = self.subgames()
         subgames.sort(key=GroupGame.groupstart)
         for game in subgames:
             games.extend(game.widewalk())
         return games
 
-    @perm_cached
+    @cached
     def teams(self):
         return set(
-            [singlegame.homeTeam for singlegame in self.singlegames()] +
-            [singlegame.awayTeam for singlegame in self.singlegames()])
+            [singlegame.homeTeam() for singlegame in self.singlegames()] +
+            [singlegame.awayTeam() for singlegame in self.singlegames()])
 
-    @perm_cached
+    @cached
     def groupstart(self):
         return reduce(min,[group.groupstart() for group in self.groupgames()] + [single.time for single in self.singlegames()], datetime.max)
 
 class SingleGame(db.Model):
     time = db.DateTimeProperty()
     fifaId = db.IntegerProperty()
-    homeTeam = db.ReferenceProperty(Team,collection_name="homegame_set")
-    awayTeam = db.ReferenceProperty(Team,collection_name="awaygame_set")
+    homeTeam_ref = db.ReferenceProperty(Team,collection_name="homegame_set")
+    awayTeam_ref = db.ReferenceProperty(Team,collection_name="awaygame_set")
     location = db.StringProperty()
-    group = db.ReferenceProperty(GroupGame,collection_name="singlegame_set")
+    group_ref = db.ReferenceProperty(GroupGame,collection_name="singlegame_set")
+
+    def group_key(self):
+        return SingleGame.group_ref.get_value_for_datastore(self)
+
+    def homeTeam_key(self):
+        return SingleGame.homeTeam_ref.get_value_for_datastore(self)
+
+    def awayTeam_key(self):
+        return SingleGame.awayTeam_ref.get_value_for_datastore(self)
+
+    def homeTeam(self):
+        try:
+            return Team.everything()[str(self.homeTeam_key())]
+        except KeyError:
+            return None
+
+    def awayTeam(self):
+        try:
+            return Team.everything()[str(self.awayTeam_key())]
+        except KeyError:
+            return None
+
+    def group(self):
+        try:
+            return GroupGame.everything()[self.group_key()]
+        except KeyError:
+            return None
+
+    @classmethod
+    @perm_cached_class
+    def everything(self):
+        games = {}
+        for game in SingleGame.all().fetch(MAX_GAMES):
+            games[str(game.key())] = game
+        return games
 
     @cached
     def results(self):
@@ -215,12 +303,12 @@ class Result(db.Model):
         return 0
 
     def get_home_rank(self):
-        return TeamGroupRank(team=self.singlegame.homeTeam,
+        return TeamGroupRank(team=self.singlegame.homeTeam(),
                     w=self.home_w(),d=self.home_d(),l=self.home_l(),
                     gf=self.home_gf(),ga=self.home_ga()
                 )
     def get_away_rank(self):
-        return TeamGroupRank(team=self.singlegame.awayTeam,
+        return TeamGroupRank(team=self.singlegame.awayTeam(),
                     w=self.home_l(),d=self.home_d(),l=self.home_w(),
                     gf=self.home_ga(),ga=self.home_gf()
                 )
@@ -280,8 +368,8 @@ class GroupResult(db.Model):
                             reduce(lambda x,y: x + y,                                  # "join" all ranks into a single list
                                 (singlegame.get_ranks(self.user)
                                     for singlegame in self.groupgame.singlegames()
-                                        if singlegame.homeTeam in tie_teams            # both team must be from tied group
-                                            and singlegame.awayTeam in tie_teams))))   # both team must be from tied group
+                                        if singlegame.homeTeam() in tie_teams            # both team must be from tied group
+                                            and singlegame.awayTeam() in tie_teams))))   # both team must be from tied group
                     for team in tie_teams]
                 tie_ranks.sort(reverse=True)
                 if len(set(tie_ranks)) != len(tie_ranks):
