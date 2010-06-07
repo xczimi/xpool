@@ -27,6 +27,7 @@ def main():
                     ('/admin/(team)/(.*)', control.AdminHandler),
                     ('/admin/(.*)', control.AdminHandler),
                     ('/admin', control.AdminHandler),
+                    ('/referral/(.*)', control.ReferralHandler),
                     ('/referrer/(.*)', control.ReferralHandler),
                     ('/games/(.*)', control.GamesHandler),
                     ('/games', control.GamesHandler),
