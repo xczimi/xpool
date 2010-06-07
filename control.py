@@ -6,7 +6,7 @@
 import Cookie
 import uuid
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from google.appengine.api import users
 from google.appengine.api import memcache
@@ -21,12 +21,14 @@ from django.utils import translation
 from google.appengine.ext import db
 from google.appengine.ext.db import polymodel
 
-from model import LocalUser, Team, GroupGame, SingleGame, Result, GroupResult
+from model import *
 
 import fifa
 from fifa2010 import Fifa2010
 
 import pool
+
+NOW = datetime.utcnow()
 
 def need_login(func):
     """ Decorator for MyRequestHandler controller classes to force some login. """
@@ -244,8 +246,7 @@ class UserHandler(MainHandler):
         if LocalUser.all().filter('email =',email).count() > 0:
             self.set_session_message(_('This user is already in the system (based on email)!'))
             return
-        referral = LocalUser(email=email,nick=nick,full_name=full_name,referrer=self.current_user())
-        referral.authcode = str(uuid.uuid1().hex)
+        referral = LocalUser(email=email,nick=nick,full_name=full_name,referrer=self.current_user(),authcode = str(uuid.uuid1().hex))
         self.get_template_values()
         self.template_values['referral'] = referral
         self.template_values['auth_url'] = self.request.host_url + '/referral/' + referral.authcode
@@ -276,6 +277,26 @@ class GamesHandler(MainHandler):
         if filter == '': filter = Fifa2010().tournament.key()
         self.template_values['games'] = GroupGame.get(filter).widewalk()
         MainHandler.get(self,'games')
+
+class TodayHandler(MainHandler):
+    def get(self, filter=''):
+        self.get_template_values()
+        if filter == '': filter = Fifa2010().tournament.key()
+        singlegames = SingleGame.all().filter('time >=',NOW+timedelta(days=-2)).filter('time <=',NOW+timedelta(days=2)).order('time').fetch(12)
+        if self.current_user():
+            self.template_values['games'] = [{
+                'game':singlegame,
+                'bet':self.current_user().singlegame_result(singlegame),
+                'result':Fifa2010().result.singlegame_result(singlegame),
+                'point':pool.singlegame_result_point(self.current_user().singlegame_result(singlegame), Fifa2010().result.singlegame_result(singlegame))
+                } for singlegame in singlegames]
+        else:
+            self.template_values['games'] = [{
+                'game':singlegame,
+                'bet':{'locked':False},
+                'result':Fifa2010().result.singlegame_result(singlegame)
+                } for singlegame in singlegames]
+        MainHandler.get(self,'today')
 
 
 class MyTipsHandler(GamesHandler):
@@ -354,13 +375,13 @@ class MyTipsHandler(GamesHandler):
                 groupgame['singlegames'].append({
                     'game':singlegame,
                     'bet':bet,
-                    'editable': not bet.locked and not result.locked and datetime.utcnow() < game.groupstart(),
+                    'editable': not bet.locked and not result.locked and NOW < game.groupstart(),
                     'result':result,
                     'point':point})
             mytips_games.append(groupgame)
             groupbet = self.current_user().groupgame_result(game)
             groupresult = Fifa2010().result.groupgame_result(game)
-            groupgame['editable'] = not groupbet.locked and not groupresult.locked and datetime.utcnow() < game.groupstart()
+            groupgame['editable'] = not groupbet.locked and not groupresult.locked and NOW < game.groupstart()
             groupgame['bet'] = groupbet
             groupgame['bet_ranking'] = groupbet.get_ranks()
             groupgame['result_ranking'] = groupresult.get_ranks()
@@ -369,9 +390,40 @@ class MyTipsHandler(GamesHandler):
         self.template_values['games'] = mytips_games
         self.template_values['scorelist'] = [''] + Result.score_list()
 
-
         MainHandler.get(self,'mytips')
 
+class AllTipsHandler(GamesHandler):
+    def singlegame_tips(self, singlegame, users):
+        tips = []
+        results = singlegame.results()
+        for user in users:
+            if str(user.key()) in results:
+                tips.append(results[str(user.key())])
+            else:
+                tips.append({})
+        return tips
+    @need_login
+    def get(self, filter=''):
+        self.get_template_values()
+        if filter == '': filter = Fifa2010().tournament.key()
+
+        group = GroupGame.get(filter)
+        if(len(group.singlegames()) > 0):
+            users = [user for user in LocalUser.all().fetch(LocalUser.all().count())]
+            self.template_values['groupgame'] = group
+            self.template_values['users'] = users
+            self.template_values['alltips'] = [{
+                'game':singlegame,
+                'tips': self.singlegame_tips(singlegame, users)
+                } for singlegame in group.singlegames() if self.current_user().singlegame_result(singlegame)]
+            MainHandler.get(self,'alltips')
+        else:
+            games = []
+            for game in group.widewalk():
+                games.append({'game':game,'singlegames':[]})
+            self.template_values['games'] = games
+            MainHandler.get(self,'alltips_tree')
+    
 class PoolHandler(MainHandler):
     def get(self, filter = ''):
         self.get_template_values()
@@ -398,6 +450,7 @@ class AdminHandler(MyRequestHandler):
             admin = args[0]
             if "fifa" == admin:
                 Fifa2010.init_tree()
+                perm_cached_class(None, flush=True)
                 self.redirect('/admin/team')
             elif "team" == admin:
                 if len(args) > 1:

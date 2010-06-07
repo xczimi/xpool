@@ -14,5 +14,8 @@ handlers:
 - url: /img
   static_dir: view/img
 
+- url: /stats.*
+  script: $PYTHON_LIB/google/appengine/ext/appstats/ui.py
+
 - url: .*
   script: main.py

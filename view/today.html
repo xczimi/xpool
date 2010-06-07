@@ -1,0 +1,25 @@
+{% extends "layout.html" %}{% load i18n %}
+{% block content %}
+{% for singlegame in games %}
+{% if forloop.first %}<table>
+<thead>
+<tr>
+<th class="groupColumn">{% trans "group" %}</th>
+<th class="home teamColumn">{% trans "home team" %}</th>
+<th class="pairColumn">&nbsp;&ndash;&nbsp;</th>
+<th class="away teamColumn">{% trans "away team" %}</th>
+<th class="resultColumn timeColumn">{% trans "result" %}</th>
+<th class="betColumn">{% trans "bet (pt)" %}</th></tr>
+</thead>
+<tbody>
+{% endif %}
+<tr class="{% cycle line0,line1 %}">
+<td>{{ singlegame.game.group.name }}</td><td class="home">{{ singlegame.game.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ singlegame.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ singlegame.awayTeam.flag }}" /></td><td class="away">{{ singlegame.game.awayTeam.name }}</td>
+<td class="resultColumn">{% if singlegame.result.locked %}{{ singlegame.result.homeScore }}&nbsp;&ndash;&nbsp;{{ singlegame.result.awayScore }}{% else %}{{ singlegame.game.time|date:"Y-m-d" }}{% endif %}
+</td>
+<td class="betColumn">{% if singlegame.bet.locked %}{{ singlegame.bet.homeScore }}&nbsp;&ndash;&nbsp;{{ singlegame.bet.awayScore }}
+{% if singlegame.result.locked %}&nbsp;({{ singlegame.point }}){% endif %}{% endif %}</td>
+</tr>
+{% if forloop.last %}</tbody></table>{% endif %}
+{% endfor %}
+{% endblock %}

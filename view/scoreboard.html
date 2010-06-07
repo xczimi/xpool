@@ -1,0 +1,13 @@
+{% extends "layout.html" %}{% load i18n %}
+{% block content %}
+{% if groupgame.upgroup %}<a href="/scoreboard/{{ groupgame.upgroup.key }}">{{ groupgame.upgroup.name }}</a>{% endif %}
+<h1>{% trans "Scoreboard" %} - {{ groupgame.name }}</h1>
+{% for game in groupgame.groupgames %}{% if forloop.first %}<h2>{% endif %}<a href="/scoreboard/{{ game.key }}">{{ game.name }}</a>{% if forloop.last %}</h2>{% else %}&nbsp;{% endif %}{% endfor %}
+<table>
+<thead><tr><th>{% trans "Name" %}</th><th>{% trans "Score" %}</th></tr></thead>
+<tbody>
+{% for scoreline in scoreboard %}
+<tr><td>{{scoreline.user.nick}}</td><td>{{scoreline.score}}</td></tr>
+{% endfor %}
+</tbody></table>
+{% endblock %}
