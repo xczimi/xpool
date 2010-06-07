@@ -6,12 +6,13 @@
 <link rel="stylesheet" href="/style/ebtipp.css" type="text/css" />
 </head>
 <body><div align="center"><div id="main"><div id="head">{% trans "This is our little friendly pool." %}
-<span id="language_selector"><form method='post'><input type='hidden' name='action' value='language' /><select name='language' onchange='this.form.submit();'><option>{% trans "language" %}</option><option value='hu'>magyar</option><option value='en'>English</option></select></form></span></div>
+<span id="language_selector"><form method='post'><input type='hidden' name='action' value='language' /><select name='language' onchange='this.form.submit();'><option>{% trans "language" %}</option><option value='hu'>magyar</option><option value='en'>English</option></select></form></span>
+</div>
 <div id="userline">{% include "userline.html" %}</div>
 <div id="menuline">{% include "menuline.html" %}</div>
 <div id="maincontent">
+<div style="background-color: green; color: white; font-size: 200%;">{% trans "Ladies and gentlemen, it's ON! Enter your predictions!" %}</div>
 <span id="message">{{ message }}</span>
-<div style="background-color: red; color: white; font-size: 200%;">GET READY! Official launch: Monday, 2010-06-07 08:00 GMT</div>
 {% block content %}<h1>{% trans "xHomePool, eh!" %}</h1>{% endblock %}
 </div>
 {% include "footer.html" %}</div></div></body>

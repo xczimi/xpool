@@ -39,8 +39,11 @@ def perm_cached(func):
         return data
     return cached_func
 
-def perm_cached_class(func):
+def perm_cached_class(func, flush=False):
     _cache = {}
+    if flush:
+        _cache = {}
+        memcache.flush_all()
     def cached_func(self):
         cache_key = self.__name__ + "/" + func.__name__
         if cache_key in _cache:

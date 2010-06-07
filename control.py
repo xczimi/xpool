@@ -21,7 +21,7 @@ from django.utils import translation
 from google.appengine.ext import db
 from google.appengine.ext.db import polymodel
 
-from model import LocalUser, Team, GroupGame, SingleGame, Result, GroupResult
+from model import *
 
 import fifa
 from fifa2010 import Fifa2010
@@ -246,8 +246,7 @@ class UserHandler(MainHandler):
         if LocalUser.all().filter('email =',email).count() > 0:
             self.set_session_message(_('This user is already in the system (based on email)!'))
             return
-        referral = LocalUser(email=email,nick=nick,full_name=full_name,referrer=self.current_user())
-        referral.authcode = str(uuid.uuid1().hex)
+        referral = LocalUser(email=email,nick=nick,full_name=full_name,referrer=self.current_user(),authcode = str(uuid.uuid1().hex))
         self.get_template_values()
         self.template_values['referral'] = referral
         self.template_values['auth_url'] = self.request.host_url + '/referral/' + referral.authcode
@@ -451,6 +450,7 @@ class AdminHandler(MyRequestHandler):
             admin = args[0]
             if "fifa" == admin:
                 Fifa2010.init_tree()
+                perm_cached_class(None, flush=True)
                 self.redirect('/admin/team')
             elif "team" == admin:
                 if len(args) > 1:

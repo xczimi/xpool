@@ -34,12 +34,13 @@ class Fifa2010(object):
         """Create team if not exists."""
 
         team_stored = Team.all().filter('name =',team['name']).get()
-        if team_stored is None: team_stored = Team(name=team['name'])
-        short_match = re.search(r'([a-z]{3})\.gif$',team['flag'])
-        team_stored.flag = team['flag']
-        team_stored.short = short_match.group(1)
-        team_stored.href = team['href']
-        team_stored.put()
+        if team_stored is None:
+            team_stored = Team(name=team['name'])
+            short_match = re.search(r'([a-z]{3})\.gif$',team['flag'])
+            team_stored.flag = team['flag']
+            team_stored.short = short_match.group(1)
+            team_stored.href = team['href']
+            team_stored.put()
 
         return team_stored
 
@@ -59,14 +60,14 @@ class Fifa2010(object):
 
         group = self.init_group(game['group'],Fifa2010().groupstage)
         game_stored = SingleGame.all().filter('fifaId =',int(game['id'])).get()
-        if game_stored is None: game_stored = SingleGame(fifaId=int(game['id']),group = group)
-
-        game_stored.time = game['time']
-        game_stored.location = game['location']
-        game_stored.group_ref = group
-        game_stored.homeTeam_ref = self.init_team(game['home_team'])
-        game_stored.awayTeam_ref = self.init_team(game['away_team'])
-        game_stored.put()
+        if game_stored is None:
+            game_stored = SingleGame(fifaId=int(game['id']),group = group)
+            game_stored.time = game['time']
+            game_stored.location = game['location']
+            game_stored.group_ref = group
+            game_stored.homeTeam_ref = self.init_team(game['home_team'])
+            game_stored.awayTeam_ref = self.init_team(game['away_team'])
+            game_stored.put()
 
     @classmethod
     def init_ko_game(self, game):
@@ -75,12 +76,12 @@ class Fifa2010(object):
         kogroup = self.init_group('KO ' + game['id'], group)
 
         game_stored = SingleGame.all().filter('fifaId =',int(game['id'])).get()
-        if game_stored is None: game_stored = SingleGame(fifaId = int(game['id']), group = kogroup)
-
-        game_stored.time = game['time']
-        game_stored.location = game['location']
-        game_stored.group = kogroup
-        game_stored.put()
+        if game_stored is None:
+            game_stored = SingleGame(fifaId = int(game['id']), group = kogroup)
+            game_stored.time = game['time']
+            game_stored.location = game['location']
+            game_stored.group = kogroup
+            game_stored.put()
 
     @classmethod
     def init_tree(self):

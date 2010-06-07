@@ -7,7 +7,7 @@
 <thead><tr><th>{% trans "Name" %}</th><th>{% trans "Score" %}</th></tr></thead>
 <tbody>
 {% for scoreline in scoreboard %}
-<tr><td>{{scoreline.user.full_name}}</td><td>{{scoreline.score}}</td></tr>
+<tr><td>{{scoreline.user.nick}}</td><td>{{scoreline.score}}</td></tr>
 {% endfor %}
 </tbody></table>
 {% endblock %}
