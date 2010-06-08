@@ -192,6 +192,11 @@ class MyRequestHandler(webapp.RequestHandler):
                 elif user.access_token != cookie["access_token"]:
                     user.access_token = cookie["access_token"]
                     user.put()
+                if self.current_user():
+                    user.localuser = self.current_user()
+                    user.put()
+                elif not user.localuser is None:
+                    self.loggedin_user = user.localuser
                 self._fb_current_user = user
         return self._fb_current_user
 
@@ -226,6 +231,8 @@ class MyRequestHandler(webapp.RequestHandler):
                 if self.loggedin_user.google_user != google_user:
                     self.loggedin_user.google_user = google_user
                     self.loggedin_user.put()
+
+        self.fb_current_user
         return self.loggedin_user
 
     def get_template_values(self):
@@ -319,14 +326,14 @@ class UserHandler(MainHandler):
         user.authcode = None
         user.put()
 
-class GamesHandler(UserHandler):
+class GamesHandler(MainHandler):
     def get(self, filter=''):
         self.get_template_values()
         if filter == '': filter = Fifa2010().tournament.key()
         self.template_values['games'] = GroupGame.get(filter).widewalk()
         MainHandler.get(self,'games')
 
-class TodayHandler(UserHandler):
+class TodayHandler(MainHandler):
     def get(self, filter=''):
         self.get_template_values()
         if filter == '': filter = Fifa2010().tournament.key()
@@ -470,7 +477,7 @@ class AllTipsHandler(GamesHandler):
 
         MainHandler.get(self,'alltips')
     
-class PoolHandler(UserHandler):
+class PoolHandler(MainHandler):
     def get(self, filter = ''):
         self.get_template_values()
         self.submenu('scoreboard')
@@ -480,7 +487,7 @@ class PoolHandler(UserHandler):
         self.template_values['scoreboard'] = pool.scoreboard(LocalUser.all().fetch(100), Fifa2010().result, groupgame)
         MainHandler.get(self,'scoreboard')
 
-class ReferralHandler(UserHandler):
+class ReferralHandler(MainHandler):
     def get(self, authcode):
         if self.logout():
             return

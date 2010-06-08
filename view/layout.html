@@ -17,10 +17,6 @@
 {% block content %}<h1>{% trans "xHomePool, eh!" %}</h1>{% endblock %}
 <div id="fb-root"></div>
 </div>
-<fb:login-button autologoutlink="true"></fb:login-button>
-{% if fb_user %}
-  <p><a href="{{ fb_user.profile_url }}"><img src="http://graph.facebook.com/{{ fb_user.id }}/picture?type=square"/></a></p>
-{% endif %}
 <div style="background-color: blue; color: white; font-size: 110%;"><a style="color: white;" href="http://www.insead.edu/facultyresearch/faculty/personal/nbearden/qualtrics.cfm">INSEAD - Online World Cup Prediction Study</a></div>
 {% include "footer.html" %}</div></div>
 <script>
