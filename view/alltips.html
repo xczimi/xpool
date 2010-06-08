@@ -1,7 +1,6 @@
 {% extends "layout.html" %}{% load i18n %}
-{% block content %}
-<h{{ groupgame.level }}>
-{% if groupgame.upgroup %}<a href="/alltips/{{ groupgame.upgroup.key }}">{{ groupgame.upgroup.name }}</a> &gt;{% endif %}<a href="/alltips/{{ groupgame.key }}">{{ groupgame.name }}</a></h{{ groupgame.level }}>
+{% block content %}{% if groupgame %}
+<h{{ groupgame.level }}>{{ groupgame.name }}</h{{ groupgame.level }}>
 <table>
 <thead>
 <tr>
@@ -22,5 +21,5 @@
 </tr>
 {% endfor %}
 </tbody>
-</table>
+</table>{% endif %}
 {% endblock %}

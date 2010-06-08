@@ -17,7 +17,6 @@ table { border-collapse: collapse; }
 #userline #login_google { float: left; }
 
 #menuline { padding: 2px; border-bottom: 1px dotted black; background-color: rgb(192, 192, 192); text-align: left; }
-#submenuline { padding: 2px; border-bottom: 1px dotted black; background-color: rgb(224, 224, 224); text-align: left; }
 
 #foot { padding: 2px;  border-top: 5px solid black; height: 32px; background-color: white; text-align: center; vertical-align: bottom; }
 
@@ -39,6 +38,15 @@ a { color: black; }
 #menuline li { display: inline; border: 1px solid rgb(192, 192, 192); border-bottom: 1px solid black; border-right: 1px solid black; background-color: white; padding: 1px; margin: 1px; }
 
 #menuline li a { text-decoration: none; cursor: default; }
+
+#submenuline { padding: 2px; border-bottom: 1px dotted black; text-align: left; font-size: 150%; }
+
+#submenuline ul { padding: 0px; margin: 2px; }
+
+#submenuline li { display: inline; border: 1px solid white; border-bottom: 1px solid black; border-right: 1px solid black; background-color: #4D4D73; padding: 1px; margin: 1px; margin-right: 5px; }
+
+#submenuline li a { text-decoration: none; cursor: default; color: white; }
+
 
 form { display: inline; }
 

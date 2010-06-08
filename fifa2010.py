@@ -91,6 +91,6 @@ class Fifa2010(object):
         if Fifa2010().kostage is None: Fifa2010().kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", upgroup_ref = Fifa2010().tournament)
         if Fifa2010().result is None: Fifa2010().result = LocalUser.get_or_insert(key_name="result", email="fifa@fifa.com", password='fifa')
         groupgames = fifa.get_games("index")
-        for game in groupgames: self.init_group_game(game)
+        #for game in groupgames: self.init_group_game(game)
         kogames = fifa.get_games("kostage")
         for kogame in kogames: self.init_ko_game(kogame)
