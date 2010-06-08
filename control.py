@@ -215,6 +215,15 @@ class MainHandler(MyRequestHandler):
         self.get_template_values()
         if '' == page: page = "index"
         self.render(page)
+    def submenu(self, page):
+        groupgames = []
+        for game in Fifa2010().tournament.widewalk():
+            if len(game.singlegames()) > 0:
+                groupgames.append(game)
+
+        self.template_values['filtergames'] = groupgames
+        self.template_values['filter'] = filter
+        self.template_values['filter_uri'] = '/' + page
 
 class UserHandler(MainHandler):
     @need_login
@@ -271,14 +280,14 @@ class UserHandler(MainHandler):
         user.authcode = None
         user.put()
 
-class GamesHandler(MainHandler):
+class GamesHandler(UserHandler):
     def get(self, filter=''):
         self.get_template_values()
         if filter == '': filter = Fifa2010().tournament.key()
         self.template_values['games'] = GroupGame.get(filter).widewalk()
         MainHandler.get(self,'games')
 
-class TodayHandler(MainHandler):
+class TodayHandler(UserHandler):
     def get(self, filter=''):
         self.get_template_values()
         if filter == '': filter = Fifa2010().tournament.key()
@@ -363,10 +372,11 @@ class MyTipsHandler(GamesHandler):
     @need_login
     def get(self, filter=''):
         self.get_template_values()
-        if filter == '': filter = Fifa2010().tournament.key()
+        self.submenu('mytips')
+        if filter == '': filter = self.template_values['filtergames'][0].key()
 
-        mytips_games = []
-        for game in GroupGame.get(filter).widewalk():
+        game = GroupGame.get(filter)
+        if len(game.singlegames()) > 0:
             groupgame = {'game':game,'singlegames':[]}
             for singlegame in game.singlegames():
                 bet = self.current_user().singlegame_result(singlegame)
@@ -378,7 +388,6 @@ class MyTipsHandler(GamesHandler):
                     'editable': not bet.locked and not result.locked and NOW < game.groupstart(),
                     'result':result,
                     'point':point})
-            mytips_games.append(groupgame)
             groupbet = self.current_user().groupgame_result(game)
             groupresult = Fifa2010().result.groupgame_result(game)
             groupgame['editable'] = not groupbet.locked and not groupresult.locked and NOW < game.groupstart()
@@ -386,9 +395,8 @@ class MyTipsHandler(GamesHandler):
             groupgame['bet_ranking'] = groupbet.get_ranks()
             groupgame['result_ranking'] = groupresult.get_ranks()
             groupgame['point'] = pool.groupgame_result_point(groupbet, groupresult)
-
-        self.template_values['games'] = mytips_games
-        self.template_values['scorelist'] = [''] + Result.score_list()
+            self.template_values['groupgame'] = groupgame
+            self.template_values['scorelist'] = [''] + Result.score_list()
 
         MainHandler.get(self,'mytips')
 
@@ -405,7 +413,8 @@ class AllTipsHandler(GamesHandler):
     @need_login
     def get(self, filter=''):
         self.get_template_values()
-        if filter == '': filter = Fifa2010().tournament.key()
+        self.submenu('alltips')
+        if filter == '': filter = self.template_values['filtergames'][0].key()
 
         group = GroupGame.get(filter)
         if(len(group.singlegames()) > 0):
@@ -416,24 +425,20 @@ class AllTipsHandler(GamesHandler):
                 'game':singlegame,
                 'tips': self.singlegame_tips(singlegame, users)
                 } for singlegame in group.singlegames() if self.current_user().singlegame_result(singlegame)]
-            MainHandler.get(self,'alltips')
-        else:
-            games = []
-            for game in group.widewalk():
-                games.append({'game':game,'singlegames':[]})
-            self.template_values['games'] = games
-            MainHandler.get(self,'alltips_tree')
+
+        MainHandler.get(self,'alltips')
     
-class PoolHandler(MainHandler):
+class PoolHandler(UserHandler):
     def get(self, filter = ''):
         self.get_template_values()
+        self.submenu('scoreboard')
         if filter == '': filter = Fifa2010().tournament.key()
         groupgame = GroupGame.get(filter)
         self.template_values['groupgame'] = groupgame
         self.template_values['scoreboard'] = pool.scoreboard(LocalUser.all().fetch(100), Fifa2010().result, groupgame)
         MainHandler.get(self,'scoreboard')
 
-class ReferralHandler(MainHandler):
+class ReferralHandler(UserHandler):
     def get(self, authcode):
         if self.logout():
             return
