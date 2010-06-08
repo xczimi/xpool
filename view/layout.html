@@ -15,7 +15,29 @@
 <span id="message">{{ message }}</span>
 {% if filtergames %}<div id="submenuline"><ul>{% for game in filtergames %}<li><a href="{{ filter_uri }}/{{ game.key }}">{{ game.name }}</a></li>{% endfor %}</ul></div>{% endif %}
 {% block content %}<h1>{% trans "xHomePool, eh!" %}</h1>{% endblock %}
+<div id="fb-root"></div>
 </div>
+<fb:login-button autologoutlink="true"></fb:login-button>
+{% if fb_user %}
+  <p><a href="{{ fb_user.profile_url }}"><img src="http://graph.facebook.com/{{ fb_user.id }}/picture?type=square"/></a></p>
+{% endif %}
 <div style="background-color: blue; color: white; font-size: 110%;"><a style="color: white;" href="http://www.insead.edu/facultyresearch/faculty/personal/nbearden/qualtrics.cfm">INSEAD - Online World Cup Prediction Study</a></div>
-{% include "footer.html" %}</div></div></body>
+{% include "footer.html" %}</div></div>
+<script>
+  window.fbAsyncInit = function() {
+    FB.init({appId: '101120486599460', status: true, cookie: true,
+             xfbml: true});
+    FB.Event.subscribe('{% if fb_user %}auth.logout{% else %}auth.login{% endif %}', function(response) {
+      window.location.reload();
+    });
+  };
+  (function() {
+    var e = document.createElement('script');
+    e.type = 'text/javascript';
+    e.src = document.location.protocol + '//connect.facebook.net/en_US/all.js';
+    e.async = true;
+    document.getElementById('fb-root').appendChild(e);
+  }());
+</script>
+</body>
 </html>

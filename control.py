@@ -28,7 +28,13 @@ from fifa2010 import Fifa2010
 
 import pool
 
+import facebook
+
 NOW = datetime.utcnow()
+
+FACEBOOK_APP_ID = "101120486599460"
+FACEBOOK_APP_SECRET = "5f248ac5feb83660d5a925f81b954712"
+
 
 def need_login(func):
     """ Decorator for MyRequestHandler controller classes to force some login. """
@@ -157,6 +163,38 @@ class MyRequestHandler(webapp.RequestHandler):
             self.set_session_message(_('Successful referral, set your password, or link your google account!'))
             self.redirect('/profile')
 
+    """Provides access to the active Facebook user in self.fb_fb_current_user
+
+    The property is lazy-loaded on first access, using the cookie saved
+    by the Facebook JavaScript SDK to determine the user ID of the active
+    user. See http://developers.facebook.com/docs/authentication/ for
+    more information.
+    """
+    @property
+    def fb_current_user(self):
+        if not hasattr(self, "_fb_current_user"):
+            self._fb_current_user = None
+            cookie = facebook.get_user_from_cookie(
+                self.request.cookies, FACEBOOK_APP_ID, FACEBOOK_APP_SECRET)
+            if cookie:
+                # Store a local instance of the user data so we don't need
+                # a round-trip to Facebook on every request
+                user = FacebookUser.get_by_key_name(cookie["uid"])
+                if not user:
+                    graph = facebook.GraphAPI(cookie["access_token"])
+                    profile = graph.get_object("me")
+                    user = FacebookUser(key_name=str(profile["id"]),
+                                id=str(profile["id"]),
+                                name=profile["name"],
+                                profile_url=profile["link"],
+                                access_token=cookie["access_token"])
+                    user.put()
+                elif user.access_token != cookie["access_token"]:
+                    user.access_token = cookie["access_token"]
+                    user.put()
+                self._fb_current_user = user
+        return self._fb_current_user
+
     def current_user(self):
         google_user = users.get_current_user()
 
@@ -195,6 +233,7 @@ class MyRequestHandler(webapp.RequestHandler):
         if self.template_values is None:
             self.template_values = {
                 'user' : self.current_user(),
+                'fb_user' : self.fb_current_user,
                 'is_admin' : users.is_current_user_admin(),
                 'message': message}
         if message is not None: self.set_session_message(None)

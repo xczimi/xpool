@@ -102,6 +102,15 @@ class LocalUserGroup(db.Model):
     root = db.ReferenceProperty(LocalUser,required=True)
     password = db.StringProperty()
 
+class FacebookUser(db.Model):
+    id = db.StringProperty(required=True)
+    created = db.DateTimeProperty(auto_now_add=True)
+    updated = db.DateTimeProperty(auto_now=True)
+    name = db.StringProperty(required=True)
+    profile_url = db.StringProperty(required=True)
+    access_token = db.StringProperty(required=True)
+    localuser = db.ReferenceProperty(LocalUser)
+
 MAX_TEAMS = 256
 
 class Team(db.Model):
