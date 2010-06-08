@@ -39,24 +39,24 @@ def perm_cached(func):
         return data
     return cached_func
 
+perm_cache = {}
+
 def perm_cached_class(func, flush=False):
-    _cache = {}
+    perm_cache = {}
     if flush:
-        _cache = {}
+        perm_cache = {}
         memcache.flush_all()
     def cached_func(self):
         cache_key = self.__name__ + "/" + func.__name__
-        if cache_key in _cache:
-            return _cache[cache_key]
+        if cache_key in perm_cache:
+            return perm_cache[cache_key]
         data = memcache.get(cache_key)
         if data is None:
             data = func(self)
             memcache.add(cache_key, data)
-        _cache[cache_key] = data
+        perm_cache[cache_key] = data
         return data
     return cached_func
-
-MAX_USER = 256
 
 class LocalUser(db.Model):
     email = db.EmailProperty(required=True)
@@ -66,6 +66,7 @@ class LocalUser(db.Model):
     password = db.StringProperty()
     authcode = db.StringProperty()
     referrer = db.SelfReferenceProperty(collection_name="referral_set")
+    active = db.BooleanProperty()
     #groups = db.ListProperty(db.Key)
     def __str__(self):
         if self.nick: return self.nick.encode('utf-8')
@@ -97,6 +98,10 @@ class LocalUser(db.Model):
             self.groupresults()[str(groupgame.key())] = GroupResult(user=self,groupgame=groupgame)
         return self.groupresults()[str(groupgame.key())]
 
+    @classmethod
+    def actives(self):
+        return self.all().filter('active =',True).fetch(MAX_ITEMS)
+
 class LocalUserGroup(db.Model):
     name = db.StringProperty(required=True)
     root = db.ReferenceProperty(LocalUser,required=True)
@@ -111,7 +116,7 @@ class FacebookUser(db.Model):
     access_token = db.StringProperty(required=True)
     localuser = db.ReferenceProperty(LocalUser)
 
-MAX_TEAMS = 256
+MAX_ITEMS = 256
 
 class Team(db.Model):
     name = db.StringProperty(required=True)
@@ -128,10 +133,16 @@ class Team(db.Model):
     @classmethod
     @perm_cached_class
     def everything(self):
+        print "everything"
         teams = {}
-        for team in Team.all().fetch(MAX_TEAMS):
+        for team in self.all().fetch(MAX_ITEMS):
             teams[str(team.key())] = team
         return teams
+
+    @classmethod
+    def nothing(self):
+        memcache.delete(self.__name__ + "/everything")
+        return []
 
 class TeamGroupRank:
     team = None
@@ -161,8 +172,6 @@ class TeamGroupRank:
         if self.gf > other.gf: return 1
         return 0
 
-MAX_GAMES = 256
-
 class GroupGame(db.Model):
     name = db.StringProperty(required=True)
     upgroup_ref = db.SelfReferenceProperty(collection_name="game_set")
@@ -179,14 +188,6 @@ class GroupGame(db.Model):
     def level(self):
         if self.upgroup() is None: return 1
         return self.upgroup().level() + 1
-
-    @classmethod
-    @perm_cached_class
-    def everything(self):
-        games = {}
-        for game in GroupGame.all().fetch(MAX_GAMES):
-            games[str(game.key())] = game
-        return games
 
     @cached
     def singlegames(self):
@@ -223,6 +224,20 @@ class GroupGame(db.Model):
     @cached
     def groupstart(self):
         return reduce(min,[group.groupstart() for group in self.groupgames()] + [single.time for single in self.singlegames()], datetime.max)
+
+    @classmethod
+    @perm_cached_class
+    def everything(self):
+        print "everything"
+        teams = {}
+        for team in self.all().fetch(MAX_ITEMS):
+            teams[str(team.key())] = team
+        return teams
+
+    @classmethod
+    def nothing(self):
+        memcache.delete(self.__name__ + "/everything")
+        return []
 
 class SingleGame(db.Model):
     time = db.DateTimeProperty()
@@ -262,10 +277,16 @@ class SingleGame(db.Model):
     @classmethod
     @perm_cached_class
     def everything(self):
-        games = {}
-        for game in SingleGame.all().fetch(MAX_GAMES):
-            games[str(game.key())] = game
-        return games
+        print "everything"
+        teams = {}
+        for team in self.all().fetch(MAX_ITEMS):
+            teams[str(team.key())] = team
+        return teams
+
+    @classmethod
+    def nothing(self):
+        memcache.delete(self.__name__ + "/everything")
+        return []
 
     @cached
     def results(self):

@@ -367,7 +367,11 @@ class MyTipsHandler(GamesHandler):
 
     @need_login
     def save_current(self):
-        return self.save(self.current_user())
+        current_user = self.current_user()
+        if not current_user.active:
+            current_user.active = True
+            current_user.put()
+        return self.save(current_user)
 
     def save(self, user):
         results = user.singleresults()
@@ -462,7 +466,7 @@ class AllTipsHandler(GamesHandler):
 
         group = GroupGame.get(filter)
         if(len(group.singlegames()) > 0):
-            users = [user for user in LocalUser.all().fetch(LocalUser.all().count())]
+            users = [user for user in LocalUser.actives()]
             self.template_values['groupgame'] = group
             self.template_values['users'] = users
             self.template_values['alltips'] = []
@@ -484,7 +488,7 @@ class PoolHandler(MainHandler):
         if filter == '': filter = Fifa2010().tournament.key()
         groupgame = GroupGame.get(filter)
         self.template_values['groupgame'] = groupgame
-        self.template_values['scoreboard'] = pool.scoreboard(LocalUser.all().fetch(100), Fifa2010().result, groupgame)
+        self.template_values['scoreboard'] = pool.scoreboard(LocalUser.actives(), Fifa2010().result, groupgame)
         MainHandler.get(self,'scoreboard')
 
 class ReferralHandler(MainHandler):
