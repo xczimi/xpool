@@ -134,7 +134,6 @@ class Team(db.Model):
     @classmethod
     @perm_cached_class
     def everything(self):
-        print "everything"
         teams = {}
         for team in self.all().fetch(MAX_ITEMS):
             teams[str(team.key())] = team
@@ -229,7 +228,6 @@ class GroupGame(db.Model):
     @classmethod
     @perm_cached_class
     def everything(self):
-        print "everything"
         teams = {}
         for team in self.all().fetch(MAX_ITEMS):
             teams[str(team.key())] = team
@@ -278,7 +276,6 @@ class SingleGame(db.Model):
     @classmethod
     @perm_cached_class
     def everything(self):
-        print "everything"
         teams = {}
         for team in self.all().fetch(MAX_ITEMS):
             teams[str(team.key())] = team
