@@ -403,7 +403,7 @@ class AllTipsHandler(GamesHandler):
         tips = []
         results = singlegame.results()
         for user in users:
-            if str(user.key()) in results:
+            if str(user.key()) in results and results[str(user.key())].locked:
                 tips.append(results[str(user.key())])
             else:
                 tips.append({})
@@ -419,10 +419,15 @@ class AllTipsHandler(GamesHandler):
             users = [user for user in LocalUser.all().fetch(LocalUser.all().count())]
             self.template_values['groupgame'] = group
             self.template_values['users'] = users
-            self.template_values['alltips'] = [{
-                'game':singlegame,
-                'tips': self.singlegame_tips(singlegame, users)
-                } for singlegame in group.singlegames() if self.current_user().singlegame_result(singlegame)]
+            self.template_values['alltips'] = []
+            for singlegame in group.singlegames():
+                result = self.current_user().singlegame_result(singlegame)
+                if result.locked:
+                    self.template_values['alltips'].append({'game': singlegame,
+                        'tips': self.singlegame_tips(singlegame, users)
+                        })
+                else:
+                    self.template_values['alltips'].append({'game': singlegame})
 
         MainHandler.get(self,'alltips')
     
