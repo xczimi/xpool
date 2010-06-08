@@ -280,14 +280,14 @@ class UserHandler(MainHandler):
         user.authcode = None
         user.put()
 
-class GamesHandler(UserHandler):
+class GamesHandler(MainHandler):
     def get(self, filter=''):
         self.get_template_values()
         if filter == '': filter = Fifa2010().tournament.key()
         self.template_values['games'] = GroupGame.get(filter).widewalk()
         MainHandler.get(self,'games')
 
-class TodayHandler(UserHandler):
+class TodayHandler(MainHandler):
     def get(self, filter=''):
         self.get_template_values()
         if filter == '': filter = Fifa2010().tournament.key()
@@ -431,7 +431,7 @@ class AllTipsHandler(GamesHandler):
 
         MainHandler.get(self,'alltips')
     
-class PoolHandler(UserHandler):
+class PoolHandler(MainHandler):
     def get(self, filter = ''):
         self.get_template_values()
         self.submenu('scoreboard')
@@ -441,7 +441,7 @@ class PoolHandler(UserHandler):
         self.template_values['scoreboard'] = pool.scoreboard(LocalUser.all().fetch(100), Fifa2010().result, groupgame)
         MainHandler.get(self,'scoreboard')
 
-class ReferralHandler(UserHandler):
+class ReferralHandler(MainHandler):
     def get(self, authcode):
         if self.logout():
             return
