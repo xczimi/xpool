@@ -163,7 +163,7 @@ class MyRequestHandler(webapp.RequestHandler):
             self.set_session_message(_('Successful referral, set your password, or link your google account!'))
             self.redirect('/profile')
 
-    """Provides access to the active Facebook user in self.fb_fb_current_user
+    """Provides access to the active Facebook user in self.fb_current_user
 
     The property is lazy-loaded on first access, using the cookie saved
     by the Facebook JavaScript SDK to determine the user ID of the active
@@ -179,25 +179,34 @@ class MyRequestHandler(webapp.RequestHandler):
             if cookie:
                 # Store a local instance of the user data so we don't need
                 # a round-trip to Facebook on every request
-                user = FacebookUser.get_by_key_name(cookie["uid"])
-                if not user:
+                fb_user= FacebookUser.get_by_key_name(cookie["uid"])
+                if not fb_user:
                     graph = facebook.GraphAPI(cookie["access_token"])
                     profile = graph.get_object("me")
-                    user = FacebookUser(key_name=str(profile["id"]),
+                    fb_user = FacebookUser(key_name=str(profile["id"]),
                                 id=str(profile["id"]),
                                 name=profile["name"],
                                 profile_url=profile["link"],
+                                email=profile["email"],
                                 access_token=cookie["access_token"])
-                    user.put()
-                elif user.access_token != cookie["access_token"]:
-                    user.access_token = cookie["access_token"]
-                    user.put()
+                    fb_user.put()
+                elif fb_user.access_token != cookie["access_token"]:
+                    fb_user.access_token = cookie["access_token"]
+                    fb_user.put()
                 if self.current_user():
-                    user.localuser = self.current_user()
-                    user.put()
-                elif not user.localuser is None:
-                    self.loggedin_user = user.localuser
-                self._fb_current_user = user
+                    fb_user.localuser = self.current_user()
+                    fb_user.put()
+                elif fb_user.localuser is None:
+                    self.loggedin_user = LocalUser(email=fb_user.email,
+                            nick=fb_user.name,
+                            password='',
+                            full_name=fb_user.name)
+                    self.loggedin_user.put()
+                    fb_user.localuser = self.loggedin_user
+                    fb_user.put()
+                else:
+                    self.loggedin_user = fb_user.localuser
+                self._fb_current_user = fb_user
         return self._fb_current_user
 
     def current_user(self):

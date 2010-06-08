@@ -115,6 +115,7 @@ class FacebookUser(db.Model):
     profile_url = db.StringProperty(required=True)
     access_token = db.StringProperty(required=True)
     localuser = db.ReferenceProperty(LocalUser)
+    email = db.EmailProperty(required=True)
 
 MAX_ITEMS = 256
 
