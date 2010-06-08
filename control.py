@@ -366,8 +366,6 @@ class MyTipsHandler(GamesHandler):
                 if "grouplock." + str(groupresult.groupgame.key()) in self.request.arguments():
                     groupresult.locked = True
                 groupresult.put()
-            else:
-                self.set_session_message(_('Illegal draw'))
 
     @need_login
     def get(self, filter=''):
