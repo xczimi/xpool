@@ -1,12 +1,22 @@
 {% load i18n %}
+{% if fb_user %}
+<span id="fb_info">
+  <p><a href="{{ fb_user.profile_url }}"><img src="http://graph.facebook.com/{{ fb_user.id }}/picture?type=square"/></a></p>
+</span>
+{% endif %}
 {% if user %}
+{% blocktrans %}Hi {{ user }}! You are inside. {% endblocktrans %}
+{% if not fb_user %}
 <span id="logout">
 <form method='post'>
-{% blocktrans %}Hi {{ user }}! You are inside. {% endblocktrans %}
 <input type='hidden' name='action' value='auth/logout'>
 <input type="submit" value='{% trans "get me outside!" %}'>
 </form>
 </span>
+<span id="login_fb">
+<fb:login-button perms="email,publish_stream"></fb:login-button>
+</span>
+{% endif %}
 <span id="login_google">
 {% if not user.google_user %}
 <form method='post' name='google_loginform'><input type='hidden' name='action' value='auth/glogin' /></form>
@@ -27,4 +37,9 @@ p:&nbsp;<input type="password" id="password" name="password" size="10" maxlength
 <form method='post' name='google_loginform'><input type='hidden' name='action' value='auth/glogin' /></form>
 <a href="#" onclick='forms.google_loginform.submit();'>Google login</a>
 </span>
+{% if not fb_user %}
+<span id="login_fb">
+<fb:login-button perms="email,publish_stream"></fb:login-button>
+</span>
+{% endif %}
 {% endif %}
