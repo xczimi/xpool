@@ -39,7 +39,7 @@ FACEBOOK_APP_SECRET = "5f248ac5feb83660d5a925f81b954712"
 def need_login(func):
     """ Decorator for MyRequestHandler controller classes to force some login. """
     def with_login(self, *args):
-        if not self.current_user:
+        if not self.current_user():
             self.get_template_values()
             self.template_values['message'] = _("Login required")
             self.render('index')
@@ -69,7 +69,7 @@ class MyRequestHandler(webapp.RequestHandler):
         return True
 
     def logout(self):
-        if self.current_user:
+        if self.current_user():
             self.set_session_email(None)
             if users.get_current_user:
                 self.set_session_message(_('Successful google logout'))
@@ -193,8 +193,8 @@ class MyRequestHandler(webapp.RequestHandler):
                 elif fb_user.access_token != cookie["access_token"]:
                     fb_user.access_token = cookie["access_token"]
                     fb_user.put()
-                if self.current_user and str(fb_user.localuser.key()) != str(self.current_user.key()):
-                    fb_user.localuser = self.current_user
+                if self.current_user() and str(fb_user.localuser.key()) != str(self.current_user().key()):
+                    fb_user.localuser = self.current_user()
                     fb_user.put()
                 elif fb_user.localuser is None:
                     self.loggedin_user = LocalUser(email=fb_user.email,
@@ -209,7 +209,6 @@ class MyRequestHandler(webapp.RequestHandler):
                 self._fb_current_user = fb_user
         return self._fb_current_user
 
-    @property
     def current_user(self):
         google_user = users.get_current_user()
 
@@ -249,7 +248,7 @@ class MyRequestHandler(webapp.RequestHandler):
         message = self.get_session_message()
         if self.template_values is None:
             self.template_values = {
-                'user' : self.current_user,
+                'user' : self.current_user(),
                 'fb_user' : self.fb_current_user,
                 'is_admin' : users.is_current_user_admin(),
                 'message': message}
@@ -313,7 +312,7 @@ class UserHandler(MainHandler):
         if LocalUser.all().filter('email =',email).count() > 0:
             self.set_session_message(_('This user is already in the system (based on email)!'))
             return
-        referral = LocalUser(email=email,nick=nick,full_name=full_name,referrer=self.current_user,authcode = str(uuid.uuid1().hex))
+        referral = LocalUser(email=email,nick=nick,full_name=full_name,referrer=self.current_user(),authcode = str(uuid.uuid1().hex))
         self.get_template_values()
         self.template_values['referral'] = referral
         self.template_values['auth_url'] = self.request.host_url + '/referral/' + referral.authcode
@@ -326,14 +325,14 @@ class UserHandler(MainHandler):
         self.set_session_message(_('Invitation sent')+' '+self.template_values['auth_url'])
 
     def save_profile(self, email, nick, full_name):
-        user = self.current_user
+        user = self.current_user()
         user.email = email
         user.nick = nick
         user.full_name = full_name
         user.put()
 
     def change_password(self, new_password):
-        user = self.current_user
+        user = self.current_user()
         user.password = new_password
         user.authcode = None
         user.put()
@@ -350,12 +349,12 @@ class TodayHandler(MainHandler):
         self.get_template_values()
         if filter == '': filter = Fifa2010().tournament.key()
         singlegames = SingleGame.all().filter('time >=',NOW+timedelta(days=-2)).filter('time <=',NOW+timedelta(days=2)).order('time').fetch(12)
-        if self.current_user:
+        if self.current_user():
             self.template_values['games'] = [{
                 'game':singlegame,
-                'bet':self.current_user.singlegame_result(singlegame),
+                'bet':self.current_user().singlegame_result(singlegame),
                 'result':Fifa2010().result.singlegame_result(singlegame),
-                'point':pool.singlegame_result_point(self.current_user.singlegame_result(singlegame), Fifa2010().result.singlegame_result(singlegame))
+                'point':pool.singlegame_result_point(self.current_user().singlegame_result(singlegame), Fifa2010().result.singlegame_result(singlegame))
                 } for singlegame in singlegames]
         else:
             self.template_values['games'] = [{
@@ -379,7 +378,7 @@ class MyTipsHandler(GamesHandler):
 
     @need_login
     def save_current(self):
-        current_user = self.current_user
+        current_user = self.current_user()
         if not current_user.active:
             current_user.active = True
             current_user.put()
@@ -396,25 +395,32 @@ class MyTipsHandler(GamesHandler):
                     result = user.singlegame_result(singlegame)
                 except db.BadKeyError:
                     continue
+                except KeyError:
+                    continue
                 if self.request.get(argument) != '':
                     if name == 'homeScore':
                         result.homeScore = int(self.request.get(argument))
                     elif name == 'awayScore':
                         result.awayScore = int(self.request.get(argument))
                     result.put()
-                user.singleresults(nocache=True)
-                singlegame.results(nocache=True)
+                    user.singleresults(nocache=True)
+                    singlegame.results(nocache=True)
         for argument in self.request.arguments():
             match = re.match(r'^lock\.(.*)$', argument)
             if match:
                 key = match.group(1)
-                singlegame = SingleGame.byKey(key)
-                result = user.singlegame_result(singlegame)
+                try:
+                    singlegame = SingleGame.byKey(key)
+                    result = user.singlegame_result(singlegame)
+                except db.BadKeyError:
+                    continue
+                except KeyError:
+                    continue
                 if result.homeScore >= 0 and result.awayScore >= 0:
                     result.locked = True
                     result.put()
-                user.singleresults(nocache=True)
-                singlegame.results(nocache=True)
+                    user.singleresults(nocache=True)
+                    singlegame.results(nocache=True)
 
         groupinit = []
         for argument in self.request.arguments():
@@ -422,9 +428,12 @@ class MyTipsHandler(GamesHandler):
             if match:
                 key, idx = match.groups()
                 try:
-                    groupresult = user.groupgame_result(GroupGame.byKey(key))
+                    groupgame = GroupGame.byKey(key)
+                except KeyError:
+                    continue
                 except db.BadKeyError:
                     continue
+                groupresult = user.groupgame_result(groupgame)
                 if groupresult not in groupinit:
                     groupinit.append(groupresult)
                     groupresult.draw_order = [rank.team.name for rank in groupresult.get_ranks()]
@@ -441,11 +450,11 @@ class MyTipsHandler(GamesHandler):
         self.get_template_values()
         self.submenu('mytips')
         if filter == '': filter = self.template_values['filtergames'][0].key()
-        game = GroupGame.byKey(filter)
+        game = GroupGame.get(filter)
         if len(game.singlegames()) > 0:
             groupgame = {'game':game,'singlegames':[]}
             for singlegame in game.singlegames():
-                bet = self.current_user.singlegame_result(singlegame)
+                bet = self.current_user().singlegame_result(singlegame)
                 result = Fifa2010().result.singlegame_result(singlegame)
                 point = pool.singlegame_result_point(bet, result)
                 groupgame['singlegames'].append({
@@ -454,7 +463,7 @@ class MyTipsHandler(GamesHandler):
                     'editable': not bet.locked and not result.locked and NOW < game.groupstart(),
                     'result':result,
                     'point':point})
-            groupbet = self.current_user.groupgame_result(game)
+            groupbet = self.current_user().groupgame_result(game)
             groupresult = Fifa2010().result.groupgame_result(game)
             groupgame['editable'] = not groupbet.locked and not groupresult.locked and NOW < game.groupstart()
             groupgame['bet'] = groupbet
@@ -489,7 +498,7 @@ class AllTipsHandler(GamesHandler):
             self.template_values['users'] = users
             self.template_values['alltips'] = []
             for singlegame in group.singlegames():
-                result = self.current_user.singlegame_result(singlegame)
+                result = self.current_user().singlegame_result(singlegame)
                 if result.locked:
                     self.template_values['alltips'].append({'game': singlegame,
                         'tips': self.singlegame_tips(singlegame, users)
@@ -549,7 +558,7 @@ class AdminHandler(MyRequestHandler):
                     pass
                 else:
                     self.template_values['users'] = LocalUser.all()
-                    #print pool.score_group(self.current_user,Fifa2010().result,Fifa2010().tournament)
+                    #print pool.score_group(self.current_user(),Fifa2010().result,Fifa2010().tournament)
                     self.render('admin/users')
             elif "result" == admin:
                 if len(args) > 1:

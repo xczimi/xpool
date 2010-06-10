@@ -12,7 +12,8 @@
 <div id="userline">{% include "userline.html" %}</div>
 <div id="menuline">{% include "menuline.html" %}</div>
 <div id="maincontent">
-<div style="background-color: green; color: white; font-size: 200%;">{% trans "Ladies and gentlemen, it's ON! Enter your predictions!" %}</div>
+<!-- div style="background-color: green; color: white; font-size: 200%;">{% trans "Ladies and gentlemen, it's ON! Enter your predictions!" %}</div -->
+<div style="background-color: red; color: white; font-size: 200%;">{% trans "Houston! they have a problem, I will clear this message as soon as it's fixed! Sorry about the inconvenience..." %}</div>
 <span id="message">{{ message }}</span>
 {% if filtergames %}<div id="submenuline"><ul>{% for game in filtergames %}<li><a href="{{ filter_uri }}/{{ game.key }}">{{ game.name }}</a></li>{% endfor %}</ul></div>{% endif %}
 {% block content %}<h1>{% trans "xHomePool, eh!" %}</h1>{% endblock %}

@@ -36,8 +36,9 @@ def perm_cached(func):
     def perm_cached_func(self, nocache=False):
         cache_key = self.__class__.__name__ + "/" + func.__name__ + "/" + str(self.key())
         if nocache:
+            if cache_key in obj_perm_cache:
+                del obj_perm_cache[cache_key]
             memcache.delete(cache_key)
-            obj_perm_cache[cache_key] = None
             return None
         if cache_key not in obj_perm_cache:
             data = memcache.get(cache_key)
@@ -150,10 +151,7 @@ class Team(db.Model):
 
     @classmethod
     def byKey(self, key):
-        try:
-            return self.everything()[str(key)]
-        except KeyError:
-            return None
+        return self.everything()[str(key)]
 
     @classmethod
     def nothing(self):
@@ -251,10 +249,7 @@ class GroupGame(db.Model):
 
     @classmethod
     def byKey(self, key):
-        try:
-            return self.everything()[str(key)]
-        except KeyError:
-            return None
+        return GroupGame.everything()[str(key)]
 
     @classmethod
     def nothing(self):
@@ -300,16 +295,13 @@ class SingleGame(db.Model):
     @perm_cached_class
     def everything(self):
         games = {}
-        for game in self.all().fetch(MAX_ITEMS):
+        for game in SingleGame.all().fetch(MAX_ITEMS):
             games[str(game.key())] = game
         return games
 
     @classmethod
     def byKey(self, key):
-        try:
-            return self.everything()[str(key)]
-        except KeyError:
-            return None
+        return SingleGame.everything()[str(key)]
 
     @classmethod
     def nothing(self):
