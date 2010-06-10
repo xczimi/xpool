@@ -103,7 +103,11 @@ class LocalUser(db.Model):
 
     @classmethod
     def actives(self):
-        return self.all().filter('active =',True).fetch(MAX_ITEMS)
+        actives = memcache.get('active_users')
+        if actives is None:
+            actives = self.all().filter('active =',True).fetch(MAX_ITEMS)
+            memcache.add('active_users',actives,300)
+        return actives
 
 class LocalUserGroup(db.Model):
     name = db.StringProperty(required=True)
