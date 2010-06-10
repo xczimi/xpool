@@ -36,8 +36,6 @@ def perm_cached(func):
     def perm_cached_func(self, nocache=False):
         cache_key = self.__class__.__name__ + "/" + func.__name__ + "/" + str(self.key())
         if nocache:
-            if cache_key in obj_perm_cache:
-                del obj_perm_cache[cache_key]
             memcache.delete(cache_key)
             return None
         if cache_key not in obj_perm_cache:
