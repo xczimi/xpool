@@ -145,6 +145,13 @@ class Team(db.Model):
         return teams
 
     @classmethod
+    def byKey(self, key):
+        try:
+            return self.everything()[key]
+        except KeyError:
+            return None
+
+    @classmethod
     def nothing(self):
         memcache.delete(self.__name__ + "/everything")
         return []
@@ -239,6 +246,13 @@ class GroupGame(db.Model):
         return games
 
     @classmethod
+    def byKey(self, key):
+        try:
+            return self.everything()[key]
+        except KeyError:
+            return None
+
+    @classmethod
     def nothing(self):
         memcache.delete(self.__name__ + "/everything")
         return []
@@ -285,6 +299,13 @@ class SingleGame(db.Model):
         for game in self.all().fetch(MAX_ITEMS):
             games[str(game.key())] = game
         return games
+
+    @classmethod
+    def byKey(self, key):
+        try:
+            return self.everything()[key]
+        except KeyError:
+            return None
 
     @classmethod
     def nothing(self):

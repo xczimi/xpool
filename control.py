@@ -392,7 +392,7 @@ class MyTipsHandler(GamesHandler):
             if match:
                 name, key = match.groups()
                 try:
-                    singlegame = SingleGame.get(key)
+                    singlegame = SingleGame.byKey(key)
                     result = user.singlegame_result(singlegame)
                 except db.BadKeyError:
                     continue
@@ -408,7 +408,7 @@ class MyTipsHandler(GamesHandler):
             match = re.match(r'^lock\.(.*)$', argument)
             if match:
                 key = match.group(1)
-                singlegame = SingleGame.get(key)
+                singlegame = SingleGame.byKey(key)
                 result = user.singlegame_result(singlegame)
                 if result.homeScore >= 0 and result.awayScore >= 0:
                     result.locked = True
