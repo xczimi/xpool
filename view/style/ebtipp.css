@@ -72,3 +72,4 @@ form { display: inline; }
 #maincontent table .resultColumn { text-align: center; width: 7ex; }
 #maincontent table .betColumn { text-align: center; }
 #maincontent table .saveColumn { text-align: right; }
+#maincontent table .pairColumn { text-align: center; }

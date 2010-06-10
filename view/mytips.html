@@ -22,7 +22,7 @@
 {% endif %}
 <tbody>
 {% endif %}
-<tr class="{% cycle line0,line1 %}"><td class="home">{{ singlegame.game.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ singlegame.game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ singlegame.game.awayTeam.flag }}" /></td><td class="away">{{ singlegame.game.awayTeam.name }}</td><td>{{ singlegame.game.time }}</td>
+<tr class="{% cycle line0,line1 %}"><td class="home">{{ singlegame.game.homeTeam.name }}</td><td class="pairColumn"><img src="http://www.fifa.com{{ singlegame.game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ singlegame.game.awayTeam.flag }}" /></td><td class="away">{{ singlegame.game.awayTeam.name }}</td><td>{{ singlegame.game.time }}</td>
 <td class="resultColumn">{% if singlegame.result.locked %}{{ singlegame.result.homeScore }}&nbsp;&ndash;&nbsp;{{ singlegame.result.awayScore }}{% endif %}
 </td>
 <td class="betColumn">{% if not singlegame.editable %}

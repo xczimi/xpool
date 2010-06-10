@@ -271,8 +271,10 @@ class MainHandler(MyRequestHandler):
         if '' == page: page = "index"
         self.render(page)
     def submenu(self, page):
+        subgames = GroupGame.everything().values()
+        subgames.sort(key=GroupGame.groupstart)
         groupgames = []
-        for game in Fifa2010().tournament.widewalk():
+        for game in subgames:
             if len(game.singlegames()) > 0:
                 groupgames.append(game)
 

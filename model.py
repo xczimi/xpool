@@ -205,7 +205,7 @@ class GroupGame(db.Model):
     def subgames(self):
         return [game for game in GroupGame.everything().itervalues() if self.key() == game.upgroup_key()]
 
-    @perm_cached
+    @cached
     def widewalk(self):
         """ List groupgames as a wide tree full walkthrough. """
         games = [self]
@@ -276,10 +276,10 @@ class SingleGame(db.Model):
     @classmethod
     @perm_cached_class
     def everything(self):
-        teams = {}
-        for team in self.all().fetch(MAX_ITEMS):
-            teams[str(team.key())] = team
-        return teams
+        games = {}
+        for game in self.all().fetch(MAX_ITEMS):
+            games[str(game.key())] = game
+        return games
 
     @classmethod
     def nothing(self):
