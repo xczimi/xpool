@@ -193,7 +193,7 @@ class MyRequestHandler(webapp.RequestHandler):
                 elif fb_user.access_token != cookie["access_token"]:
                     fb_user.access_token = cookie["access_token"]
                     fb_user.put()
-                if self.current_user:
+                if self.current_user and str(fb_user.localuser.key()) != str(self.current_user.key()):
                     fb_user.localuser = self.current_user
                     fb_user.put()
                 elif fb_user.localuser is None:
