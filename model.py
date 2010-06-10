@@ -228,10 +228,10 @@ class GroupGame(db.Model):
     @classmethod
     @perm_cached_class
     def everything(self):
-        teams = {}
-        for team in self.all().fetch(MAX_ITEMS):
-            teams[str(team.key())] = team
-        return teams
+        games = {}
+        for game in self.all().fetch(MAX_ITEMS):
+            games[str(game.key())] = game
+        return games
 
     @classmethod
     def nothing(self):
@@ -269,7 +269,7 @@ class SingleGame(db.Model):
 
     def group(self):
         try:
-            return GroupGame.everything()[self.group_key()]
+            return GroupGame.everything()[str(self.group_key())]
         except KeyError:
             return None
 

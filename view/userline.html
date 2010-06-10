@@ -37,9 +37,7 @@ p:&nbsp;<input type="password" id="password" name="password" size="10" maxlength
 <form method='post' name='google_loginform'><input type='hidden' name='action' value='auth/glogin' /></form>
 <a href="#" onclick='forms.google_loginform.submit();'>Google login</a>
 </span>
-{% if not fb_user %}
 <span id="login_fb">
 <fb:login-button perms="email,publish_stream"></fb:login-button>
 </span>
-{% endif %}
 {% endif %}
