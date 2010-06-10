@@ -441,8 +441,10 @@ class MyTipsHandler(GamesHandler):
         self.get_template_values()
         self.submenu('mytips')
         if filter == '': filter = self.template_values['filtergames'][0].key()
-
-        game = GroupGame.get(filter)
+        print "DBG"
+        print filter
+        print GroupGame.everything()
+        game = GroupGame.byKey(filter)
         if len(game.singlegames()) > 0:
             groupgame = {'game':game,'singlegames':[]}
             for singlegame in game.singlegames():
