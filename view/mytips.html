@@ -37,7 +37,15 @@
 </tr>
 {% if forloop.last %}
 </tbody>
-<tfoot><tr><td colspan="4">&nbsp;</td>
+<tfoot><tr><td colspan="4">{% blocktrans %}
+<ol>
+<li><strong>LOCK your predictions before the deadline!</strong></li>
+<li>Use the checkboxes to lock your predictions.</li>
+<li>The list of teams in the Bet column shows the group standings based on your predictions.</li>
+<li>The list of teams in the Result column shows the group standings based on the results.</li>
+<li>For completeness (and to confuse everybody) : in case your predictions result in a tiebreak which would be resolved by a draw, you need to predict the result of the draw. - for details of the tiebreaking procedure refer to the PDF linked from the rules page</li>
+{% endblocktrans %}
+</td>
 <td valign="top" class="result_ranking"> 
 
     <table>
@@ -65,7 +73,6 @@
 
 </td></tr></tfoot>
 </table>
-
 {% endif %}
 {% endfor %}
 </form>
