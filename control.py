@@ -422,7 +422,7 @@ class MyTipsHandler(GamesHandler):
             if match:
                 key, idx = match.groups()
                 try:
-                    groupresult = user.groupgame_result(GroupGame.get(key))
+                    groupresult = user.groupgame_result(GroupGame.byKey(key))
                 except db.BadKeyError:
                     continue
                 if groupresult not in groupinit:
