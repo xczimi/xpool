@@ -21,41 +21,44 @@ from google.appengine.ext.db import polymodel
 
 from datetime import datetime
 
+MAX_ITEMS = 256
+
 def cached(func):
-    def cached_func(self):
+    def cached_func(self, nocache=False):
         cache_prop = '_'+func.__name__
-        if cache_prop not in self.__dict__:
-            self.__dict__[cache_prop] = func(self)
+        if nocache or cache_prop not in self.__dict__:
+            self.__dict__[cache_prop] = func(self, nocache=nocache)
         return self.__dict__[cache_prop]
     return cached_func
 
 def perm_cached(func):
-    def cached_func(self):
-        cache_key = self.__class__.__name__ + "/" + str(self.key()) + "/" + func.__name__
-        data = memcache.get(cache_key)
-        if data is None:
-            data = func(self)
-            memcache.add(cache_key, data)
-        return data
-    return cached_func
-
-perm_cache = {}
+    obj_perm_cache = {}
+    def perm_cached_func(self, nocache=False):
+        cache_key = self.__class__.__name__ + "/" + func.__name__ + "/" + str(self.key())
+        if nocache or cache_key not in obj_perm_cache:
+            data = memcache.get(cache_key)
+            if nocache or data is None:
+                data = func(self, nocache=nocache)
+                memcache.add(cache_key, data)
+            obj_perm_cache[cache_key] = data
+        return obj_perm_cache[cache_key]
+    return perm_cached_func
 
 def perm_cached_class(func, flush=False):
-    perm_cache = {}
+    class_perm_cache = {}
     if flush:
-        perm_cache = {}
+        class_perm_cache = {}
         memcache.flush_all()
     def cached_func(self):
         cache_key = self.__name__ + "/" + func.__name__
-        if cache_key in perm_cache:
-            return perm_cache[cache_key]
+        if cache_key in class_perm_cache:
+            return class_perm_cache[cache_key]
         data = memcache.get(cache_key)
         if data is None:
             data = func(self)
             memcache.add(cache_key, data)
-        perm_cache[cache_key] = data
-        return data
+        class_perm_cache[cache_key] = data
+        return class_perm_cache[cache_key]
     return cached_func
 
 class LocalUser(db.Model):
@@ -67,35 +70,35 @@ class LocalUser(db.Model):
     authcode = db.StringProperty()
     referrer = db.SelfReferenceProperty(collection_name="referral_set")
     active = db.BooleanProperty()
-    #groups = db.ListProperty(db.Key)
+
     def __str__(self):
         if self.nick: return self.nick.encode('utf-8')
         return self.email.encode('utf-8')
 
-    @cached
-    def singleresults(self):
+    @perm_cached
+    def singleresults(self, nocache=False):
         """ Returns a dict of the users Result objects keyed by the singlegame (cached). """
         results = {}
-        for result in self.singleresult_set.fetch(SingleGame.all().count()):
+        for result in self.singleresult_set.fetch(MAX_ITEMS):
             results[str(result.singlegame.key())] = result
         return results
 
-    @cached
-    def groupresults(self):
+    @perm_cached
+    def groupresults(self, nocache=False):
         """ Returns a dict of the users Result objects keyed by the singlegame (cached). """
         results = {}
-        for result in self.groupresult_set.fetch(GroupGame.all().count()):
+        for result in self.groupresult_set.fetch(MAX_ITEMS):
             results[str(result.groupgame.key())] = result
         return results
 
     def singlegame_result(self, singlegame):
         if not str(singlegame.key()) in self.singleresults():
-            self.singleresults()[str(singlegame.key())] = Result(user=self,singlegame=singlegame)
+            return Result(user=self,singlegame=singlegame)
         return self.singleresults()[str(singlegame.key())]
 
     def groupgame_result(self, groupgame):
         if not str(groupgame.key()) in self.groupresults():
-            self.groupresults()[str(groupgame.key())] = GroupResult(user=self,groupgame=groupgame)
+            return GroupResult(user=self,groupgame=groupgame)
         return self.groupresults()[str(groupgame.key())]
 
     @classmethod
@@ -116,8 +119,6 @@ class FacebookUser(db.Model):
     access_token = db.StringProperty(required=True)
     localuser = db.ReferenceProperty(LocalUser)
     email = db.EmailProperty(required=True)
-
-MAX_ITEMS = 256
 
 class Team(db.Model):
     name = db.StringProperty(required=True)
@@ -190,23 +191,23 @@ class GroupGame(db.Model):
         return self.upgroup().level() + 1
 
     @cached
-    def singlegames(self):
+    def singlegames(self, nocache=False):
         singlegames = [singlegame for singlegame in SingleGame.everything().itervalues() if self.key() == singlegame.group_key()]
         singlegames.sort(cmp=lambda x,y: cmp(x.time, y.time))
         return singlegames
 
     @cached
-    def groupgames(self):
+    def groupgames(self, nocache=False):
         groupgames = self.subgames()
         groupgames.sort(cmp=lambda x,y: cmp(x.name, y.name))
         return groupgames
 
     @cached
-    def subgames(self):
+    def subgames(self, nocache=False):
         return [game for game in GroupGame.everything().itervalues() if self.key() == game.upgroup_key()]
 
     @cached
-    def widewalk(self):
+    def widewalk(self, nocache=False):
         """ List groupgames as a wide tree full walkthrough. """
         games = [self]
         subgames = self.subgames()
@@ -216,13 +217,13 @@ class GroupGame(db.Model):
         return games
 
     @cached
-    def teams(self):
+    def teams(self, nocache=False):
         return set(
             [singlegame.homeTeam() for singlegame in self.singlegames()] +
             [singlegame.awayTeam() for singlegame in self.singlegames()])
 
     @cached
-    def groupstart(self):
+    def groupstart(self, nocache=False):
         return reduce(min,[group.groupstart() for group in self.groupgames()] + [single.time for single in self.singlegames()], datetime.max)
 
     @classmethod
@@ -286,10 +287,10 @@ class SingleGame(db.Model):
         memcache.delete(self.__name__ + "/everything")
         return []
 
-    @cached
-    def results(self):
+    @perm_cached
+    def results(self, nocache=False):
         results = {}
-        for result in self.result_set.fetch(LocalUser.all().count()):
+        for result in self.result_set.fetch(MAX_ITEMS):
             results[str(result.user.key())] = result
         return results
 
@@ -358,7 +359,7 @@ class GroupResult(db.Model):
         return self.draw_order
 
     @cached
-    def get_ranks(self):
+    def get_ranks(self, nocache=False):
         """ Calculate the group standings. 
         
         This turned into one ugly beast.
