@@ -12,7 +12,6 @@ from google.appengine.api import mail
 from google.appengine.ext import webapp
 from google.appengine.ext.webapp import util
 from google.appengine.ext.webapp import template
-from google.appengine.api import memcache
 
 from django.template import TemplateDoesNotExist
 

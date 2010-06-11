@@ -1,3 +1,5 @@
+from google.appengine.api import memcache
+
 def singlegame_result_point(bet, result):
     point = 0
     if not result.locked or not bet.locked: return 0
@@ -29,6 +31,19 @@ def score_group(user, resultuser, game):
     return point
 
 def scoreboard(users, resultuser, game):
-    scoreboard = [{'user':user,'score':score_group(user,resultuser,game)} for user in users if str(user.key()) != str(resultuser.key())]
-    scoreboard.sort(reverse=True,key=lambda x: x['score'])
+    cache_key = 'scoreboard/' + str(game.key())
+    scoreboard = memcache.get(cache_key)
+    if scoreboard is None:
+        scoreboard = [{'user':user,'score':score_group(user,resultuser,game)} for user in users if str(user.key()) != str(resultuser.key())]
+        scoreboard.sort(reverse=True,key=lambda x: x['score'])
+        memcache.add(cache_key, scoreboard)
     return scoreboard
+
+def flush_singlegame(singlegame):
+    memcache.delete('scoreboard/'+str(singlegame.key()))
+    flush_groupgame(singlegame.group())
+
+def flush_groupgame(groupgame):
+    memcache.delete('scoreboard/'+str(groupgame.key()))
+    if not groupgame.upgroup() is None:
+        flush_groupgame(groupgame.upgroup())

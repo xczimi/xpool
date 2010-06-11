@@ -62,12 +62,12 @@ class Fifa2010(object):
         game_stored = SingleGame.all().filter('fifaId =',int(game['id'])).get()
         if game_stored is None:
             game_stored = SingleGame(fifaId=int(game['id']),group = group)
-            game_stored.time = game['time']
-            game_stored.location = game['location']
-            game_stored.group_ref = group
-            game_stored.homeTeam_ref = self.init_team(game['home_team'])
-            game_stored.awayTeam_ref = self.init_team(game['away_team'])
-            game_stored.put()
+        game_stored.time = game['time']
+        game_stored.location = game['location']
+        game_stored.group_ref = group
+        game_stored.homeTeam_ref = self.init_team(game['home_team'])
+        game_stored.awayTeam_ref = self.init_team(game['away_team'])
+        game_stored.put()
 
     @classmethod
     def init_ko_game(self, game):
@@ -78,10 +78,10 @@ class Fifa2010(object):
         game_stored = SingleGame.all().filter('fifaId =',int(game['id'])).get()
         if game_stored is None:
             game_stored = SingleGame(fifaId = int(game['id']), group = kogroup)
-            game_stored.time = game['time']
-            game_stored.location = game['location']
-            game_stored.group = kogroup
-            game_stored.put()
+        game_stored.time = game['time']
+        game_stored.location = game['location']
+        game_stored.group_ref = kogroup
+        game_stored.put()
 
     @classmethod
     def init_tree(self):

@@ -413,6 +413,7 @@ class MyTipsHandler(GamesHandler):
                 try:
                     singlegame = SingleGame.byKey(key)
                     singlegame.results(nocache=True)
+                    pool.flush_singlegame(singlegame)
                     result = user.singlegame_result(singlegame)
                 except db.BadKeyError:
                     continue
@@ -462,7 +463,8 @@ class MyTipsHandler(GamesHandler):
                 groupgame['singlegames'].append({
                     'game':singlegame,
                     'bet':bet,
-                    'editable': not bet.locked and not result.locked and NOW < game.groupstart(),
+                    'editable': (str(self.current_user().key()) == str(Fifa2010().result.key()) and NOW > singlegame.time) 
+                        or (not bet.locked and not result.locked and NOW < game.groupstart()),
                     'result':result,
                     'point':point})
             groupbet = self.current_user().groupgame_result(game)
