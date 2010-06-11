@@ -392,35 +392,35 @@ class MyTipsHandler(GamesHandler):
                 name, key = match.groups()
                 try:
                     singlegame = SingleGame.byKey(key)
+                    singlegame.results(nocache=True)
                     result = user.singlegame_result(singlegame)
                 except db.BadKeyError:
                     continue
                 except KeyError:
                     continue
                 if self.request.get(argument) != '':
-                    if name == 'homeScore':
+                    if name == 'homeScore' and result.homeScore != int(self.request.get(argument)):
                         result.homeScore = int(self.request.get(argument))
-                    elif name == 'awayScore':
+                    elif name == 'awayScore' and result.awayScore != int(self.request.get(argument)):
                         result.awayScore = int(self.request.get(argument))
+                    else:
+                        continue
                     result.put()
-                    user.singleresults(nocache=True)
-                    singlegame.results(nocache=True)
         for argument in self.request.arguments():
             match = re.match(r'^lock\.(.*)$', argument)
             if match:
                 key = match.group(1)
                 try:
                     singlegame = SingleGame.byKey(key)
+                    singlegame.results(nocache=True)
                     result = user.singlegame_result(singlegame)
                 except db.BadKeyError:
                     continue
                 except KeyError:
                     continue
-                if result.homeScore >= 0 and result.awayScore >= 0:
+                if result.homeScore >= 0 and result.awayScore >= 0 and not result.locked:
                     result.locked = True
                     result.put()
-                    user.singleresults(nocache=True)
-                    singlegame.results(nocache=True)
 
         groupinit = []
         for argument in self.request.arguments():
@@ -443,7 +443,9 @@ class MyTipsHandler(GamesHandler):
                 if "grouplock." + str(groupresult.groupgame.key()) in self.request.arguments():
                     groupresult.locked = True
                 groupresult.put()
-                user.groupresults(nocache=True)
+
+        user.groupresults(nocache=True)
+        user.singleresults(nocache=True)
 
     @need_login
     def get(self, filter=''):

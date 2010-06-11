@@ -61,7 +61,7 @@ def perm_cached_class(func, flush=False):
             data = func(self)
             memcache.add(cache_key, data)
         class_perm_cache[cache_key] = data
-        return class_perm_cache[cache_key]
+        return data
     return cached_func
 
 class LocalUser(db.Model):
@@ -96,12 +96,12 @@ class LocalUser(db.Model):
 
     def singlegame_result(self, singlegame):
         if not str(singlegame.key()) in self.singleresults():
-            return Result(user=self,singlegame=singlegame)
+            self.singleresults()[str(singlegame.key())] = Result(user=self,singlegame=singlegame)
         return self.singleresults()[str(singlegame.key())]
 
     def groupgame_result(self, groupgame):
         if not str(groupgame.key()) in self.groupresults():
-            return GroupResult(user=self,groupgame=groupgame)
+            self.groupresults()[str(groupgame.key())] = GroupResult(user=self,groupgame=groupgame)
         return self.groupresults()[str(groupgame.key())]
 
     @classmethod
