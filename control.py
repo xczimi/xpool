@@ -484,7 +484,7 @@ class AllTipsHandler(GamesHandler):
         tips = []
         results = singlegame.results()
         for user in users:
-            if str(user.key()) in results and results[str(user.key())].locked:
+            if (str(user.key()) in results and results[str(user.key())].locked) or (NOW > singlegame.time):
                 tips.append(results[str(user.key())])
             else:
                 tips.append({})
