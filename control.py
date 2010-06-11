@@ -469,7 +469,7 @@ class MyTipsHandler(GamesHandler):
                     'point':point})
             groupbet = self.current_user().groupgame_result(game)
             groupresult = Fifa2010().result.groupgame_result(game)
-            groupgame['editable'] = not groupbet.locked and not groupresult.locked and NOW < game.groupstart()
+            groupgame['editable'] = not groupbet.locked and not groupresult.locked and NOW < game.groupstart() or str(self.current_user().key()) == str(Fifa2010().result.key())
             groupgame['bet'] = groupbet
             groupgame['bet_ranking'] = groupbet.get_ranks()
             groupgame['result_ranking'] = groupresult.get_ranks()
