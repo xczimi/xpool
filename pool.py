@@ -2,7 +2,7 @@ from google.appengine.api import memcache
 
 def singlegame_result_point(bet, result):
     point = 0
-    if not result.locked or not bet.locked: return 0
+    if not result.locked: return 0
     if bet.homeScore >=0 and bet.homeScore == result.homeScore: point = point + 1
     elif bet.homeScore > 4 and result.homeScore > 4: point = point + 1
     if bet.awayScore >=0 and bet.awayScore == result.awayScore: point = point + 1
@@ -14,7 +14,7 @@ def singlegame_result_point(bet, result):
 
 def groupgame_result_point(bet, result):
     point = 0
-    if not result.locked or not bet.locked: return 0
+    if not result.locked: return 0
     def count_orders(xs,ys):
         x_order_set = set((x,y) for x in xs for y in xs  if xs.index(x) < xs.index(y))
         y_order_set = set((x,y) for x in ys for y in ys  if ys.index(x) < ys.index(y))
