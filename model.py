@@ -376,7 +376,6 @@ class GroupResult(db.Model):
             self.draw_order = [team.name for team in self.groupgame.teams()]
         return self.draw_order
 
-    @cached
     def get_ranks(self, nocache=False):
         """ Calculate the group standings. 
         
