@@ -566,12 +566,45 @@ class AdminHandler(MyRequestHandler):
                     #print pool.score_group(self.current_user(),Fifa2010().result,Fifa2010().tournament)
                     self.render('admin/users')
             elif "result" == admin:
-                if len(args) > 1:
-                    pass
-                else:
-                    self.template_values['bets'] = Result.all()
-                    self.template_values['groupbets'] = GroupResult.all()
-                    self.render('admin/bets')
+                if self.request.get('save') == "Submit":
+                    user = LocalUser.get(self.request.get('filter_user'))
+                    singlegame = SingleGame.byKey(self.request.get('filter_game'))
+                    singlegame.results(nocache=True)
+                    result = user.singlegame_result(singlegame)
+                    result.homeScore = int(self.request.get('homeScore'))
+                    result.awayScore = int(self.request.get('awayScore'))
+                    result.locked = True
+                    result.put()
+                    pool.flush_singlegame(singlegame)
+                    user.singleresults(nocache=True)
+                self.template_values['users'] = LocalUser.actives()
+                self.template_values['singlegames'] = [{'key':game.key(),
+                    'groupname':game.group().name,
+                    'time':game.time,
+                    'homeTeam':game.homeTeam(),
+                    'awayTeam':game.awayTeam()} for game in SingleGame.everything().itervalues() if game.homeTeam()]
+                self.template_values['singlegames'].sort(cmp=lambda x,y: cmp(x['time'], y['time']))
+                self.template_values['singlegames'].sort(cmp=lambda x,y: cmp(x['groupname'], y['groupname']))
+
+                betQuery = Result.all()
+                groupbetQuery = GroupResult.all()
+
+                filter_game_key = self.request.get("filter_game")
+                if filter_game_key:
+                    filter_game = SingleGame.everything()[filter_game_key]
+                    self.template_values['filter_game'] = filter_game
+                    betQuery = betQuery.filter("singlegame = ",filter_game)
+                    groupbetQuery = groupbetQuery.filter("singlegame = ",filter_game)
+
+                filter_user_key = self.request.get("filter_user")
+                if filter_user_key:
+                    filter_user = LocalUser.get(filter_user_key)
+                    self.template_values['filter_user'] = filter_user
+                    betQuery = betQuery.filter("user = ",filter_user)
+                    groupbetQuery = groupbetQuery.filter("user = ",filter_user)
+                self.template_values['bets'] = betQuery.fetch(32)
+                self.template_values['groupbets'] = groupbetQuery.fetch(32)
+                self.render('admin/bets')
             else:
                 self.render('admin/layout')
         else:
