@@ -275,7 +275,7 @@ class MainHandler(MyRequestHandler):
         subgames.sort(key=GroupGame.groupstart)
         groupgames = []
         for game in subgames:
-            if len(game.singlegames()) > 0:
+            if not game.upgroup() is None and str(game.upgroup().key()) == str(Fifa2010().groupstage.key()):
                 groupgames.append(game)
 
         self.template_values['filtergames'] = groupgames
@@ -340,7 +340,7 @@ class UserHandler(MainHandler):
 class GamesHandler(MainHandler):
     def get(self, filter=''):
         self.get_template_values()
-        if filter == '': filter = Fifa2010().tournament.key()
+        if filter == '': filter = Fifa2010().groupstage.key()
         self.template_values['games'] = GroupGame.get(filter).widewalk()
         MainHandler.get(self,'games')
 
