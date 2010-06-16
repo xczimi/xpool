@@ -31,6 +31,7 @@ import pool
 import facebook
 
 NOW = datetime.utcnow()
+#+timedelta(days=-20)
 
 FACEBOOK_APP_ID = "101120486599460"
 FACEBOOK_APP_SECRET = "5f248ac5feb83660d5a925f81b954712"
@@ -463,7 +464,7 @@ class MyTipsHandler(GamesHandler):
                 groupgame['singlegames'].append({
                     'game':singlegame,
                     'bet':bet,
-                    'editable': (str(self.current_user().key()) == str(Fifa2010().result.key()) and NOW > singlegame.time) 
+                    'editable': (str(self.current_user().key()) == str(Fifa2010().result.key()) and NOW > singlegame.time and not bet.locked)
                         or (not bet.locked and not result.locked and NOW < game.groupstart()),
                     'result':result,
                     'point':point})
@@ -484,7 +485,7 @@ class AllTipsHandler(GamesHandler):
         tips = []
         results = singlegame.results()
         for user in users:
-            if str(user.key()) in results and (results[str(user.key())].locked or NOW > singlegame.time):
+            if str(user.key()) in results and (results[str(user.key())] or NOW > singlegame.time):
                 tips.append(results[str(user.key())])
             else:
                 tips.append({})
@@ -503,7 +504,7 @@ class AllTipsHandler(GamesHandler):
             self.template_values['alltips'] = []
             for singlegame in group.singlegames():
                 result = self.current_user().singlegame_result(singlegame)
-                if result.locked:
+                if result.locked or NOW > group.groupstart():
                     self.template_values['alltips'].append({'game': singlegame,
                         'tips': self.singlegame_tips(singlegame, users)
                         })
