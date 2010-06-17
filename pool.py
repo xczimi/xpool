@@ -61,10 +61,12 @@ def scoreboard(users, resultuser, game):
     return scoreboard
 
 def flush_singlegame(singlegame):
+    memcache.delete('perfect/'+str(singlegame.key()))
     memcache.delete('scoreboard/'+str(singlegame.key()))
     flush_groupgame(singlegame.group())
 
 def flush_groupgame(groupgame):
+    memcache.delete('perfect/'+str(groupgame.key()))
     memcache.delete('scoreboard/'+str(groupgame.key()))
     if not groupgame.upgroup() is None:
         flush_groupgame(groupgame.upgroup())

@@ -1,17 +1,19 @@
 {% extends "layout.html" %}{% load i18n %}
 {% block content %}
+<h1>{% trans "You got that right!" %}</h1>
 {% for perfect in perfects %}
 {% if forloop.first %}<table>
 <thead>
 <tr>
-<th class="groupColumn">{% trans "group" %}</th>
+<th class="betColumn">{% trans "user" %}</th>
 <th class="pairColumn">{% trans "game" %}</th>
-<th class="betColumn">{% trans "user" %}</th></tr>
+<th class="pairColumn">{% trans "result" %}</th>
+<th class="groupColumn">{% trans "group" %}</th>
+</tr>
 </thead>
 <tbody>
 {% endif %}
-<tr class="{% cycle line0,line1 %}">
-<td>{{ perfect.game.group.name }}</td><td><img src="http://www.fifa.com{{ perfect.game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ perfect.game.awayTeam.flag }}" /></td><td>{{ perfect.user.nick }}</td>
+<tr class="{% cycle line0,line1 %}"><td>{{ perfect.user.nick }}</td><td class="pairColumn"><img src="http://www.fifa.com{{ perfect.game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ perfect.game.awayTeam.flag }}" /></td><td class="pairColumn">{{perfect.bet.homeScore}}&nbsp;&ndash;&nbsp;{{perfect.bet.awayScore}}</td><td>{{ perfect.game.group.name }}</td>
 </tr>
 {% if forloop.last %}</tbody></table>{% endif %}
 {% endfor %}
