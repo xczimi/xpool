@@ -527,7 +527,6 @@ class PerfectHandler(MainHandler):
     def get(self):
         self.get_template_values()
         self.template_values['perfects'] = pool.perfects_group(LocalUser.actives(),Fifa2010().result,Fifa2010().tournament)
-        #print "DBG", self.template_values['perfects']
         self.render('perfect')
 
 class ReferralHandler(MainHandler):

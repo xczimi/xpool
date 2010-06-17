@@ -36,13 +36,12 @@ def perfects_single(users, resultuser, game, perfect = 4):
         if user.key() != resultuser.key():
             bet = user.singlegame_result(game)
             if perfect == singlegame_result_point(bet, resultuser.singlegame_result(game)):
-                perfects.append({'user':user,'game':game})
+                perfects.append({'user':user,'game':game,'bet':bet})
     return perfects
 
 def perfects_group(users, resultuser, game, perfect = 4):
     cache_key = 'perfect/' + str(game.key())
-    perfects = None
-    #perfects = memcache.get(cache_key)
+    perfects = memcache.get(cache_key)
     if perfects is None:
         perfects = []
         for group in game.groupgames():
