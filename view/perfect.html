@@ -1,0 +1,18 @@
+{% extends "layout.html" %}{% load i18n %}
+{% block content %}
+{% for perfect in perfects %}
+{% if forloop.first %}<table>
+<thead>
+<tr>
+<th class="groupColumn">{% trans "group" %}</th>
+<th class="pairColumn">{% trans "game" %}</th>
+<th class="betColumn">{% trans "user" %}</th></tr>
+</thead>
+<tbody>
+{% endif %}
+<tr class="{% cycle line0,line1 %}">
+<td>{{ perfect.game.group.name }}</td><td><img src="http://www.fifa.com{{ perfect.game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ perfect.game.awayTeam.flag }}" /></td><td>{{ perfect.user.nick }}</td>
+</tr>
+{% if forloop.last %}</tbody></table>{% endif %}
+{% endfor %}
+{% endblock %}
