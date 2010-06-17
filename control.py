@@ -512,7 +512,7 @@ class AllTipsHandler(GamesHandler):
                     self.template_values['alltips'].append({'game': singlegame})
 
         MainHandler.get(self,'alltips')
-    
+
 class PoolHandler(MainHandler):
     def get(self, filter = ''):
         self.get_template_values()
@@ -522,6 +522,13 @@ class PoolHandler(MainHandler):
         self.template_values['groupgame'] = groupgame
         self.template_values['scoreboard'] = pool.scoreboard(LocalUser.actives(), Fifa2010().result, groupgame)
         MainHandler.get(self,'scoreboard')
+
+class PerfectHandler(MainHandler):
+    def get(self):
+        self.get_template_values()
+        self.template_values['perfects'] = pool.perfects_group(LocalUser.actives(),Fifa2010().result,Fifa2010().tournament)
+        #print "DBG", self.template_values['perfects']
+        self.render('perfect')
 
 class ReferralHandler(MainHandler):
     def get(self, authcode):

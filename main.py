@@ -33,6 +33,7 @@ def main():
                     ('/games', control.GamesHandler),
                     ('/today', control.TodayHandler),
                     ('/scoreboard/?(.*)',control.PoolHandler),
+                    ('/perfect',control.PerfectHandler),
                     ('/alltips', control.AllTipsHandler),
                     ('/alltips/(.*)', control.AllTipsHandler),
                     ('/mytips', control.MyTipsHandler),

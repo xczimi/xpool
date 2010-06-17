@@ -30,6 +30,28 @@ def score_group(user, resultuser, game):
     point = point + groupgame_result_point(user.groupgame_result(game), resultuser.groupgame_result(game))
     return point
 
+def perfects_single(users, resultuser, game, perfect = 4):
+    perfects = []
+    for user in users:
+        if user.key() != resultuser.key():
+            bet = user.singlegame_result(game)
+            if perfect == singlegame_result_point(bet, resultuser.singlegame_result(game)):
+                perfects.append({'user':user,'game':game})
+    return perfects
+
+def perfects_group(users, resultuser, game, perfect = 4):
+    cache_key = 'perfect/' + str(game.key())
+    perfects = None
+    #perfects = memcache.get(cache_key)
+    if perfects is None:
+        perfects = []
+        for group in game.groupgames():
+            perfects.extend(perfects_group(users, resultuser, group, perfect))
+        for single in game.singlegames():
+            perfects.extend(perfects_single(users, resultuser, single, perfect))
+        memcache.add(cache_key, perfects)
+    return perfects
+
 def scoreboard(users, resultuser, game):
     cache_key = 'scoreboard/' + str(game.key())
     scoreboard = memcache.get(cache_key)
