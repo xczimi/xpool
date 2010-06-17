@@ -496,7 +496,10 @@ class AllTipsHandler(GamesHandler):
     def get(self, filter=''):
         self.get_template_values()
         self.submenu('alltips')
-        if filter == '': filter = self.template_values['filtergames'][0].key()
+        if filter == '':
+            filtered = [game for game in SingleGame.everything().itervalues() if game.time <= NOW]
+            filtered.sort(cmp=lambda x,y: cmp(x.time, y.time), reverse=True)
+            filter = filtered[0].group().key()
 
         group = GroupGame.get(filter)
         if(len(group.singlegames()) > 0):
