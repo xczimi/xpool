@@ -346,9 +346,8 @@ class GamesHandler(MainHandler):
         MainHandler.get(self,'games')
 
 class TodayHandler(MainHandler):
-    def get(self, filter=''):
+    def get(self):
         self.get_template_values()
-        if filter == '': filter = Fifa2010().tournament.key()
         singlegames = SingleGame.all().filter('time >=',NOW+timedelta(days=-2)).filter('time <=',NOW+timedelta(days=2)).order('time').fetch(12)
         if self.current_user():
             self.template_values['games'] = [{
@@ -453,7 +452,10 @@ class MyTipsHandler(GamesHandler):
     def get(self, filter=''):
         self.get_template_values()
         self.submenu('mytips')
-        if filter == '': filter = self.template_values['filtergames'][0].key()
+        if filter == '':
+            filtered = [game for game in SingleGame.everything().itervalues() if game.time+timedelta(minutes=120) > NOW]
+            filtered.sort(cmp=lambda x,y: cmp(x.time, y.time))
+            filter = filtered[0].group().key()
         game = GroupGame.get(filter)
         if len(game.singlegames()) > 0:
             groupgame = {'game':game,'singlegames':[]}
