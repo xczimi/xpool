@@ -439,12 +439,21 @@ class MyTipsHandler(GamesHandler):
                     groupinit.append(groupresult)
                     groupresult.draw_order = [rank.team.name for rank in groupresult.get_ranks()]
                 groupresult.draw_order[int(idx)] = self.request.get(argument)
-        for groupresult in groupinit:
-            if len(set(groupresult.draw_order)) == len(groupresult.draw_order):
-                if "grouplock." + str(groupresult.groupgame.key()) in self.request.arguments():
-                    groupresult.locked = True
+        for argument in self.request.arguments():
+            match = re.match(r'grouplock\.(.*)\.([0-9]+)$', argument)
+            if match:
+                key, idx = match.groups()
+                try:
+                    groupgame = GroupGame.byKey(key)
+                except KeyError:
+                    continue
+                except db.BadKeyError:
+                    continue
+                groupgame.results(nocache=True)
+                pool.flush_singlegame(groupgame)
+                groupresult = user.groupgame_result(groupgame)
+                groupresult.locked = True
                 groupresult.put()
-
         user.groupresults(nocache=True)
         user.singleresults(nocache=True)
 
