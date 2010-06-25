@@ -278,6 +278,20 @@ class MainHandler(MyRequestHandler):
         for game in subgames:
             if not game.upgroup() is None and str(game.upgroup().key()) == str(Fifa2010().groupstage.key()):
                 groupgames.append(game)
+            if not game.upgroup() is None and str(game.upgroup().key()) == str(Fifa2010().kostage.key()):
+                groupgames.append(game)
+
+        self.template_values['filtergames'] = groupgames
+        self.template_values['filter'] = filter
+        self.template_values['filter_uri'] = '/' + page
+
+    def kosubmenu(self, page):
+        subgames = GroupGame.everything().values()
+        subgames.sort(key=GroupGame.groupstart)
+        groupgames = []
+        for game in subgames:
+            if not game.upgroup() is None and not game.upgroup().upgroup() is None and str(game.upgroup().upgroup().key()) == str(Fifa2010().kostage.key()):
+                groupgames.append(game)
 
         self.template_values['filtergames'] = groupgames
         self.template_values['filter'] = filter
@@ -342,6 +356,7 @@ class GamesHandler(MainHandler):
     def get(self, filter=''):
         self.get_template_values()
         if filter == '': filter = Fifa2010().groupstage.key()
+        if filter == 'ko': filter = Fifa2010().kostage.key()
         self.template_values['games'] = GroupGame.byKey(filter).widewalk()
 
         MainHandler.get(self,'games')
@@ -467,29 +482,37 @@ class MyTipsHandler(GamesHandler):
             filtered = [game for game in SingleGame.everything().itervalues() if game.time+timedelta(minutes=120) > NOW]
             filtered.sort(cmp=lambda x,y: cmp(x.time, y.time))
             filter = filtered[0].group().key()
-        game = GroupGame.get(filter)
-        if len(game.singlegames()) > 0:
-            groupgame = {'game':game,'singlegames':[]}
-            for singlegame in game.singlegames():
-                bet = self.current_user().singlegame_result(singlegame)
-                result = Fifa2010().result.singlegame_result(singlegame)
-                point = pool.singlegame_result_point(bet, result)
-                groupgame['singlegames'].append({
-                    'game':singlegame,
-                    'bet':bet,
-                    'editable': (str(self.current_user().key()) == str(Fifa2010().result.key()) and NOW > singlegame.time and not bet.locked)
-                        or (not bet.locked and not result.locked and NOW < game.groupstart()),
-                    'result':result,
-                    'point':point})
-            groupbet = self.current_user().groupgame_result(game)
-            groupresult = Fifa2010().result.groupgame_result(game)
-            groupgame['editable'] = (not groupbet.locked and not groupresult.locked and NOW < game.groupstart()) or str(self.current_user().key()) == str(Fifa2010().result.key())
-            groupgame['bet'] = groupbet
-            groupgame['bet_ranking'] = groupbet.get_ranks()
-            groupgame['result_ranking'] = groupresult.get_ranks()
-            groupgame['point'] = pool.groupgame_result_point(groupbet, groupresult)
-            self.template_values['groupgame'] = groupgame
-            self.template_values['scorelist'] = [''] + Result.score_list()
+        groupgame = GroupGame.get(filter)
+        if len(groupgame.singlegames()) == 0:
+            groupgames = groupgame.groupgames()
+        else:
+            groupgames = [groupgame]
+        tpl_groupgames = []
+        for game in groupgames:
+            if len(game.singlegames()) > 0:
+                groupgame = {'game':game,'singlegames':[]}
+                for singlegame in game.singlegames():
+                    bet = self.current_user().singlegame_result(singlegame)
+                    result = Fifa2010().result.singlegame_result(singlegame)
+                    point = pool.singlegame_result_point(bet, result)
+                    groupgame['singlegames'].append({
+                        'game':singlegame,
+                        'bet':bet,
+                        'editable': (str(self.current_user().key()) == str(Fifa2010().result.key()) and NOW > singlegame.time and not bet.locked)
+                            or (not bet.locked and not result.locked and NOW < game.groupstart()),
+                        'result':result,
+                        'point':point})
+                groupbet = self.current_user().groupgame_result(game)
+                groupresult = Fifa2010().result.groupgame_result(game)
+                groupgame['editable'] = (not groupbet.locked and not groupresult.locked and NOW < game.groupstart()) or str(self.current_user().key()) == str(Fifa2010().result.key())
+                groupgame['bet'] = groupbet
+                groupgame['bet_ranking'] = groupbet.get_ranks()
+                groupgame['result_ranking'] = groupresult.get_ranks()
+                groupgame['point'] = pool.groupgame_result_point(groupbet, groupresult)
+                tpl_groupgames.append(groupgame)
+
+        self.template_values['groupgames'] = tpl_groupgames
+        self.template_values['scorelist'] = [''] + Result.score_list()
 
         MainHandler.get(self,'mytips')
 

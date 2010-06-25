@@ -14,7 +14,8 @@
 <div id="maincontent">
 <div style="background-color: green; color: white; font-size: 175%;">{% trans "Rien ne vas plus! Group stage bets are locked, watch out for cool result representations!" %}</div>
 <span id="message">{{ message }}</span>
-{% if filtergames %}<div id="submenuline"><ul>{% for game in filtergames %}<li><a href="{{ filter_uri }}/{{ game.key }}">{{ game.name }}</a></li>{% endfor %}</ul></div>{% endif %}
+{% if filtergames %}<div id="submenuline"><ul>{% for game in filtergames %}<li><a href="{{ filter_uri }}/{{ game.key }}">{{ game.name }}</a></li>
+{% ifequal forloop.counter 8 %}<br /><br />{% endifequal %} {% endfor %}</ul></div>{% endif %}
 {% block content %}<h1>{% trans "xHomePool, eh!" %}</h1>{% endblock %}
 <div id="fb-root"></div>
 </div>

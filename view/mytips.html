@@ -1,5 +1,6 @@
 {% extends "layout.html" %}{% load i18n %}
 {% block content %}
+{% for groupgame in groupgames %}
 <form method="post"><input name="action" value="mytips/save" type="hidden"/>
 <h{{ groupgame.game.level }}>{{ groupgame.game.name }}</h{{ groupgame.game.level }}>
 {% trans "Betting closes:" %} {{ groupgame.game.groupstart }}
@@ -68,6 +69,7 @@
 {% endif %}
 {% endfor %}
 </form>
+{% endfor %}
 {% blocktrans %}
 <ol>
 <li><strong>LOCK your predictions before the deadline!</strong></li>
