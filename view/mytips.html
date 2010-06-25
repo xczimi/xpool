@@ -44,7 +44,7 @@
     <tbody>
     <thead><tr><th>{% trans "Team" %}</th></tr></thead>
     {% for ranking in groupgame.result_ranking %}
-    <tr><td><img src="http://www.fifa.com{{ ranking.team.flag }}" /></td></tr>
+    <tr><td><img src="http://www.fifa.com{{ ranking.team.flag }}" /></td><td>{{ranking.w}}&ndash;{{ranking.d}}&ndash;{{ranking.l}}</td><td>{{ranking.gf}}&ndash;{{ranking.ga}}</td><td>{{ranking.pt}}</td></tr>
     {% endfor %}
     </tbody>
     </table>
