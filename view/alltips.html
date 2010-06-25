@@ -20,6 +20,13 @@
 {% endfor %}
 </tr>
 {% endfor %}
+<tr><td colspan="4">Ranking</td>
+{% for rankings in ranks %}
+<td class="resultColumn">
+    <ol>{% for ranking in rankings %}<li><img src="http://www.fifa.com{{ ranking.team.flag }}" />{% endfor %}</ol>
+</td>
+{% endfor %}
+</tr>
 </tbody>
 </table>{% endif %}
 {% endblock %}

@@ -502,6 +502,11 @@ class AllTipsHandler(GamesHandler):
             else:
                 tips.append({})
         return tips
+    def groupgame_tips(self, groupgame, users):
+        tips = []
+        for user in users:
+            tips.append(user.groupgame_result(groupgame).get_ranks())
+        return tips
     @need_login
     def get(self, filter=''):
         self.get_template_values()
@@ -525,7 +530,7 @@ class AllTipsHandler(GamesHandler):
                         })
                 else:
                     self.template_values['alltips'].append({'game': singlegame})
-
+            self.template_values['ranks'] = self.groupgame_tips(group, users)
         MainHandler.get(self,'alltips')
 
 class PoolHandler(MainHandler):
