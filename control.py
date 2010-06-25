@@ -342,7 +342,8 @@ class GamesHandler(MainHandler):
     def get(self, filter=''):
         self.get_template_values()
         if filter == '': filter = Fifa2010().groupstage.key()
-        self.template_values['games'] = GroupGame.get(filter).widewalk()
+        self.template_values['games'] = GroupGame.byKey(filter).widewalk()
+
         MainHandler.get(self,'games')
 
 class TodayHandler(MainHandler):
@@ -579,6 +580,14 @@ class AdminHandler(MyRequestHandler):
                     self.render('admin/teams')
             elif "game" == admin:
                 if len(args) > 1:
+                    game = SingleGame.byKey(args[1])
+                    if self.request.get('save') == "Submit":
+                        game.homeTeam_ref = Team.byKey(self.request.get('homeTeam'))
+                        game.awayTeam_ref = Team.byKey(self.request.get('awayTeam'))
+                        game.put()
+                    self.template_values['game'] = game
+                    self.template_values['teams'] = Team.all()
+                    self.render('admin/game')
                     pass
                 else:
                     self.template_values['groupgames'] = GroupGame.all().order('name')

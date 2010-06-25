@@ -1,15 +1,16 @@
 {% extends "layout.html" %}{% load i18n %}
 {% block content %}<h1>{% trans "Games" %}</h1>
-<h2>Grouped</h2>
+<div  style="float:left;"><h2>Grouped</h2>
 <ul>
 {% for game in groupgames %}
 <li>{{ game.name }} ({{ game.upgroup.name }})</li>
 {% endfor %}
-</ul>
+</ul></div><div style="float:left;">
 <h2>Single</h2>
 <ul>
 {% for game in singlegames %}
-<li>{{ game.homeTeam.short }} vs {{ game.awayTeam.short }} {{ game.time }} {{  game.location }} ({{ game.group.name }})</li>
+<li><a href="/admin/game/{{ game.key }}">{{ game.homeTeam.short }} vs {{ game.awayTeam.short }}</a> {{ game.time }} {{  game.location }} ({{ game.group.name }})</li>
 {% endfor %}
-</ul>
+</ul></div>
+<div style="clear:both;">&nbsp;</div>
 {% endblock %} 

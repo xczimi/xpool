@@ -25,6 +25,7 @@ from django.utils.translation import *
 def main():
     application = webapp.WSGIApplication([('/favicon.ico',webapp.RequestHandler),
                     ('/admin/(team)/(.*)', control.AdminHandler),
+                    ('/admin/(game)/(.*)', control.AdminHandler),
                     ('/admin/(.*)', control.AdminHandler),
                     ('/admin', control.AdminHandler),
                     ('/referral/(.*)', control.ReferralHandler),

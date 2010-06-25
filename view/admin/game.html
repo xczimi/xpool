@@ -1,0 +1,10 @@
+{% extends "layout.html" %}{% load i18n %}
+{% block content %}<h1>{% trans "Game" %}</h1>
+{{ game.homeTeam.short }} vs {{ game.awayTeam.short }}</a> {{ game.time }} {{  game.location }} ({{ game.group.name }})
+<br />
+<form>
+<select name="homeTeam">{% for team in teams %}<option value="{{team.key}}" {% ifequal game.homeTeam.key team.key %}selected="selected"{% endifequal %}>{{team.name}}</option>{% endfor %}</select>
+<select name="awayTeam">{% for team in teams %}<option value="{{team.key}}" {% ifequal game.awayTeam.key team.key %}selected="selected"{% endifequal %}>{{team.name}}</option>{% endfor %}</select>
+<input type="submit" name="save"/>
+</form>
+{% endblock %} 
