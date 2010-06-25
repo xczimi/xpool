@@ -581,8 +581,8 @@ class AdminHandler(MyRequestHandler):
                 if len(args) > 1:
                     pass
                 else:
-                    self.template_values['groupgames'] = GroupGame.all()
-                    self.template_values['singlegames'] = SingleGame.all()
+                    self.template_values['groupgames'] = GroupGame.all().order('name')
+                    self.template_values['singlegames'] = SingleGame.all().order('time')
                     self.render('admin/games')
             elif "user" == admin:
                 if len(args) > 1:
