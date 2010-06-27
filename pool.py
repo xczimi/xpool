@@ -1,4 +1,6 @@
 from google.appengine.api import memcache
+from fifa2010 import Fifa2010
+from model import GroupGame
 
 def singlegame_result_point(bet, result):
     point = 0
@@ -21,6 +23,16 @@ def groupgame_result_point(bet, result):
         return len(x_order_set.intersection(y_order_set))
     return count_orders([tgr.team.short for tgr in bet.get_ranks()],[tgr.team.short for tgr in result.get_ranks()])
 
+def group_multiplier(game):
+    multiplier = 1
+    kolevels = Fifa2010().kostage.subgames()
+    kolevels.sort(key=GroupGame.groupstart)
+    for kolevel in kolevels:
+        multiplier = multiplier + 1
+        if str(game.key()) == str(kolevel.key()):
+            return multiplier
+    return 1
+
 def score_group(user, resultuser, game):
     point = 0
     for groupgame in game.groupgames():
@@ -28,7 +40,7 @@ def score_group(user, resultuser, game):
     for singlegame in game.singlegames():
         point = point + singlegame_result_point(user.singlegame_result(singlegame), resultuser.singlegame_result(singlegame))
     point = point + groupgame_result_point(user.groupgame_result(game), resultuser.groupgame_result(game))
-    return point
+    return group_multiplier(game) * point
 
 def perfects_single(users, resultuser, game, perfect = 4):
     perfects = []
