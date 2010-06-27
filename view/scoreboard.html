@@ -1,6 +1,7 @@
 {% extends "layout.html" %}{% load i18n %}
 {% block content %}
 <h1>{% trans "Scoreboard" %} - {{ groupgame.name }}</h1>
+<div style="float:left;">
 <table>
 <thead><tr><th>{% trans "Name" %}</th><th>{% trans "Score" %}</th></tr></thead>
 <tbody>
@@ -8,4 +9,17 @@
 <tr><td>{{scoreline.user.nick}}</td><td>{{scoreline.score}}</td></tr>
 {% endfor %}
 </tbody></table>
+</div>
+{% for subboard in subboards %}
+<div style="float:left;margin-left:1em;">
+<table>
+<thead><tr><th>{% trans "Name" %}</th><th><a href="/scoreboard/{{ subboard.game.key }}">{{ subboard.game.name }}</a></th></tr></thead>
+<tbody>
+{% for scoreline in subboard.scorelines %}
+<tr><td>{{scoreline.user.nick}}</td><td>{{scoreline.score}}</td></tr>
+{% endfor %}
+</tbody></table>
+</div>
+{% endfor %}
+<div style="clear:both;">&nbsp;</div>
 {% endblock %}
