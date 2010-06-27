@@ -1,7 +1,7 @@
 {% extends "layout.html" %}{% load i18n %}
 {% block content %}
 <h1>{% trans "Scoreboard" %} - {{ groupgame.name }}</h1>
-<div style="float:left;">
+<div style="float:left;margin-left:1em;margin-bottom:1em;">
 <table>
 <thead><tr><th>{% trans "Name" %}</th><th>{% trans "Score" %} x{{ multiplier }}</th></tr></thead>
 <tbody>
