@@ -565,13 +565,14 @@ class PoolHandler(MainHandler):
         groupgame = GroupGame.get(filter)
 
         self.template_values['groupgame'] = groupgame
+        self.template_values['multiplier'] = pool.group_multiplier(groupgame)
         scoreboard = pool.scoreboard(LocalUser.actives(), Fifa2010().result, groupgame)
         self.template_values['scoreboard'] = scoreboard
 
         subgroups = groupgame.subgames()
         subgroups.sort(key=GroupGame.groupstart)
         self.template_values['subgames'] = subgroups
-        self.template_values['subboards'] = [{'game':subgroup,'scorelines':pool.scoreboard(LocalUser.actives(), Fifa2010().result, subgroup)} for subgroup in subgroups]
+        self.template_values['subboards'] = [{'game':subgroup,'multiplier':pool.group_multiplier(subgroup),'scorelines':pool.scoreboard(LocalUser.actives(), Fifa2010().result, subgroup)} for subgroup in subgroups]
 
         MainHandler.get(self,'scoreboard')
 
