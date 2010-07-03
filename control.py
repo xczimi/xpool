@@ -540,21 +540,33 @@ class AllTipsHandler(GamesHandler):
             filtered.sort(cmp=lambda x,y: cmp(x.time, y.time), reverse=True)
             filter = filtered[0].group().key()
 
-        group = GroupGame.get(filter)
-        if(len(group.singlegames()) > 0):
-            users = [user for user in LocalUser.actives()]
-            self.template_values['groupgame'] = group
-            self.template_values['users'] = users
-            self.template_values['alltips'] = []
-            for singlegame in group.singlegames():
-                result = self.current_user().singlegame_result(singlegame)
-                if result.locked or NOW > group.groupstart():
-                    self.template_values['alltips'].append({'game': singlegame,
-                        'tips': self.singlegame_tips(singlegame, users)
-                        })
-                else:
-                    self.template_values['alltips'].append({'game': singlegame})
-            self.template_values['ranks'] = self.groupgame_tips(group, users)
+        users = [user for user in LocalUser.actives()]
+        self.template_values['users'] = users
+
+        groupgame = GroupGame.get(filter)
+        if len(groupgame.singlegames()) == 0:
+            groupgames = groupgame.groupgames()
+        else:
+            groupgames = [groupgame]
+        tpl_groupgames = []
+
+        for group in groupgames:
+            tpl_groupgame = {}
+            if(len(group.singlegames()) > 0):
+                tpl_groupgame['groupgame'] = group
+                tpl_groupgame['alltips'] = []
+                for singlegame in group.singlegames():
+                    result = self.current_user().singlegame_result(singlegame)
+                    if result.locked or NOW > group.groupstart():
+                        tpl_groupgame['alltips'].append({'game': singlegame,
+                            'tips': self.singlegame_tips(singlegame, users)
+                            })
+                    else:
+                        tpl_groupgame['alltips'].append({'game': singlegame})
+                tpl_groupgame['ranks'] = self.groupgame_tips(group, users)
+            tpl_groupgames.append(tpl_groupgame)
+
+        self.template_values['groupgames'] = tpl_groupgames
         MainHandler.get(self,'alltips')
 
 class PoolHandler(MainHandler):

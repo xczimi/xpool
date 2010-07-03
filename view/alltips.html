@@ -1,6 +1,6 @@
 {% extends "layout.html" %}{% load i18n %}
-{% block content %}{% if groupgame %}
-<h{{ groupgame.level }}>{{ groupgame.name }}</h{{ groupgame.level }}>
+{% block content %}{% for group in groupgames %}
+<h{{ groupgame.level }}>{{ group.groupgame.name }}</h{{ groupgame.level }}>
 <table>
 <thead>
 <tr>
@@ -13,7 +13,7 @@
 {% endfor %}
 </tr></thead>
 <tbody>
-{% for gametips in alltips %}
+{% for gametips in group.alltips %}
 <tr class="{% cycle line0,line1 %}"><td class="home">{{ gametips.game.homeTeam.name }}</td><td><img src="http://www.fifa.com{{ gametips.game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ gametips.game.awayTeam.flag }}" /></td><td class="away">{{ gametips.game.awayTeam.name }}</td><td>{{ gametips.game.time }}</td>
 {% for tip in gametips.tips %}
 <td class="resultColumn">{{ tip.homeScore }}&nbsp;&ndash;&nbsp;{{ tip.awayScore }}</td>
@@ -21,12 +21,12 @@
 </tr>
 {% endfor %}
 <tr><td colspan="4">Ranking</td>
-{% for rankings in ranks %}
+{% for rankings in group.ranks %}
 <td class="resultColumn">
     <ol>{% for ranking in rankings %}<li><img src="http://www.fifa.com{{ ranking.team.flag }}" />{% endfor %}</ol>
 </td>
 {% endfor %}
 </tr>
 </tbody>
-</table>{% endif %}
+</table>{% endfor %}
 {% endblock %}
