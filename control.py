@@ -33,8 +33,8 @@ import facebook
 NOW = datetime.utcnow()
 #+timedelta(days=-20)
 
-FACEBOOK_APP_ID = "101120486599460"
-FACEBOOK_APP_SECRET = "5f248ac5feb83660d5a925f81b954712"
+FACEBOOK_APP_ID = "315323681885269"
+FACEBOOK_APP_SECRET = "f5ca1bb05ba16cd8b594d7c2c8e93980"
 
 
 def need_login(func):

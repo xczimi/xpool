@@ -1,7 +1,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" >
 {% load i18n %}
 <head>
-<title>xHomePool</title>
+<title>xEuroPool</title>
 <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
 <link rel="stylesheet" href="/style/ebtipp.css" type="text/css" />
 </head>
@@ -22,7 +22,7 @@
 {% include "footer.html" %}</div></div>
 <script>
   window.fbAsyncInit = function() {
-    FB.init({appId: '101120486599460', status: true, cookie: true,
+    FB.init({appId: '315323681885269', status: true, cookie: true,
              xfbml: true});
     FB.Event.subscribe('{% if fb_user %}auth.logout{% else %}auth.login{% endif %}', function(response) {
       window.location.reload();
