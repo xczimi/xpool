@@ -23,7 +23,7 @@
 {% endif %}
 <tbody>
 {% endif %}
-<tr class="{% cycle line0,line1 %}"><td class="home">{{ singlegame.game.homeTeam.name }}</td><td class="pairColumn"><img src="http://www.fifa.com{{ singlegame.game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ singlegame.game.awayTeam.flag }}" /></td><td class="away">{{ singlegame.game.awayTeam.name }}</td><td>{{ singlegame.game.time }}</td>
+<tr class="{% cycle line0,line1 %}"><td class="home">{{ singlegame.game.homeTeam.name }}</td><td class="pairColumn"><img src="{{ singlegame.game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="{{ singlegame.game.awayTeam.flag }}" /></td><td class="away">{{ singlegame.game.awayTeam.name }}</td><td>{{ singlegame.game.time }}</td>
 <td class="resultColumn">{% if singlegame.result.locked %}{{ singlegame.result.homeScore }}&nbsp;&ndash;&nbsp;{{ singlegame.result.awayScore }}{% endif %}
 </td>
 <td class="betColumn">{% if not singlegame.editable %}
@@ -45,7 +45,7 @@
     <tbody>
     <thead><tr><th>{% trans "Team" %}</th><th>{% trans "W-D-L" %}</th><th>{% trans "GF-GA" %}</th><th>{% trans "P" %}</th></tr></thead>
     {% for ranking in groupgame.result_ranking %}
-    <tr><td><img src="http://www.fifa.com{{ ranking.team.flag }}" /></td><td>{{ranking.w}}&ndash;{{ranking.d}}&ndash;{{ranking.l}}</td><td>{{ranking.gf}}&ndash;{{ranking.ga}}</td><td>{{ranking.pt}}</td></tr>
+    <tr><td><img src="{{ ranking.team.flag }}" /></td><td>{{ranking.w}}&ndash;{{ranking.d}}&ndash;{{ranking.l}}</td><td>{{ranking.gf}}&ndash;{{ranking.ga}}</td><td>{{ranking.pt}}</td></tr>
     {% endfor %}
     </tbody>
     </table>
@@ -56,7 +56,7 @@
     <tbody>
     <thead><tr><th>{% trans "Team" %}</th><th>{% trans "W-D-L" %}</th><th>{% trans "GF-GA" %}</th><th>{% trans "P" %}</th><th>{% trans "tie" %}</th></tr></thead>
     {% for ranking in groupgame.bet_ranking %}
-    <tr><td><img src="http://www.fifa.com{{ ranking.team.flag }}" /></td><td>{{ranking.w}}&ndash;{{ranking.d}}&ndash;{{ranking.l}}</td><td>{{ranking.gf}}&ndash;{{ranking.ga}}</td><td>{{ranking.pt}}</td><td>{% if ranking.tie %}{{ranking.tie.pt}} ({{ranking.tie.gf}}&ndash;{{ranking.tie.ga}}){% endif %}
+    <tr><td><img src="{{ ranking.team.flag }}" /></td><td>{{ranking.w}}&ndash;{{ranking.d}}&ndash;{{ranking.l}}</td><td>{{ranking.gf}}&ndash;{{ranking.ga}}</td><td>{{ranking.pt}}</td><td>{% if ranking.tie %}{{ranking.tie.pt}} ({{ranking.tie.gf}}&ndash;{{ranking.tie.ga}}){% endif %}
     {% if ranking.draw %}{% if groupgame.editable %}<select name="draw.{{groupgame.game.key}}.{{forloop.counter0}}">{% for team in ranking.draw %}<option value="{{team.name}}" {% ifequal team.name ranking.team.name %} selected="selected"{% endifequal %}>{{team.name}}</option>{% endfor %}</select>{% else %} draw{% endif %}{% endif %}
     </td></tr>
     {% endfor %}

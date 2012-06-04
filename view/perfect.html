@@ -13,7 +13,7 @@
 </thead>
 <tbody>
 {% endif %}
-<tr class="{% cycle line0,line1 %}"><td>{{ perfect.user.nick }}</td><td class="pairColumn"><img src="http://www.fifa.com{{ perfect.game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="http://www.fifa.com{{ perfect.game.awayTeam.flag }}" /></td><td class="pairColumn">{{perfect.bet.homeScore}}&nbsp;&ndash;&nbsp;{{perfect.bet.awayScore}}</td><td>{{ perfect.game.group.name }}</td>
+<tr class="{% cycle line0,line1 %}"><td>{{ perfect.user.nick }}</td><td class="pairColumn"><img src="{{ perfect.game.homeTeam.flag }}" />&nbsp;&ndash;&nbsp;<img src="{{ perfect.game.awayTeam.flag }}" /></td><td class="pairColumn">{{perfect.bet.homeScore}}&nbsp;&ndash;&nbsp;{{perfect.bet.awayScore}}</td><td>{{ perfect.game.group.name }}</td>
 </tr>
 {% if forloop.last %}</tbody></table>{% endif %}
 {% endfor %}

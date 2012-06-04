@@ -131,9 +131,9 @@ class Team(db.Model):
     flag = db.StringProperty()
     short = db.StringProperty()
     href = db.StringProperty()
+    teamId = db.StringProperty()
     def __hash__(self):
-        id_match = re.match(r'^/worldcup/teams/team=([0-9]+)/index.html$', self.href)
-        return int(id_match.group(1))
+        return int(self.teamId)
 
     def __eq__(self, other):
         return self.__hash__() == other.__hash__()

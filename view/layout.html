@@ -12,14 +12,13 @@
 <div id="userline">{% include "userline.html" %}</div>
 <div id="menuline">{% include "menuline.html" %}</div>
 <div id="maincontent">
-<div style="background-color: green; color: white; font-size: 175%;">{% trans "Knockout stage bets are available!" %}</div>
+<!-- div style="background-color: green; color: white; font-size: 175%;">{% trans "Knockout stage bets are available!" %}</div -->
 <span id="message">{{ message }}</span>
 {% if filtergames %}<div id="submenuline"><ul>{% for game in filtergames %}<li><a href="{{ filter_uri }}/{{ game.key }}">{{ game.name }}</a></li>
 {% ifequal forloop.counter 8 %}<br /><br />{% endifequal %} {% endfor %}</ul></div>{% endif %}
 {% block content %}<h1>{% trans "xHomePool, eh!" %}</h1>{% endblock %}
 <div id="fb-root"></div>
 </div>
-<div style="background-color: blue; color: white; font-size: 110%;"><a style="color: white;" href="http://www.insead.edu/facultyresearch/faculty/personal/nbearden/qualtrics.cfm">INSEAD - Online World Cup Prediction Study</a></div>
 {% include "footer.html" %}</div></div>
 <script>
   window.fbAsyncInit = function() {

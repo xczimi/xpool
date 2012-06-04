@@ -1,5 +1,5 @@
 from google.appengine.api import memcache
-from fifa2010 import Fifa2010
+from uefa2012 import Uefa2012
 from model import GroupGame
 
 def singlegame_result_point(bet, result):
@@ -25,7 +25,7 @@ def groupgame_result_point(bet, result):
 
 def group_multiplier(game):
     multiplier = 1
-    kolevels = Fifa2010().kostage.subgames()
+    kolevels = Uefa2012().kostage.subgames()
     kolevels.sort(key=GroupGame.groupstart)
     for kolevel in kolevels:
         multiplier = multiplier + 1

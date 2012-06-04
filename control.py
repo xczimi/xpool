@@ -23,8 +23,8 @@ from google.appengine.ext.db import polymodel
 
 from model import *
 
-import fifa
-from fifa2010 import Fifa2010
+import uefa
+from uefa2012 import Uefa2012
 
 import pool
 
@@ -276,9 +276,9 @@ class MainHandler(MyRequestHandler):
         subgames.sort(key=GroupGame.groupstart)
         groupgames = []
         for game in subgames:
-            if not game.upgroup() is None and str(game.upgroup().key()) == str(Fifa2010().groupstage.key()):
+            if not game.upgroup() is None and str(game.upgroup().key()) == str(Uefa2012().groupstage.key()):
                 groupgames.append(game)
-            if not game.upgroup() is None and str(game.upgroup().key()) == str(Fifa2010().kostage.key()):
+            if not game.upgroup() is None and str(game.upgroup().key()) == str(Uefa2012().kostage.key()):
                 groupgames.append(game)
 
         self.template_values['filtergames'] = groupgames
@@ -290,7 +290,7 @@ class MainHandler(MyRequestHandler):
         subgames.sort(key=GroupGame.groupstart)
         groupgames = []
         for game in subgames:
-            if not game.upgroup() is None and not game.upgroup().upgroup() is None and str(game.upgroup().upgroup().key()) == str(Fifa2010().kostage.key()):
+            if not game.upgroup() is None and not game.upgroup().upgroup() is None and str(game.upgroup().upgroup().key()) == str(Uefa2012().kostage.key()):
                 groupgames.append(game)
 
         self.template_values['filtergames'] = groupgames
@@ -355,8 +355,8 @@ class UserHandler(MainHandler):
 class GamesHandler(MainHandler):
     def get(self, filter=''):
         self.get_template_values()
-        if filter == '': filter = Fifa2010().groupstage.key()
-        if filter == 'ko': filter = Fifa2010().kostage.key()
+        if filter == '': filter = Uefa2012().groupstage.key()
+        if filter == 'ko': filter = Uefa2012().kostage.key()
         self.template_values['games'] = GroupGame.byKey(filter).widewalk()
 
         MainHandler.get(self,'games')
@@ -369,14 +369,14 @@ class TodayHandler(MainHandler):
             self.template_values['games'] = [{
                 'game':singlegame,
                 'bet':self.current_user().singlegame_result(singlegame),
-                'result':Fifa2010().result.singlegame_result(singlegame),
-                'point':pool.singlegame_result_point(self.current_user().singlegame_result(singlegame), Fifa2010().result.singlegame_result(singlegame))
+                'result':Uefa2012().result.singlegame_result(singlegame),
+                'point':pool.singlegame_result_point(self.current_user().singlegame_result(singlegame), Uefa2012().result.singlegame_result(singlegame))
                 } for singlegame in singlegames]
         else:
             self.template_values['games'] = [{
                 'game':singlegame,
                 'bet':{'locked':False},
-                'result':Fifa2010().result.singlegame_result(singlegame)
+                'result':Uefa2012().result.singlegame_result(singlegame)
                 } for singlegame in singlegames]
         MainHandler.get(self,'today')
 
@@ -493,18 +493,18 @@ class MyTipsHandler(GamesHandler):
                 groupgame = {'game':game,'singlegames':[]}
                 for singlegame in game.singlegames():
                     bet = self.current_user().singlegame_result(singlegame)
-                    result = Fifa2010().result.singlegame_result(singlegame)
+                    result = Uefa2012().result.singlegame_result(singlegame)
                     point = pool.singlegame_result_point(bet, result)
                     groupgame['singlegames'].append({
                         'game':singlegame,
                         'bet':bet,
-                        'editable': (str(self.current_user().key()) == str(Fifa2010().result.key()) and NOW > singlegame.time and not bet.locked)
+                        'editable': (str(self.current_user().key()) == str(Uefa2012().result.key()) and NOW > singlegame.time and not bet.locked)
                             or (not bet.locked and not result.locked and NOW < game.groupstart()),
                         'result':result,
                         'point':point})
                 groupbet = self.current_user().groupgame_result(game)
-                groupresult = Fifa2010().result.groupgame_result(game)
-                groupgame['editable'] = (not groupbet.locked and not groupresult.locked and NOW < game.groupstart()) or str(self.current_user().key()) == str(Fifa2010().result.key())
+                groupresult = Uefa2012().result.groupgame_result(game)
+                groupgame['editable'] = (not groupbet.locked and not groupresult.locked and NOW < game.groupstart()) or str(self.current_user().key()) == str(Uefa2012().result.key())
                 groupgame['bet'] = groupbet
                 groupgame['bet_ranking'] = groupbet.get_ranks()
                 groupgame['result_ranking'] = groupresult.get_ranks()
@@ -573,25 +573,25 @@ class PoolHandler(MainHandler):
     def get(self, filter = ''):
         self.get_template_values()
         self.submenu('scoreboard')
-        if filter == '': filter = Fifa2010().tournament.key()
+        if filter == '': filter = Uefa2012().tournament.key()
         groupgame = GroupGame.get(filter)
 
         self.template_values['groupgame'] = groupgame
         self.template_values['multiplier'] = pool.group_multiplier(groupgame)
-        scoreboard = pool.scoreboard(LocalUser.actives(), Fifa2010().result, groupgame)
+        scoreboard = pool.scoreboard(LocalUser.actives(), Uefa2012().result, groupgame)
         self.template_values['scoreboard'] = scoreboard
 
         subgroups = groupgame.subgames()
         subgroups.sort(key=GroupGame.groupstart)
         self.template_values['subgames'] = subgroups
-        self.template_values['subboards'] = [{'game':subgroup,'multiplier':pool.group_multiplier(subgroup),'scorelines':pool.scoreboard(LocalUser.actives(), Fifa2010().result, subgroup)} for subgroup in subgroups]
+        self.template_values['subboards'] = [{'game':subgroup,'multiplier':pool.group_multiplier(subgroup),'scorelines':pool.scoreboard(LocalUser.actives(), Uefa2012().result, subgroup)} for subgroup in subgroups]
 
         MainHandler.get(self,'scoreboard')
 
 class PerfectHandler(MainHandler):
     def get(self):
         self.get_template_values()
-        self.template_values['perfects'] = pool.perfects_group(LocalUser.actives(),Fifa2010().result,Fifa2010().tournament)
+        self.template_values['perfects'] = pool.perfects_group(LocalUser.actives(),Uefa2012().result,Uefa2012().tournament)
         self.render('perfect')
 
 class ReferralHandler(MainHandler):
@@ -612,7 +612,7 @@ class AdminHandler(MyRequestHandler):
             if "flush" == admin:
                 perm_cached_class(None, flush=True)
             if "fifa" == admin:
-                Fifa2010.init_tree()
+                Uefa2012.init_tree()
                 perm_cached_class(None, flush=True)
                 self.redirect('/admin/team')
             elif "team" == admin:
@@ -642,7 +642,7 @@ class AdminHandler(MyRequestHandler):
                     pass
                 else:
                     self.template_values['users'] = LocalUser.all()
-                    #print pool.score_group(self.current_user(),Fifa2010().result,Fifa2010().tournament)
+                    #print pool.score_group(self.current_user(),Uefa2012().result,Uefa2012().tournament)
                     self.render('admin/users')
             elif "result" == admin:
                 if self.request.get('save') == "Submit":

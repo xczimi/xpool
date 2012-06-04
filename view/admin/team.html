@@ -1,10 +1,10 @@
 {% extends "layout.html" %}{% load i18n %}
-{% block content %}<h1>{{ team.name }} <img src="http://www.fifa.com{{ team.flag }}"></h1>
+{% block content %}<h1>{{ team.name }} <img src="{{ team.flag }}"></h1>
 <ul>
 <li>name: {{ team.name }}</li>
 <li>short: {{ team.short }}</li>
 <li>flag: {{ team.flag }}</li>
-<li><a href="http://www.fifa.com{{ team.href }}">FIFA</a></li>
+<li><a href="{{ team.href }}">UEFA</a></li>
 {% for game in team.homegame_set %}
 <li> vs {{ game.awayTeam.short }} {{ game.time }} {{  game.location }} ({{ game.group.name }})</li>
 {% endfor %}
