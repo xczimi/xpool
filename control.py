@@ -87,7 +87,7 @@ class MyRequestHandler(webapp.RequestHandler):
     def set_cookie(self, name, value):
         session = Cookie.SimpleCookie()
         session[name] = value
-        self.response.headers.add_header('Set-Cookie', session[name].OutputString())
+        self.response.headers.add_header('Set-Cookie', session[name].OutputString() + "; Path=/")
 
     def get_session(self):
         if self.session is None:
