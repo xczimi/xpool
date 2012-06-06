@@ -21,8 +21,8 @@ class Uefa2012(object):
 
         # try to get stuff by key
         if self.tournament is None: self.tournament = GroupGame.get_by_key_name("uefa2012")
-        if self.groupstage is None: self.groupstage = GroupGame.get_by_key_name("groupstage")
-        if self.kostage is None: self.kostage = GroupGame.get_by_key_name("kostage")
+        if self.groupstage is None: self.groupstage = GroupGame.get_by_key_name("uefa2012groupstage")
+        if self.kostage is None: self.kostage = GroupGame.get_by_key_name("uefa2012kostage")
         if self.result is None: self.result = LocalUser.get_by_key_name("result")
 
     @classmethod
