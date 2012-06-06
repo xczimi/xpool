@@ -183,6 +183,16 @@ class TeamGroupRank:
         if self.gf > other.gf: return 1
         return 0
 
+class TeamGroupPointRank(TeamGroupRank):
+    def __hash__(self):
+        """ Helps to create a set to find ties. """
+        return 0 + 1000 * ( (0 + 500) + 1000 * ( self.pt ))
+
+    def __cmp__(self,other):
+        if self.pt < other.pt: return -1
+        if self.pt > other.pt: return 1
+        return 0
+
 class GroupGame(db.Model):
     name = db.StringProperty(required=True)
     upgroup_ref = db.SelfReferenceProperty(collection_name="game_set")
@@ -364,7 +374,7 @@ class Result(db.Model):
                 )
     def get_ranks(self):
         return [self.get_home_rank(),self.get_away_rank()]
-
+    
 class GroupResult(db.Model):
     user = db.ReferenceProperty(LocalUser, collection_name="groupresult_set", required=True)
     groupgame = db.ReferenceProperty(GroupGame, collection_name="result_set", required=True)
@@ -381,6 +391,7 @@ class GroupResult(db.Model):
         
         This turned into one ugly beast.
         """
+        
         # team ordering rules 1,2,3
         ranks = [
             reduce(TeamGroupRank.__add__,                                       # sum up ranks
@@ -389,14 +400,20 @@ class GroupResult(db.Model):
                         (singlegame.get_ranks(self.user)
                             for singlegame in self.groupgame.singlegames() )))) # from the singlegames by the user
             for team in self.groupgame.teams()]  # the set of teams
-        ranks.sort(reverse=True) # sort the ranks
-
+        
+        # order only by points first
+        pranks = [TeamGroupPointRank(tgr.team, tgr.w, tgr.d, tgr.l, tgr.gf, tgr.ga) for tgr in ranks]
+        ranks = pranks
+        ranks.sort(reverse=True) # sort the pointranks
+        
         # check for ties
         ranks_set = set(ranks)
         if len(ranks_set) == len(ranks): return ranks
-
+        
+        #print [(tgr.team, tgr.pt, tgr.gf, tgr.ga) for tgr in ranks]
+        #print [(tgr.team, tgr.pt, tgr.gf, tgr.ga) for tgr in ranks_set]
+        
         # team ordering rules 4,5,6
-
         # create a list from the set of ranks
         ranks_set_list = [rank for rank in ranks_set]
         ranks_set_list.sort(reverse=True)
@@ -425,7 +442,7 @@ class GroupResult(db.Model):
                     tie_ranks_set_list = [rank for rank in set(tie_ranks)]
                     tie_ranks_set_list.sort(reverse=True)
                     for tie_rank in tie_ranks_set_list:
-                        # draw teams are   teams who are in the tie_ranks with the same rank as the tie_rank
+                        # draw teams are teams who are in the tie_ranks with the same rank as the tie_rank
                         draw_teams = [rank.team for rank in tie_ranks if rank == tie_rank]
                         for draw in self.get_draw_order():
                             for draw_rank in tie_ranks:
