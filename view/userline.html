@@ -13,7 +13,7 @@
 <input type="submit" value='{% trans "get me outside!" %}'>
 </form>
 </span>
-<span id="login_fb"><div class="fb-login-button" data-show-faces="false" data-width="200"></div></span>
+<span id="login_fb"><div class="fb-login-button" scope="email" data-show-faces="false" data-width="200"></div></span>
 {% endif %}
 <span id="login_google">
 {% if not user.google_user %}
@@ -35,5 +35,5 @@ p:&nbsp;<input type="password" id="password" name="password" size="10" maxlength
 <form method='post' name='google_loginform'><input type='hidden' name='action' value='auth/glogin' /></form>
 <a href="#" onclick='forms.google_loginform.submit();'>Google login</a>
 </span>
-<span id="login_fb"><div class="fb-login-button" data-show-faces="false" data-width="200"></div></span>
+<span id="login_fb"><div class="fb-login-button" scope="email" data-show-faces="false" data-width="200"></div></span>
 {% endif %}
