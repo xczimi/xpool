@@ -2,7 +2,7 @@
 {% block content %}<h1>{% trans "Users" %}</h1>
 <ul>
 {% for localuser in users %}
-<li>{{ localuser.email }} (<a href='{% url MainHandler "referrer" %}/{{ localuser.authcode }}'>auth</a> nick:{{localuser.nick}} full:{{localuser.full_name}} google:{{localuser.google_user}})</li>
+<li>{{ localuser.email }} (<a href='{% url MainHandler "referrer" %}/{{ localuser.authcode }}'>auth</a> nick:{{localuser.nick}} full:{{localuser.full_name}} google:{{localuser.google_user}}) active:{{localuser.active}}</li>
 {% endfor %}
 </ul>
 {% endblock %}
