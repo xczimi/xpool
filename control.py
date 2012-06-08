@@ -538,7 +538,10 @@ class AllTipsHandler(GamesHandler):
         if filter == '':
             filtered = [game for game in SingleGame.everything().itervalues() if game.time <= NOW]
             filtered.sort(cmp=lambda x,y: cmp(x.time, y.time), reverse=True)
-            filter = filtered[0].group().key()
+            if len(filtered) > 0:
+                filter = filtered[0].group().key()
+            else:
+                filter = Uefa2012().groupstage.key() 
 
         users = [user for user in LocalUser.actives()]
         self.template_values['users'] = users
