@@ -460,3 +460,6 @@ class GroupResult(db.Model):
                                 rank.tie = tie_rank
                                 ranks_no_tie.append(rank)
         return ranks_no_tie
+
+class Motd(db.Model):
+    message = db.StringProperty()

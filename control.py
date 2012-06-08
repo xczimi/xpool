@@ -244,6 +244,9 @@ class MyRequestHandler(webapp.RequestHandler):
 
         self.fb_current_user
         return self.loggedin_user
+    
+    def get_motd(self):
+        return "Don't forget to predict every game in the group and lock your bets before the first game of the group starts!"
 
     def get_template_values(self):
         message = self.get_session_message()
@@ -252,7 +255,8 @@ class MyRequestHandler(webapp.RequestHandler):
                 'user' : self.current_user(),
                 'fb_user' : self.fb_current_user,
                 'is_admin' : users.is_current_user_admin(),
-                'message': message}
+                'message': message,
+                'motd' : self.get_motd()}
         if message is not None: self.set_session_message(None)
         return self.template_values
 

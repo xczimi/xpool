@@ -43,7 +43,9 @@ window.fbAsyncInit = function() {
 <div id="userline">{% include "userline.html" %}</div>
 <div id="menuline">{% include "menuline.html" %}</div>
 <div id="maincontent">
-<!-- div style="background-color: green; color: white; font-size: 175%;">{% trans "Knockout stage bets are available!" %}</div -->
+{% if motd %}
+<div style="background-color: green; color: white; font-size: 175%;">{{ motd }}</div>
+{% endif %}
 <span id="message">{{ message }}</span>
 {% if filtergames %}<div id="submenuline"><ul>{% for game in filtergames %}<li><a href="{{ filter_uri }}/{{ game.key }}">{{ game.name }}</a></li>
 {% ifequal forloop.counter 8 %}<br /><br />{% endifequal %} {% endfor %}</ul></div>{% endif %}
