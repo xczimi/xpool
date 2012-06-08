@@ -20,7 +20,9 @@ window.fbAsyncInit = function() {
 {% if not fb_user %}
 	FB.getLoginStatus(function(response) {
 	  if (response.status === 'connected') {
+{% if not user %}
 		window.location = window.location;
+{% endif %}
 	  }
 	 });
 {% endif %}
