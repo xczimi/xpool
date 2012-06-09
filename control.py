@@ -508,7 +508,7 @@ class MyTipsHandler(GamesHandler):
                         'point':point})
                 groupbet = self.current_user().groupgame_result(game)
                 groupresult = Uefa2012().result.groupgame_result(game)
-                groupgame['editable'] = (not groupbet.locked and not groupresult.locked and (NOW < game.groupstart()) or str(self.current_user().key()) == str(Uefa2012().result.key()))
+                groupgame['editable'] = (not groupbet.locked and not groupresult.locked and NOW < game.groupstart()) or str(self.current_user().key()) == str(Uefa2012().result.key())
                 groupgame['bet'] = groupbet
                 groupgame['bet_ranking'] = groupbet.get_ranks()
                 groupgame['result_ranking'] = groupresult.get_ranks()
