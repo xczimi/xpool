@@ -58,7 +58,7 @@ def get_games(stage):
             group_name = group_name.strip(' \t\n\r')
         dayvalue = xpath.findvalue('tr/td/div/span[@class="b dateT"]',matchdom).strip().split(' ')[0].encode('utf-8')
         hourvalue = xpath.findvalue('tr/td[@class="c b score nob"]//a',matchdom).strip().encode('utf-8')
-        matchtime = datetime(2012,6,int(dayvalue),int(hourvalue.split('.')[0])-1,int(hourvalue.split('.')[1]),0,0)
+        matchtime = datetime(2012,6,int(dayvalue),int(hourvalue.split('.')[0])-2,int(hourvalue.split('.')[1]),0,0)
         stadium = re.match(r".*Stadium:.*,(.*)",xpath.findvalue('tr[@class="referee_stadium"]/td',matchdom).encode('utf-8').strip(), flags = re.DOTALL).group(1).strip()
         hournode = xpath.findvalue('tr/td[@class="c b score nob"]//a/@href',matchdom)
         matchid = int(re.match(r"/uefaeuro/season=2012/matches/round=[0-9]+/match=([0-9]+)/index.html",hournode).group(1)) - 2003318
