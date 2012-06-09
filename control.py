@@ -502,7 +502,7 @@ class MyTipsHandler(GamesHandler):
                     groupgame['singlegames'].append({
                         'game':singlegame,
                         'bet':bet,
-                        'editable': (str(self.current_user().key()) == str(Uefa2012().result.key()) and NOW > singlegame.time and not bet.locked)
+                        'editable': (str(self.current_user().key()) == str(Uefa2012().result.key()) and NOW < singlegame.time and not bet.locked)
                             or (not bet.locked and not result.locked and NOW < game.groupstart()),
                         'result':result,
                         'point':point})
