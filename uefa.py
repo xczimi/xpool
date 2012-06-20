@@ -50,17 +50,31 @@ def get_team(match, home_or_away):
 def get_games(stage):
     dom = get_dom(stage)
     games = []
+    #print debug
     for matchdom in dom:
         group_name = xpath.findvalue('tr/td/div/span[@class="gname"]//a',matchdom)
         if None == group_name:
-            group_name = ""
+            group_name = xpath.findvalue('tr/td/div/span[@class="rname"]//a',matchdom)
+            if None == group_name:
+                group_name = ""
+            else:
+                group_name = group_name.strip(' \t\n\r')
         else:
             group_name = group_name.strip(' \t\n\r')
         dayvalue = xpath.findvalue('tr/td/div/span[@class="b dateT"]',matchdom).strip().split(' ')[0].encode('utf-8')
-        hourvalue = xpath.findvalue('tr/td[@class="c b score nob"]//a',matchdom).strip().encode('utf-8')
+        hourstr = xpath.findvalue('tr/td[@class="c b score nob"]//a',matchdom)
+        if None == hourstr:
+            hourstr = xpath.findvalue('tr/td[@class="c b score nob"]',matchdom)
+            if None == hourstr:
+                print matchdom.toprettyxml(encoding='utf-8')
+                return []
+        hourvalue = hourstr.strip().encode('utf-8')
         matchtime = datetime(2012,6,int(dayvalue),int(hourvalue.split('.')[0])-2,int(hourvalue.split('.')[1]),0,0)
         stadium = re.match(r".*Stadium:.*,(.*)",xpath.findvalue('tr[@class="referee_stadium"]/td',matchdom).encode('utf-8').strip(), flags = re.DOTALL).group(1).strip()
         hournode = xpath.findvalue('tr/td[@class="c b score nob"]//a/@href',matchdom)
+        if None == hournode:
+            print matchdom.toprettyxml(encoding='utf-8')
+            return []
         matchid = int(re.match(r"/uefaeuro/season=2012/matches/round=[0-9]+/match=([0-9]+)/index.html",hournode).group(1)) - 2003318
         #print [ group_name , dayvalue , hourvalue , matchtime, stadium , matchid, hournode ]
         new_game = {'id' : matchid ,
@@ -70,7 +84,6 @@ def get_games(stage):
                     }
         for home_or_away in ['home','away']:
             new_game[home_or_away + '_team'] = get_team(matchdom, home_or_away)
-        print new_game 
         games.append(new_game)
     return games
 
