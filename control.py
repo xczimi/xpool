@@ -246,7 +246,15 @@ class MyRequestHandler(webapp.RequestHandler):
         return self.loggedin_user
     
     def get_motd(self):
-        return "Don't forget to predict every game in the group and lock your bets before the first game of the group starts!"
+        motdmsg = memcache.get('motd')
+        if None == motdmsg:
+            motd = Motd.all().get()
+            if None == motd:
+                motd = Motd(message="Quarter final prediction are available!")
+                motd.put()
+            motdmsg = motd.message
+            memcache.add('motd',motd.message,60)
+        return motdmsg
 
     def get_template_values(self):
         message = self.get_session_message()
