@@ -367,7 +367,8 @@ class UserHandler(MainHandler):
 class GamesHandler(MainHandler):
     def get(self, filter=''):
         self.get_template_values()
-        if filter == '': filter = Uefa2012().groupstage.key()
+        if filter == '': filter = 'ko'
+        if filter == 'group': filter = Uefa2012().groupstage.key()
         if filter == 'ko': filter = Uefa2012().kostage.key()
         self.template_values['games'] = GroupGame.byKey(filter).widewalk()
 
