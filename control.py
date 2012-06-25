@@ -493,8 +493,9 @@ class MyTipsHandler(GamesHandler):
         if filter == '':
             filtered = [game for game in SingleGame.everything().itervalues() if game.time+timedelta(minutes=120) > NOW]
             filtered.sort(cmp=lambda x,y: cmp(x.time, y.time))
-            if filtered[0] != None:
-                filter = filtered[0].group().key()
+            if len(filtered) > 0:
+                if filtered[0] != None:
+                    filter = filtered[0].group().key()
         groupgame = GroupGame.get(filter)
         if len(groupgame.singlegames()) == 0:
             groupgames = groupgame.groupgames()
