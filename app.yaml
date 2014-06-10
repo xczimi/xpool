@@ -1,12 +1,13 @@
-application: xeuropool
-version: 2
-runtime: python
+application: xpool27
+version: 3
+runtime: python27
 api_version: 1
+threadsafe: yes
 
 handlers:
-- url: /favicon.ico
+- url: /favicon\.ico
   static_files: view/img/favicon.ico
-  upload: view/img/favicon.ico
+  upload: view/img/favicon\.ico
 
 - url: /style
   static_dir: view/style
@@ -14,11 +15,17 @@ handlers:
 - url: /img
   static_dir: view/img
 
-- url: /stats.*
-  script: $PYTHON_LIB/google/appengine/ext/appstats/ui.py
-
 - url: /doc
   static_dir: doc
 
 - url: .*
-  script: main.py
+  script: main.app
+
+libraries:
+- name: webapp2
+  version: "2.5.2"
+- name: django
+  version: 1.2
+
+env_variables:
+  DJANGO_SETTINGS_MODULE: 'settings'

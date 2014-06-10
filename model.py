@@ -6,14 +6,11 @@
 import Cookie
 import uuid
 import re
+import webapp2
+
 from google.appengine.api import users
 from google.appengine.api import memcache
 from google.appengine.api import mail
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp import util
-from google.appengine.ext.webapp import template
-
-from django.template import TemplateDoesNotExist
 
 from google.appengine.ext import db
 from google.appengine.ext.db import polymodel

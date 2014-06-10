@@ -11,12 +11,13 @@ from datetime import datetime, timedelta
 from google.appengine.api import users
 from google.appengine.api import memcache
 from google.appengine.api import mail
-from google.appengine.ext import webapp
-from google.appengine.ext.webapp import util
+
+import webapp2
 from google.appengine.ext.webapp import template
 
 from django.template import TemplateDoesNotExist
 from django.utils import translation
+from django.utils.translation import ugettext as _
 
 from google.appengine.ext import db
 from google.appengine.ext.db import polymodel
@@ -49,7 +50,7 @@ def need_login(func):
     return with_login
 
 
-class MyRequestHandler(webapp.RequestHandler):
+class MyRequestHandler(webapp2.RequestHandler):
     session = None
     loggedin_user = None
     template_values = None
@@ -67,7 +68,7 @@ class MyRequestHandler(webapp.RequestHandler):
             self.redirect(self.request.uri)
         else:
             return False
-        return True
+        return None
 
     def logout(self):
         if self.current_user():
@@ -78,7 +79,7 @@ class MyRequestHandler(webapp.RequestHandler):
             else:
                 self.set_session_message(_('Successful logout'))
                 self.redirect(self.request.uri)
-            return True
+            return None
         return False
 
     def get_cookie(self, name):
@@ -271,10 +272,10 @@ class MyRequestHandler(webapp.RequestHandler):
     def render(self, tpl = "index"):
         translation.activate(self.get_session_language())
         try:
-            self.response.out.write(template.render('view/'+tpl+'.html', self.template_values, debug=True))
+            self.response.write(template.render('view/'+tpl+'.html', self.template_values, debug=True))
         except TemplateDoesNotExist:
             self.template_values['error'] = tpl
-            self.response.out.write(template.render('view/error.html', self.template_values, debug=True))
+            self.response.write(template.render('view/error.html', self.template_values, debug=True))
         except:
             raise
 
@@ -332,7 +333,7 @@ class UserHandler(MainHandler):
             self.redirect(self.request.uri)
         else:
             return False
-        return True
+        return None
 
     def refer_user(self, email, nick, full_name):
         if not mail.is_email_valid(email): return
@@ -403,7 +404,7 @@ class MyTipsHandler(GamesHandler):
             self.redirect(self.request.uri)
         else:
             return False
-        return True
+        return None
 
     @need_login
     def save_current(self):

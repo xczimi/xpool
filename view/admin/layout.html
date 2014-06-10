@@ -6,10 +6,10 @@
 <link rel="stylesheet" href="/style/ebtipp.css" type="text/css" />
 </head>
 <body><div align="center"><div id="main"><div id="head">{% trans "This is the admin interface." %}</div>
-<div id="userline">{% include "../userline.html" %}</div>
+<div id="userline">{% include "userline.html" %}</div>
 <div id="menuline">{% include "menuline.html" %}</div>
 <div id="maincontent">
 {% block content %}<h1>{% trans "xHomePool, eh!" %}</h1>{% endblock %}
 </div>
-{% include "../footer.html" %}</div></div></body>
+{% include "footer.html" %}</div></div></body>
 </html>
