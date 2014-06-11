@@ -8,7 +8,7 @@ import re
 
 
 class Fifa2014(object):
-    """ Fifa2010 class should hold all the FIFA 2010 WC specific knowledge. """
+    """ Fifa2014 class should hold all the FIFA 2010 WC specific knowledge. """
     __shared_state = {}
 
     tournament = None
@@ -58,7 +58,7 @@ class Fifa2014(object):
     def init_group_game(self, game):
         """Create game if not exists."""
 
-        group = self.init_group(game['group'],Fifa2010().groupstage)
+        group = self.init_group(game['group'],Fifa2014().groupstage)
         game_stored = SingleGame.all().filter('fifaId =',int(game['id'])).get()
         if game_stored is None:
             game_stored = SingleGame(fifaId=int(game['id']),group = group)
@@ -72,7 +72,7 @@ class Fifa2014(object):
     @classmethod
     def init_ko_game(self, game):
         """Create ko game if not exists."""
-        group = self.init_group(game['group'],Fifa2010().kostage)
+        group = self.init_group(game['group'],Fifa2014().kostage)
         kogroup = self.init_group('KO ' + game['id'], group)
 
         game_stored = SingleGame.all().filter('fifaId =',int(game['id'])).get()
@@ -86,11 +86,11 @@ class Fifa2014(object):
     @classmethod
     def init_tree(self):
         # try to create that stuff safely
-        if Fifa2010().tournament is None: Fifa2010().tournament = GroupGame.get_or_insert(key_name="fifa2010", name="FIFA 2010")
-        if Fifa2010().groupstage is None: Fifa2010().groupstage = GroupGame.get_or_insert(key_name="groupstage", name="Group Stage", upgroup_ref = Fifa2010().tournament)
-        if Fifa2010().kostage is None: Fifa2010().kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", upgroup_ref = Fifa2010().tournament)
-        if Fifa2010().result is None: Fifa2010().result = LocalUser.get_or_insert(key_name="result", email="fifa@fifa.com", password='fifa')
-        groupgames = fifa.get_games("index")
+        if Fifa2014().tournament is None: Fifa2014().tournament = GroupGame.get_or_insert(key_name="fifa2014", name="FIFA 2010")
+        if Fifa2014().groupstage is None: Fifa2014().groupstage = GroupGame.get_or_insert(key_name="groupstage", name="Group Stage", upgroup_ref = Fifa2014().tournament)
+        if Fifa2014().kostage is None: Fifa2014().kostage = GroupGame.get_or_insert(key_name="kostage", name="KO Stage", upgroup_ref = Fifa2014().tournament)
+        if Fifa2014().result is None: Fifa2014().result = LocalUser.get_or_insert(key_name="result", email="fifa@fifa.com", password='fifa')
+        groupgames = fifa.get_games("index2014")
         for game in groupgames: self.init_group_game(game)
-        kogames = fifa.get_games("kostage")
-        for kogame in kogames: self.init_ko_game(kogame)
+        #kogames = fifa.get_games("kostage2014")
+        #for kogame in kogames: self.init_ko_game(kogame)
