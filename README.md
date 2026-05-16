@@ -18,6 +18,7 @@ Specs and reference docs for agentic development live in [`.specs/`](./.specs/).
 | [`.specs/REWRITE_ARCHITECTURE.md`](./.specs/REWRITE_ARCHITECTURE.md) | Serverless AWS rewrite architecture — stack choices, project structure, build phases |
 | [`.specs/GAME_RULES.md`](./.specs/GAME_RULES.md) | The prediction/scoring rules in detail, including known bugs |
 | [`.specs/fwc26_rules.md`](./.specs/fwc26_rules.md) | FIFA World Cup 26 competition rules — tournament structure, tiebreakers, knockout bracket |
+| [`.specs/data_sources.md`](./.specs/data_sources.md) | Tournament data sources — FotMob calendar feed, TheSportsDB, and the ingestion flow |
 | [`.specs/thesportsdb_api.md`](./.specs/thesportsdb_api.md) | TheSportsDB API reference — endpoints and the World Cup 26 ingestion subset |
 
 ## `archive/`
