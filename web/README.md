@@ -20,9 +20,46 @@ npm install
 npm run dev      # dev server, proxies /api to :3000
 npm run build    # tsc -b && vite build
 npm run lint     # eslint
+npm run e2e      # Playwright end-to-end suite (boots the full live stack)
 ```
 
-The build does **not** require the backend to be running.
+The build and lint do **not** require the backend to be running. `npm run e2e`
+does — see below.
+
+## End-to-end tests (`npm run e2e`)
+
+Playwright drives a real browser against the **full live stack** (DynamoDB
+Local + the axum API + this Vite dev server). A `build`-only check cannot catch
+SPA↔API integration bugs (a GraphQL schema mismatch, urql sending a query as
+GET); these tests do.
+
+**Prerequisites:** Docker, the Rust toolchain via `mise`, Node, and the
+Playwright browser binary:
+
+```sh
+npx playwright install chromium   # one-time
+```
+
+**What `npm run e2e` does** — the Playwright `globalSetup`
+(`e2e/global-setup.ts` → `scripts/e2e-stack.sh`) boots the backend before any
+test runs:
+
+1. kills any stale API process on `:3000`;
+2. `docker compose up -d` (DynamoDB Local + MailHog);
+3. waits for DynamoDB Local;
+4. runs `xtask import tournaments/fwc26.json` + `xtask seed` (idempotent —
+   re-seeding gives every run a clean, known dataset);
+5. builds and starts the API, waits for `GET /api/health`.
+
+Playwright then starts the Vite dev server itself (`webServer`, with
+`reuseExistingServer`). `globalTeardown` stops the API; **Docker is left
+running** (DynamoDB Local is in-memory and cheap — run `docker compose down`
+to stop it).
+
+The specs live in `e2e/`: visitor smoke (every public route renders with no
+error view / no failed GraphQL), schedule chronological order, dev login +
+auth gating, the My Tips save/persist round-trip, and the admin-result →
+scoreboard flow.
 
 ## Layout
 
@@ -45,9 +82,11 @@ Tips, All Tips, Scoreboard, Perfect, Profile, Invite, Rules, Admin
 Notable behaviours:
 
 - **Dev auth** — there is no real login yet. The auth bar offers a player
-  picker (sourced from the public scoreboard) plus a free-text id field.
-  The chosen id is stored in `localStorage` and sent as `X-Dev-Player` on
-  every GraphQL request. "Log out" clears it; a visitor sends no header.
+  picker sourced from the public `players` query. The chosen id is stored in
+  `localStorage` and sent as `X-Dev-Player` on every GraphQL request. "Log
+  out" clears it; a visitor sends no header. The urql client is rebuilt on
+  every identity change (`graphql/GraphqlProvider.tsx`) so one player's cached
+  `me`/`pools`/`tips` is never served to another.
 - **My Tips** — a group-level form (API.md §6). All matches in a leaf group
   are edited together; **Save draft** / **Lock** submits the whole group via
   `submitGroup`. Locked predictions (or a passed deadline) render read-only.
@@ -105,11 +144,10 @@ The schema below is the **agreed reconciled contract** — the `api` crate's
 
 ## Incomplete / deferred
 
-- Admin **Teams** and **Players** are read-only listings. Players are listed
-  from scoreboard entries (there is no dedicated `players` query in the
-  reconciled schema).
+- Admin **Teams** and **Players** are read-only listings.
 - Pool creation/management UI is not built (`createPool` / `updatePool`
   documents exist but pool membership management is out of scope per
   `DATA_MODEL.md` §8). The Scoreboard pool selector reads existing pools.
-- No automated tests — pure helpers in `src/lib/` are structured to be unit
-  testable, but a test runner was not added under P6.
+- A Playwright **end-to-end suite** (`npm run e2e`, see above) covers the
+  cross-stack flows. Pure helpers in `src/lib/` are structured to be unit
+  testable, but a component/unit test runner has not been added.

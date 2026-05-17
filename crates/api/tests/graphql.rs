@@ -429,6 +429,52 @@ async fn results_is_empty_when_no_results_entered() {
     assert_eq!(data(&resp), json!({ "results": [] }));
 }
 
+// ── players query ────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn players_query_returns_all_players_including_result_user() {
+    // The dev-login picker (web/src/components/AuthBar.tsx) depends on this
+    // query; a schema mismatch here is exactly the class of bug E2E exists to
+    // catch. The repo is seeded with the result user, Alice, and Bob.
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let resp = run(
+        &repo,
+        "{ players { id nick fullName isResultUser } }",
+        Variables::default(),
+        None,
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+
+    let d = data(&resp);
+    let players = d["players"].as_array().unwrap();
+    assert_eq!(players.len(), 3, "result user + Alice + Bob");
+
+    let ids: Vec<&str> = players
+        .iter()
+        .map(|p| p["id"].as_str().unwrap())
+        .collect();
+    assert!(ids.contains(&ALICE), "Alice listed: {ids:?}");
+    assert!(ids.contains(&BOB), "Bob listed: {ids:?}");
+    assert!(ids.contains(&RESULT_ID), "result user listed: {ids:?}");
+
+    // The result user is flagged and sorted last (real players first).
+    let result_row = players
+        .iter()
+        .find(|p| p["id"] == RESULT_ID)
+        .expect("result user present");
+    assert_eq!(result_row["isResultUser"], json!(true));
+    assert_eq!(
+        players.last().unwrap()["id"],
+        json!(RESULT_ID),
+        "result user sorts after real players"
+    );
+
+    // Real players are not flagged as the result user.
+    let alice_row = players.iter().find(|p| p["id"] == ALICE).unwrap();
+    assert_eq!(alice_row["isResultUser"], json!(false));
+}
+
 // ── tournament: group deadline ───────────────────────────────────────────────
 
 #[tokio::test]

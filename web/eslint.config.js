@@ -19,4 +19,15 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // Playwright E2E specs + setup run in Node, not the browser.
+    files: ['e2e/**/*.ts', 'playwright.config.ts'],
+    languageOptions: {
+      globals: globals.node,
+    },
+    rules: {
+      // Setup/teardown are entry points, not React fast-refresh modules.
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 ])

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from 'urql'
+import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import {
   POOLS_QUERY,
@@ -23,9 +24,16 @@ import { ROUND_LABELS, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
 /** Ranked leaderboard, overall + per stage, with pool selector (UC-8). */
 export function ScoreboardPage() {
   const { t } = useI18n()
+  const { playerId } = useAuth()
   const [poolId, setPoolId] = useState<string | null>(null)
 
-  const [poolsResult] = useQuery<{ pools: Pool[] }>({ query: POOLS_QUERY })
+  // `pools` requires authentication (API.md §8) — the scoreboard itself is
+  // public, so the pool selector is only populated for a logged-in player.
+  // Issuing `pools` as a visitor would surface an auth error on a public page.
+  const [poolsResult] = useQuery<{ pools: Pool[] }>({
+    query: POOLS_QUERY,
+    pause: !playerId,
+  })
   const [probe] = useQuery<{
     tournament: Tournament | null
     motd: string | null
