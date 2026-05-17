@@ -4,3 +4,14 @@
 .settings
 *~
 
+# Rust
+/target
+**/*.rs.bk
+
+# Node
+node_modules
+web/dist
+
+# Local env
+.env
+.env.local

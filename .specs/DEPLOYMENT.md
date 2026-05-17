@@ -71,8 +71,23 @@ the endpoint differs.
 - Community **`terraform-aws-modules`** for the boilerplate-heavy pieces
   (`s3-bucket`, `cloudfront`, `lambda`, `dynamodb-table`, `acm`); raw resources
   for the trivial bits — the stack is small, don't over-modularize.
-- **Remote state:** an S3 backend (S3-native lockfile — no separate lock table);
-  one state file per environment.
+- **Remote state:** an S3 backend in the pre-existing **`xczimi-terraform-state`**
+  bucket. One state file per environment, keyed:
+  - `xpool/infrastructure/dev/terraform.tfstate`
+  - `xpool/infrastructure/prod/terraform.tfstate`
+
+  (Follows the existing convention — cf. `ourbuzzer/infrastructure/terraform.tfstate`,
+  a single-stage project — with `<env>` inserted because xpool deploys both
+  `dev` and `prod`.)
+- **Credentials:** the `xczimi` AWS profile is **not** written into the backend
+  block or any committed HCL — it is supplied to OpenTofu at runtime via the
+  **`AWS_PROFILE`** environment variable. This keeps the backend config
+  credential-free and portable (locally `AWS_PROFILE=xczimi`; in CI the GitHub
+  OIDC role supplies credentials instead, with no profile set).
+- **Locking:** S3-native lockfile (`use_lockfile = true`) — no DynamoDB lock
+  table. A shared `terraform-locks` table exists in the account (used by other
+  projects), but xpool deliberately does **not** use it; S3-native locking keeps
+  the backend a single resource.
 - **Build/deploy separation:** the Rust Lambda is built *outside* OpenTofu with
   `cargo-lambda`; OpenTofu ships the resulting artifact. The SPA is built with
   Vite and synced to S3.
