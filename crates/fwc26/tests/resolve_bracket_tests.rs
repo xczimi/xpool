@@ -138,7 +138,7 @@ fn build_test_tournament() -> Tournament {
             lock_mode: LockMode::LockTogether,
             carries_standings: false,
             children: GroupChildren::Groups(
-                vec!["group_stage", "knockout"]
+                ["group_stage", "knockout"]
                     .iter()
                     .map(|s| s.to_string())
                     .collect(),

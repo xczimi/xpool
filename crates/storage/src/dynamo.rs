@@ -62,7 +62,14 @@ impl DynamoRepository {
         let mut loader = aws_config::from_env();
 
         if let Ok(endpoint) = std::env::var("DYNAMO_ENDPOINT") {
-            loader = loader.endpoint_url(endpoint);
+            // Local mode (DynamoDB Local): supply a region and dummy static
+            // credentials so the dev does not need any AWS env vars set.
+            loader = loader
+                .endpoint_url(endpoint)
+                .region(aws_sdk_dynamodb::config::Region::new("us-east-1"))
+                .credentials_provider(aws_sdk_dynamodb::config::Credentials::new(
+                    "local", "local", None, None, "xpool-local",
+                ));
         }
 
         let config = loader.load().await;

@@ -32,7 +32,7 @@ fn test_annexe_c_keys_are_valid_8_subsets() {
         // All letters must be in A-L
         for &c in &key_chars {
             assert!(
-                c >= 'A' && c <= 'L',
+                ('A'..='L').contains(&c),
                 "Row {}: invalid group letter '{}' in key",
                 i + 1,
                 c
@@ -88,7 +88,7 @@ fn test_annexe_c_values_are_permutations_of_keys() {
         for &b in thirds.iter() {
             let c = b as char;
             assert!(
-                c >= 'A' && c <= 'L',
+                ('A'..='L').contains(&c),
                 "Row {}: invalid group letter '{}' in thirds",
                 i + 1,
                 c
