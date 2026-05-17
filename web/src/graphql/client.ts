@@ -12,6 +12,10 @@ import { getDevPlayerId } from '../auth/devAuth'
 export function createGraphqlClient(): Client {
   return new Client({
     url: '/api/graphql',
+    // Force POST for every operation. urql defaults to `within-url-limit`,
+    // which sends queries as GET — but the API serves the GraphiQL playground
+    // on `GET /api/graphql` and executes only on POST.
+    preferGetMethod: false,
     exchanges: [cacheExchange, fetchExchange],
     fetchOptions: () => {
       const playerId = getDevPlayerId()
