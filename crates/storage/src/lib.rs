@@ -4,7 +4,7 @@
 //! and `DynamoRepository` bodies are filled by the `storage` subagent (task P3).
 
 use async_trait::async_trait;
-use domain::{Identity, Motd, Person, Player, Pool, PlayerId, Round, Tournament};
+use domain::{Identity, Motd, Person, Player, PlayerId, Pool, Round, Tournament};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
