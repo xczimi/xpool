@@ -113,3 +113,17 @@ holds implementation plans. `archive/` is legacy reference only.
   `.specs/LEGACY_I18N.md` is the legacy-wording reference.
 - Auth is a **dev stub** — the API resolves the current player from an
   `X-Dev-Player` header; there is no real auth yet (deferred).
+
+## Agent skills
+
+### Issue tracker
+
+Issues and PRDs live as markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Canonical names — `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context; domain docs live in `.specs/` (no root `CONTEXT.md` / `docs/adr/`). See `docs/agents/domain.md`.
