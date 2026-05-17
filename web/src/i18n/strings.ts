@@ -129,13 +129,9 @@ const en = {
   // admin
   adminTitle: 'Admin',
   adminResults: 'Results entry',
-  adminBanner: 'Banner',
   adminTeams: 'Teams',
   adminPlayers: 'Players',
   enterResult: 'Enter result',
-  bannerText: 'Banner message',
-  setBanner: 'Set banner',
-  bannerSet: 'Banner updated.',
 } as const
 
 const hu: Record<StringKey, string> = {
@@ -237,13 +233,9 @@ const hu: Record<StringKey, string> = {
 
   adminTitle: 'Admin',
   adminResults: 'Eredmény rögzítés',
-  adminBanner: 'Hirdetmény',
   adminTeams: 'Csapatok',
   adminPlayers: 'Játékosok',
   enterResult: 'Eredmény rögzítése',
-  bannerText: 'Hirdetmény szövege',
-  setBanner: 'Hirdetmény beállítása',
-  bannerSet: 'Hirdetmény frissítve.',
 }
 
 export const catalogues: Record<Locale, Record<StringKey, string>> = {

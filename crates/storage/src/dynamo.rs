@@ -17,7 +17,6 @@
 //! | Tournament | `<t>#TOURNAMENT` | JSON |
 //! | Pool | `<t>#POOL#<poolId>` | JSON |
 //! | Scoreboard | `<t>#SCOREBOARD` | JSON |
-//! | Motd | `<t>#MOTD` | JSON |
 //!
 //! Players additionally store a bare numeric `version` attribute so that a
 //! DynamoDB conditional expression (`version = :v`) can guard `put_player`
@@ -35,7 +34,7 @@ use aws_sdk_dynamodb::{
     },
     Client,
 };
-use domain::{Identity, Motd, Person, Player, Pool, Tournament};
+use domain::{Identity, Person, Player, Pool, Tournament};
 
 /// DynamoDB-backed repository. Scoped to `tournament_id` — every per-tournament
 /// key is prefixed `<tournament_id>#…`.
@@ -309,18 +308,6 @@ impl Repository for DynamoRepository {
     async fn put_pool(&self, p: &Pool) -> anyhow::Result<()> {
         let pk = format!("{}#POOL#{}", self.t(), p.id);
         self.put_item_simple(&pk, p).await
-    }
-
-    // ── Motd ───────────────────────────────────────────────────────────────
-
-    async fn get_motd(&self) -> anyhow::Result<Option<Motd>> {
-        let pk = format!("{}#MOTD", self.t());
-        self.get_item(&pk).await
-    }
-
-    async fn put_motd(&self, m: &Motd) -> anyhow::Result<()> {
-        let pk = format!("{}#MOTD", self.t());
-        self.put_item_simple(&pk, m).await
     }
 
     // ── Identity ───────────────────────────────────────────────────────────

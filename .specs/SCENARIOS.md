@@ -722,11 +722,11 @@ Status: dropped · Actor: — · Screen: —
 Legacy had a `Motd` site-wide banner (`archive/model.py:461`), set by the admin
 (UC-16), with a hardcoded default message (`archive/control.py:254`).
 **Dropped entirely** — the feature was not considered worth carrying forward.
-No banner, no `Motd` entity surfaced to the UI.
-Tests: —
-Note:  `storage` currently has `Motd` round-trip tests (`motd_round_trip`,
-       `dynamo_motd_round_trip`) and the API a `set_motd_requires_admin_and_persists`
-       test — **dead code to remove** once this decision lands.
+No banner, no `Motd` entity. The `Motd` struct, the `get_motd`/`put_motd`
+repository methods, the `motd` query, the `setMotd` mutation, the web
+`AdminBanner` page, and all their tests have been **removed**.
+Tests: — (a test asserting `motd`/`setMotd` are absent from the schema would
+       guard the decision)
 
 ---
 
@@ -754,4 +754,3 @@ Note:  Legacy stored language in the session (`archive/control.py:120`).
 - **SCORE-15** what-if surface — `SCORING.md` §11.
 - **Coverage gaps** — every `Tests: —` above is a scenario with no automated
   test yet; closing them is the point of this catalog.
-- **Dead code flagged for removal**: the `Motd` storage/API code (ADMIN-08).

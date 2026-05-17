@@ -30,7 +30,6 @@ export function MyTipsPage() {
 
   const [tournamentResult, refetchTournament] = useQuery<{
     tournament: Tournament | null
-    motd: string | null
   }>({ query: TOURNAMENT_QUERY })
   const [meResult, refetchMe] = useQuery<{ me: Player | null }>({
     query: ME_QUERY,

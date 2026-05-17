@@ -15,8 +15,8 @@
 
 use chrono::{TimeZone, Utc};
 use domain::{
-    GroupChildren, GroupGame, Identity, LockMode, MatchPrediction, Motd, Person, Player, Pool,
-    Round, SingleGame, StandingsPrediction, Team, TeamSlot, Tournament,
+    GroupChildren, GroupGame, Identity, LockMode, MatchPrediction, Person, Player, Pool, Round,
+    SingleGame, StandingsPrediction, Team, TeamSlot, Tournament,
 };
 use std::collections::HashMap;
 use storage::{DynamoRepository, Repository, Scoreboard};
@@ -253,21 +253,6 @@ async fn dynamo_pool_round_trip() {
     let pools = repo.list_pools().await.unwrap();
     let ids: Vec<_> = pools.iter().map(|p| p.id.as_str()).collect();
     assert!(ids.contains(&"dynamo-pool-1"), "{ids:?}");
-}
-
-#[tokio::test]
-async fn dynamo_motd_round_trip() {
-    if !dynamo_enabled() {
-        return;
-    }
-    let repo = test_repo().await;
-
-    let m = Motd {
-        text: "Welcome to xpool!".to_owned(),
-    };
-    repo.put_motd(&m).await.unwrap();
-    let got = repo.get_motd().await.unwrap().expect("Some");
-    assert_eq!(got.text, m.text);
 }
 
 #[tokio::test]

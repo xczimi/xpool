@@ -12,7 +12,6 @@ export function SchedulePage() {
   const { t, locale } = useI18n()
   const [result, reexecute] = useQuery<{
     tournament: Tournament | null
-    motd: string | null
   }>({ query: TOURNAMENT_QUERY })
   const [resultsResult] = useQuery<{ results: MatchPrediction[] }>({
     query: RESULTS_QUERY,

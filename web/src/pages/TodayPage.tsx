@@ -30,7 +30,6 @@ export function TodayPage() {
   // First fetch (no polling) to learn whether anything is result-pending.
   const [probe] = useQuery<{
     tournament: Tournament | null
-    motd: string | null
   }>({ query: TOURNAMENT_QUERY })
   const [resultsResult, refetchResults] = useQuery<{
     results: MatchPrediction[]
@@ -52,7 +51,6 @@ export function TodayPage() {
   )
   const [result, reexecute] = usePolledQuery<{
     tournament: Tournament | null
-    motd: string | null
   }>({ query: TOURNAMENT_QUERY }, interval)
 
   // Keep the official results in step with the tournament poll.

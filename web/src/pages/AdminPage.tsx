@@ -6,7 +6,6 @@ import { ME_QUERY } from '../graphql/queries'
 import type { Player } from '../graphql/types'
 import { Loading, NeedsAdmin, NeedsLogin } from '../components/StatusViews'
 import { AdminResults } from './admin/AdminResults'
-import { AdminBanner } from './admin/AdminBanner'
 import { AdminTeams } from './admin/AdminTeams'
 import { AdminPlayers } from './admin/AdminPlayers'
 
@@ -28,14 +27,12 @@ export function AdminPage() {
       <h2>{t('adminTitle')}</h2>
       <div className="group-subnav">
         <AdminTab to="results" label={t('adminResults')} />
-        <AdminTab to="banner" label={t('adminBanner')} />
         <AdminTab to="teams" label={t('adminTeams')} />
         <AdminTab to="players" label={t('adminPlayers')} />
       </div>
       <Routes>
         <Route index element={<Navigate to="results" replace />} />
         <Route path="results" element={<AdminResults />} />
-        <Route path="banner" element={<AdminBanner />} />
         <Route path="teams" element={<AdminTeams />} />
         <Route path="players" element={<AdminPlayers />} />
       </Routes>

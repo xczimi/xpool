@@ -5,7 +5,7 @@
 
 use crate::{Repository, Scoreboard};
 use async_trait::async_trait;
-use domain::{Identity, Motd, Person, Player, PlayerId, Pool, Tournament};
+use domain::{Identity, Person, Player, PlayerId, Pool, Tournament};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
@@ -18,7 +18,6 @@ struct Inner {
     players: HashMap<PlayerId, Player>,
     scoreboard: Option<Scoreboard>,
     pools: HashMap<String, Pool>,
-    motd: Option<Motd>,
     /// Keyed `"<provider>#<provider_id>"` → `Identity`.
     identities: HashMap<String, Identity>,
     persons: HashMap<String, Person>,
@@ -108,19 +107,6 @@ impl Repository for InMemoryRepository {
     async fn put_pool(&self, p: &Pool) -> anyhow::Result<()> {
         let mut inner = self.inner.lock().unwrap();
         inner.pools.insert(p.id.clone(), p.clone());
-        Ok(())
-    }
-
-    // ── Motd ───────────────────────────────────────────────────────────────
-
-    async fn get_motd(&self) -> anyhow::Result<Option<Motd>> {
-        let inner = self.inner.lock().unwrap();
-        Ok(inner.motd.clone())
-    }
-
-    async fn put_motd(&self, m: &Motd) -> anyhow::Result<()> {
-        let mut inner = self.inner.lock().unwrap();
-        inner.motd = Some(m.clone());
         Ok(())
     }
 

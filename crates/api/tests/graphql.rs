@@ -502,28 +502,3 @@ async fn tournament_group_carries_subtree_deadline() {
     );
 }
 
-#[tokio::test]
-async fn set_motd_requires_admin_and_persists() {
-    let repo = seeded_repo(Duration::hours(24)).await;
-    // Non-admin rejected.
-    let vars = Variables::from_json(json!({ "t": "hello" }));
-    let bad = run(
-        &repo,
-        r#"mutation($t: String!) { setMotd(text: $t) }"#,
-        vars.clone(),
-        Some(ALICE),
-    )
-    .await;
-    assert!(!bad.errors.is_empty());
-
-    // Admin succeeds.
-    let ok = run(
-        &repo,
-        r#"mutation($t: String!) { setMotd(text: $t) }"#,
-        vars,
-        Some(RESULT_ID),
-    )
-    .await;
-    assert!(ok.errors.is_empty(), "{:?}", ok.errors);
-    assert_eq!(repo.get_motd().await.unwrap().unwrap().text, "hello");
-}

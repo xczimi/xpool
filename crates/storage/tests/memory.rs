@@ -2,8 +2,8 @@
 
 use chrono::{TimeZone, Utc};
 use domain::{
-    GroupChildren, GroupGame, Identity, LockMode, MatchPrediction, Motd, Person, Player, Pool,
-    Round, SingleGame, StandingsPrediction, Team, TeamSlot, Tournament,
+    GroupChildren, GroupGame, Identity, LockMode, MatchPrediction, Person, Player, Pool, Round,
+    SingleGame, StandingsPrediction, Team, TeamSlot, Tournament,
 };
 use std::collections::HashMap;
 use storage::{InMemoryRepository, Repository, Scoreboard};
@@ -316,22 +316,6 @@ async fn pool_overwrite() {
     assert_eq!(got[0].name, "New Name");
 }
 
-// ── motd ─────────────────────────────────────────────────────────────────────
-
-#[tokio::test]
-async fn motd_round_trip() {
-    let repo = InMemoryRepository::new();
-    assert!(repo.get_motd().await.unwrap().is_none());
-
-    let m = Motd {
-        text: "Hello World".to_owned(),
-    };
-    repo.put_motd(&m).await.unwrap();
-
-    let got = repo.get_motd().await.unwrap().unwrap();
-    assert_eq!(got.text, "Hello World");
-}
-
 // ── identity ──────────────────────────────────────────────────────────────────
 
 #[tokio::test]
@@ -429,14 +413,6 @@ async fn full_round_trip_all_entities() {
     // Pools
     repo.put_pool(&make_pool("pool-1")).await.unwrap();
     assert_eq!(repo.list_pools().await.unwrap().len(), 1);
-
-    // Motd
-    repo.put_motd(&Motd {
-        text: "test".to_owned(),
-    })
-    .await
-    .unwrap();
-    assert!(repo.get_motd().await.unwrap().is_some());
 
     // Identity
     repo.put_identity(&make_identity("google", "x", "person-1"))

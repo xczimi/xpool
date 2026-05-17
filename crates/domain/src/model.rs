@@ -154,12 +154,6 @@ pub struct Pool {
     pub members: Vec<PlayerId>,
 }
 
-/// Site-wide banner message.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Motd {
-    pub text: String,
-}
-
 impl Player {
     /// The player's prediction for one match, if any.
     pub fn match_prediction(&self, game_id: &str) -> Option<&MatchPrediction> {

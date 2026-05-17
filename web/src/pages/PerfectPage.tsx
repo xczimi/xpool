@@ -14,7 +14,6 @@ export function PerfectPage() {
   })
   const [tournamentResult] = useQuery<{
     tournament: Tournament | null
-    motd: string | null
   }>({ query: TOURNAMENT_QUERY })
 
   const tournament = tournamentResult.data?.tournament ?? null

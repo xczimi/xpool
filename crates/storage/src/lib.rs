@@ -4,7 +4,7 @@
 //! and `DynamoRepository` bodies are filled by the `storage` subagent (task P3).
 
 use async_trait::async_trait;
-use domain::{Identity, Motd, Person, Player, PlayerId, Pool, Round, Tournament};
+use domain::{Identity, Person, Player, PlayerId, Pool, Round, Tournament};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -38,9 +38,6 @@ pub trait Repository: Send + Sync {
 
     async fn list_pools(&self) -> anyhow::Result<Vec<Pool>>;
     async fn put_pool(&self, p: &Pool) -> anyhow::Result<()>;
-
-    async fn get_motd(&self) -> anyhow::Result<Option<Motd>>;
-    async fn put_motd(&self, m: &Motd) -> anyhow::Result<()>;
 
     async fn get_identity(
         &self,

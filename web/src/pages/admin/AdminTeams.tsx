@@ -9,7 +9,6 @@ export function AdminTeams() {
   const { t } = useI18n()
   const [result] = useQuery<{
     tournament: Tournament | null
-    motd: string | null
   }>({ query: TOURNAMENT_QUERY })
 
   if (result.fetching) return <Loading />

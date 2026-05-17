@@ -15,7 +15,6 @@ export const TOURNAMENT_QUERY = `
       }
       teams { id name shortCode flag externalId }
     }
-    motd
   }
 `
 
@@ -134,11 +133,5 @@ export const ENTER_RESULT_MUTATION = `
       advancer: $advancer
       lock: $lock
     )
-  }
-`
-
-export const SET_MOTD_MUTATION = `
-  mutation SetMotd($text: String!) {
-    setMotd(text: $text)
   }
 `

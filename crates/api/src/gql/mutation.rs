@@ -1,9 +1,9 @@
 //! The GraphQL mutation root (`API.md` §5).
 //!
 //! `submitGroup` saves/locks a whole group's predictions onto the player item
-//! with optimistic concurrency (retry once on conflict). Admin mutations
-//! (`enterResult`, `setMotd`) require the result user. `enterResult` triggers
-//! the wholesale post-result recompute.
+//! with optimistic concurrency (retry once on conflict). The `enterResult`
+//! admin mutation requires the result user and triggers the wholesale
+//! post-result recompute.
 
 use crate::auth::CurrentPlayer;
 use crate::gql::inputs::{MatchPredictionInput, StandingsInput};
@@ -265,13 +265,6 @@ impl MutationRoot {
         recompute(repo.as_ref())
             .await
             .map_err(|e| async_graphql::Error::new(e.to_string()))?;
-        Ok(true)
-    }
-
-    /// Admin: set the site-wide banner message.
-    async fn set_motd(&self, ctx: &Context<'_>, text: String) -> async_graphql::Result<bool> {
-        CurrentPlayer::require_admin(ctx)?;
-        repo(ctx).put_motd(&domain::Motd { text }).await?;
         Ok(true)
     }
 }

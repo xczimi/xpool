@@ -53,7 +53,6 @@ Pool ──▶ owner: Player,  members: [Player]
 | **MatchPrediction** | per-tournament | One Player's score prediction for one SingleGame. |
 | **StandingsPrediction** | per-tournament | One Player's predicted team ordering for one GroupGame. |
 | **Pool** | per-tournament | A named subset of Players sharing a scoreboard. |
-| **Motd** | per-tournament | Site-wide banner message. |
 
 ## 4. Tournament structure — recursive tree
 
@@ -142,7 +141,6 @@ Single DynamoDB table, on-demand. Two key zones:
 | Tournament | `<t>#TOURNAMENT` | the GroupGame tree, SingleGames, Teams |
 | Pool | `<t>#POOL` / `<poolId>` | name, owner, member ids |
 | Scoreboard | `<t>#SCOREBOARD` | materialized `playerId → {stage → score}`; recomputed wholesale on result change (see [`SCORING.md`](./SCORING.md) §8) |
-| Motd | `<t>#MOTD` | banner text |
 
 Notes:
 - **Coarse-grained**: a Player's whole prediction set lives on the one Player
@@ -189,5 +187,5 @@ Decisions that override the existing specs or are non-obvious:
   behind a single auth seam: the edge resolves an `Identity` → `Person` →
   `(Person, current tournament)` → `Player`.
 - **Pool membership management** — separate concern, not modelled here.
-- **Minor / not yet grilled**: `Team` fields, score-value bounds/validation,
-  `Motd` shape.
+- **Minor / not yet grilled**: `Team` fields, score-value bounds/validation.
+- **Motd** (site-wide banner) was **dropped** — see `SCENARIOS.md` ADMIN-08.

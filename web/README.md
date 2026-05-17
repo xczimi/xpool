@@ -77,7 +77,7 @@ src/
 
 All 11 screens render and are wired to the API: Home, Today, Schedule, My
 Tips, All Tips, Scoreboard, Perfect, Profile, Invite, Rules, Admin
-(results / banner / teams / players sub-routes).
+(results / teams / players sub-routes).
 
 Notable behaviours:
 

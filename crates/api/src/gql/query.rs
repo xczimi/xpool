@@ -178,11 +178,6 @@ impl QueryRoot {
         Ok(perfects)
     }
 
-    /// The site-wide banner message, if set.
-    async fn motd(&self, ctx: &Context<'_>) -> async_graphql::Result<Option<String>> {
-        Ok(repo(ctx).get_motd().await?.map(|m| m.text))
-    }
-
     /// The result user's *locked* match predictions — the official scores.
     /// Public so any client can overlay official results onto the schedule.
     async fn results(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<MatchPrediction>> {
