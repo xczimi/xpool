@@ -1,5 +1,11 @@
 # xpool — Implementation Details for a Rewrite
 
+> ⚠️ **PARTIALLY SUPERSEDED.** §1 (domain model) and §4 (anti-patterns) are
+> superseded by [`DATA_MODEL.md`](./DATA_MODEL.md) — see its §11. In particular,
+> §4's anti-pattern table **conflates intentional design** (the one-match-group
+> knockout wrapper, the result-user) **with real debt**. §2 (scoring engine) and
+> §3 (data ingestion) remain current.
+
 The **technical** half of the rewrite specification: the domain model, data
 ingestion, the legacy stack and its anti-patterns, and a suggested shape for
 the new system. For *what the app does* — actors, journeys, use cases, screens

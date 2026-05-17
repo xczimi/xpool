@@ -9,11 +9,21 @@ Euro). Players predict match scores and compete on a points scoreboard.
 
 ## Documentation
 
+Specs and reference docs for agentic development live in [`.specs/`](./.specs/).
+
 | Document | What it covers |
 |----------|----------------|
-| [`REWRITE_USE_CASES.md`](./REWRITE_USE_CASES.md) | User journeys, scenarios, and use cases — *what the app does*, technology-independent |
-| [`REWRITE_IMPLEMENTATION.md`](./REWRITE_IMPLEMENTATION.md) | Domain model, scoring engine, data ingestion, legacy anti-patterns — *how to build it* |
-| [`GAME_RULES.md`](./GAME_RULES.md) | The prediction/scoring rules in detail, including known bugs |
+| [`.specs/REWRITE_USE_CASES.md`](./.specs/REWRITE_USE_CASES.md) | User journeys, scenarios, and use cases — *what the app does*, technology-independent |
+| [`.specs/REWRITE_IMPLEMENTATION.md`](./.specs/REWRITE_IMPLEMENTATION.md) | Domain model, scoring engine, data ingestion, legacy anti-patterns — *how to build it* |
+| [`.specs/DATA_MODEL.md`](./.specs/DATA_MODEL.md) | The agreed domain & storage model — entities, tournament tree, pools, identity, DynamoDB layout |
+| [`.specs/SCORING.md`](./.specs/SCORING.md) | The agreed scoring engine — per-match points, standings bonus, multipliers, materialized scoreboard |
+| [`.specs/API.md`](./.specs/API.md) | The agreed API & frontend contract — GraphQL, coarse queries/mutations, draft→locked, smart polling |
+| [`.specs/DEPLOYMENT.md`](./.specs/DEPLOYMENT.md) | The agreed deployment & infrastructure — environments, OpenTofu, CI/CD, cost posture |
+| [`.specs/DESIGN_REVIEW.md`](./.specs/DESIGN_REVIEW.md) | The design-review record — Peter's decisions, rationale, and the calls that overrode recommendations |
+| [`.specs/GAME_RULES.md`](./.specs/GAME_RULES.md) | The prediction/scoring rules in detail, including known bugs |
+| [`.specs/FWC26_RULES.md`](./.specs/FWC26_RULES.md) | FIFA World Cup 26 competition rules — tournament structure, tiebreakers, knockout bracket |
+| [`.specs/DATA_SOURCES.md`](./.specs/DATA_SOURCES.md) | Tournament data sources — FotMob calendar feed, TheSportsDB, and the ingestion flow |
+| [`.specs/THESPORTSDB_API.md`](./.specs/THESPORTSDB_API.md) | TheSportsDB API reference — endpoints and the World Cup 26 ingestion subset |
 
 ## `archive/`
 

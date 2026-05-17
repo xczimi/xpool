@@ -1,0 +1,149 @@
+# xpool — Data Sources
+
+How the rewrite gets tournament data: fixtures, kickoff times, the knockout
+bracket, and official results. See [`REWRITE_IMPLEMENTATION.md` §3](./REWRITE_IMPLEMENTATION.md)
+(data ingestion redesign) and [`THESPORTSDB_API.md`](./THESPORTSDB_API.md).
+
+The legacy app scraped cached FIFA/UEFA HTML. The rewrite drops scraping in
+favour of a **hand-curated, git-committed tournament definition**
+(`tournaments/fwc26.json`), authored from the sources below with
+[`FWC26_RULES.md`](./FWC26_RULES.md) as the structural authority. See
+[`DATA_MODEL.md`](./DATA_MODEL.md) for the entities produced.
+
+---
+
+## 1. Source comparison
+
+| | FotMob ICS | TheSportsDB | `FWC26_RULES.md` |
+|---|---|---|---|
+| Type | iCalendar feed | JSON API (V1/V2) | static spec doc |
+| Fixtures | **all 104** (M1–M104) | 72 (group stage only, so far) | full pairings |
+| Kickoff times | yes (UTC) | yes | no |
+| Knockout bracket | placeholders, pre-encoded | not published yet | full (§4, Annexe C) |
+| Group structure | positional only | `intRound` only | **authoritative** |
+| Official results | **no** | yes (livescore / event lookup) | no |
+| Venues / team IDs / images | no | yes | no |
+| Auth | none (public) | premium key for V2 | n/a |
+| Stability | undocumented endpoint | documented API | in-repo |
+
+**Roles:**
+
+| Concern | Source |
+|---|---|
+| Fixture list, kickoff times, bracket scaffold | **FotMob ICS** |
+| Group/tree structure, tiebreakers, Annexe C lookup | **`FWC26_RULES.md`** |
+| Official results, livescores, venues, badges | **TheSportsDB V2** (or admin entry) |
+
+---
+
+## 2. FotMob ICS calendar feed
+
+```
+webcal://pub.fotmob.com/prod/pub/api/v2/calendar/league/77.ics
+https://pub.fotmob.com/prod/pub/api/v2/calendar/league/77.ics
+```
+
+`league/77` = FIFA World Cup. Public, no key. Standard iCalendar
+(`VCALENDAR` / `VEVENT`), ~37 KB, 6-hour refresh hint.
+
+**Verified (2026-05-16):** 104 `VEVENT`s, in match order **M1 → M104**, so the
+event's position in the file is its match number. Date range
+2026-06-11 → 2026-07-19.
+
+Per-event fields used:
+
+| iCal field | Use |
+|---|---|
+| `DTSTART` / `DTEND` | kickoff / end, UTC |
+| `SUMMARY` | the two teams (see below) |
+| `UID` | stable id (`<fotmobMatchId>@fotmob.com`) |
+| `URL` | FotMob match page |
+
+`SUMMARY` parsing — split on `" - "`:
+
+- Group matches → real names: `🇲🇽 Mexico - 🇿🇦 South Africa`
+- Knockout matches → placeholders in **`FWC26_RULES.md` notation**:
+  `2A - 2B` (M73), `1E - 3ABCDF` (M74), `1L - 3EHIJK` (M80),
+  `Winner SF 1 - Winner SF 2` (M104).
+  `3ABCDF` = "best 3rd-placed team from groups {A,B,C,D,F}" — §4/§5.
+- A leading emoji (flag, or `⚽️` for knockout) is **inconsistent** — strip
+  it; rely on the `" - "` separator, not the emoji.
+
+**Limitations:** no scores/results (fixtures only), no group labels for group
+matches, no venues / team IDs / flag images. Undocumented endpoint — treat as
+best-effort and validate on import.
+
+## 3. TheSportsDB
+
+Full reference in [`THESPORTSDB_API.md`](./THESPORTSDB_API.md). For xpool:
+official results, livescores, venues, and team badges. FIFA World Cup is
+`idLeague 4429`, season `2026`. V2 needs the premium key (`X-API-KEY` header).
+
+## 4. `FWC26_RULES.md`
+
+The in-repo competition rules: 12-group structure, the MD1–MD3 group schedule,
+group-stage tiebreakers, the knockout bracket (§4), and the 495-row Annexe C
+third-placed-team lookup (§5). This is the **authority** when a live source is
+ambiguous or incomplete — it tells the importer which group each of M1–M72
+belongs to, and how to resolve knockout placeholders once group results land.
+
+---
+
+## 5. Tournament import & resolution
+
+The decided design (settled in design review).
+
+### Structure vs. logic — data vs. code
+
+- **Structure & fixtures = data** → `tournaments/fwc26.json`: the 12 groups,
+  104 fixtures (kickoff, venue, group/round, team slots + placeholder
+  descriptions), 48 teams. Declarative, hand-curated, git-committed.
+- **FWC26-specific logic = code** → an `fwc26` module: knockout bracket
+  *resolution* (placeholder → concrete team), the §3 third-placed ranking, and
+  the Annexe C lookup. The 495-row Annexe C table is *data consumed by code* —
+  a data file the module embeds, not hand-written logic.
+
+### Authoring `fwc26.json` (one-time, per tournament)
+
+1. A throwaway dev script parses the FotMob ICS → a draft scaffold (all 104
+   matches + kickoff times, in M1–M104 order — saves typing).
+2. A human reconciles the draft against `FWC26_RULES.md` — group assignments
+   (M1–M72 per the §1.3 schedule), knockout placeholder descriptions
+   (M73–M104 per §4), team metadata — and **commits** the result.
+3. From then on the committed `fwc26.json` is the **single source of truth**.
+   FotMob is *not* a runtime dependency — it was a one-time scaffold only.
+
+### Importing
+
+A **CLI / seed binary** (`cargo run -p xtask -- import fwc26.json`) reads the
+JSON and writes the `<t>#TOURNAMENT` item via the `Repository`. Works
+identically against DynamoDB Local (dev) and real DynamoDB (prod) — same
+adapter, different endpoint. Idempotent (re-import overwrites). The importer
+**validates and fails loudly** — 104 matches, 12 groups × 6, every placeholder
+description parseable by the `fwc26` module.
+
+### Knockout resolution (during the tournament)
+
+The `fwc26` module's resolution is a **pure function**
+`resolve(official results, Annexe C) → filled team slots`, reusing the
+`SCORING.md` §4 standings ladder and the §3 third-placed ranking.
+
+It runs **automatically on result-lock**, in the same post-result hook as the
+scoreboard recompute ([`SCORING.md`](./SCORING.md) §8): a **wholesale recompute**
+of all knockout slots from current official results. Slots not yet determinable
+stay null; **self-correcting** if an earlier result is corrected. Fully
+deterministic — the result user's locked results + `draw_order` settle official
+standings, so no human input is needed.
+
+> **Use-case change:** this eliminates `REWRITE_USE_CASES.md` UC-15's manual
+> "admin reassigns knockout match teams" — the bracket fills itself. If
+> resolution is ever wrong, that is an `fwc26`-module bug, not a data patch.
+
+Official results themselves are entered by the admin (or a TheSportsDB results
+job); for knockout matches the **90-minute** score is required — see
+[`SCORING.md`](./SCORING.md) §5.
+
+---
+
+*Verified live 2026-05-16: FotMob ICS `league/77` — 104 events, M1–M104 order,
+knockout placeholders in `FWC26_RULES.md` notation.*
