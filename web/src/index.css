@@ -1,0 +1,63 @@
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --ink: #1c2533;
+  --muted: #5b6678;
+  --accent: #1f6feb;
+  --accent-ink: #ffffff;
+  --border: #d6dae1;
+  --locked: #b54708;
+  --draft: #2563eb;
+  --flash-bg: #fff7e6;
+  --flash-border: #f0c36d;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--ink);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); }
+.app { max-width: 1100px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
+.app-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; background: var(--surface); border-bottom: 2px solid var(--accent); }
+.brand h1 { margin: 0; font-size: 1.6rem; color: var(--accent); }
+.tagline { margin: 0.15rem 0 0; color: var(--muted); font-size: 0.85rem; }
+.lang-selector { font-size: 0.85rem; color: var(--muted); }
+.auth-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; padding: 0.5rem 1.25rem; background: #eef1f5; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
+.auth-picker { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+.nav-bar { display: flex; flex-wrap: wrap; gap: 0.25rem; padding: 0.5rem 1.25rem; background: var(--surface); border-bottom: 1px solid var(--border); }
+.nav-link { padding: 0.35rem 0.7rem; border-radius: 4px; text-decoration: none; color: var(--ink); font-size: 0.9rem; }
+.nav-link:hover { background: #eef1f5; }
+.nav-link.active { background: var(--accent); color: var(--accent-ink); }
+.flash-bar { margin: 0 0 0.5rem; padding: 0.6rem 1.25rem; background: var(--flash-bg); border: 1px solid var(--flash-border); border-radius: 4px; font-size: 0.9rem; }
+.content { flex: 1; padding: 1.25rem; }
+.app-footer { padding: 1rem 1.25rem; color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(--border); text-align: center; }
+.page h2 { margin-top: 0; }
+.home-links { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+.group-subnav { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.75rem 0; }
+.subnav-item { padding: 0.3rem 0.65rem; border: 1px solid var(--border); background: var(--surface); border-radius: 4px; cursor: pointer; font-size: 0.85rem; text-decoration: none; color: var(--ink); }
+.subnav-item.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.data-table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; background: var(--surface); font-size: 0.9rem; }
+.data-table th, .data-table td { border: 1px solid var(--border); padding: 0.4rem 0.55rem; text-align: left; }
+.data-table th { background: #eef1f5; }
+.data-table.compact th, .data-table.compact td { padding: 0.25rem 0.4rem; font-size: 0.82rem; }
+.grid-scroll { overflow-x: auto; }
+.score-cell { display: flex; align-items: center; gap: 0.3rem; }
+.score-cell select, .score-cell input { width: 3.4rem; }
+button { padding: 0.35rem 0.7rem; border: 1px solid var(--border); background: var(--surface); border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
+button:hover:not(:disabled) { background: #eef1f5; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.tip-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+.standings-pair { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.standings { flex: 1; min-width: 260px; }
+.standings h4 { margin-bottom: 0.3rem; }
+.reorder { display: flex; gap: 0.2rem; }
+.reorder button { padding: 0.1rem 0.35rem; }
+.state-locked { color: var(--locked); font-weight: 600; }
+.state-draft { color: var(--draft); font-weight: 600; }
+.form { display: flex; flex-direction: column; gap: 0.6rem; max-width: 400px; }
+.form label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; color: var(--muted); }
+.form input, .form textarea { padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font: inherit; }
+.status { padding: 1rem; color: var(--muted); }
+.status-error { color: var(--locked); }
+.poll-note { color: #137333; font-size: 0.8rem; margin: 0.2rem 0; }
+.round-tag { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
+.hint { font-size: 0.8rem; color: var(--muted); }
