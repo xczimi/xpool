@@ -15,6 +15,7 @@ Specs and reference docs for agentic development live in [`.specs/`](./.specs/).
 |----------|----------------|
 | [`.specs/REWRITE_USE_CASES.md`](./.specs/REWRITE_USE_CASES.md) | User journeys, scenarios, and use cases — *what the app does*, technology-independent |
 | [`.specs/REWRITE_IMPLEMENTATION.md`](./.specs/REWRITE_IMPLEMENTATION.md) | Domain model, scoring engine, data ingestion, legacy anti-patterns — *how to build it* |
+| [`.specs/DATA_MODEL.md`](./.specs/DATA_MODEL.md) | The agreed domain & storage model — entities, tournament tree, pools, identity, DynamoDB layout |
 | [`.specs/REWRITE_ARCHITECTURE.md`](./.specs/REWRITE_ARCHITECTURE.md) | Serverless AWS rewrite architecture — stack choices, project structure, build phases |
 | [`.specs/GAME_RULES.md`](./.specs/GAME_RULES.md) | The prediction/scoring rules in detail, including known bugs |
 | [`.specs/fwc26_rules.md`](./.specs/fwc26_rules.md) | FIFA World Cup 26 competition rules — tournament structure, tiebreakers, knockout bracket |
