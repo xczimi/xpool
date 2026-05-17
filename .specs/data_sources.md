@@ -5,9 +5,10 @@ bracket, and official results. See [`REWRITE_IMPLEMENTATION.md` §3](./REWRITE_I
 (data ingestion redesign) and [`thesportsdb_api.md`](./thesportsdb_api.md).
 
 The legacy app scraped cached FIFA/UEFA HTML. The rewrite drops scraping in
-favour of a **declarative tournament definition** (`tournaments/fwc26.json`)
-generated from the sources below, with [`fwc26_rules.md`](./fwc26_rules.md) as
-the structural authority.
+favour of a **hand-curated, git-committed tournament definition**
+(`tournaments/fwc26.json`), authored from the sources below with
+[`fwc26_rules.md`](./fwc26_rules.md) as the structural authority. See
+[`DATA_MODEL.md`](./DATA_MODEL.md) for the entities produced.
 
 ---
 
@@ -88,20 +89,59 @@ belongs to, and how to resolve knockout placeholders once group results land.
 
 ---
 
-## 5. Ingestion flow
+## 5. Tournament import & resolution
 
-1. Fetch the FotMob ICS → 104 events, ordered M1–M104.
-2. Map each event to its stage/group **positionally** against `fwc26_rules.md`
-   (M1–M72 = group stage per the §1.3 schedule; M73–M104 = knockout per §4).
-3. Parse `SUMMARY`: group matches → team names; knockout matches → keep the
-   `fwc26_rules.md` placeholder string as an unresolved bracket reference.
-4. Emit `tournaments/fwc26.json` — the declarative definition: the `GroupGame`
-   tree, 104 `SingleGame`s with kickoff times, and explicit knockout references.
-5. Cross-check the generated file against `fwc26_rules.md` (104 matches,
-   12 groups × 6, bracket references valid) — fail the import on mismatch.
-6. During the tournament: admin enters official results (or a TheSportsDB
-   results job feeds them); a job resolves knockout placeholders to real teams
-   as group standings finalise.
+The decided design (settled in design review).
+
+### Structure vs. logic — data vs. code
+
+- **Structure & fixtures = data** → `tournaments/fwc26.json`: the 12 groups,
+  104 fixtures (kickoff, venue, group/round, team slots + placeholder
+  descriptions), 48 teams. Declarative, hand-curated, git-committed.
+- **FWC26-specific logic = code** → an `fwc26` module: knockout bracket
+  *resolution* (placeholder → concrete team), the §3 third-placed ranking, and
+  the Annexe C lookup. The 495-row Annexe C table is *data consumed by code* —
+  a data file the module embeds, not hand-written logic.
+
+### Authoring `fwc26.json` (one-time, per tournament)
+
+1. A throwaway dev script parses the FotMob ICS → a draft scaffold (all 104
+   matches + kickoff times, in M1–M104 order — saves typing).
+2. A human reconciles the draft against `fwc26_rules.md` — group assignments
+   (M1–M72 per the §1.3 schedule), knockout placeholder descriptions
+   (M73–M104 per §4), team metadata — and **commits** the result.
+3. From then on the committed `fwc26.json` is the **single source of truth**.
+   FotMob is *not* a runtime dependency — it was a one-time scaffold only.
+
+### Importing
+
+A **CLI / seed binary** (`cargo run -p xtask -- import fwc26.json`) reads the
+JSON and writes the `<t>#TOURNAMENT` item via the `Repository`. Works
+identically against DynamoDB Local (dev) and real DynamoDB (prod) — same
+adapter, different endpoint. Idempotent (re-import overwrites). The importer
+**validates and fails loudly** — 104 matches, 12 groups × 6, every placeholder
+description parseable by the `fwc26` module.
+
+### Knockout resolution (during the tournament)
+
+The `fwc26` module's resolution is a **pure function**
+`resolve(official results, Annexe C) → filled team slots`, reusing the
+`SCORING.md` §4 standings ladder and the §3 third-placed ranking.
+
+It runs **automatically on result-lock**, in the same post-result hook as the
+scoreboard recompute ([`SCORING.md`](./SCORING.md) §8): a **wholesale recompute**
+of all knockout slots from current official results. Slots not yet determinable
+stay null; **self-correcting** if an earlier result is corrected. Fully
+deterministic — the result user's locked results + `draw_order` settle official
+standings, so no human input is needed.
+
+> **Use-case change:** this eliminates `REWRITE_USE_CASES.md` UC-15's manual
+> "admin reassigns knockout match teams" — the bracket fills itself. If
+> resolution is ever wrong, that is an `fwc26`-module bug, not a data patch.
+
+Official results themselves are entered by the admin (or a TheSportsDB results
+job); for knockout matches the **90-minute** score is required — see
+[`SCORING.md`](./SCORING.md) §5.
 
 ---
 
