@@ -31,11 +31,11 @@ docker compose up -d
 
 # 2. Import the tournament and seed demo data
 export DYNAMO_ENDPOINT=http://localhost:8000
-mise exec -- cargo run -p xtask -- import tournaments/fwc26.json
-mise exec -- cargo run -p xtask -- seed
+cargo run -p xtask -- import tournaments/fwc26.json
+cargo run -p xtask -- seed
 
 # 3. Run the API (http://localhost:3000)
-mise exec -- cargo run -p api
+cargo run -p api
 
 # 4. In another terminal, run the SPA (http://localhost:5173)
 cd web && npm install && npm run dev
@@ -49,7 +49,7 @@ seeded player in the SPA's auth bar. Seeded ids: `result-user` (the admin /
 official results), and `demo-ada`, `demo-alan`, `demo-grace`, `demo-linus`,
 `demo-margaret`, `demo-dennis`. There is one demo pool, `pool-demo`.
 
-**Tests:** `mise exec -- cargo test` (workspace) and `cd web && npm run build`.
+**Tests:** `cargo test` (workspace) and `cd web && npm run build`.
 DynamoDB integration tests are gated behind `DYNAMO_TEST=1`.
 
 The implementation plan is in
