@@ -3,7 +3,7 @@ import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY, SCOREBOARD_QUERY } from '../graphql/queries'
-import type { Player, Scoreboard } from '../graphql/types'
+import type { Player, ScoreEntry } from '../graphql/types'
 
 /**
  * Dev auth bar. A visitor sees a player picker (sourced from the public
@@ -19,20 +19,20 @@ export function AuthBar() {
     query: ME_QUERY,
     pause: !playerId,
   })
-  const [sbResult] = useQuery<{ scoreboard: Scoreboard | null }>({
+  const [sbResult] = useQuery<{ scoreboard: ScoreEntry[] }>({
     query: SCOREBOARD_QUERY,
     variables: { pool: null },
   })
 
   const me = meResult.data?.me
-  const candidates = sbResult.data?.scoreboard?.entries ?? []
+  const candidates = sbResult.data?.scoreboard ?? []
 
   if (playerId) {
     return (
       <div className="auth-bar">
         <span>
           {t('loggedInAs')} <strong>{me?.nick ?? playerId}</strong>
-          {me?.isAdmin ? ' (admin)' : ''}
+          {me?.isResultUser ? ' (admin)' : ''}
         </span>
         <button type="button" onClick={logout}>
           {t('logOut')}

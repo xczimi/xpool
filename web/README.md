@@ -57,51 +57,57 @@ Notable behaviours:
   while a match is *result-pending* (kickoff + buffer passed, no locked
   result loaded). Otherwise no polling.
 - **All Tips** — renders exactly what `tips(groupId)` returns; the API does
-  the hidden-until-locked filtering, so a `visible: false` tip shows as
-  "hidden".
+  the hidden-until-locked filtering, so a tip with a null nested `prediction`
+  shows as "hidden".
 
 ## GraphQL assumptions
 
-Task P5 (the `api` crate) is still a stub, so the schema below is the
-**frontend's assumed contract**, derived from `crates/domain/src/model.rs` and
-`API.md`. The API and frontend will be reconciled when P5 lands. Field names
-to verify:
+The schema below is the **agreed reconciled contract** — the `api` crate's
+`gql` types and `src/graphql/{queries,types}.ts` match it exactly.
 
-- **Enums** are assumed `SCREAMING_SNAKE_CASE` (`GROUP_STAGE`, `R32`, …;
-  `LOCK_TOGETHER`). async-graphql's default rename — adjust `Round` /
-  `LockMode` in `src/graphql/types.ts` if it differs.
+- **Enums** are `SCREAMING_SNAKE_CASE` (async-graphql default):
+  `Round = GROUP_STAGE|R32|R16|QF|SF|THIRD_PLACE|FINAL`,
+  `LockMode = LOCK_TOGETHER|LOCK_PER_MATCH`.
+- **`Team`** — `{ id, name, shortCode, flag, externalId }`.
 - **`GroupGame`** — the domain `GroupChildren` enum is flattened to two list
-  fields, `childGroupIds` and `gameIds` (one is empty). `deadline` is exposed
-  as a computed ISO field (`Tournament::deadline` in the domain crate).
-- **`SingleGame.result`** — assumed a nullable `MatchResult` `{ homeScore,
-  awayScore, locked }`, sourced from the result user's `MatchPrediction` for
-  that game. If the API exposes the result user differently, only
-  `src/graphql/queries.ts` + `types.ts` need changing.
-- **`me`** — assumed to carry `isAdmin` and `isResultUser` booleans plus the
-  player's `matchPredictions` / `standingsPredictions`.
-- **`scoreboard`** — assumed to return `entries` (with `nick`, `total`,
-  per-round breakdown) and a `multipliers` list for display. `pool` argument
-  is `ID` (null = the implicit "everyone" root pool).
-- **`tips`** — each `PlayerTip` is assumed to carry a `visible` boolean; the
-  API still applies UC-9 visibility server-side.
-- **`submitGroup`** — assumed signature
-  `submitGroup(groupId, predictions: [PredictionInput!]!, standings: StandingsInput, lock: Boolean!)`.
-  `API.md §5` lists `(groupId, predictions[], lock)`; the frontend adds an
-  optional `standings` argument (`{ ordering, drawOrder }`) because a group's
-  `StandingsPrediction` must ride along with the group submission. This is the
-  one place the frontend extends the documented signature — flagged for P5.
-- **`invite`** — assumed `invite(input: { email, nick, fullName })`.
-- **`updateProfile`** — assumed `updateProfile(input: { nick, fullName,
-  email, password? })`.
-- **`enterResult`** — assumed
-  `enterResult(gameId, homeScore, awayScore, lock)`.
+  fields, `childGroupIds` and `childGameIds` (one is empty). `deadline` is a
+  computed ISO field — the earliest kickoff in the node's subtree.
+- **`Game`** — `{ id, kickoff, venue, groupId, home, away }`. There is **no**
+  `result` field on `Game`.
+- **`results`** — a top-level query `results: [MatchPrediction!]!` returning
+  the result user's *locked* match predictions (the official scores). The
+  frontend overlays these onto games client-side (Schedule, Today, My Tips
+  actual standings, Admin Results).
+- **`me` / `Player`** — `{ id, nick, fullName, isResultUser, version,
+  matchPredictions, standingsPredictions }`. There is **no** `email` and **no**
+  `isAdmin`: the result user *is* the admin, so the Admin screen is gated on
+  `isResultUser`.
+- **`scoreboard(pool: ID)`** — returns `[ScoreEntry!]!` directly (no wrapper
+  object). Each entry is `{ playerId, nick, total, stages: [{ round, points }] }`.
+  Stage multipliers are static and hardcoded in `src/lib/rounds.ts`
+  (`STAGE_MULTIPLIERS`) for display only.
+- **`tips`** — each `Tip` is `{ playerId, nick, gameId, prediction }` with a
+  nullable nested `prediction`; the API applies UC-9 visibility server-side.
+- **`Pool`** — `{ id, name, owner, members }`.
+- **`submitGroup`** — `submitGroup(groupId: ID!, predictions:
+  [MatchPredictionInput!]!, standings: StandingsInput, lock: Boolean!): Player`.
+  When `standings` (`{ ordering, drawOrder }`) is supplied, the group's
+  `StandingsPrediction` is upserted alongside the match predictions.
+- **`updateProfile`** — flat args: `updateProfile(nick: String, fullName:
+  String): Player`. No email/password.
+- **`enterResult`** — `enterResult(gameId, homeScore, awayScore, advancer,
+  lock): Boolean!`. `setMotd` likewise returns `Boolean!`. The frontend
+  refetches after these boolean mutations.
+- **`invite`** — `invite(inviteeId: ID!): Boolean!`. This only records a
+  referral link to an **already-existing** player; it does **not** create an
+  account. The Invite screen is therefore a simple dev action — "refer an
+  existing player by id" — not a sign-up form.
 
 ## Incomplete / deferred
 
-- Admin **Teams** and **Players** are read-only listings. Team metadata
-  editing and the dedicated `players` admin query are not built — they need
-  mutations P5 has not defined yet. Players are listed from scoreboard
-  entries as a stand-in.
+- Admin **Teams** and **Players** are read-only listings. Players are listed
+  from scoreboard entries (there is no dedicated `players` query in the
+  reconciled schema).
 - Pool creation/management UI is not built (`createPool` / `updatePool`
   documents exist but pool membership management is out of scope per
   `DATA_MODEL.md` §8). The Scoreboard pool selector reads existing pools.

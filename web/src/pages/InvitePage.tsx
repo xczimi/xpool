@@ -5,15 +5,20 @@ import { useI18n } from '../i18n/useI18n'
 import { INVITE_MUTATION } from '../graphql/queries'
 import { NeedsLogin } from '../components/StatusViews'
 
-/** Referral invitation (UC-3). */
+/**
+ * Referral invitation (UC-3).
+ *
+ * The reconciled `invite(inviteeId: ID!)` mutation only records a referral
+ * link to an *already-existing* player — there is no account creation here.
+ * In this dev build the screen is a simple "refer an existing player by id"
+ * action; see `web/README.md` "GraphQL assumptions" for the limitation.
+ */
 export function InvitePage() {
   const { t } = useI18n()
   const { playerId } = useAuth()
   const [inviteState, invite] = useMutation(INVITE_MUTATION)
 
-  const [email, setEmail] = useState('')
-  const [nick, setNick] = useState('')
-  const [fullName, setFullName] = useState('')
+  const [inviteeId, setInviteeId] = useState('')
   const [flash, setFlash] = useState<string | null>(null)
 
   if (!playerId) return <NeedsLogin />
@@ -21,17 +26,12 @@ export function InvitePage() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setFlash(null)
-    const res = await invite({ input: { email, nick, fullName } })
+    const res = await invite({ inviteeId: inviteeId.trim() })
     if (res.error) {
-      const msg = res.error.message
-      setFlash(
-        /already/i.test(msg) ? t('inviteExists') : `${t('errorPrefix')}: ${msg}`,
-      )
+      setFlash(`${t('errorPrefix')}: ${res.error.message}`)
     } else {
       setFlash(t('inviteSent'))
-      setEmail('')
-      setNick('')
-      setFullName('')
+      setInviteeId('')
     }
   }
 
@@ -42,31 +42,19 @@ export function InvitePage() {
       {flash && <p className="flash-bar">{flash}</p>}
       <form className="form" onSubmit={submit}>
         <label>
-          {t('email')}
-          <input
-            type="email"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-        <label>
-          {t('nick')}
+          {t('player')}
           <input
             required
-            value={nick}
-            onChange={(e) => setNick(e.target.value)}
+            placeholder="player id"
+            value={inviteeId}
+            onChange={(e) => setInviteeId(e.target.value)}
           />
         </label>
-        <label>
-          {t('fullName')}
-          <input
-            required
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-          />
-        </label>
-        <button type="submit" className="primary" disabled={inviteState.fetching}>
+        <button
+          type="submit"
+          className="primary"
+          disabled={inviteState.fetching || !inviteeId.trim()}
+        >
           {t('sendInvite')}
         </button>
       </form>

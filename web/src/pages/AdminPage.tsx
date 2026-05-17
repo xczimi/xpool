@@ -21,7 +21,7 @@ export function AdminPage() {
 
   if (!playerId) return <NeedsLogin />
   if (meResult.fetching) return <Loading />
-  if (!meResult.data?.me?.isAdmin) return <NeedsAdmin />
+  if (!meResult.data?.me?.isResultUser) return <NeedsAdmin />
 
   return (
     <section className="page">

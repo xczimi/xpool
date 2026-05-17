@@ -3,15 +3,15 @@ import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import { TIPS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
-import type { Motd, PlayerTip, Tournament } from '../graphql/types'
+import type { Tip, Tournament } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { GroupSubNav } from '../components/GroupSubNav'
 import { byKickoff, slotCode, teamIndex } from '../lib/format'
 
 /**
  * All Tips (UC-9) — a grid of every player's predictions for a group. The API
- * already applies hidden-until-locked visibility; the client renders only
- * what `tips` returns (a tip with `visible: false` shows as "hidden").
+ * already applies hidden-until-locked visibility; a tip whose nested
+ * `prediction` is null shows as "hidden".
  */
 export function AllTipsPage() {
   const { t } = useI18n()
@@ -20,17 +20,17 @@ export function AllTipsPage() {
 
   const [tournamentResult] = useQuery<{
     tournament: Tournament | null
-    motd: Motd | null
+    motd: string | null
   }>({ query: TOURNAMENT_QUERY })
 
   const tournament = tournamentResult.data?.tournament ?? null
   const leafGroups = useMemo(
-    () => (tournament?.groups ?? []).filter((g) => g.gameIds.length > 0),
+    () => (tournament?.groups ?? []).filter((g) => g.childGameIds.length > 0),
     [tournament],
   )
   const activeGroupId = selectedGroup ?? leafGroups[0]?.id ?? null
 
-  const [tipsResult, refetchTips] = useQuery<{ tips: PlayerTip[] }>({
+  const [tipsResult, refetchTips] = useQuery<{ tips: Tip[] }>({
     query: TIPS_QUERY,
     variables: { groupId: activeGroupId },
     pause: !activeGroupId,
@@ -44,7 +44,7 @@ export function AllTipsPage() {
   const teams = teamIndex(tournament.teams)
   const games = activeGroup
     ? tournament.games
-        .filter((g) => activeGroup.gameIds.includes(g.id))
+        .filter((g) => activeGroup.childGameIds.includes(g.id))
         .sort(byKickoff)
     : []
 
@@ -95,8 +95,8 @@ export function AllTipsPage() {
                     const tip = tipMap.get(tipKey(pid, g.id))
                     return (
                       <td key={g.id}>
-                        {tip && tip.visible
-                          ? `${tip.homeScore}–${tip.awayScore}`
+                        {tip?.prediction
+                          ? `${tip.prediction.homeScore}–${tip.prediction.awayScore}`
                           : tip
                             ? t('hiddenTip')
                             : '—'}

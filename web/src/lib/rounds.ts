@@ -22,8 +22,12 @@ export const ROUND_ORDER: Round[] = [
   'FINAL',
 ]
 
-/** Seeded stage multipliers (SCORING.md §2) — used if the API omits them. */
-export const DEFAULT_MULTIPLIERS: Record<Round, number> = {
+/**
+ * Stage scoring multipliers (SCORING.md §2). The scoreboard `stages` are
+ * already weighted server-side; these are a static frontend constant kept
+ * only for display (e.g. the rules screen).
+ */
+export const STAGE_MULTIPLIERS: Record<Round, number> = {
   GROUP_STAGE: 1,
   R32: 2,
   R16: 3,

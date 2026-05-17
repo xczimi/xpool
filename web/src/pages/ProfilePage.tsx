@@ -38,27 +38,16 @@ function ProfileForm({ me }: { me: Player }) {
 
   const [nick, setNick] = useState(me.nick)
   const [fullName, setFullName] = useState(me.fullName)
-  const [email, setEmail] = useState(me.email ?? '')
-  const [password, setPassword] = useState('')
-  const [confirm, setConfirm] = useState('')
   const [flash, setFlash] = useState<string | null>(null)
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     setFlash(null)
-    if (password && password !== confirm) {
-      setFlash(t('passwordMismatch'))
-      return
-    }
-    const input: Record<string, string> = { nick, fullName, email }
-    if (password) input.password = password
-    const res = await updateProfile({ input })
+    const res = await updateProfile({ nick, fullName })
     if (res.error) {
       setFlash(`${t('errorPrefix')}: ${res.error.message}`)
     } else {
       setFlash(t('profileSaved'))
-      setPassword('')
-      setConfirm('')
     }
   }
 
@@ -75,30 +64,6 @@ function ProfileForm({ me }: { me: Player }) {
           <input
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-          />
-        </label>
-        <label>
-          {t('email')}
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </label>
-        <label>
-          {t('password')}
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-        </label>
-        <label>
-          {t('passwordConfirm')}
-          <input
-            type="password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
           />
         </label>
         <button type="submit" className="primary" disabled={updateState.fetching}>

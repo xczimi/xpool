@@ -2,21 +2,22 @@ import { useState } from 'react'
 import { useMutation, useQuery } from 'urql'
 import { useI18n } from '../../i18n/useI18n'
 import { SET_MOTD_MUTATION, TOURNAMENT_QUERY } from '../../graphql/queries'
-import type { Motd, Tournament } from '../../graphql/types'
+import type { Tournament } from '../../graphql/types'
 import { Loading } from '../../components/StatusViews'
 
 /** Admin banner / message-of-the-day editor (UC-16). */
 export function AdminBanner() {
   const { t } = useI18n()
-  const [result] = useQuery<{ tournament: Tournament | null; motd: Motd | null }>(
-    { query: TOURNAMENT_QUERY },
-  )
+  const [result] = useQuery<{
+    tournament: Tournament | null
+    motd: string | null
+  }>({ query: TOURNAMENT_QUERY })
 
   if (result.fetching && !result.data) return <Loading />
 
   // `key` re-initialises the editor when the loaded banner changes; the
   // textarea state is seeded by lazy `useState`, no effect needed.
-  const initial = result.data?.motd?.text ?? ''
+  const initial = result.data?.motd ?? ''
   return (
     <div>
       <h3>{t('adminBanner')}</h3>

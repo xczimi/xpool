@@ -54,6 +54,8 @@ pub struct Team {
     pub name: String,
     pub short_code: String,
     pub flag: Option<String>,
+    /// The id of the team in the upstream data source, if any.
+    pub external_id: Option<String>,
 }
 
 impl From<&domain::Team> for Team {
@@ -63,6 +65,7 @@ impl From<&domain::Team> for Team {
             name: t.name.clone(),
             short_code: t.short_code.clone(),
             flag: t.flag.clone(),
+            external_id: t.external_id.clone(),
         }
     }
 }
@@ -119,10 +122,14 @@ pub struct Group {
     pub carries_standings: bool,
     pub child_group_ids: Vec<String>,
     pub child_game_ids: Vec<String>,
+    /// The earliest kickoff in this node's subtree, if it has any games.
+    pub deadline: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-impl From<&domain::GroupGame> for Group {
-    fn from(g: &domain::GroupGame) -> Self {
+impl Group {
+    /// Build a `Group` from a tournament node, computing the subtree deadline
+    /// from the full tournament (the deadline is not stored on the node).
+    fn from_node(g: &domain::GroupGame, tournament: &domain::Tournament) -> Self {
         let (child_group_ids, child_game_ids) = match &g.children {
             domain::GroupChildren::Groups(ids) => (ids.clone(), Vec::new()),
             domain::GroupChildren::Games(ids) => (Vec::new(), ids.clone()),
@@ -136,6 +143,7 @@ impl From<&domain::GroupGame> for Group {
             carries_standings: g.carries_standings,
             child_group_ids,
             child_game_ids,
+            deadline: tournament.deadline(&g.id),
         }
     }
 }
@@ -153,7 +161,7 @@ impl From<&domain::Tournament> for Tournament {
     fn from(t: &domain::Tournament) -> Self {
         Tournament {
             root: t.root.clone(),
-            groups: t.groups.values().map(Group::from).collect(),
+            groups: t.groups.values().map(|g| Group::from_node(g, t)).collect(),
             games: t.games.values().map(Game::from).collect(),
             teams: t.teams.values().map(Team::from).collect(),
         }
@@ -179,6 +187,28 @@ impl From<&domain::MatchPrediction> for MatchPrediction {
     }
 }
 
+/// One player's predicted ordering for one group node.
+#[derive(SimpleObject, Clone, Debug)]
+pub struct StandingsPrediction {
+    pub group_id: String,
+    /// The predicted final ordering of the node's teams.
+    pub ordering: Vec<String>,
+    /// Manual tiebreak for everything not score-derivable.
+    pub draw_order: Vec<String>,
+    pub locked: bool,
+}
+
+impl From<&domain::StandingsPrediction> for StandingsPrediction {
+    fn from(s: &domain::StandingsPrediction) -> Self {
+        StandingsPrediction {
+            group_id: s.group_id.clone(),
+            ordering: s.ordering.clone(),
+            draw_order: s.draw_order.clone(),
+            locked: s.locked,
+        }
+    }
+}
+
 /// The current player plus their predictions (`me`).
 #[derive(SimpleObject, Clone, Debug)]
 pub struct Player {
@@ -188,6 +218,7 @@ pub struct Player {
     pub is_result_user: bool,
     pub version: u64,
     pub match_predictions: Vec<MatchPrediction>,
+    pub standings_predictions: Vec<StandingsPrediction>,
 }
 
 impl From<&domain::Player> for Player {
@@ -202,6 +233,11 @@ impl From<&domain::Player> for Player {
                 .match_predictions
                 .iter()
                 .map(MatchPrediction::from)
+                .collect(),
+            standings_predictions: p
+                .standings_predictions
+                .iter()
+                .map(StandingsPrediction::from)
                 .collect(),
         }
     }

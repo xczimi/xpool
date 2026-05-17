@@ -4,10 +4,15 @@ import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import {
   ME_QUERY,
+  RESULTS_QUERY,
   SUBMIT_GROUP_MUTATION,
   TOURNAMENT_QUERY,
 } from '../graphql/queries'
-import type { Motd, Player, Tournament } from '../graphql/types'
+import type {
+  MatchPrediction,
+  Player,
+  Tournament,
+} from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { GroupSubNav } from '../components/GroupSubNav'
 import { GroupTipForm } from './mytips/GroupTipForm'
@@ -25,19 +30,23 @@ export function MyTipsPage() {
 
   const [tournamentResult, refetchTournament] = useQuery<{
     tournament: Tournament | null
-    motd: Motd | null
+    motd: string | null
   }>({ query: TOURNAMENT_QUERY })
   const [meResult, refetchMe] = useQuery<{ me: Player | null }>({
     query: ME_QUERY,
     pause: !playerId,
   })
+  const [resultsResult] = useQuery<{ results: MatchPrediction[] }>({
+    query: RESULTS_QUERY,
+  })
   const [, submitGroup] = useMutation(SUBMIT_GROUP_MUTATION)
 
   const tournament = tournamentResult.data?.tournament ?? null
   const me = meResult.data?.me ?? null
+  const results = resultsResult.data?.results ?? []
 
   const leafGroups = useMemo(
-    () => (tournament?.groups ?? []).filter((g) => g.gameIds.length > 0),
+    () => (tournament?.groups ?? []).filter((g) => g.childGameIds.length > 0),
     [tournament],
   )
 
@@ -70,6 +79,7 @@ export function MyTipsPage() {
           tournament={tournament}
           group={activeGroup}
           me={me}
+          results={results}
           onSubmit={async (predictions, standings, lock) => {
             const res = await submitGroup({
               groupId: activeGroup.id,

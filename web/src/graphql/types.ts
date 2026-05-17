@@ -1,9 +1,8 @@
 /**
  * TypeScript shapes mirroring the GraphQL schema.
  *
- * The schema is derived from `crates/domain/src/model.rs` and `API.md`. As of
- * P6 the `api` crate (P5) is still a stub, so field names below are the
- * frontend's assumed contract — see `web/README.md` "GraphQL assumptions".
+ * The schema is the agreed reconciled contract — see `web/README.md`
+ * "GraphQL assumptions". It mirrors the `api` crate's `gql` types exactly.
  */
 
 export type Round =
@@ -37,14 +36,6 @@ export interface SingleGame {
   groupId: string
   home: TeamSlot
   away: TeamSlot
-  /** Official 90-minute result, present once the admin has entered it. */
-  result: MatchResult | null
-}
-
-export interface MatchResult {
-  homeScore: number
-  awayScore: number
-  locked: boolean
 }
 
 export interface GroupGame {
@@ -57,7 +48,7 @@ export interface GroupGame {
   /** Child group ids (internal node). Empty for a leaf group. */
   childGroupIds: string[]
   /** Match ids (leaf group). Empty for an internal node. */
-  gameIds: string[]
+  childGameIds: string[]
   /** Earliest kickoff in the subtree — the prediction deadline. */
   deadline: string | null
 }
@@ -87,52 +78,44 @@ export interface Player {
   id: string
   nick: string
   fullName: string
-  email: string | null
-  isAdmin: boolean
+  /** The result user IS the admin — gate admin features on this flag. */
   isResultUser: boolean
+  version: number
   matchPredictions: MatchPrediction[]
   standingsPredictions: StandingsPrediction[]
 }
 
-export interface ScoreboardEntry {
+/** One row of the materialised scoreboard. `scoreboard` returns these directly. */
+export interface ScoreEntry {
   playerId: string
   nick: string
   total: number
-  /** Per-round breakdown, multipliers already applied. */
-  byRound: { round: Round; points: number }[]
+  /** Per-round point breakdown (multipliers already applied server-side). */
+  stages: StageScore[]
 }
 
-export interface Scoreboard {
-  poolId: string | null
-  poolName: string | null
-  entries: ScoreboardEntry[]
-  /** The multiplier in effect for each round (display only). */
-  multipliers: { round: Round; multiplier: number }[]
+export interface StageScore {
+  round: Round
+  points: number
 }
 
 export interface Pool {
   id: string
   name: string
-  ownerId: string
-  memberIds: string[]
+  owner: string
+  members: string[]
 }
 
-export interface PlayerTip {
+export interface Tip {
   playerId: string
   nick: string
   gameId: string
-  homeScore: number
-  awayScore: number
-  /** True once the tip is locked or the match kicked off (UC-9 visibility). */
-  visible: boolean
+  /** Null when the prediction is still hidden from others (UC-9 visibility). */
+  prediction: MatchPrediction | null
 }
 
 export interface Perfect {
   playerId: string
   nick: string
   gameId: string
-}
-
-export interface Motd {
-  text: string
 }

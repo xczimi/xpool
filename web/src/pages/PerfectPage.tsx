@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useQuery } from 'urql'
 import { useI18n } from '../i18n/useI18n'
 import { PERFECTS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
-import type { Motd, Perfect, Tournament } from '../graphql/types'
+import type { Perfect, Tournament } from '../graphql/types'
 import { ErrorView, Loading } from '../components/StatusViews'
 import { slotLabel, teamIndex } from '../lib/format'
 
@@ -14,7 +14,7 @@ export function PerfectPage() {
   })
   const [tournamentResult] = useQuery<{
     tournament: Tournament | null
-    motd: Motd | null
+    motd: string | null
   }>({ query: TOURNAMENT_QUERY })
 
   const tournament = tournamentResult.data?.tournament ?? null

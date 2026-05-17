@@ -3,7 +3,7 @@ import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
-import type { Motd, Player, Tournament } from '../graphql/types'
+import type { Player, Tournament } from '../graphql/types'
 import { AuthBar } from './AuthBar'
 import { LanguageSelector } from './LanguageSelector'
 import { NavBar } from './NavBar'
@@ -22,11 +22,11 @@ export function Layout() {
   })
   const [tournamentResult] = useQuery<{
     tournament: Tournament | null
-    motd: Motd | null
+    motd: string | null
   }>({ query: TOURNAMENT_QUERY })
 
   const me = meResult.data?.me ?? null
-  const motd = tournamentResult.data?.motd?.text
+  const motd = tournamentResult.data?.motd
 
   return (
     <div className="app">
@@ -39,7 +39,7 @@ export function Layout() {
       </header>
 
       <AuthBar />
-      <NavBar isAdmin={Boolean(me?.isAdmin)} />
+      <NavBar isAdmin={Boolean(me?.isResultUser)} />
 
       {motd && <div className="flash-bar">{motd}</div>}
 

@@ -6,15 +6,19 @@ import {
   SCOREBOARD_QUERY,
   TOURNAMENT_QUERY,
 } from '../graphql/queries'
-import type { Motd, Pool, Round, Scoreboard, Tournament } from '../graphql/types'
+import {
+  RESULTS_QUERY,
+} from '../graphql/queries'
+import type {
+  MatchPrediction,
+  Pool,
+  ScoreEntry,
+  Tournament,
+} from '../graphql/types'
 import { ErrorView, Loading } from '../components/StatusViews'
 import { usePolledQuery } from '../lib/usePolledQuery'
 import { pollIntervalMs } from '../lib/polling'
-import {
-  DEFAULT_MULTIPLIERS,
-  ROUND_LABELS,
-  ROUND_ORDER,
-} from '../lib/rounds'
+import { ROUND_LABELS, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
 
 /** Ranked leaderboard, overall + per stage, with pool selector (UC-8). */
 export function ScoreboardPage() {
@@ -22,27 +26,25 @@ export function ScoreboardPage() {
   const [poolId, setPoolId] = useState<string | null>(null)
 
   const [poolsResult] = useQuery<{ pools: Pool[] }>({ query: POOLS_QUERY })
-  const [probe] = useQuery<{ tournament: Tournament | null; motd: Motd | null }>(
-    { query: TOURNAMENT_QUERY },
-  )
-  const interval = useMemo(
-    () => pollIntervalMs(probe.data?.tournament?.games ?? []),
-    [probe.data],
-  )
+  const [probe] = useQuery<{
+    tournament: Tournament | null
+    motd: string | null
+  }>({ query: TOURNAMENT_QUERY })
+  const [resultsResult] = useQuery<{ results: MatchPrediction[] }>({
+    query: RESULTS_QUERY,
+  })
+  const interval = useMemo(() => {
+    const resultIds = new Set(
+      (resultsResult.data?.results ?? []).map((r) => r.gameId),
+    )
+    return pollIntervalMs(probe.data?.tournament?.games ?? [], resultIds)
+  }, [probe.data, resultsResult.data])
   const [result, reexecute] = usePolledQuery<{
-    scoreboard: Scoreboard | null
+    scoreboard: ScoreEntry[]
   }>({ query: SCOREBOARD_QUERY, variables: { pool: poolId } }, interval)
 
   const scoreboard = result.data?.scoreboard ?? null
   const pools = poolsResult.data?.pools ?? []
-
-  const multiplierFor = useMemo(() => {
-    const map = new Map<Round, number>()
-    for (const m of scoreboard?.multipliers ?? []) {
-      map.set(m.round, m.multiplier)
-    }
-    return (r: Round) => map.get(r) ?? DEFAULT_MULTIPLIERS[r]
-  }, [scoreboard])
 
   if (result.fetching && !scoreboard) return <Loading />
   if (result.error)
@@ -54,7 +56,7 @@ export function ScoreboardPage() {
     )
   if (!scoreboard) return <ErrorView />
 
-  const ranked = [...scoreboard.entries].sort((a, b) => b.total - a.total)
+  const ranked = [...scoreboard].sort((a, b) => b.total - a.total)
 
   return (
     <section className="page">
@@ -86,7 +88,7 @@ export function ScoreboardPage() {
                 {ROUND_LABELS[r]}
                 <br />
                 <small>
-                  {t('multiplier')} ×{multiplierFor(r)}
+                  {t('multiplier')} ×{STAGE_MULTIPLIERS[r]}
                 </small>
               </th>
             ))}
@@ -96,7 +98,7 @@ export function ScoreboardPage() {
         <tbody>
           {ranked.map((entry, i) => {
             const byRound = new Map(
-              entry.byRound.map((b) => [b.round, b.points]),
+              entry.stages.map((s) => [s.round, s.points]),
             )
             return (
               <tr key={entry.playerId}>

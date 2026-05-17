@@ -6,11 +6,14 @@
 //! the wholesale post-result recompute.
 
 use crate::auth::CurrentPlayer;
-use crate::gql::inputs::MatchPredictionInput;
+use crate::gql::inputs::{MatchPredictionInput, StandingsInput};
 use crate::gql::types::*;
 use crate::recompute::recompute;
 use async_graphql::{Context, Object};
-use domain::{MatchPrediction, Player as DomainPlayer, Pool as DomainPool};
+use domain::{
+    MatchPrediction, Player as DomainPlayer, Pool as DomainPool,
+    StandingsPrediction as DomainStandingsPrediction,
+};
 use std::sync::Arc;
 use storage::Repository;
 
@@ -28,8 +31,10 @@ fn repo<'a>(ctx: &'a Context<'_>) -> &'a Arc<dyn Repository> {
 /// state.
 fn apply_group_predictions(
     player: &DomainPlayer,
+    group_id: &str,
     game_ids: &[String],
     predictions: &[MatchPredictionInput],
+    standings: Option<&StandingsInput>,
     lock: bool,
 ) -> DomainPlayer {
     // Drop existing predictions for the group's games, then re-add.
@@ -53,8 +58,26 @@ fn apply_group_predictions(
         });
     }
 
+    // Drop the existing standings prediction for this group, then re-add it
+    // when a new one was supplied.
+    let mut standings_predictions: Vec<DomainStandingsPrediction> = player
+        .standings_predictions
+        .iter()
+        .filter(|s| s.group_id != group_id)
+        .cloned()
+        .collect();
+    if let Some(input) = standings {
+        standings_predictions.push(DomainStandingsPrediction {
+            group_id: group_id.to_owned(),
+            ordering: input.ordering.clone(),
+            draw_order: input.draw_order.clone(),
+            locked: lock,
+        });
+    }
+
     DomainPlayer {
         match_predictions,
+        standings_predictions,
         ..player.clone()
     }
 }
@@ -70,6 +93,7 @@ impl MutationRoot {
         ctx: &Context<'_>,
         group_id: String,
         predictions: Vec<MatchPredictionInput>,
+        standings: Option<StandingsInput>,
         lock: bool,
     ) -> async_graphql::Result<Player> {
         let viewer = CurrentPlayer::require(ctx)?;
@@ -94,7 +118,14 @@ impl MutationRoot {
         // re-reads the current player state after a version conflict.
         let mut current = viewer.clone();
         for attempt in 0..2 {
-            let next = apply_group_predictions(&current, &game_ids, &predictions, lock);
+            let next = apply_group_predictions(
+                &current,
+                &group_id,
+                &game_ids,
+                &predictions,
+                standings.as_ref(),
+                lock,
+            );
             match repo.put_player(&next).await {
                 Ok(()) => return Ok(Player::from(&next)),
                 Err(e) if attempt == 0 => {

@@ -3,6 +3,7 @@ import type { OperationResult } from 'urql'
 import { useI18n } from '../../i18n/useI18n'
 import type {
   GroupGame,
+  MatchPrediction,
   Player,
   Tournament,
 } from '../../graphql/types'
@@ -41,11 +42,14 @@ export function GroupTipForm({
   tournament,
   group,
   me,
+  results,
   onSubmit,
 }: {
   tournament: Tournament
   group: GroupGame
   me: Player
+  /** The result user's locked match predictions — official scores. */
+  results: MatchPrediction[]
   onSubmit: (
     predictions: PredictionInput[],
     standings: StandingsInput | null,
@@ -58,10 +62,18 @@ export function GroupTipForm({
   const games = useMemo(
     () =>
       tournament.games
-        .filter((g) => group.gameIds.includes(g.id))
+        .filter((g) => group.childGameIds.includes(g.id))
         .sort(byKickoff),
     [tournament, group],
   )
+
+  const resultsByGame = useMemo(() => {
+    const map = new Map<string, MatchPrediction>()
+    for (const r of results) {
+      map.set(r.gameId, r)
+    }
+    return map
+  }, [results])
 
   // Seed the form from the player's existing predictions for this group.
   const initialMatches = useMemo(() => {
@@ -127,10 +139,10 @@ export function GroupTipForm({
   const actual = useMemo(
     () =>
       computeStandings(games, (gameId) => {
-        const r = tournament.games.find((g) => g.id === gameId)?.result
+        const r = resultsByGame.get(gameId)
         return r ? { home: r.homeScore, away: r.awayScore } : null
       }),
-    [games, tournament],
+    [games, resultsByGame],
   )
 
   const allComplete = games.every((g) => {
@@ -217,9 +229,10 @@ export function GroupTipForm({
                   />
                 </td>
                 <td>
-                  {game.result
-                    ? `${game.result.homeScore}–${game.result.awayScore}`
-                    : '—'}
+                  {(() => {
+                    const r = resultsByGame.get(game.id)
+                    return r ? `${r.homeScore}–${r.awayScore}` : '—'
+                  })()}
                 </td>
               </tr>
             )

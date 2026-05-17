@@ -143,6 +143,54 @@ async fn submit_group_resolves_version_conflict_with_retry() {
 }
 
 #[tokio::test]
+async fn submit_group_saves_standings() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    const SUBMIT_STANDINGS: &str = r#"
+mutation($g: ID!, $p: [MatchPredictionInput!]!, $s: StandingsInput, $lock: Boolean!) {
+  submitGroup(groupId: $g, predictions: $p, standings: $s, lock: $lock) {
+    id standingsPredictions { groupId ordering drawOrder locked }
+  }
+}"#;
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [{ "gameId": GAME_1, "homeScore": 1, "awayScore": 0 }],
+        "s": { "ordering": ["MEX", "RSA", "KOR", "CZE"], "drawOrder": ["KOR", "CZE"] },
+        "lock": true
+    }));
+    let resp = run(&repo, SUBMIT_STANDINGS, vars, Some(ALICE)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let d = data(&resp);
+    let standings = d["submitGroup"]["standingsPredictions"].as_array().unwrap();
+    assert_eq!(standings.len(), 1);
+    assert_eq!(standings[0]["groupId"], GROUP_A);
+    assert_eq!(
+        standings[0]["ordering"],
+        json!(["MEX", "RSA", "KOR", "CZE"])
+    );
+    assert_eq!(standings[0]["drawOrder"], json!(["KOR", "CZE"]));
+    assert_eq!(standings[0]["locked"], json!(true));
+
+    // Persisted onto the player item.
+    let stored = repo.get_player(ALICE).await.unwrap().unwrap();
+    assert_eq!(stored.standings_predictions.len(), 1);
+    assert_eq!(stored.standings_predictions[0].group_id, GROUP_A);
+}
+
+#[tokio::test]
+async fn submit_group_without_standings_leaves_them_empty() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [{ "gameId": GAME_1, "homeScore": 1, "awayScore": 0 }],
+        "lock": false
+    }));
+    let resp = run(&repo, SUBMIT, vars, Some(ALICE)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let stored = repo.get_player(ALICE).await.unwrap().unwrap();
+    assert!(stored.standings_predictions.is_empty());
+}
+
+#[tokio::test]
 async fn submit_group_requires_authentication() {
     let repo = seeded_repo(Duration::hours(24)).await;
     let vars = Variables::from_json(json!({
@@ -342,6 +390,71 @@ async fn scoreboard_query_reflects_recompute() {
         .clone();
     // 1-0 vs 3-0: home exact? no. away exact (0==0)? yes (+1). outcome (home win) yes (+2). = 3.
     assert_eq!(alice_row["total"], 3);
+}
+
+// ── results query ────────────────────────────────────────────────────────────
+
+#[tokio::test]
+async fn results_returns_only_locked_result_user_predictions() {
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    // Result user has one locked and one unlocked prediction.
+    {
+        let mut result = repo.get_player(RESULT_ID).await.unwrap().unwrap();
+        result.match_predictions.push(locked_pred(GAME_1, 2, 1)); // locked
+        let mut draft = locked_pred(GAME_2, 0, 0);
+        draft.locked = false; // unlocked
+        result.match_predictions.push(draft);
+        repo.put_player(&result).await.unwrap();
+    }
+    let resp = run(
+        &repo,
+        "{ results { gameId homeScore awayScore locked } }",
+        Variables::default(),
+        None,
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let d = data(&resp);
+    let results = d["results"].as_array().unwrap();
+    assert_eq!(results.len(), 1, "only the locked prediction is returned");
+    assert_eq!(results[0]["gameId"], GAME_1);
+    assert_eq!(results[0]["homeScore"], 2);
+    assert_eq!(results[0]["locked"], json!(true));
+}
+
+#[tokio::test]
+async fn results_is_empty_when_no_results_entered() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let resp = run(&repo, "{ results { gameId } }", Variables::default(), None).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    assert_eq!(data(&resp), json!({ "results": [] }));
+}
+
+// ── tournament: group deadline ───────────────────────────────────────────────
+
+#[tokio::test]
+async fn tournament_group_carries_subtree_deadline() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let resp = run(
+        &repo,
+        "{ tournament { groups { id deadline } } }",
+        Variables::default(),
+        None,
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let d = data(&resp);
+    let group_a = d["tournament"]["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["id"] == "A")
+        .unwrap()
+        .clone();
+    assert!(
+        group_a["deadline"].is_string(),
+        "leaf group has a deadline: {group_a:?}"
+    );
 }
 
 #[tokio::test]

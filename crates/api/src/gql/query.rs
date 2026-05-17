@@ -182,4 +182,21 @@ impl QueryRoot {
     async fn motd(&self, ctx: &Context<'_>) -> async_graphql::Result<Option<String>> {
         Ok(repo(ctx).get_motd().await?.map(|m| m.text))
     }
+
+    /// The result user's *locked* match predictions — the official scores.
+    /// Public so any client can overlay official results onto the schedule.
+    async fn results(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<MatchPrediction>> {
+        let players = repo(ctx).list_players().await?;
+        Ok(players
+            .iter()
+            .find(|p| p.is_result_user)
+            .map(|r| {
+                r.match_predictions
+                    .iter()
+                    .filter(|p| p.locked)
+                    .map(MatchPrediction::from)
+                    .collect()
+            })
+            .unwrap_or_default())
+    }
 }

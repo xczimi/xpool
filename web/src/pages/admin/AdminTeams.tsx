@@ -1,15 +1,16 @@
 import { useQuery } from 'urql'
 import { useI18n } from '../../i18n/useI18n'
 import { TOURNAMENT_QUERY } from '../../graphql/queries'
-import type { Motd, Tournament } from '../../graphql/types'
+import type { Tournament } from '../../graphql/types'
 import { ErrorView, Loading } from '../../components/StatusViews'
 
-/** Admin team view (UC-15) — read-only listing. Editing TBD when P5 lands. */
+/** Admin team view (UC-15) — read-only listing. */
 export function AdminTeams() {
   const { t } = useI18n()
-  const [result] = useQuery<{ tournament: Tournament | null; motd: Motd | null }>(
-    { query: TOURNAMENT_QUERY },
-  )
+  const [result] = useQuery<{
+    tournament: Tournament | null
+    motd: string | null
+  }>({ query: TOURNAMENT_QUERY })
 
   if (result.fetching) return <Loading />
   if (result.error) return <ErrorView message={result.error.message} />

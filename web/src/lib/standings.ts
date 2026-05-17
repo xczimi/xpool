@@ -136,5 +136,5 @@ export function groupGames(
   group: GroupGame,
   allGames: SingleGame[],
 ): SingleGame[] {
-  return allGames.filter((g) => group.gameIds.includes(g.id))
+  return allGames.filter((g) => group.childGameIds.includes(g.id))
 }

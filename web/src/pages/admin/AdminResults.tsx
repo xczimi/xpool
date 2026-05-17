@@ -1,8 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery } from 'urql'
 import { useI18n } from '../../i18n/useI18n'
-import { ENTER_RESULT_MUTATION, TOURNAMENT_QUERY } from '../../graphql/queries'
-import type { Motd, Tournament } from '../../graphql/types'
+import {
+  ENTER_RESULT_MUTATION,
+  RESULTS_QUERY,
+  TOURNAMENT_QUERY,
+} from '../../graphql/queries'
+import type { MatchPrediction, Tournament } from '../../graphql/types'
 import { ErrorView, Loading } from '../../components/StatusViews'
 import { byKickoff, formatKickoff, slotLabel, teamIndex } from '../../lib/format'
 
@@ -11,8 +15,11 @@ export function AdminResults() {
   const { t, locale } = useI18n()
   const [result, refetch] = useQuery<{
     tournament: Tournament | null
-    motd: Motd | null
+    motd: string | null
   }>({ query: TOURNAMENT_QUERY })
+  const [resultsQuery, refetchResults] = useQuery<{
+    results: MatchPrediction[]
+  }>({ query: RESULTS_QUERY })
   const [, enterResult] = useMutation(ENTER_RESULT_MUTATION)
 
   const tournament = result.data?.tournament ?? null
@@ -20,6 +27,13 @@ export function AdminResults() {
     () => teamIndex(tournament?.teams ?? []),
     [tournament],
   )
+  const resultsByGame = useMemo(() => {
+    const map = new Map<string, MatchPrediction>()
+    for (const r of resultsQuery.data?.results ?? []) {
+      map.set(r.gameId, r)
+    }
+    return map
+  }, [resultsQuery.data])
 
   if (result.fetching) return <Loading />
   if (result.error) return <ErrorView message={result.error.message} />
@@ -40,29 +54,34 @@ export function AdminResults() {
           </tr>
         </thead>
         <tbody>
-          {games.map((game) => (
-            <ResultRow
-              key={game.id}
-              gameId={game.id}
-              label={`${slotLabel(game.home, teams)} – ${slotLabel(
-                game.away,
-                teams,
-              )}`}
-              kickoff={formatKickoff(game.kickoff, locale)}
-              initialHome={game.result?.homeScore ?? null}
-              initialAway={game.result?.awayScore ?? null}
-              locked={game.result?.locked ?? false}
-              onSave={async (home, away, lock) => {
-                await enterResult({
-                  gameId: game.id,
-                  homeScore: home,
-                  awayScore: away,
-                  lock,
-                })
-                refetch({ requestPolicy: 'network-only' })
-              }}
-            />
-          ))}
+          {games.map((game) => {
+            const official = resultsByGame.get(game.id) ?? null
+            return (
+              <ResultRow
+                key={game.id}
+                gameId={game.id}
+                label={`${slotLabel(game.home, teams)} – ${slotLabel(
+                  game.away,
+                  teams,
+                )}`}
+                kickoff={formatKickoff(game.kickoff, locale)}
+                initialHome={official?.homeScore ?? null}
+                initialAway={official?.awayScore ?? null}
+                locked={official?.locked ?? false}
+                onSave={async (home, away, lock) => {
+                  await enterResult({
+                    gameId: game.id,
+                    homeScore: home,
+                    awayScore: away,
+                    advancer: null,
+                    lock,
+                  })
+                  refetch({ requestPolicy: 'network-only' })
+                  refetchResults({ requestPolicy: 'network-only' })
+                }}
+              />
+            )
+          })}
         </tbody>
       </table>
     </div>

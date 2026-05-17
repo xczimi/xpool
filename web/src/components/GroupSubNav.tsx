@@ -13,7 +13,7 @@ export function GroupSubNav({
   selectedId: string | null
   onSelect: (groupId: string) => void
 }) {
-  const leaves = groups.filter((g) => g.gameIds.length > 0)
+  const leaves = groups.filter((g) => g.childGameIds.length > 0)
   return (
     <div className="group-subnav">
       {leaves.map((g) => (
