@@ -86,8 +86,8 @@ A node carries:
   - Because scoring is symmetric, any Player can be used as the baseline —
     enabling player-vs-player relative scoring and "what-if" rescoring.
   - Cost accepted: queries listing "real players" must exclude the result user.
-- The scoring math itself is unchanged from [`GAME_RULES.md`](./GAME_RULES.md)
-  (with its documented bugs fixed). Engine = pure functions.
+- The scoring engine is decided in [`SCORING.md`](./SCORING.md) — pure
+  functions, `score(prediction, result, config)`.
 
 ## 6. Knockout placeholders
 
@@ -141,6 +141,7 @@ Single DynamoDB table, on-demand. Two key zones:
 | Player | `<t>#PLAYER` / `<playerId>` | profile **+ all** MatchPredictions + StandingsPredictions; `person_id`; `referrer`; `version` |
 | Tournament | `<t>#TOURNAMENT` | the GroupGame tree, SingleGames, Teams |
 | Pool | `<t>#POOL` / `<poolId>` | name, owner, member ids |
+| Scoreboard | `<t>#SCOREBOARD` | materialized `playerId → {stage → score}`; recomputed wholesale on result change (see [`SCORING.md`](./SCORING.md) §8) |
 | Motd | `<t>#MOTD` | banner text |
 
 Notes:
@@ -184,10 +185,6 @@ Decisions that override the existing specs or are non-obvious:
 
 ## 12. Open / deferred
 
-- **Scoreboard materialization** — undecided. The cost is *reading* all
-  players, not the scoring math. Option: materialize a per-Player score
-  (recomputed on result lock), so any pool scoreboard composes by reading
-  members' totals. To be grilled.
 - **Auth mechanism** — deferred (Auth0 vs app-managed). Phase 1 uses a dev stub
   behind a single auth seam: the edge resolves an `Identity` → `Person` →
   `(Person, current tournament)` → `Player`.
