@@ -105,7 +105,7 @@ predicted 90-minute score derives the advancer automatically; a predicted
 > Ingestion note: feeds (TheSportsDB, FotMob) report a knockout match's *final*
 > score, often inclusive of ET. The model needs the **90-minute** score —
 > automated ingestion can't be trusted for ET matches; a human confirms. Belongs
-> in [`data_sources.md`](./data_sources.md).
+> in [`DATA_SOURCES.md`](./DATA_SOURCES.md).
 
 ## 6. Stage multipliers
 

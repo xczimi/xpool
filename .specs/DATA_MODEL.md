@@ -6,7 +6,7 @@ review. Where this conflicts with [`REWRITE_IMPLEMENTATION.md`](./REWRITE_IMPLEM
 [§11](#11-corrections-to-earlier-specs).
 
 Related: [`REWRITE_USE_CASES.md`](./REWRITE_USE_CASES.md) (behaviour),
-[`GAME_RULES.md`](./GAME_RULES.md) (scoring), [`fwc26_rules.md`](./fwc26_rules.md)
+[`GAME_RULES.md`](./GAME_RULES.md) (scoring), [`FWC26_RULES.md`](./FWC26_RULES.md)
 (competition rules).
 
 ---
@@ -94,7 +94,7 @@ A node carries:
 A `SingleGame`'s `home`/`away` are **nullable `Team` references**, each paired
 with a **slot `description`** string (e.g. `"3ABCDF"`, `"Winner SF 1"`). The
 data model does not interpret these. Resolving descriptions to concrete teams
-as results land is **FWC26-specific application code** (using `fwc26_rules.md`
+as results land is **FWC26-specific application code** (using `FWC26_RULES.md`
 §4 and the Annexe C lookup §5) — kept out of the generic model.
 
 ## 7. Lock state machine

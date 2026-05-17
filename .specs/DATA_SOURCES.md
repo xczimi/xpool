@@ -2,19 +2,19 @@
 
 How the rewrite gets tournament data: fixtures, kickoff times, the knockout
 bracket, and official results. See [`REWRITE_IMPLEMENTATION.md` §3](./REWRITE_IMPLEMENTATION.md)
-(data ingestion redesign) and [`thesportsdb_api.md`](./thesportsdb_api.md).
+(data ingestion redesign) and [`THESPORTSDB_API.md`](./THESPORTSDB_API.md).
 
 The legacy app scraped cached FIFA/UEFA HTML. The rewrite drops scraping in
 favour of a **hand-curated, git-committed tournament definition**
 (`tournaments/fwc26.json`), authored from the sources below with
-[`fwc26_rules.md`](./fwc26_rules.md) as the structural authority. See
+[`FWC26_RULES.md`](./FWC26_RULES.md) as the structural authority. See
 [`DATA_MODEL.md`](./DATA_MODEL.md) for the entities produced.
 
 ---
 
 ## 1. Source comparison
 
-| | FotMob ICS | TheSportsDB | `fwc26_rules.md` |
+| | FotMob ICS | TheSportsDB | `FWC26_RULES.md` |
 |---|---|---|---|
 | Type | iCalendar feed | JSON API (V1/V2) | static spec doc |
 | Fixtures | **all 104** (M1–M104) | 72 (group stage only, so far) | full pairings |
@@ -31,7 +31,7 @@ favour of a **hand-curated, git-committed tournament definition**
 | Concern | Source |
 |---|---|
 | Fixture list, kickoff times, bracket scaffold | **FotMob ICS** |
-| Group/tree structure, tiebreakers, Annexe C lookup | **`fwc26_rules.md`** |
+| Group/tree structure, tiebreakers, Annexe C lookup | **`FWC26_RULES.md`** |
 | Official results, livescores, venues, badges | **TheSportsDB V2** (or admin entry) |
 
 ---
@@ -62,7 +62,7 @@ Per-event fields used:
 `SUMMARY` parsing — split on `" - "`:
 
 - Group matches → real names: `🇲🇽 Mexico - 🇿🇦 South Africa`
-- Knockout matches → placeholders in **`fwc26_rules.md` notation**:
+- Knockout matches → placeholders in **`FWC26_RULES.md` notation**:
   `2A - 2B` (M73), `1E - 3ABCDF` (M74), `1L - 3EHIJK` (M80),
   `Winner SF 1 - Winner SF 2` (M104).
   `3ABCDF` = "best 3rd-placed team from groups {A,B,C,D,F}" — §4/§5.
@@ -75,11 +75,11 @@ best-effort and validate on import.
 
 ## 3. TheSportsDB
 
-Full reference in [`thesportsdb_api.md`](./thesportsdb_api.md). For xpool:
+Full reference in [`THESPORTSDB_API.md`](./THESPORTSDB_API.md). For xpool:
 official results, livescores, venues, and team badges. FIFA World Cup is
 `idLeague 4429`, season `2026`. V2 needs the premium key (`X-API-KEY` header).
 
-## 4. `fwc26_rules.md`
+## 4. `FWC26_RULES.md`
 
 The in-repo competition rules: 12-group structure, the MD1–MD3 group schedule,
 group-stage tiebreakers, the knockout bracket (§4), and the 495-row Annexe C
@@ -107,7 +107,7 @@ The decided design (settled in design review).
 
 1. A throwaway dev script parses the FotMob ICS → a draft scaffold (all 104
    matches + kickoff times, in M1–M104 order — saves typing).
-2. A human reconciles the draft against `fwc26_rules.md` — group assignments
+2. A human reconciles the draft against `FWC26_RULES.md` — group assignments
    (M1–M72 per the §1.3 schedule), knockout placeholder descriptions
    (M73–M104 per §4), team metadata — and **commits** the result.
 3. From then on the committed `fwc26.json` is the **single source of truth**.
@@ -146,4 +146,4 @@ job); for knockout matches the **90-minute** score is required — see
 ---
 
 *Verified live 2026-05-16: FotMob ICS `league/77` — 104 events, M1–M104 order,
-knockout placeholders in `fwc26_rules.md` notation.*
+knockout placeholders in `FWC26_RULES.md` notation.*

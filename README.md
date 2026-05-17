@@ -19,10 +19,11 @@ Specs and reference docs for agentic development live in [`.specs/`](./.specs/).
 | [`.specs/SCORING.md`](./.specs/SCORING.md) | The agreed scoring engine — per-match points, standings bonus, multipliers, materialized scoreboard |
 | [`.specs/API.md`](./.specs/API.md) | The agreed API & frontend contract — GraphQL, coarse queries/mutations, draft→locked, smart polling |
 | [`.specs/DEPLOYMENT.md`](./.specs/DEPLOYMENT.md) | The agreed deployment & infrastructure — environments, OpenTofu, CI/CD, cost posture |
+| [`.specs/DESIGN_REVIEW.md`](./.specs/DESIGN_REVIEW.md) | The design-review record — Peter's decisions, rationale, and the calls that overrode recommendations |
 | [`.specs/GAME_RULES.md`](./.specs/GAME_RULES.md) | The prediction/scoring rules in detail, including known bugs |
-| [`.specs/fwc26_rules.md`](./.specs/fwc26_rules.md) | FIFA World Cup 26 competition rules — tournament structure, tiebreakers, knockout bracket |
-| [`.specs/data_sources.md`](./.specs/data_sources.md) | Tournament data sources — FotMob calendar feed, TheSportsDB, and the ingestion flow |
-| [`.specs/thesportsdb_api.md`](./.specs/thesportsdb_api.md) | TheSportsDB API reference — endpoints and the World Cup 26 ingestion subset |
+| [`.specs/FWC26_RULES.md`](./.specs/FWC26_RULES.md) | FIFA World Cup 26 competition rules — tournament structure, tiebreakers, knockout bracket |
+| [`.specs/DATA_SOURCES.md`](./.specs/DATA_SOURCES.md) | Tournament data sources — FotMob calendar feed, TheSportsDB, and the ingestion flow |
+| [`.specs/THESPORTSDB_API.md`](./.specs/THESPORTSDB_API.md) | TheSportsDB API reference — endpoints and the World Cup 26 ingestion subset |
 
 ## `archive/`
 

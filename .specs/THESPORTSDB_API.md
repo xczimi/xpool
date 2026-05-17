@@ -2,7 +2,7 @@
 
 Working notes on [TheSportsDB](https://www.thesportsdb.com) — the planned
 fixture/result data source for the rewrite. See
-[`data_sources.md`](./data_sources.md) (tournament import & sources).
+[`DATA_SOURCES.md`](./DATA_SOURCES.md) (tournament import & sources).
 
 Primary docs: <https://www.thesportsdb.com/documentation>
 Extended docs / OpenAPI specs / Postman collections / MCP spec are linked from
@@ -76,7 +76,7 @@ declarative `tournaments/fwc26.json`.
 - **Stage is encoded in `intRound`** (group rounds vs. knockout round codes)
   and `strSeason` — map these to the `GroupGame` tree explicitly.
 - For the FWC26-specific structure (12 groups, R32, third-placed lookup), the
-  authoritative source is [`fwc26_rules.md`](./fwc26_rules.md), not the API.
+  authoritative source is [`FWC26_RULES.md`](./FWC26_RULES.md), not the API.
 
 ---
 
