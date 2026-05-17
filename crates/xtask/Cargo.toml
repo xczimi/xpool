@@ -17,4 +17,10 @@ tokio.workspace = true
 chrono.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-# P5 adds: clap
+clap = { version = "4", features = ["derive"] }
+
+[lib]
+name = "xtask"
+path = "src/lib.rs"
+
+[dev-dependencies]
