@@ -295,3 +295,24 @@ pub struct Perfect {
     pub nick: String,
     pub game_id: String,
 }
+
+/// A lightweight player listing — for the dev-login picker and the admin
+/// player list (UC-16). No predictions.
+#[derive(SimpleObject, Clone, Debug)]
+pub struct PlayerSummary {
+    pub id: String,
+    pub nick: String,
+    pub full_name: String,
+    pub is_result_user: bool,
+}
+
+impl From<&domain::Player> for PlayerSummary {
+    fn from(p: &domain::Player) -> Self {
+        PlayerSummary {
+            id: p.id.clone(),
+            nick: p.nick.clone(),
+            full_name: p.full_name.clone(),
+            is_result_user: p.is_result_user,
+        }
+    }
+}

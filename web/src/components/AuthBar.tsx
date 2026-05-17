@@ -1,38 +1,40 @@
-import { useState } from 'react'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
-import { ME_QUERY, SCOREBOARD_QUERY } from '../graphql/queries'
-import type { Player, ScoreEntry } from '../graphql/types'
+import { ME_QUERY, PLAYERS_QUERY } from '../graphql/queries'
+import type { Player, PlayerSummary } from '../graphql/types'
 
 /**
- * Dev auth bar. A visitor sees a player picker (sourced from the public
- * scoreboard's entries) plus a free-text id input. Choosing one stores the id
- * and sends it as `X-Dev-Player` on every request. "Log out" clears it.
+ * Dev auth bar. Auth is a stub (API.md §8) — there is no real login. A visitor
+ * picks a seeded player from the `players` list; the choice is stored and sent
+ * as the `X-Dev-Player` header on every request. "Log out" clears it.
  */
 export function AuthBar() {
   const { playerId, login, logout } = useAuth()
   const { t } = useI18n()
-  const [manualId, setManualId] = useState('')
 
   const [meResult] = useQuery<{ me: Player | null }>({
     query: ME_QUERY,
     pause: !playerId,
   })
-  const [sbResult] = useQuery<{ scoreboard: ScoreEntry[] }>({
-    query: SCOREBOARD_QUERY,
-    variables: { pool: null },
+  const [playersResult] = useQuery<{ players: PlayerSummary[] }>({
+    query: PLAYERS_QUERY,
   })
 
   const me = meResult.data?.me
-  const candidates = sbResult.data?.scoreboard ?? []
+  const players = playersResult.data?.players ?? []
 
   if (playerId) {
+    // An id that resolves to no player (e.g. a stale localStorage value).
+    const unknown = !meResult.fetching && !me
     return (
       <div className="auth-bar">
         <span>
           {t('loggedInAs')} <strong>{me?.nick ?? playerId}</strong>
           {me?.isResultUser ? ' (admin)' : ''}
+          {unknown && (
+            <em className="auth-warn"> — unknown player id, pick one below</em>
+          )}
         </span>
         <button type="button" onClick={logout}>
           {t('logOut')}
@@ -45,33 +47,20 @@ export function AuthBar() {
     <div className="auth-bar">
       <span>{t('visitor')}</span>
       <span className="auth-picker">
-        {candidates.length > 0 && (
-          <select
-            defaultValue=""
-            onChange={(e) => e.target.value && login(e.target.value)}
-          >
-            <option value="" disabled>
-              {t('logIn')}…
-            </option>
-            {candidates.map((c) => (
-              <option key={c.playerId} value={c.playerId}>
-                {c.nick} ({c.playerId})
-              </option>
-            ))}
-          </select>
-        )}
-        <input
-          placeholder="player id"
-          value={manualId}
-          onChange={(e) => setManualId(e.target.value)}
-        />
-        <button
-          type="button"
-          disabled={!manualId.trim()}
-          onClick={() => login(manualId.trim())}
+        <select
+          defaultValue=""
+          onChange={(e) => e.target.value && login(e.target.value)}
         >
-          {t('logIn')}
-        </button>
+          <option value="" disabled>
+            {t('logIn')}…
+          </option>
+          {players.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.nick}
+              {p.isResultUser ? ' (admin / results)' : ''} — {p.id}
+            </option>
+          ))}
+        </select>
       </span>
     </div>
   )

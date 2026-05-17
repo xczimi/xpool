@@ -41,9 +41,16 @@ export function SchedulePage() {
     )
   if (!tournament) return <ErrorView />
 
-  const leafGroups = tournament.groups.filter(
-    (g) => g.childGameIds.length > 0,
-  )
+  // Leaf groups (those holding matches), ordered chronologically by their
+  // deadline — the earliest kickoff in the group — so the schedule reads in
+  // time order: group stage A–L, then each knockout round.
+  const leafGroups = tournament.groups
+    .filter((g) => g.childGameIds.length > 0)
+    .sort((a, b) => {
+      const da = a.deadline ? Date.parse(a.deadline) : Number.POSITIVE_INFINITY
+      const db = b.deadline ? Date.parse(b.deadline) : Number.POSITIVE_INFINITY
+      return da - db
+    })
 
   return (
     <section className="page">

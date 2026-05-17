@@ -119,3 +119,11 @@ export interface Perfect {
   nick: string
   gameId: string
 }
+
+/** Lightweight player listing — dev-login picker, admin player list. */
+export interface PlayerSummary {
+  id: string
+  nick: string
+  fullName: string
+  isResultUser: boolean
+}

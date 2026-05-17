@@ -66,6 +66,13 @@ export const PERFECTS_QUERY = `
   }
 `
 
+/** All players — for the dev-login picker and the admin player list. */
+export const PLAYERS_QUERY = `
+  query Players {
+    players { id nick fullName isResultUser }
+  }
+`
+
 export const SUBMIT_GROUP_MUTATION = `
   mutation SubmitGroup(
     $groupId: ID!

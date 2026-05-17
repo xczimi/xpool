@@ -199,4 +199,18 @@ impl QueryRoot {
             })
             .unwrap_or_default())
     }
+
+    /// Every player (id, nick) — powers the dev-login picker and the admin
+    /// player list (UC-16). Public: the dev auth stub needs it pre-login.
+    async fn players(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<PlayerSummary>> {
+        let players = repo(ctx).list_players().await?;
+        let mut out: Vec<PlayerSummary> = players.iter().map(PlayerSummary::from).collect();
+        out.sort_by(|a, b| {
+            // Real players first, then the result user; alphabetical within.
+            a.is_result_user
+                .cmp(&b.is_result_user)
+                .then(a.nick.cmp(&b.nick))
+        });
+        Ok(out)
+    }
 }
