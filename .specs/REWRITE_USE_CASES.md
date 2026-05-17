@@ -1,5 +1,10 @@
 # xpool — User Journeys, Scenarios & Use Cases
 
+> ℹ️ **Current, with one gap.** The **Pool** feature — multiple independent
+> scoreboards over subsets of players — was added after this was written and is
+> not reflected in the use cases or screen inventory. See
+> [`DATA_MODEL.md`](./DATA_MODEL.md) §8.
+
 The **functional behavior** of the xpool / xEuroPool / xHomePool soccer
 score-prediction pool, described independently of any technology. This is what
 the rewrite must *do*. For *how* — entities, algorithms, anti-patterns to avoid

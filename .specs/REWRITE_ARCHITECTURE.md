@@ -1,5 +1,17 @@
 # xpool — Serverless AWS Rewrite: Architecture Plan
 
+> ⚠️ **SUPERSEDED DRAFT — not authoritative.** This was an un-ratified
+> Plan-agent proposal. Several recommendations here have since been **overridden**
+> in design review:
+> - Backend language: this says *Python* → decided **Rust**.
+> - DynamoDB modelling: this says *single-table design* → decided
+>   **coarse-grained document items**.
+> - Auth: this says *app-managed* → **deferred** (leaning Auth0).
+>
+> The domain & storage model is now authoritative in
+> [`DATA_MODEL.md`](./DATA_MODEL.md). The deployment topology and 8-phase build
+> plan below are **un-grilled** — do not rely on them. Kept for history only.
+
 ## Context
 
 The legacy **xpool** soccer score-prediction pool (Python 2.7 / Google App Engine)
