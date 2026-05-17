@@ -1,7 +1,13 @@
 /**
  * UI string catalogue. English + Hungarian (REWRITE_USE_CASES §4 i18n).
- * Hungarian seeded from `archive/locale/hu/LC_MESSAGES/django.po` where a
- * legacy equivalent existed; the rest translated directly.
+ *
+ * Stage 2 of the i18n reconciliation (`.specs/LEGACY_I18N.md`): where a string
+ * maps to one in the legacy gettext catalog, the **original Hungarian wording
+ * is reused verbatim** — keeping the casual register (`Tippverseny`, `Adatok`,
+ * `tutiban`, `engedj be!`, `Szevasztok!`). The two signature lowercase phrases
+ * (`get me outside!` / `let me in!`) are kept verbatim in English too. English
+ * is otherwise conventional Title Case for a consistent modern UI. The stale
+ * Euro-2008 rules copy is deliberately NOT carried over.
  *
  * To add a language: add a `Locale` value and a matching key block.
  */
@@ -12,13 +18,13 @@ export type StringKey = keyof typeof en
 
 const en = {
   // chrome
-  tagline: 'Predict every match. Beat your friends.',
+  tagline: 'This is our little friendly pool.',
   language: 'Language',
   loggedInAs: 'Logged in as',
   logOut: 'get me outside!',
-  logIn: 'Log in',
+  logIn: 'let me in!',
   visitor: 'You are outside.',
-  footer: 'xpool — a friendly soccer prediction pool',
+  footer: 'xPool — a friendly soccer prediction pool',
 
   // nav
   navHome: 'Home',
@@ -56,12 +62,12 @@ const en = {
   notAdminBody: 'This screen is for admins only.',
 
   // home
-  homeWelcome: 'Welcome to xpool',
+  homeWelcome: 'Hi there!',
   homeIntro:
     'A private, invite-only pool where friends predict every match of the tournament. Earn points for accurate scores; climb the live scoreboard.',
 
   // today
-  todayTitle: "Today / Fresh",
+  todayTitle: 'Today / Fresh',
   todayEmpty: 'No matches near now.',
   yourTip: 'Your tip',
   yourPoints: 'Your points',
@@ -104,18 +110,18 @@ const en = {
   profileTitle: 'Profile',
   nick: 'Nick',
   fullName: 'Full name',
-  email: 'Email',
+  email: 'E-mail',
   password: 'New password',
-  passwordConfirm: 'Confirm password',
+  passwordConfirm: 'Password again',
   profileSaved: 'Profile updated.',
   passwordMismatch: 'Passwords do not match.',
 
   // invite
   inviteTitle: 'Invite a friend',
   inviteIntro: 'Send a referral. They get a magic-link email to join.',
-  sendInvite: 'Send invitation',
+  sendInvite: 'send the invite which may end up in the spam folder.',
   inviteSent: 'Invitation sent.',
-  inviteExists: 'This user is already in the system (based on email).',
+  inviteExists: 'This user is already in the system (based on email)!',
 
   // rules
   rulesTitle: 'Rules & Scoring',
@@ -133,22 +139,22 @@ const en = {
 } as const
 
 const hu: Record<StringKey, string> = {
-  tagline: 'Tippeld meg minden meccset. Győzd le a barátaidat.',
+  tagline: 'Ez a mi kis baráti tippelő környezetünk',
   language: 'Nyelv',
   loggedInAs: 'Belépve mint',
   logOut: 'Engedj ki!',
-  logIn: 'Belépés',
+  logIn: 'engedj be!',
   visitor: 'Kint vagy.',
-  footer: 'xpool — baráti focitippjáték',
+  footer: 'xPool — baráti focitippjáték',
 
   navHome: 'Kezdőlap',
-  navToday: 'Ma',
+  navToday: 'Aktuális',
   navGames: 'Menetrend',
   navMyTips: 'Tippjeim',
-  navAllTips: 'Minden tipp',
-  navScoreboard: 'Eredménytábla',
+  navAllTips: 'Összes tipp',
+  navScoreboard: 'Tippverseny',
   navPerfect: 'Telitalálat',
-  navProfile: 'Profil',
+  navProfile: 'Adatok',
   navInvite: 'Meghívó',
   navRules: 'Szabályok',
   navAdmin: 'Admin',
@@ -174,7 +180,7 @@ const hu: Record<StringKey, string> = {
   notLoggedInBody: 'Ez az oldal csak játékosoknak. Válassz fent egy dev játékost.',
   notAdminBody: 'Ez az oldal csak adminoknak.',
 
-  homeWelcome: 'Üdvözlünk a xpoolban',
+  homeWelcome: 'Szevasztok!',
   homeIntro:
     'Zárt, meghívásos tippjáték, ahol a barátok megtippelik a torna minden meccsét. Pontot kapsz a pontos tippekért; mászhatsz az élő eredménytáblán.',
 
@@ -199,10 +205,10 @@ const hu: Record<StringKey, string> = {
   moveUp: 'Fel',
   moveDown: 'Le',
 
-  allTipsTitle: 'Minden tipp',
+  allTipsTitle: 'Összes tipp',
   hiddenTip: 'rejtett',
 
-  scoreboardTitle: 'Eredménytábla',
+  scoreboardTitle: 'Tippverseny',
   pool: 'Liga',
   everyone: 'Mindenki',
   overall: 'Összesített',
@@ -212,20 +218,20 @@ const hu: Record<StringKey, string> = {
   perfectIntro: 'Játékosok, akik maximum 4 pontot értek el egy meccsen.',
   perfectEmpty: 'Még nincs telitalálat.',
 
-  profileTitle: 'Profil',
+  profileTitle: 'Adatok',
   nick: 'Becenév',
   fullName: 'Teljes név',
-  email: 'Email',
+  email: 'E-mail',
   password: 'Új jelszó',
-  passwordConfirm: 'Jelszó megerősítése',
-  profileSaved: 'Profil frissítve.',
+  passwordConfirm: 'Jelszó újra',
+  profileSaved: 'Adatok frissítve.',
   passwordMismatch: 'A jelszavak nem egyeznek.',
 
   inviteTitle: 'Hívj meg egy barátot',
   inviteIntro: 'Küldj meghívót. A barátod magic-link emailt kap a belépéshez.',
-  sendInvite: 'Meghívó küldése',
+  sendInvite: 'küldd el a meghívót, ami lehet hogy spamként végzi...',
   inviteSent: 'Meghívó elküldve.',
-  inviteExists: 'Ez a felhasználó már benne van a tutiban (email alapján).',
+  inviteExists: 'Ez a felhasználó már benne van a tutiban!',
 
   rulesTitle: 'Szabályok és pontozás',
 

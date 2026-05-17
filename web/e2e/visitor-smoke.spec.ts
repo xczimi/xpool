@@ -16,7 +16,7 @@ interface PublicRoute {
 }
 
 const PUBLIC_ROUTES: PublicRoute[] = [
-  { path: '/', expectText: 'Welcome to xpool' },
+  { path: '/', expectText: 'Hi there!' },
   { path: '/today', expectText: 'Today' },
   { path: '/games', expectText: 'Schedule' },
   { path: '/scoreboard', expectText: 'Scoreboard' },
@@ -32,7 +32,7 @@ for (const route of PUBLIC_ROUTES) {
     await page.goto(route.path)
 
     // The persistent chrome must always be present.
-    await expect(page.locator('header.app-header h1')).toHaveText('xpool')
+    await expect(page.locator('header.app-header h1')).toHaveText('xPool')
 
     // The page rendered its real content (not a loading/error placeholder).
     await expect(page.locator('main.content')).toContainText(route.expectText)

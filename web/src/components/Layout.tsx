@@ -32,7 +32,7 @@ export function Layout() {
     <div className="app">
       <header className="app-header">
         <div className="brand">
-          <h1>xpool</h1>
+          <h1>xPool</h1>
           <p className="tagline">{t('tagline')}</p>
         </div>
         <LanguageSelector />
