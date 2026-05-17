@@ -208,38 +208,38 @@ descriptions (`2A`, `3ABCDF`, `Winner SF 1`).
 Each is built TDD by a dedicated subagent. Order reflects dependencies:
 P1–P4 parallel; P5 after P1–P4; P6–P7 parallel with anything.
 
-- [ ] **P0 — Workspace skeleton.** Root `Cargo.toml`, empty crate skeletons that
+- [x] **P0 — Workspace skeleton.** Root `Cargo.toml`, empty crate skeletons that
   compile, `mise.toml`, `.gitignore`, `docker-compose.yml` (DynamoDB Local on
   8000, MailHog on 1025/8025). Owner: orchestrator (this session).
 
-- [ ] **P1 — `domain` crate.** Entities + scoring engine + standings ladder.
+- [x] **P1 — `domain` crate.** Entities + scoring engine + standings ladder.
   Pure, no I/O. Thorough unit suite incl. SCORING.md §10 regression tests
   (per-side 4-goal rule, threshold ≥4, explicit multiplier table) and §4 ladder
   edge cases. Specs: `DATA_MODEL.md`, `SCORING.md`, `GAME_RULES.md`.
 
-- [ ] **P2 — `fwc26` crate.** Annexe C lookup (embed the 495-row table from
+- [x] **P2 — `fwc26` crate.** Annexe C lookup (embed the 495-row table from
   `FWC26_RULES.md` §5 as a generated data file), third-placed ranking (§3),
   bracket resolution. Pure. Depends on `domain` types only. Specs:
   `FWC26_RULES.md`, `DATA_SOURCES.md` §5.
 
-- [ ] **P3 — `storage` crate.** `Repository` trait, `InMemoryRepository`,
+- [x] **P3 — `storage` crate.** `Repository` trait, `InMemoryRepository`,
   `DynamoRepository`. Integration tests run `InMemoryRepository`; Dynamo tests
   gated behind a `DYNAMO_TEST` env (DynamoDB Local). Specs: `DATA_MODEL.md` §9.
 
-- [ ] **P4 — `tournaments/fwc26.json`.** Generate from `FWC26_RULES.md` (group
+- [x] **P4 — `tournaments/fwc26.json`.** Generate from `FWC26_RULES.md` (group
   structure, M1–M104 pairings, knockout placeholders) and the FotMob ICS
   (kickoff times). 48 teams, 104 games, 12+knockout groups. Validate counts.
 
-- [ ] **P5 — `api` + `xtask`.** `xtask import <file>` reads `fwc26.json` →
+- [x] **P5 — `api` + `xtask`.** `xtask import <file>` reads `fwc26.json` →
   `Repository::put_tournament`. `api` is axum + async-graphql exposing the §4/§5
   contract, post-result hook (scoreboard recompute + bracket resolution),
   auth stub, `lambda_http` wrapper behind a `lambda` feature. Depends P1–P4.
 
-- [ ] **P6 — `web` SPA.** React + Vite + TS, urql client, react-router, the 11
+- [x] **P6 — `web` SPA.** React + Vite + TS, urql client, react-router, the 11
   screens from `REWRITE_USE_CASES.md` §4, i18n en/hu, smart polling, the
   draft→locked group form. Talks to `/api/graphql`.
 
-- [ ] **P7 — Local dev wiring.** `docker-compose.yml`, a `README` dev section,
+- [x] **P7 — Local dev wiring.** `docker-compose.yml`, a `README` dev section,
   `xtask seed` for demo players + a result user, Vite proxy `/api` → `:3000`.
 
 ## Definition of done
