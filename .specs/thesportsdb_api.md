@@ -2,8 +2,7 @@
 
 Working notes on [TheSportsDB](https://www.thesportsdb.com) — the planned
 fixture/result data source for the rewrite. See
-[`REWRITE_IMPLEMENTATION.md` §3](./REWRITE_IMPLEMENTATION.md) (data ingestion)
-and [`REWRITE_ARCHITECTURE.md`](./REWRITE_ARCHITECTURE.md) (tournament import).
+[`data_sources.md`](./data_sources.md) (tournament import & sources).
 
 Primary docs: <https://www.thesportsdb.com/documentation>
 Extended docs / OpenAPI specs / Postman collections / MCP spec are linked from

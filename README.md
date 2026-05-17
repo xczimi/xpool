@@ -18,7 +18,7 @@ Specs and reference docs for agentic development live in [`.specs/`](./.specs/).
 | [`.specs/DATA_MODEL.md`](./.specs/DATA_MODEL.md) | The agreed domain & storage model — entities, tournament tree, pools, identity, DynamoDB layout |
 | [`.specs/SCORING.md`](./.specs/SCORING.md) | The agreed scoring engine — per-match points, standings bonus, multipliers, materialized scoreboard |
 | [`.specs/API.md`](./.specs/API.md) | The agreed API & frontend contract — GraphQL, coarse queries/mutations, draft→locked, smart polling |
-| [`.specs/REWRITE_ARCHITECTURE.md`](./.specs/REWRITE_ARCHITECTURE.md) | Serverless AWS rewrite architecture — stack choices, project structure, build phases |
+| [`.specs/DEPLOYMENT.md`](./.specs/DEPLOYMENT.md) | The agreed deployment & infrastructure — environments, OpenTofu, CI/CD, cost posture |
 | [`.specs/GAME_RULES.md`](./.specs/GAME_RULES.md) | The prediction/scoring rules in detail, including known bugs |
 | [`.specs/fwc26_rules.md`](./.specs/fwc26_rules.md) | FIFA World Cup 26 competition rules — tournament structure, tiebreakers, knockout bracket |
 | [`.specs/data_sources.md`](./.specs/data_sources.md) | Tournament data sources — FotMob calendar feed, TheSportsDB, and the ingestion flow |
