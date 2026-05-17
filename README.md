@@ -72,6 +72,7 @@ Specs and reference docs for agentic development live in [`.specs/`](./.specs/).
 | [`.specs/FWC26_RULES.md`](./.specs/FWC26_RULES.md) | FIFA World Cup 26 competition rules — tournament structure, tiebreakers, knockout bracket |
 | [`.specs/DATA_SOURCES.md`](./.specs/DATA_SOURCES.md) | Tournament data sources — FotMob calendar feed, TheSportsDB, and the ingestion flow |
 | [`.specs/THESPORTSDB_API.md`](./.specs/THESPORTSDB_API.md) | TheSportsDB API reference — endpoints and the World Cup 26 ingestion subset |
+| [`.specs/LEGACY_I18N.md`](./.specs/LEGACY_I18N.md) | Legacy UI strings (English/Hungarian) extracted from the old app — i18n reconciliation reference |
 
 ## `archive/`
 
