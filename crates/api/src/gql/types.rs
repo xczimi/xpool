@@ -336,6 +336,15 @@ pub struct Perfect {
     pub game_id: String,
 }
 
+/// The outcome of an `enterResult` admin mutation. The result is always
+/// persisted; `recompute_pending` is `true` when the post-result recompute
+/// failed and the materialised scoreboard/bracket are momentarily stale —
+/// the admin must re-run the `recompute` mutation to self-heal (Issue 18).
+#[derive(SimpleObject, Clone, Debug)]
+pub struct ResultEntered {
+    pub recompute_pending: bool,
+}
+
 /// A lightweight player listing — for the dev-login picker and the admin
 /// player list (UC-16). No predictions.
 #[derive(SimpleObject, Clone, Debug)]

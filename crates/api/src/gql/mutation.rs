@@ -414,6 +414,12 @@ impl MutationRoot {
 
     /// Admin: enter (or correct) a result, then run the post-result recompute.
     /// `advancer` is the team id that progresses on a knockout draw.
+    ///
+    /// Issue 02 — a result that is already `locked` cannot be overwritten here;
+    /// correcting one is a deliberate `unlockResult` → `enterResult` sequence
+    /// (ADMIN-06). Issue 18 — the result is always persisted; if the wholesale
+    /// recompute fails the mutation still succeeds with `recomputePending:
+    /// true` rather than erroring, and the `recompute` mutation self-heals.
     async fn enter_result(
         &self,
         ctx: &Context<'_>,
@@ -422,7 +428,7 @@ impl MutationRoot {
         away_score: i32,
         #[allow(unused_variables)] advancer: Option<String>,
         lock: bool,
-    ) -> async_graphql::Result<bool> {
+    ) -> async_graphql::Result<ResultEntered> {
         let admin = CurrentPlayer::require_admin(ctx)?;
         let repo = repo(ctx);
 
@@ -431,6 +437,17 @@ impl MutationRoot {
             .get_player(&admin.id)
             .await?
             .ok_or_else(|| async_graphql::Error::new("result user not found"))?;
+
+        // Issue 02 — refuse to silently rewrite a locked official result.
+        if result_user
+            .match_predictions
+            .iter()
+            .any(|p| p.game_id == game_id && p.locked)
+        {
+            return Err(async_graphql::Error::new(format!(
+                "result for `{game_id}` is locked; call `unlockResult` before re-entering it"
+            )));
+        }
 
         let new_prediction = MatchPrediction {
             game_id: game_id.clone(),
@@ -444,10 +461,60 @@ impl MutationRoot {
         result_user.match_predictions.push(new_prediction);
         repo.put_player(&result_user).await?;
 
-        // Wholesale recompute: scoreboard + bracket resolution.
+        // Wholesale recompute: scoreboard + bracket resolution. The result is
+        // already persisted, so a recompute failure is non-fatal — it is
+        // reported as a pending state for the admin to retry via `recompute`.
+        let recompute_pending = match recompute(repo.as_ref(), now(ctx)).await {
+            Ok(()) => false,
+            Err(e) => {
+                tracing::error!("recompute after enter_result failed: {e}");
+                true
+            }
+        };
+        Ok(ResultEntered { recompute_pending })
+    }
+
+    /// Admin: unlock an official result so it can be re-entered (Issue 02).
+    /// A **bare state flip** — it clears `locked` on the result user's
+    /// prediction and does *not* recompute; the scoreboard is briefly stale
+    /// until the follow-up `enterResult`.
+    async fn unlock_result(
+        &self,
+        ctx: &Context<'_>,
+        game_id: String,
+    ) -> async_graphql::Result<bool> {
+        let admin = CurrentPlayer::require_admin(ctx)?;
+        let repo = repo(ctx);
+
+        let mut result_user = repo
+            .get_player(&admin.id)
+            .await?
+            .ok_or_else(|| async_graphql::Error::new("result user not found"))?;
+
+        let prediction = result_user
+            .match_predictions
+            .iter_mut()
+            .find(|p| p.game_id == game_id)
+            .ok_or_else(|| {
+                async_graphql::Error::new(format!("no official result for `{game_id}`"))
+            })?;
+        prediction.locked = false;
+        repo.put_player(&result_user).await?;
+        Ok(true)
+    }
+
+    /// Admin: re-run the wholesale post-result recompute on demand (Issue 18).
+    /// Idempotent — fully repairs a scoreboard/bracket left stale by an earlier
+    /// failed recompute.
+    async fn recompute(&self, ctx: &Context<'_>) -> async_graphql::Result<bool> {
+        CurrentPlayer::require_admin(ctx)?;
+        let repo = repo(ctx);
         recompute(repo.as_ref(), now(ctx))
             .await
-            .map_err(|e| async_graphql::Error::new(e.to_string()))?;
+            .map_err(|e| {
+                tracing::error!("recompute mutation failed: {e}");
+                async_graphql::Error::new("recompute failed; please retry")
+            })?;
         Ok(true)
     }
 }

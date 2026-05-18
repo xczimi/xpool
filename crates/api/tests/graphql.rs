@@ -436,8 +436,18 @@ async fn tips_always_shows_own_unlocked_prediction() {
 
 const ENTER_RESULT: &str = r#"
 mutation($g: ID!, $h: Int!, $a: Int!, $lock: Boolean!) {
-  enterResult(gameId: $g, homeScore: $h, awayScore: $a, lock: $lock)
+  enterResult(gameId: $g, homeScore: $h, awayScore: $a, lock: $lock) {
+    recomputePending
+  }
 }"#;
+
+const UNLOCK_RESULT: &str = r#"
+mutation($g: ID!) {
+  unlockResult(gameId: $g)
+}"#;
+
+const RECOMPUTE: &str = r#"
+mutation { recompute }"#;
 
 #[tokio::test]
 async fn enter_result_requires_admin() {
@@ -510,6 +520,119 @@ async fn scoreboard_query_reflects_recompute() {
         .clone();
     // 1-0 vs 3-0: home exact? no. away exact (0==0)? yes (+1). outcome (home win) yes (+2). = 3.
     assert_eq!(alice_row["total"], 3);
+}
+
+#[tokio::test]
+async fn enter_result_returns_recompute_pending_false_on_success() {
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 2, "a": 1, "lock": true }));
+    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    assert_eq!(data(&resp)["enterResult"]["recomputePending"], json!(false));
+}
+
+#[tokio::test]
+async fn enter_result_rejects_a_locked_result() {
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    // First entry locks M1.
+    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 2, "a": 1, "lock": true }));
+    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+
+    // A second entry for the same locked game is rejected.
+    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 3, "a": 0, "lock": true }));
+    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
+    assert!(!resp.errors.is_empty(), "overwriting a locked result must fail");
+    assert!(
+        resp.errors[0].message.contains("unlockResult"),
+        "error must point at unlockResult: {}",
+        resp.errors[0].message
+    );
+
+    // The original locked result is untouched.
+    let result = repo.get_player(RESULT_ID).await.unwrap().unwrap();
+    let pred = result
+        .match_predictions
+        .iter()
+        .find(|p| p.game_id == GAME_1)
+        .unwrap();
+    assert_eq!((pred.home_score, pred.away_score), (2, 1));
+}
+
+#[tokio::test]
+async fn enter_result_allows_correcting_an_unlocked_result() {
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    // First entry as a draft (unlocked).
+    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 2, "a": 1, "lock": false }));
+    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    // An unlocked result is freely correctable (ADMIN-06).
+    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 3, "a": 0, "lock": true }));
+    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+}
+
+#[tokio::test]
+async fn unlock_result_flips_the_locked_flag() {
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 2, "a": 1, "lock": true }));
+    run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
+
+    let vars = Variables::from_json(json!({ "g": GAME_1 }));
+    let resp = run(&repo, UNLOCK_RESULT, vars, Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    assert_eq!(data(&resp)["unlockResult"], json!(true));
+
+    let result = repo.get_player(RESULT_ID).await.unwrap().unwrap();
+    let pred = result
+        .match_predictions
+        .iter()
+        .find(|p| p.game_id == GAME_1)
+        .unwrap();
+    assert!(!pred.locked, "the result must be unlocked");
+
+    // After an unlock, enter_result accepts a correction again.
+    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 3, "a": 0, "lock": true }));
+    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+}
+
+#[tokio::test]
+async fn unlock_result_requires_admin() {
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    let vars = Variables::from_json(json!({ "g": GAME_1 }));
+    let resp = run(&repo, UNLOCK_RESULT, vars, Some(ALICE)).await;
+    assert!(!resp.errors.is_empty(), "non-admin must be rejected");
+    assert!(resp.errors[0].message.contains("admin"));
+}
+
+#[tokio::test]
+async fn recompute_mutation_runs_for_an_admin() {
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    {
+        let mut alice = repo.get_player(ALICE).await.unwrap().unwrap();
+        alice.match_predictions.push(locked_pred(GAME_1, 2, 1));
+        repo.put_player(&alice).await.unwrap();
+        let mut result = repo.get_player(RESULT_ID).await.unwrap().unwrap();
+        result.match_predictions.push(locked_pred(GAME_1, 2, 1));
+        repo.put_player(&result).await.unwrap();
+    }
+    // No scoreboard yet — the recompute mutation materialises it.
+    let resp = run(&repo, RECOMPUTE, Variables::default(), Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    assert_eq!(data(&resp)["recompute"], json!(true));
+
+    let board = repo.get_scoreboard().await.unwrap().expect("scoreboard written");
+    let total: i64 = board.entries.get(ALICE).unwrap().values().sum();
+    assert_eq!(total, 4);
+}
+
+#[tokio::test]
+async fn recompute_mutation_requires_admin() {
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    let resp = run(&repo, RECOMPUTE, Variables::default(), Some(ALICE)).await;
+    assert!(!resp.errors.is_empty(), "non-admin must be rejected");
+    assert!(resp.errors[0].message.contains("admin"));
 }
 
 // ── results query ────────────────────────────────────────────────────────────
