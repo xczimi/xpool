@@ -153,7 +153,11 @@ mutation($g: ID!, $p: [MatchPredictionInput!]!, $s: StandingsInput, $lock: Boole
 }"#;
     let vars = Variables::from_json(json!({
         "g": GROUP_A,
-        "p": [{ "gameId": GAME_1, "homeScore": 1, "awayScore": 0 }],
+        // lock: true requires every game in the group (PRED-03).
+        "p": [
+            { "gameId": GAME_1, "homeScore": 1, "awayScore": 0 },
+            { "gameId": GAME_2, "homeScore": 2, "awayScore": 2 }
+        ],
         "s": { "ordering": ["MEX", "RSA", "KOR", "CZE"], "drawOrder": ["KOR", "CZE"] },
         "lock": true
     }));
@@ -200,6 +204,122 @@ async fn submit_group_requires_authentication() {
     }));
     let resp = run(&repo, SUBMIT, vars, None).await;
     assert!(!resp.errors.is_empty());
+}
+
+// ── Issue 01: submitGroup deadline / locking-is-final enforcement ─────────────
+
+#[tokio::test]
+async fn submit_group_rejected_after_deadline() {
+    // Group A kicked off 2h ago — its deadline has passed.
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [{ "gameId": GAME_1, "homeScore": 1, "awayScore": 0 }],
+        "lock": false
+    }));
+    let resp = run(&repo, SUBMIT, vars, Some(ALICE)).await;
+    assert!(!resp.errors.is_empty(), "post-deadline submit must be rejected");
+    assert!(
+        resp.errors[0].message.contains("deadline"),
+        "{:?}",
+        resp.errors
+    );
+}
+
+#[tokio::test]
+async fn submit_group_rejected_when_overwriting_a_locked_prediction() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    // Alice already has a locked prediction for GAME_1.
+    {
+        let mut alice = repo.get_player(ALICE).await.unwrap().unwrap();
+        alice.match_predictions.push(locked_pred(GAME_1, 2, 1));
+        repo.put_player(&alice).await.unwrap();
+    }
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [
+            { "gameId": GAME_1, "homeScore": 3, "awayScore": 3 },
+            { "gameId": GAME_2, "homeScore": 0, "awayScore": 0 }
+        ],
+        "lock": false
+    }));
+    let resp = run(&repo, SUBMIT, vars, Some(ALICE)).await;
+    assert!(
+        !resp.errors.is_empty(),
+        "overwriting a locked prediction must be rejected"
+    );
+    assert!(resp.errors[0].message.contains("locked"), "{:?}", resp.errors);
+    // The locked prediction is untouched.
+    let stored = repo.get_player(ALICE).await.unwrap().unwrap();
+    let g1 = stored.match_prediction(GAME_1).unwrap();
+    assert_eq!((g1.home_score, g1.away_score), (2, 1));
+}
+
+// ── Issue 06: lock: true requires every game in the group ────────────────────
+
+#[tokio::test]
+async fn submit_group_lock_rejected_with_missing_games() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    // Group A has GAME_1 and GAME_2; supply only GAME_1 with lock: true.
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [{ "gameId": GAME_1, "homeScore": 1, "awayScore": 0 }],
+        "lock": true
+    }));
+    let resp = run(&repo, SUBMIT, vars, Some(ALICE)).await;
+    assert!(
+        !resp.errors.is_empty(),
+        "partial lock must be rejected (PRED-03)"
+    );
+}
+
+#[tokio::test]
+async fn submit_group_lock_succeeds_with_all_games() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [
+            { "gameId": GAME_1, "homeScore": 1, "awayScore": 0 },
+            { "gameId": GAME_2, "homeScore": 2, "awayScore": 2 }
+        ],
+        "lock": true
+    }));
+    let resp = run(&repo, SUBMIT, vars, Some(ALICE)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+}
+
+// ── Issue 15: out-of-range scores are rejected, not clamped ──────────────────
+
+#[tokio::test]
+async fn submit_group_rejects_negative_score() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [{ "gameId": GAME_1, "homeScore": -3, "awayScore": 0 }],
+        "lock": false
+    }));
+    let resp = run(&repo, SUBMIT, vars, Some(ALICE)).await;
+    assert!(!resp.errors.is_empty(), "negative score must be rejected");
+}
+
+#[tokio::test]
+async fn submit_group_rejects_oversized_score() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [{ "gameId": GAME_1, "homeScore": 999, "awayScore": 0 }],
+        "lock": false
+    }));
+    let resp = run(&repo, SUBMIT, vars, Some(ALICE)).await;
+    assert!(!resp.errors.is_empty(), "oversized score must be rejected");
+}
+
+#[tokio::test]
+async fn enter_result_rejects_out_of_range_score() {
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    let vars = Variables::from_json(json!({ "g": GAME_1, "h": -1, "a": 0, "lock": true }));
+    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
+    assert!(!resp.errors.is_empty(), "negative result score must be rejected");
 }
 
 // ── tips: visibility filtering (UC-9 / API.md §6) ────────────────────────────
@@ -819,6 +939,189 @@ async fn tournament_exposes_time_flags_against_the_request_clock() {
     let game = &d["tournament"]["games"].as_array().unwrap()[0];
     assert_eq!(game["resultPending"], json!(true));
     assert_eq!(game["withinTodayWindow"], json!(false));
+}
+
+// ── Issue 04: scoreboard(pool) pool-privacy ──────────────────────────────────
+
+#[tokio::test]
+async fn scoreboard_pool_filter_rejects_a_non_member() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    make_pool(&repo, "p1", ALICE).await;
+    // Bob is not a member of p1.
+    let resp = run(
+        &repo,
+        r#"query($p: ID!) { scoreboard(pool: $p) { playerId } }"#,
+        Variables::from_json(json!({ "p": "p1" })),
+        Some(BOB),
+    )
+    .await;
+    assert!(
+        !resp.errors.is_empty(),
+        "non-member must not read a pool's scoreboard"
+    );
+}
+
+#[tokio::test]
+async fn scoreboard_pool_filter_rejects_a_visitor() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    make_pool(&repo, "p1", ALICE).await;
+    let resp = run(
+        &repo,
+        r#"query($p: ID!) { scoreboard(pool: $p) { playerId } }"#,
+        Variables::from_json(json!({ "p": "p1" })),
+        None,
+    )
+    .await;
+    assert!(!resp.errors.is_empty(), "visitor must not read a pool's scoreboard");
+}
+
+#[tokio::test]
+async fn scoreboard_pool_filter_succeeds_for_a_member() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    make_pool(&repo, "p1", ALICE).await;
+    let resp = run(
+        &repo,
+        r#"query($p: ID!) { scoreboard(pool: $p) { playerId } }"#,
+        Variables::from_json(json!({ "p": "p1" })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "member may read: {:?}", resp.errors);
+}
+
+#[tokio::test]
+async fn scoreboard_global_stays_public() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let resp = run(&repo, "{ scoreboard { playerId } }", Variables::default(), None).await;
+    assert!(resp.errors.is_empty(), "global scoreboard is public: {:?}", resp.errors);
+}
+
+// ── Issue 05: invite authorization ───────────────────────────────────────────
+
+const INVITE: &str = r#"mutation($id: ID!) { invite(inviteeId: $id) }"#;
+
+#[tokio::test]
+async fn invite_rejects_self_target() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let resp = run(
+        &repo,
+        INVITE,
+        Variables::from_json(json!({ "id": ALICE })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(!resp.errors.is_empty(), "self-invite must be rejected");
+}
+
+#[tokio::test]
+async fn invite_rejects_an_already_referred_player() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    // Alice invites Bob — succeeds.
+    let first = run(
+        &repo,
+        INVITE,
+        Variables::from_json(json!({ "id": BOB })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(first.errors.is_empty(), "first invite: {:?}", first.errors);
+    // The result user tries to re-invite Bob — rejected.
+    let second = run(
+        &repo,
+        INVITE,
+        Variables::from_json(json!({ "id": BOB })),
+        Some(RESULT_ID),
+    )
+    .await;
+    assert!(
+        !second.errors.is_empty(),
+        "re-inviting an already-referred player must be rejected"
+    );
+    // Bob's original referrer is intact.
+    let bob = repo.get_player(BOB).await.unwrap().unwrap();
+    assert_eq!(bob.referrer.as_deref(), Some(ALICE));
+}
+
+// ── Issue 16: create_pool id collision ───────────────────────────────────────
+
+#[tokio::test]
+async fn create_pool_rejects_a_duplicate_id() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    make_pool(&repo, "p1", ALICE).await;
+    // Bob tries to create a pool with the same id.
+    let vars = Variables::from_json(json!({ "id": "p1", "name": "Hijack" }));
+    let resp = run(&repo, CREATE_POOL, vars, Some(BOB)).await;
+    assert!(
+        !resp.errors.is_empty(),
+        "creating a pool with an existing id must be rejected"
+    );
+    // The original pool is untouched.
+    let pools = repo.list_pools().await.unwrap();
+    assert_eq!(pools.len(), 1);
+    assert_eq!(pools[0].owner, ALICE);
+}
+
+// ── Issue 17: updateProfile validation ───────────────────────────────────────
+
+const UPDATE_PROFILE: &str = r#"
+mutation($n: String, $f: String) {
+  updateProfile(nick: $n, fullName: $f) { id nick fullName }
+}"#;
+
+#[tokio::test]
+async fn update_profile_rejects_empty_nick() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let resp = run(
+        &repo,
+        UPDATE_PROFILE,
+        Variables::from_json(json!({ "n": "" })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(!resp.errors.is_empty(), "empty nick must be rejected");
+}
+
+#[tokio::test]
+async fn update_profile_rejects_whitespace_nick() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let resp = run(
+        &repo,
+        UPDATE_PROFILE,
+        Variables::from_json(json!({ "n": "   " })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(!resp.errors.is_empty(), "whitespace-only nick must be rejected");
+}
+
+#[tokio::test]
+async fn update_profile_rejects_oversized_nick() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let resp = run(
+        &repo,
+        UPDATE_PROFILE,
+        Variables::from_json(json!({ "n": "x".repeat(200) })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(!resp.errors.is_empty(), "oversized nick must be rejected");
+}
+
+#[tokio::test]
+async fn update_profile_accepts_a_valid_nick() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let resp = run(
+        &repo,
+        UPDATE_PROFILE,
+        Variables::from_json(json!({ "n": "  Alice2  ", "f": "Alice Anderson" })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let d = data(&resp);
+    // Stored trimmed.
+    assert_eq!(d["updateProfile"]["nick"], json!("Alice2"));
+    assert_eq!(d["updateProfile"]["fullName"], json!("Alice Anderson"));
 }
 
 /// Find a tip entry from a `tips` query response matching `player_id` and `game_id`.

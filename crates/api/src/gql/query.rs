@@ -67,14 +67,22 @@ impl QueryRoot {
             .map(|p| (p.id.as_str(), p.nick.as_str()))
             .collect();
 
-        // Restrict to a pool's members if requested.
+        // Restrict to a pool's members if requested. Issue 04 — pool
+        // membership is private: a pool filter requires authentication and the
+        // caller must be a member (or owner) of that pool.
         let allowed: Option<Vec<String>> = match pool {
             Some(pool_id) => {
+                let viewer = CurrentPlayer::require(ctx)?;
                 let pools = repo.list_pools().await?;
                 let p = pools
                     .into_iter()
                     .find(|p| p.id == pool_id)
                     .ok_or_else(|| async_graphql::Error::new("pool not found"))?;
+                if !p.members.contains(&viewer.id) && p.owner != viewer.id {
+                    return Err(async_graphql::Error::new(
+                        "you are not a member of this pool",
+                    ));
+                }
                 Some(p.members)
             }
             None => None,

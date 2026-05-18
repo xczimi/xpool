@@ -6,7 +6,7 @@
 //! post-result recompute.
 
 use crate::auth::CurrentPlayer;
-use crate::gql::inputs::{MatchPredictionInput, StandingsInput};
+use crate::gql::inputs::{validate_score, MatchPredictionInput, StandingsInput};
 use crate::gql::types::*;
 use crate::recompute::recompute;
 use async_graphql::{Context, Object};
@@ -51,8 +51,35 @@ fn pool_err(e: domain::pool::PoolError) -> async_graphql::Error {
     async_graphql::Error::new(e.to_string())
 }
 
+/// Maximum length of a player's `nick` (shown across the app).
+const MAX_NICK_LEN: usize = 40;
+/// Maximum length of a player's `full_name`.
+const MAX_FULL_NAME_LEN: usize = 120;
+
+/// Validate a free-text profile field: non-empty after trim and within
+/// `max_len` characters. Returns the trimmed value, or a GraphQL error.
+fn validate_profile_field(
+    label: &str,
+    value: &str,
+    max_len: usize,
+) -> async_graphql::Result<String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err(async_graphql::Error::new(format!("{label} must not be empty")));
+    }
+    if trimmed.chars().count() > max_len {
+        return Err(async_graphql::Error::new(format!(
+            "{label} must be at most {max_len} characters"
+        )));
+    }
+    Ok(trimmed.to_owned())
+}
+
 /// Apply a batch of predictions for one group onto a player, returning the
 /// next player state. Pure helper.
+///
+/// Returns a GraphQL error when an input score is out of range (`Issue 15` —
+/// scores are rejected, not clamped).
 ///
 /// `version` is left **equal to the supplied player's** — the storage layer's
 /// optimistic-concurrency guard (`storage::Repository::put_player`) succeeds
@@ -66,7 +93,7 @@ fn apply_group_predictions(
     predictions: &[MatchPredictionInput],
     standings: Option<&StandingsInput>,
     lock: bool,
-) -> DomainPlayer {
+) -> async_graphql::Result<DomainPlayer> {
     // Drop existing predictions for the group's games, then re-add.
     let mut match_predictions: Vec<MatchPrediction> = player
         .match_predictions
@@ -82,8 +109,8 @@ fn apply_group_predictions(
         }
         match_predictions.push(MatchPrediction {
             game_id: input.game_id.clone(),
-            home_score: input.home_score.clamp(0, u8::MAX as i32) as u8,
-            away_score: input.away_score.clamp(0, u8::MAX as i32) as u8,
+            home_score: validate_score("home", input.home_score)?,
+            away_score: validate_score("away", input.away_score)?,
             locked: lock,
         });
     }
@@ -105,11 +132,11 @@ fn apply_group_predictions(
         });
     }
 
-    DomainPlayer {
+    Ok(DomainPlayer {
         match_predictions,
         standings_predictions,
         ..player.clone()
-    }
+    })
 }
 
 pub struct MutationRoot;
@@ -144,10 +171,50 @@ impl MutationRoot {
             )));
         }
 
+        // Issue 01 — the group's deadline is final: no edits once it passes.
+        if let Some(deadline) = tournament.deadline(&group_id) {
+            if now(ctx) >= deadline {
+                return Err(async_graphql::Error::new(format!(
+                    "group `{group_id}` deadline has passed; predictions are final"
+                )));
+            }
+        }
+
+        // Issue 06 (PRED-03) — a lock must cover every game in the group.
+        if lock {
+            let supplied: std::collections::HashSet<&str> = predictions
+                .iter()
+                .filter(|p| game_ids.contains(&p.game_id))
+                .map(|p| p.game_id.as_str())
+                .collect();
+            let missing: Vec<&str> = game_ids
+                .iter()
+                .map(String::as_str)
+                .filter(|id| !supplied.contains(id))
+                .collect();
+            if !missing.is_empty() {
+                return Err(async_graphql::Error::new(format!(
+                    "cannot lock group `{group_id}`: missing predictions for {missing:?}"
+                )));
+            }
+        }
+
         // First attempt uses the player from the auth context; a retry
         // re-reads the current player state after a version conflict.
         let mut current = viewer.clone();
         for attempt in 0..2 {
+            // Issue 01 — locking is final for the player: a prediction that is
+            // already locked cannot be overwritten.
+            if let Some(locked) = current
+                .match_predictions
+                .iter()
+                .find(|p| game_ids.contains(&p.game_id) && p.locked)
+            {
+                return Err(async_graphql::Error::new(format!(
+                    "prediction for `{}` is already locked and cannot be changed",
+                    locked.game_id
+                )));
+            }
             let next = apply_group_predictions(
                 &current,
                 &group_id,
@@ -155,7 +222,7 @@ impl MutationRoot {
                 &predictions,
                 standings.as_ref(),
                 lock,
-            );
+            )?;
             match repo.put_player(&next).await {
                 Ok(()) => return Ok(Player::from(&next)),
                 Err(e) if attempt == 0 => {
@@ -184,6 +251,13 @@ impl MutationRoot {
             return Err(async_graphql::Error::new(
                 "the result user cannot own a pool",
             ));
+        }
+        // Issue 16 — reject a client-supplied id that is already taken so a
+        // caller cannot clobber another player's pool.
+        if repo(ctx).list_pools().await?.iter().any(|p| p.id == id) {
+            return Err(async_graphql::Error::new(format!(
+                "a pool with id `{id}` already exists"
+            )));
         }
         let pool = DomainPool {
             id,
@@ -283,7 +357,9 @@ impl MutationRoot {
         Ok(true)
     }
 
-    /// Update the current player's profile (nick / full name).
+    /// Update the current player's profile (nick / full name). Issue 17 —
+    /// `nick` / `full_name` are validated: non-empty after trim and within a
+    /// sensible length; the trimmed value is what gets stored.
     async fn update_profile(
         &self,
         ctx: &Context<'_>,
@@ -298,10 +374,10 @@ impl MutationRoot {
             .await?
             .ok_or_else(|| async_graphql::Error::new("player not found"))?;
         if let Some(nick) = nick {
-            player.nick = nick;
+            player.nick = validate_profile_field("nick", &nick, MAX_NICK_LEN)?;
         }
         if let Some(full_name) = full_name {
-            player.full_name = full_name;
+            player.full_name = validate_profile_field("full name", &full_name, MAX_FULL_NAME_LEN)?;
         }
         // `version` is left as read — see `apply_group_predictions`.
         repo.put_player(&player).await?;
@@ -310,15 +386,29 @@ impl MutationRoot {
 
     /// Record a referral invitation: the invitee's `referrer` is set to the
     /// current player. The invitee must already exist (dev stub).
+    ///
+    /// Issue 05 — a player cannot invite themselves, and an invitee can only
+    /// be referred once (a set `referrer` is never overwritten).
     async fn invite(&self, ctx: &Context<'_>, invitee_id: String) -> async_graphql::Result<bool> {
         let viewer = CurrentPlayer::require(ctx)?;
         let repo = repo(ctx);
-        let mut invitee = repo
+        if invitee_id == viewer.id {
+            return Err(async_graphql::Error::new("you cannot invite yourself"));
+        }
+        let invitee = repo
             .get_player(&invitee_id)
             .await?
             .ok_or_else(|| async_graphql::Error::new("invitee not found"))?;
-        invitee.referrer = Some(viewer.id.clone());
-        repo.put_player(&invitee).await?;
+        if invitee.referrer.is_some() {
+            return Err(async_graphql::Error::new(
+                "this player has already been referred",
+            ));
+        }
+        let updated = DomainPlayer {
+            referrer: Some(viewer.id.clone()),
+            ..invitee
+        };
+        repo.put_player(&updated).await?;
         Ok(true)
     }
 
@@ -344,8 +434,8 @@ impl MutationRoot {
 
         let new_prediction = MatchPrediction {
             game_id: game_id.clone(),
-            home_score: home_score.clamp(0, u8::MAX as i32) as u8,
-            away_score: away_score.clamp(0, u8::MAX as i32) as u8,
+            home_score: validate_score("home", home_score)?,
+            away_score: validate_score("away", away_score)?,
             locked: lock,
         };
         result_user
