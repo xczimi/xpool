@@ -4,25 +4,58 @@
 //! Signatures here are a **locked contract**. `todo!()` bodies and the Annexe C
 //! data table are filled by the `fwc26` subagent (plan task P2).
 
-use domain::{GameId, GroupChildren, MatchPrediction, Player, Round, TeamId, Tournament};
+use domain::{
+    rank_group, GameId, GroupChildren, MatchPrediction, Player, Round, SingleGame, TeamId,
+    Tournament,
+};
 use std::collections::{BTreeSet, HashMap};
 
 mod annexe_c_data;
 
 /// Aggregated group-stage stats for one team — input to the third-placed
 /// ranking (`FWC26_RULES.md` §3).
+///
+/// Disciplinary conduct (criterion §3 d) is deliberately *not* modelled —
+/// `SCORING.md` §4 states it collapses into the opaque manual `draw_order`.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TeamStats {
     pub team_id: TeamId,
     pub points: i32,
     pub goal_diff: i32,
     pub goals_for: i32,
-    pub conduct: i32,
 }
 
 /// The 8 group-winner columns in the Annexe C table, in order.
 /// These are the only winners that face a 3rd-placed team in R32.
 const THIRD_FACING_WINNERS: [char; 8] = ['A', 'B', 'D', 'E', 'G', 'I', 'K', 'L'];
+
+/// The 8 "best third from groups" R32 slots (`FWC26_RULES.md` §4): each maps a
+/// fixture slot description suffix (`3<groups_str>`) to the group letter of the
+/// group *winner* that occupies the other side of the match.
+///
+/// This couples bracket resolution to the FWC26 fixture's spelling of those
+/// slots; `tests/fixture_guard_tests.rs` asserts every `groups_str` here still
+/// appears verbatim in `tournaments/fwc26.json`, so a fixture drift fails loudly
+/// instead of silently resolving to `None`.
+pub const BEST_THIRD_SLOTS: [(&str, char); 8] = [
+    ("ABCDF", 'E'),
+    ("CDFGH", 'I'),
+    ("CEFHI", 'A'),
+    ("EHIJK", 'L'),
+    ("BEFIJ", 'D'),
+    ("AEHIJ", 'G'),
+    ("EFGIJ", 'B'),
+    ("DEIJL", 'K'),
+];
+
+/// The group winner facing the best-third slot `groups_str`, per the FWC26
+/// fixture (`BEST_THIRD_SLOTS`). `None` if `groups_str` is not a known slot.
+fn winner_group_for_slot(groups_str: &str) -> Option<char> {
+    BEST_THIRD_SLOTS
+        .iter()
+        .find(|(s, _)| *s == groups_str)
+        .map(|(_, w)| *w)
+}
 
 /// Annexe C lookup (`FWC26_RULES.md` §5): given the set of 8 group letters whose
 /// third-placed team qualified, return the mapping `winner-group → third-group`
@@ -54,16 +87,16 @@ pub fn annexe_c(qualifying_third_groups: &BTreeSet<char>) -> Option<HashMap<char
 /// Rank the 12 third-placed teams (`FWC26_RULES.md` §3); return the group
 /// letters of the top 8, best first.
 ///
-/// Criteria applied in order (§3 a-d, then input order for the rest):
+/// Criteria applied in order:
 ///   a. Most points
 ///   b. Superior goal difference
 ///   c. Greatest goals scored
-///   d. Highest team conduct score (less negative = better)
 ///
-/// Criteria e/f (FIFA ranking) are not score-derivable and require external
-/// data. If still tied after a-d, we preserve input order (stable sort).
-/// This is documented as a known limitation: ties after conduct are broken
-/// by input order, not FIFA ranking.
+/// `FWC26_RULES.md` §3 d (disciplinary conduct) and e/f (FIFA ranking) are not
+/// score-derivable and are deliberately not modelled (`SCORING.md` §4 —
+/// conduct "collapses into the opaque manual `draw_order`"). Residual
+/// best-thirds ties therefore fall through to the input order, which the
+/// caller supplies in `draw_order` (the result user's manual tiebreak).
 pub fn best_thirds(thirds: &[(char, TeamStats)]) -> Vec<char> {
     let mut indexed: Vec<(usize, char, &TeamStats)> = thirds
         .iter()
@@ -71,13 +104,13 @@ pub fn best_thirds(thirds: &[(char, TeamStats)]) -> Vec<char> {
         .map(|(i, (g, s))| (i, *g, s))
         .collect();
 
-    // Stable sort so equal teams preserve input order (stand-in for FIFA ranking)
+    // Stable sort so equal teams preserve input order (the caller's draw_order
+    // tiebreak; stand-in for FIFA ranking).
     indexed.sort_by(|a, b| {
         b.2.points
             .cmp(&a.2.points)
             .then_with(|| b.2.goal_diff.cmp(&a.2.goal_diff))
             .then_with(|| b.2.goals_for.cmp(&a.2.goals_for))
-            .then_with(|| b.2.conduct.cmp(&a.2.conduct))
             .then_with(|| a.0.cmp(&b.0)) // stable: preserve input order
     });
 
@@ -283,17 +316,7 @@ impl ResolutionContext {
         //   M82 (1G): 3AEHIJ  → winner=G facing 3rd from {A,E,H,I,J}
         //   M85 (1B): 3EFGIJ  → winner=B facing 3rd from {E,F,G,I,J}
         //   M87 (1K): 3DEIJL  → winner=K facing 3rd from {D,E,I,J,L}
-        let winner_group = match groups_str {
-            "ABCDF" => 'E',
-            "CDFGH" => 'I',
-            "CEFHI" => 'A',
-            "EHIJK" => 'L',
-            "BEFIJ" => 'D',
-            "AEHIJ" => 'G',
-            "EFGIJ" => 'B',
-            "DEIJL" => 'K',
-            _ => return None,
-        };
+        let winner_group = winner_group_for_slot(groups_str)?;
 
         // Look up which third-group is assigned to this winner
         let third_group = annex.get(&winner_group)?;
@@ -318,106 +341,47 @@ fn compute_group_standings(t: &Tournament, result: &Player) -> HashMap<char, Gro
     out
 }
 
-/// Find all group-stage games for group `letter`, compute standings.
+/// Find all group-stage games for group `letter` and rank its teams.
+///
+/// Delegates to `domain::rank_group` — the single FIFA standings ladder
+/// (`SCORING.md` §4: points → H2H → GD → GF → draw_order). The result user's
+/// `MatchPrediction`s *are* the official match results, and its
+/// `StandingsPrediction.draw_order` for the group resolves residual ties.
 fn compute_standings_for_group(
     t: &Tournament,
     result: &Player,
     letter: char,
 ) -> Option<GroupStandings> {
-    // Find the group-stage group node for this letter
     let group_id = find_group_id(t, letter)?;
-    let games = t.games_in(&group_id);
+    let group = t.groups.get(&group_id)?;
+    let games: Vec<&SingleGame> = t.games_in(&group_id);
 
     if games.is_empty() {
         return None;
     }
 
-    // Collect all teams in this group
-    let mut team_ids: Vec<TeamId> = Vec::new();
-    for game in &games {
-        if let Some(ref tid) = game.home.team_id {
-            if !team_ids.contains(tid) {
-                team_ids.push(tid.clone());
-            }
-        }
-        if let Some(ref tid) = game.away.team_id {
-            if !team_ids.contains(tid) {
-                team_ids.push(tid.clone());
-            }
-        }
-    }
-
-    if team_ids.is_empty() {
-        return None;
-    }
-
-    // Compute raw stats per team
-    let mut stats: HashMap<TeamId, RawStats> = team_ids
+    // The result user's predictions for this group's games are the official
+    // match results that drive the ranking. A group's standings are only
+    // determinable once *every* game has a result — a partially-played group
+    // has no final 1st/2nd/3rd, so its R32 slots must stay `None`.
+    let predictions: Vec<&MatchPrediction> = games
         .iter()
-        .map(|id| (id.clone(), RawStats::default()))
-        .collect();
+        .map(|g| result.match_prediction(&g.id))
+        .collect::<Option<Vec<_>>>()?;
 
-    for game in &games {
-        let pred = result.match_prediction(&game.id)?;
-        let home_id = game.home.team_id.as_ref()?;
-        let away_id = game.away.team_id.as_ref()?;
-
-        let h = pred.home_score as i32;
-        let a = pred.away_score as i32;
-
-        let home_stats = stats.entry(home_id.clone()).or_default();
-        home_stats.goals_for += h;
-        home_stats.goals_against += a;
-        if h > a {
-            home_stats.points += 3;
-        } else if h == a {
-            home_stats.points += 1;
-        }
-
-        let away_stats = stats.entry(away_id.clone()).or_default();
-        away_stats.goals_for += a;
-        away_stats.goals_against += h;
-        if a > h {
-            away_stats.points += 3;
-        } else if h == a {
-            away_stats.points += 1;
-        }
-    }
-
-    // Get draw_order from standings prediction (for tiebreaking)
+    // Manual tiebreak (`SCORING.md` §4) from the result user's standings
+    // prediction for this group, if it carries one.
     let draw_order: Vec<TeamId> = result
         .standings_prediction(&group_id)
         .map(|sp| sp.draw_order.clone())
         .unwrap_or_default();
 
-    // Sort teams by standings ladder (simplified: points > GD > GF > draw_order)
-    // Full tiebreaker (§2) requires head-to-head; we implement a simplified version
-    // sufficient for bracket resolution: points, then GD, then GF, then draw_order.
-    let mut ordered: Vec<(TeamId, RawStats)> = stats.into_iter().collect();
-    ordered.sort_by(|a, b| {
-        let a_gd = a.1.goals_for - a.1.goals_against;
-        let b_gd = b.1.goals_for - b.1.goals_against;
-        b.1.points
-            .cmp(&a.1.points)
-            .then_with(|| b_gd.cmp(&a_gd))
-            .then_with(|| b.1.goals_for.cmp(&a.1.goals_for))
-            .then_with(|| {
-                // Use draw_order position for final tiebreak
-                let a_pos = draw_order
-                    .iter()
-                    .position(|x| x == &a.0)
-                    .unwrap_or(usize::MAX);
-                let b_pos = draw_order
-                    .iter()
-                    .position(|x| x == &b.0)
-                    .unwrap_or(usize::MAX);
-                a_pos.cmp(&b_pos)
-            })
-    });
+    let order = rank_group(group, &games, &predictions, &draw_order);
+    if order.is_empty() {
+        return None;
+    }
 
-    Some(GroupStandings {
-        order: ordered.into_iter().map(|(id, _)| id).collect(),
-    })
+    Some(GroupStandings { order })
 }
 
 /// Compute `TeamStats` for a specific team in a specific group (for `best_thirds`).
@@ -476,7 +440,6 @@ fn compute_team_stats_in_group(
         points,
         goal_diff: goals_for - goals_against,
         goals_for,
-        conduct: 0, // conduct data not available from match predictions alone
     }
 }
 
@@ -519,13 +482,6 @@ fn find_group_id(t: &Tournament, letter: char) -> Option<String> {
 // ---------------------------------------------------------------------------
 // Helpers: knockout resolution
 // ---------------------------------------------------------------------------
-
-#[derive(Default)]
-struct RawStats {
-    points: i32,
-    goals_for: i32,
-    goals_against: i32,
-}
 
 /// Collect knockout game ids in match-number order (M73 first, M104 last).
 fn collect_knockout_games_in_order(t: &Tournament) -> Vec<GameId> {
@@ -709,17 +665,7 @@ fn resolve_best_third_slot(
 ) -> Option<TeamId> {
     let annex = annexe_c_map.as_ref()?;
 
-    let winner_group = match groups_str {
-        "ABCDF" => 'E',
-        "CDFGH" => 'I',
-        "CEFHI" => 'A',
-        "EHIJK" => 'L',
-        "BEFIJ" => 'D',
-        "AEHIJ" => 'G',
-        "EFGIJ" => 'B',
-        "DEIJL" => 'K',
-        _ => return None,
-    };
+    let winner_group = winner_group_for_slot(groups_str)?;
 
     let third_group = annex.get(&winner_group)?;
     qualifying_thirds.get(third_group).cloned()

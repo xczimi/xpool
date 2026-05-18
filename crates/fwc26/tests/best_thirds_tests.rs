@@ -2,13 +2,7 @@
 
 use fwc26::{best_thirds, TeamStats};
 
-fn stats(
-    team_id: &str,
-    points: i32,
-    goal_diff: i32,
-    goals_for: i32,
-    conduct: i32,
-) -> (char, TeamStats) {
+fn stats(team_id: &str, points: i32, goal_diff: i32, goals_for: i32) -> (char, TeamStats) {
     (
         team_id.chars().next().unwrap(),
         TeamStats {
@@ -16,7 +10,6 @@ fn stats(
             points,
             goal_diff,
             goals_for,
-            conduct,
         },
     )
 }
@@ -34,7 +27,6 @@ fn test_best_thirds_returns_8() {
                     points: 3,
                     goal_diff: 0,
                     goals_for: 1,
-                    conduct: 0,
                 },
             )
         })
@@ -47,18 +39,18 @@ fn test_best_thirds_returns_8() {
 #[test]
 fn test_best_thirds_by_points() {
     let thirds = vec![
-        stats("A", 6, 2, 4, 0),
-        stats("B", 4, 1, 3, 0),
-        stats("C", 3, 0, 2, 0),
-        stats("D", 3, 0, 2, 0),
-        stats("E", 3, 0, 2, 0),
-        stats("F", 3, 0, 2, 0),
-        stats("G", 1, -1, 1, 0),
-        stats("H", 1, -1, 1, 0),
-        stats("I", 1, -2, 1, 0),
-        stats("J", 0, -3, 0, 0),
-        stats("K", 0, -3, 0, 0),
-        stats("L", 0, -4, 0, 0),
+        stats("A", 6, 2, 4),
+        stats("B", 4, 1, 3),
+        stats("C", 3, 0, 2),
+        stats("D", 3, 0, 2),
+        stats("E", 3, 0, 2),
+        stats("F", 3, 0, 2),
+        stats("G", 1, -1, 1),
+        stats("H", 1, -1, 1),
+        stats("I", 1, -2, 1),
+        stats("J", 0, -3, 0),
+        stats("K", 0, -3, 0),
+        stats("L", 0, -4, 0),
     ];
     let result = best_thirds(&thirds);
     assert_eq!(result[0], 'A', "Highest points should be first");
@@ -73,18 +65,18 @@ fn test_best_thirds_by_points() {
 #[test]
 fn test_best_thirds_gd_tiebreak() {
     let thirds = vec![
-        stats("A", 9, 5, 6, 0),
-        stats("B", 6, 3, 5, 0),
-        stats("C", 6, 1, 3, 0), // same points as B, lower GD
-        stats("D", 3, 0, 2, 0),
-        stats("E", 3, 0, 2, 0),
-        stats("F", 3, 0, 2, 0),
-        stats("G", 3, 0, 2, 0),
-        stats("H", 3, 0, 2, 0),
-        stats("I", 0, -1, 1, 0),
-        stats("J", 0, -2, 1, 0),
-        stats("K", 0, -3, 0, 0),
-        stats("L", 0, -4, 0, 0),
+        stats("A", 9, 5, 6),
+        stats("B", 6, 3, 5),
+        stats("C", 6, 1, 3), // same points as B, lower GD
+        stats("D", 3, 0, 2),
+        stats("E", 3, 0, 2),
+        stats("F", 3, 0, 2),
+        stats("G", 3, 0, 2),
+        stats("H", 3, 0, 2),
+        stats("I", 0, -1, 1),
+        stats("J", 0, -2, 1),
+        stats("K", 0, -3, 0),
+        stats("L", 0, -4, 0),
     ];
     let result = best_thirds(&thirds);
     // B should rank ahead of C (same points, B has better GD)
@@ -97,18 +89,18 @@ fn test_best_thirds_gd_tiebreak() {
 #[test]
 fn test_best_thirds_goals_for_tiebreak() {
     let thirds = vec![
-        stats("A", 6, 2, 5, 0), // higher goals
-        stats("B", 6, 2, 3, 0), // same pts and GD, fewer goals
-        stats("C", 4, 1, 3, 0),
-        stats("D", 3, 0, 2, 0),
-        stats("E", 3, 0, 2, 0),
-        stats("F", 3, 0, 2, 0),
-        stats("G", 3, 0, 2, 0),
-        stats("H", 3, 0, 2, 0),
-        stats("I", 0, -1, 1, 0),
-        stats("J", 0, -2, 1, 0),
-        stats("K", 0, -3, 0, 0),
-        stats("L", 0, -4, 0, 0),
+        stats("A", 6, 2, 5), // higher goals
+        stats("B", 6, 2, 3), // same pts and GD, fewer goals
+        stats("C", 4, 1, 3),
+        stats("D", 3, 0, 2),
+        stats("E", 3, 0, 2),
+        stats("F", 3, 0, 2),
+        stats("G", 3, 0, 2),
+        stats("H", 3, 0, 2),
+        stats("I", 0, -1, 1),
+        stats("J", 0, -2, 1),
+        stats("K", 0, -3, 0),
+        stats("L", 0, -4, 0),
     ];
     let result = best_thirds(&thirds);
     let a_pos = result.iter().position(|&c| c == 'A').unwrap();
@@ -119,29 +111,30 @@ fn test_best_thirds_goals_for_tiebreak() {
     );
 }
 
-/// Ties broken by conduct score (higher/less negative = better).
+/// Residual ties (after points/GD/GF) fall through to input order — the
+/// caller's `draw_order` tiebreak. Conduct (§3 d) is deliberately not modelled.
 #[test]
-fn test_best_thirds_conduct_tiebreak() {
+fn test_best_thirds_residual_tie_uses_input_order() {
     let thirds = vec![
-        stats("A", 6, 2, 4, 0),  // best conduct
-        stats("B", 6, 2, 4, -1), // slightly worse conduct
-        stats("C", 4, 1, 3, 0),
-        stats("D", 3, 0, 2, 0),
-        stats("E", 3, 0, 2, 0),
-        stats("F", 3, 0, 2, 0),
-        stats("G", 3, 0, 2, 0),
-        stats("H", 3, 0, 2, 0),
-        stats("I", 0, -1, 1, 0),
-        stats("J", 0, -2, 1, 0),
-        stats("K", 0, -3, 0, 0),
-        stats("L", 0, -4, 0, 0),
+        stats("A", 6, 2, 4), // identical stats to B
+        stats("B", 6, 2, 4), // identical stats to A
+        stats("C", 4, 1, 3),
+        stats("D", 3, 0, 2),
+        stats("E", 3, 0, 2),
+        stats("F", 3, 0, 2),
+        stats("G", 3, 0, 2),
+        stats("H", 3, 0, 2),
+        stats("I", 0, -1, 1),
+        stats("J", 0, -2, 1),
+        stats("K", 0, -3, 0),
+        stats("L", 0, -4, 0),
     ];
     let result = best_thirds(&thirds);
     let a_pos = result.iter().position(|&c| c == 'A').unwrap();
     let b_pos = result.iter().position(|&c| c == 'B').unwrap();
     assert!(
         a_pos < b_pos,
-        "A (conduct=0) should rank ahead of B (conduct=-1)"
+        "A should rank ahead of B (identical stats: input order preserved)"
     );
 }
 
@@ -158,7 +151,6 @@ fn test_best_thirds_input_order_for_equal_stats() {
                     points: 3,
                     goal_diff: 0,
                     goals_for: 1,
-                    conduct: 0,
                 },
             )
         })
@@ -188,7 +180,6 @@ fn test_best_thirds_fewer_than_12_returns_all() {
                     points: (10 - i as i32), // A has highest points
                     goal_diff: 0,
                     goals_for: 1,
-                    conduct: 0,
                 },
             )
         })
