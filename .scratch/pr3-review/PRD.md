@@ -2,11 +2,15 @@
 
 Issues raised from the code review of PR #3 (`feat/local-build`). Each file
 under `issues/` is one finding. Numbering: `01`–`03` CRITICAL, `04`–`14` HIGH,
-`15`–`23` MEDIUM.
+`15`–`23` MEDIUM (the original review); `24`–`31` are a second-pass review of
+the remediation + round-nav delta.
 
-The 17 original `ready-for-agent` issues are **done** (implemented, tested, verified).
+Issues `01`–`23` are all **done** — the 17 original `ready-for-agent` issues
+plus the 6 `ready-for-human` issues (02, 09, 12, 18, 19, 23) grilled on
+2026-05-17, each with a recorded `## Decision`.
 
-The 6 `ready-for-human` issues (02, 09, 12, 18, 19, 23) were **grilled on 2026-05-17** — each now has a recorded `## Decision` and is `ready-for-agent`.
+Issues `24`–`31` are the **second-pass review** (2026-05-18) of the 13 commits
+since the first review — all `ready-for-agent`, open.
 
 | #  | Severity | Area    | Status         | Title |
 |----|----------|---------|----------------|-------|
@@ -33,3 +37,11 @@ The 6 `ready-for-human` issues (02, 09, 12, 18, 19, 23) were **grilled on 2026-0
 | 21 | MEDIUM   | web     | done           | rounds.ts round labels hardcoded in English, not i18n'd |
 | 22 | MEDIUM   | web     | done           | AdminResults score input has no validation; e2e-stack.sh parses JSON with node |
 | 23 | MEDIUM   | domain  | decided         | score_leaf_group hardcodes per-match `complete = true` |
+| 24 | HIGH     | api     | ready-for-agent | enterResult accepts `advancer` but never persists it |
+| 25 | HIGH     | storage | ready-for-agent | put_player OCC is not atomic; adapters diverge under concurrency |
+| 26 | HIGH     | web     | ready-for-agent | AdminResults unlock succeeds with no confirmation |
+| 27 | MEDIUM   | api/domain | ready-for-agent | deadline boundary comparator inconsistent (`>=` vs `>`) |
+| 28 | MEDIUM   | web     | ready-for-agent | round-tab state can desync from the selected group |
+| 29 | MEDIUM   | web     | ready-for-agent | useMemo dependencies are the whole `tournament` object |
+| 30 | MEDIUM   | web     | ready-for-agent | AdminResults follow-up refetches are unguarded |
+| 31 | MEDIUM   | web     | ready-for-agent | All Tips knockout grid rebuilds derived data every render |
