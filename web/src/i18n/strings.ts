@@ -24,6 +24,8 @@ const en = {
   logOut: 'get me outside!',
   logIn: 'let me in!',
   visitor: 'You are outside.',
+  devClock: 'Dev clock',
+  devClockReset: 'real time',
   footer: 'xPool — a friendly soccer prediction pool',
 
   // nav
@@ -169,6 +171,8 @@ const hu: Record<StringKey, string> = {
   logOut: 'Engedj ki!',
   logIn: 'engedj be!',
   visitor: 'Kint vagy.',
+  devClock: 'Dev óra',
+  devClockReset: 'valós idő',
   footer: 'xPool — baráti focitippjáték',
 
   navHome: 'Kezdőlap',

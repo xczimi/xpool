@@ -1,5 +1,5 @@
 import { Client, cacheExchange, fetchExchange } from 'urql'
-import { getDevPlayerId } from '../auth/devAuth'
+import { getDevPlayerId, getDevNow } from '../auth/devAuth'
 
 /**
  * urql client targeting the GraphQL API at /api/graphql (Vite proxies /api
@@ -24,6 +24,10 @@ export function createGraphqlClient(): Client {
       }
       if (playerId) {
         headers['X-Dev-Player'] = playerId
+      }
+      const devNow = getDevNow()
+      if (devNow) {
+        headers['X-Dev-Now'] = devNow
       }
       return { headers }
     },

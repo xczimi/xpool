@@ -29,3 +29,30 @@ export function clearDevPlayerId(): void {
     /* ignore */
   }
 }
+
+const NOW_KEY = 'xpool.devNow'
+
+/** The dev clock override (RFC3339), or null for the real clock. */
+export function getDevNow(): string | null {
+  try {
+    return localStorage.getItem(NOW_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function setDevNow(iso: string): void {
+  try {
+    localStorage.setItem(NOW_KEY, iso)
+  } catch {
+    /* ignore */
+  }
+}
+
+export function clearDevNow(): void {
+  try {
+    localStorage.removeItem(NOW_KEY)
+  } catch {
+    /* ignore */
+  }
+}
