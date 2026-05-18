@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -50,10 +50,21 @@ export function MyTipsPage() {
 
   const rounds = useMemo(
     () => roundNodes(tournament?.groups ?? []),
-    [tournament],
+    [tournament?.groups],
   )
   const activeRound =
     selectedRound ?? currentRoundNode(rounds)?.round ?? rounds[0]?.round ?? null
+
+  // Keep group selection coherent with the active round: if the derived round
+  // flips (e.g. a `tournament` refetch moves `currentRoundNode`), a group from
+  // the old round would strand the page in the empty "select a group" state.
+  const prevActiveRound = useRef(activeRound)
+  useEffect(() => {
+    if (prevActiveRound.current !== activeRound) {
+      prevActiveRound.current = activeRound
+      setSelectedGroupId(null)
+    }
+  }, [activeRound])
 
   if (!playerId) return <NeedsLogin />
   if (tournamentResult.fetching || meResult.fetching) return <Loading />

@@ -178,6 +178,7 @@ const en = {
   recompute: 'Refresh scoreboard',
   recomputeDone: 'Scoreboard refreshed.',
   recomputeFailed: 'Scoreboard refresh failed — please retry.',
+  refreshFailed: 'Could not refresh — the screen may be out of date.',
 } as const
 
 const hu: Record<StringKey, string> = {
@@ -326,6 +327,7 @@ const hu: Record<StringKey, string> = {
   recompute: 'Eredménytábla frissítése',
   recomputeDone: 'Eredménytábla frissítve.',
   recomputeFailed: 'Az eredménytábla frissítése sikertelen — próbáld újra.',
+  refreshFailed: 'A frissítés nem sikerült — a képernyő elavult lehet.',
 }
 
 export const catalogues: Record<Locale, Record<StringKey, string>> = {

@@ -42,11 +42,13 @@ export function AdminResults() {
   /** True after a failed post-result recompute — surfaces the manual notice. */
   const [recomputePending, setRecomputePending] = useState(false)
   const [recomputeDone, setRecomputeDone] = useState(false)
+  /** True after a successful unlock — surfaces the `resultUnlocked` notice. */
+  const [resultUnlocked, setResultUnlocked] = useState(false)
 
   const tournament = result.data?.tournament ?? null
   const teams = useMemo(
     () => teamIndex(tournament?.teams ?? []),
-    [tournament],
+    [tournament?.teams],
   )
   const resultsByGame = useMemo(() => {
     const map = new Map<string, MatchPrediction>()
@@ -69,6 +71,7 @@ export function AdminResults() {
 
   const runRecompute = async () => {
     setRecomputeDone(false)
+    setResultUnlocked(false)
     const res = await recompute({})
     if (res.error || !res.data?.recompute) {
       // The error notice stays; `recomputeState.error` drives the message.
@@ -101,9 +104,19 @@ export function AdminResults() {
           {t('recomputeDone')}
         </div>
       )}
+      {resultUnlocked && (
+        <div className="notice" role="status">
+          {t('resultUnlocked')}
+        </div>
+      )}
       {recomputeState.error && (
         <div className="notice error" role="alert">
           {t('recomputeFailed')}
+        </div>
+      )}
+      {resultsQuery.error && (
+        <div className="notice error" role="alert">
+          {t('refreshFailed')}
         </div>
       )}
 
@@ -141,6 +154,7 @@ export function AdminResults() {
                   })
                   if (res.error) throw res.error
                   setRecomputeDone(false)
+                  setResultUnlocked(false)
                   setRecomputePending(
                     res.data?.enterResult.recomputePending ?? false,
                   )
@@ -149,6 +163,8 @@ export function AdminResults() {
                 onUnlock={async () => {
                   const res = await unlockResult({ gameId: game.id })
                   if (res.error) throw res.error
+                  setRecomputeDone(false)
+                  setResultUnlocked(true)
                   refresh()
                 }}
               />

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -15,6 +15,9 @@ import { currentRoundNode, leafGroupsOfRound, roundNodes } from '../lib/rounds'
  * match in the round (the tips query takes the round node id — its `games_in`
  * is recursive). The API already applies hidden-until-locked visibility.
  */
+/** Composite key for the (player, game) -> tip lookup map. */
+const tipKey = (playerId: string, gameId: string) => `${playerId}::${gameId}`
+
 export function AllTipsPage() {
   const { t } = useI18n()
   const { playerId } = useAuth()
@@ -28,7 +31,7 @@ export function AllTipsPage() {
   const tournament = tournamentResult.data?.tournament ?? null
   const rounds = useMemo(
     () => roundNodes(tournament?.groups ?? []),
-    [tournament],
+    [tournament?.groups],
   )
   const activeRound =
     selectedRound ?? currentRoundNode(rounds)?.round ?? rounds[0]?.round ?? null
@@ -38,6 +41,17 @@ export function AllTipsPage() {
     : []
   const isGroupStage = activeRound === 'GROUP_STAGE'
   const activeGroupId = selectedGroupId ?? roundLeaves[0]?.id ?? null
+
+  // Keep group selection coherent with the active round: if the derived round
+  // flips (e.g. a `tournament` refetch moves `currentRoundNode`), a group from
+  // the old round would strand the page in the empty "select a group" state.
+  const prevActiveRound = useRef(activeRound)
+  useEffect(() => {
+    if (prevActiveRound.current !== activeRound) {
+      prevActiveRound.current = activeRound
+      setSelectedGroupId(null)
+    }
+  }, [activeRound])
 
   // Group Stage queries one leaf group; a knockout round queries the round
   // node — the `tips` resolver walks its subtree.
@@ -49,11 +63,29 @@ export function AllTipsPage() {
     pause: !tipsGroupId,
   })
 
+  const teams = useMemo(
+    () => teamIndex(tournament?.teams ?? []),
+    [tournament?.teams],
+  )
+  const tips = useMemo(
+    () => tipsResult.data?.tips ?? [],
+    [tipsResult.data],
+  )
+  // playerId -> nick
+  const players = useMemo(
+    () => [...new Map(tips.map((tip) => [tip.playerId, tip.nick])).entries()],
+    [tips],
+  )
+  // (playerId, gameId) -> tip
+  const tipMap = useMemo(
+    () => new Map(tips.map((tip) => [tipKey(tip.playerId, tip.gameId), tip])),
+    [tips],
+  )
+
   if (!playerId) return <NeedsLogin />
   if (tournamentResult.fetching) return <Loading />
   if (!tournament) return <ErrorView />
 
-  const teams = teamIndex(tournament.teams)
   const shownGameIds = new Set(
     isGroupStage
       ? (roundLeaves.find((g) => g.id === activeGroupId)?.childGameIds ?? [])
@@ -62,15 +94,6 @@ export function AllTipsPage() {
   const games = tournament.games
     .filter((g) => shownGameIds.has(g.id))
     .sort(byKickoff)
-
-  const tips = tipsResult.data?.tips ?? []
-  // playerId -> nick
-  const players = [
-    ...new Map(tips.map((tip) => [tip.playerId, tip.nick])).entries(),
-  ]
-  // (playerId, gameId) -> tip
-  const tipKey = (p: string, g: string) => `${p}::${g}`
-  const tipMap = new Map(tips.map((tip) => [tipKey(tip.playerId, tip.gameId), tip]))
 
   return (
     <section className="page">
