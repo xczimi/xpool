@@ -172,8 +172,10 @@ impl MutationRoot {
         }
 
         // Issue 01 — the group's deadline is final: no edits once it passes.
+        // Issue 27 — the boundary is strict `>`: the deadline instant itself
+        // is still open, matching `effective_locked` and `deadline_passed`.
         if let Some(deadline) = tournament.deadline(&group_id) {
-            if now(ctx) >= deadline {
+            if now(ctx) > deadline {
                 return Err(async_graphql::Error::new(format!(
                     "group `{group_id}` deadline has passed; predictions are final"
                 )));
@@ -426,7 +428,7 @@ impl MutationRoot {
         game_id: String,
         home_score: i32,
         away_score: i32,
-        #[allow(unused_variables)] advancer: Option<String>,
+        advancer: Option<String>,
         lock: bool,
     ) -> async_graphql::Result<ResultEntered> {
         let admin = CurrentPlayer::require_admin(ctx)?;
@@ -449,6 +451,50 @@ impl MutationRoot {
             )));
         }
 
+        // Issue 24 — when an `advancer` is supplied, persist it as a
+        // `StandingsPrediction` on the result user for the game's one-match
+        // knockout group. `fwc26::determine_winner_loser` reads `ordering[0]`
+        // as the advancer when a knockout match ends level.
+        let advancer_standings = if let Some(advancer) = &advancer {
+            let tournament = repo
+                .get_tournament()
+                .await?
+                .ok_or_else(|| async_graphql::Error::new("no tournament loaded"))?;
+            let game = tournament
+                .games
+                .get(&game_id)
+                .ok_or_else(|| async_graphql::Error::new(format!("game `{game_id}` not found")))?;
+            let home_team = game.home.team_id.clone().ok_or_else(|| {
+                async_graphql::Error::new(format!(
+                    "game `{game_id}` has no home team yet — cannot record an advancer"
+                ))
+            })?;
+            let away_team = game.away.team_id.clone().ok_or_else(|| {
+                async_graphql::Error::new(format!(
+                    "game `{game_id}` has no away team yet — cannot record an advancer"
+                ))
+            })?;
+            if *advancer != home_team && *advancer != away_team {
+                return Err(async_graphql::Error::new(format!(
+                    "advancer `{advancer}` is not one of `{game_id}`'s teams (`{home_team}` / `{away_team}`)"
+                )));
+            }
+            // `ordering[0]` is the advancer; the other team follows.
+            let other = if *advancer == home_team {
+                away_team
+            } else {
+                home_team
+            };
+            Some(DomainStandingsPrediction {
+                group_id: game.group_id.clone(),
+                ordering: vec![advancer.clone(), other],
+                draw_order: Vec::new(),
+                locked: lock,
+            })
+        } else {
+            None
+        };
+
         let new_prediction = MatchPrediction {
             game_id: game_id.clone(),
             home_score: validate_score("home", home_score)?,
@@ -459,6 +505,12 @@ impl MutationRoot {
             .match_predictions
             .retain(|p| p.game_id != game_id);
         result_user.match_predictions.push(new_prediction);
+        if let Some(standings) = advancer_standings {
+            result_user
+                .standings_predictions
+                .retain(|s| s.group_id != standings.group_id);
+            result_user.standings_predictions.push(standings);
+        }
         repo.put_player(&result_user).await?;
 
         // Wholesale recompute: scoreboard + bracket resolution. The result is

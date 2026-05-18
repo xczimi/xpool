@@ -255,6 +255,46 @@ async fn submit_group_rejected_when_overwriting_a_locked_prediction() {
     assert_eq!((g1.home_score, g1.away_score), (2, 1));
 }
 
+#[tokio::test]
+async fn submit_group_allowed_at_exactly_the_deadline_instant() {
+    // Issue 27 — the deadline boundary uses strict `>`: the deadline instant
+    // itself is still open, matching `effective_locked` and `deadline_passed`.
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let tournament = repo.get_tournament().await.unwrap().unwrap();
+    let deadline = tournament.deadline(GROUP_A).expect("group A has a deadline");
+
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [{ "gameId": GAME_1, "homeScore": 1, "awayScore": 0 }],
+        "lock": false
+    }));
+    let resp = run_at(&repo, SUBMIT, vars, Some(ALICE), deadline).await;
+    assert!(
+        resp.errors.is_empty(),
+        "a submit at exactly now == deadline must be allowed: {:?}",
+        resp.errors
+    );
+
+    // One instant past the deadline is rejected.
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [{ "gameId": GAME_1, "homeScore": 2, "awayScore": 0 }],
+        "lock": false
+    }));
+    let resp = run_at(
+        &repo,
+        SUBMIT,
+        vars,
+        Some(ALICE),
+        deadline + Duration::nanoseconds(1),
+    )
+    .await;
+    assert!(
+        !resp.errors.is_empty(),
+        "a submit just past the deadline must be rejected"
+    );
+}
+
 // ── Issue 06: lock: true requires every game in the group ────────────────────
 
 #[tokio::test]
@@ -633,6 +673,70 @@ async fn recompute_mutation_requires_admin() {
     let resp = run(&repo, RECOMPUTE, Variables::default(), Some(ALICE)).await;
     assert!(!resp.errors.is_empty(), "non-admin must be rejected");
     assert!(resp.errors[0].message.contains("admin"));
+}
+
+// ── Issue 24: enterResult persists the drawn-knockout advancer ───────────────
+
+const ENTER_RESULT_ADVANCER: &str = r#"
+mutation($g: ID!, $h: Int!, $a: Int!, $adv: String, $lock: Boolean!) {
+  enterResult(gameId: $g, homeScore: $h, awayScore: $a, advancer: $adv, lock: $lock) {
+    recomputePending
+  }
+}"#;
+
+/// Enter the group-A results that resolve `GAME_KO`'s slots: MEX wins
+/// `GAME_1` 3-0, KOR wins `GAME_2` 1-0 → 1A = MEX (home of `GAME_KO`),
+/// 2A = KOR (away of `GAME_KO`).
+async fn enter_group_a_results(repo: &std::sync::Arc<dyn Repository>) {
+    for (game, h, a) in [(GAME_1, 3, 0), (GAME_2, 1, 0)] {
+        let vars = Variables::from_json(json!({ "g": game, "h": h, "a": a, "lock": true }));
+        let resp = run(repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
+        assert!(resp.errors.is_empty(), "group result {game}: {:?}", resp.errors);
+    }
+}
+
+#[tokio::test]
+async fn enter_result_advancer_resolves_a_drawn_knockout_to_that_team() {
+    let repo = seeded_repo_with_knockout(Duration::hours(-2)).await;
+    enter_group_a_results(&repo).await;
+
+    // GAME_KO ends level 1-1; the away team (KOR) advances on penalties.
+    let vars = Variables::from_json(json!({
+        "g": GAME_KO, "h": 1, "a": 1, "adv": "KOR", "lock": true
+    }));
+    let resp = run(&repo, ENTER_RESULT_ADVANCER, vars, Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+
+    // The result user carries a standings prediction for GAME_KO's one-match
+    // group with the advancer first in `ordering`.
+    let result = repo.get_player(RESULT_ID).await.unwrap().unwrap();
+    let sp = result
+        .standings_predictions
+        .iter()
+        .find(|s| s.group_id == GROUP_KO)
+        .expect("advancer standings prediction persisted");
+    assert_eq!(sp.ordering.first().map(String::as_str), Some("KOR"));
+
+    // Bracket resolved: the downstream R16 game's home slot is the advancer.
+    let t = repo.get_tournament().await.unwrap().unwrap();
+    let next = t.games.get(GAME_KO_NEXT).unwrap();
+    assert_eq!(
+        next.home.team_id.as_deref(),
+        Some("KOR"),
+        "the drawn knockout advanced KOR, not the home team MEX"
+    );
+}
+
+#[tokio::test]
+async fn enter_result_rejects_an_advancer_not_in_the_match() {
+    let repo = seeded_repo_with_knockout(Duration::hours(-2)).await;
+    enter_group_a_results(&repo).await;
+    // CZE is not one of GAME_KO's two teams (MEX vs KOR).
+    let vars = Variables::from_json(json!({
+        "g": GAME_KO, "h": 1, "a": 1, "adv": "CZE", "lock": true
+    }));
+    let resp = run(&repo, ENTER_RESULT_ADVANCER, vars, Some(RESULT_ID)).await;
+    assert!(!resp.errors.is_empty(), "an off-match advancer must be rejected");
 }
 
 // ── results query ────────────────────────────────────────────────────────────

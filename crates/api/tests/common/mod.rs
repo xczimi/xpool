@@ -91,6 +91,90 @@ pub fn tiny_tournament(kickoff_offset: Duration) -> Tournament {
     }
 }
 
+/// Knockout game id used by the bracket-resolution tests. The match number
+/// must be ≥ 73 for `fwc26` to treat it as a knockout game.
+pub const GAME_KO: &str = "M73";
+/// The wrapping one-match knockout group for `GAME_KO`.
+pub const GROUP_KO: &str = "R32-1";
+/// A downstream knockout game that pulls in the winner of `GAME_KO` — used to
+/// observe which team the drawn `GAME_KO` advanced.
+pub const GAME_KO_NEXT: &str = "M81";
+/// The wrapping one-match knockout group for `GAME_KO_NEXT`.
+pub const GROUP_KO_NEXT: &str = "R16-1";
+
+/// `tiny_tournament` plus two one-match knockout groups: `GAME_KO` wraps a R32
+/// match between the winner ("1A") and runner-up ("2A") of group A, and
+/// `GAME_KO_NEXT` wraps a R16 match whose home slot is the winner of
+/// `GAME_KO`. Used to exercise the drawn-knockout advancer write path
+/// (Issue 24): the team `GAME_KO` advances surfaces as `GAME_KO_NEXT`'s home
+/// team after recompute.
+pub fn tournament_with_knockout(kickoff_offset: Duration) -> Tournament {
+    let kickoff = Utc::now() + kickoff_offset;
+    let mut t = tiny_tournament(kickoff_offset);
+
+    let mk_ko_game = |id: &str, group_id: &str, home_desc: &str, away_desc: &str| SingleGame {
+        id: id.to_owned(),
+        kickoff,
+        venue: None,
+        group_id: group_id.to_owned(),
+        home: TeamSlot {
+            team_id: None,
+            description: home_desc.to_owned(),
+        },
+        away: TeamSlot {
+            team_id: None,
+            description: away_desc.to_owned(),
+        },
+    };
+    t.games
+        .insert(GAME_KO.to_owned(), mk_ko_game(GAME_KO, GROUP_KO, "1A", "2A"));
+    t.games.insert(
+        GAME_KO_NEXT.to_owned(),
+        mk_ko_game(GAME_KO_NEXT, GROUP_KO_NEXT, "Winner M73", "Loser M73"),
+    );
+
+    let mk_ko_group = |id: &str, name: &str, round: Round, game: &str| GroupGame {
+        id: id.to_owned(),
+        name: name.to_owned(),
+        parent: Some("ROOT".to_owned()),
+        round,
+        lock_mode: LockMode::LockTogether,
+        carries_standings: true,
+        children: GroupChildren::Games(vec![game.to_owned()]),
+    };
+    t.groups.insert(
+        GROUP_KO.to_owned(),
+        mk_ko_group(GROUP_KO, "Round of 32 — Match 1", Round::R32, GAME_KO),
+    );
+    t.groups.insert(
+        GROUP_KO_NEXT.to_owned(),
+        mk_ko_group(GROUP_KO_NEXT, "Round of 16 — Match 1", Round::R16, GAME_KO_NEXT),
+    );
+
+    // Make the knockout groups children of ROOT so the tree stays connected.
+    if let Some(root) = t.groups.get_mut("ROOT") {
+        root.children = GroupChildren::Groups(vec![
+            GROUP_A.to_owned(),
+            GROUP_KO.to_owned(),
+            GROUP_KO_NEXT.to_owned(),
+        ]);
+    }
+
+    t
+}
+
+/// Build an in-memory repo seeded with `tournament_with_knockout` + 3 players.
+pub async fn seeded_repo_with_knockout(kickoff_offset: Duration) -> Arc<dyn Repository> {
+    let repo = InMemoryRepository::new();
+    repo.put_tournament(&tournament_with_knockout(kickoff_offset))
+        .await
+        .unwrap();
+    repo.put_player(&player(RESULT_ID, true)).await.unwrap();
+    repo.put_player(&player(ALICE, false)).await.unwrap();
+    repo.put_player(&player(BOB, false)).await.unwrap();
+    Arc::new(repo)
+}
+
 fn player(id: &str, is_result: bool) -> Player {
     Player {
         id: id.to_owned(),
