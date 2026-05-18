@@ -1,3 +1,4 @@
+import type { ChangeEvent } from 'react'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -10,9 +11,13 @@ function DevClock() {
   const current = getDevNow()
   // datetime-local wants 'YYYY-MM-DDTHH:mm'; store/send full RFC3339 (UTC).
   const value = current ? current.slice(0, 16) : ''
-  const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // The dev clock input is interpreted as UTC — consistent with the XPOOL_NOW
+  // env var (RFC3339 UTC). Appending ':00Z' avoids the local-time shift that
+  // new Date(localString).toISOString() would introduce on non-UTC machines.
+  const onChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.value) {
-      setDevNow(new Date(e.target.value).toISOString())
+      // datetime-local yields 'YYYY-MM-DDTHH:MM'; ':00Z' makes valid RFC3339 UTC.
+      setDevNow(e.target.value + ':00Z')
     } else {
       clearDevNow()
     }
