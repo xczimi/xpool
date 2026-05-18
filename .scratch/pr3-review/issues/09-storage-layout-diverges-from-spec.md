@@ -1,6 +1,6 @@
 # 09 — storage layout diverges from DATA_MODEL.md §9
 
-Status: ready-for-agent
+Status: done
 Severity: HIGH
 Area: crates/storage / .specs
 
@@ -46,3 +46,18 @@ No data migration — pre-launch, DynamoDB Local is in-memory and re-imported
 each run. The issue-07 pagination loop moves from `scan_prefix` onto the new
 `Query` paths. `InMemoryRepository` and the storage tests update to match.
 `.specs/DATA_MODEL.md` §9 stays the source of truth, unchanged.
+
+## Comments
+
+Refactored `DynamoRepository` to the composite-key (`pk` + `sk`) scheme.
+`ensure_table` now defines both attributes and a Hash+Range key schema.
+Player items live in partition `<t>#PLAYER` keyed by `<playerId>`, Pool in
+`<t>#POOL` keyed by `<poolId>`; `list_players`/`list_pools` are now a `Query`
+of one partition (no more table-wide `Scan`). Single-instance items
+(Person/Identity/Tournament/Scoreboard) keep a constant `sk = "#"`. The
+issue-07 1 MB pagination loop moved onto the `Query` path. Added two storage
+integration tests: namespace isolation (a tournament's `list_players` returns
+only its own players, not other namespaces or Pools) and Query pagination past
+one 1 MB page. All 13 gated dynamo tests pass against DynamoDB Local; clippy
+clean. `InMemoryRepository` needed no change (HashMap fake).
+

@@ -1,6 +1,6 @@
 # 23 — score_leaf_group hardcodes per-match `complete = true`
 
-Status: ready-for-agent
+Status: done
 Severity: MEDIUM
 Area: crates/domain
 
@@ -40,3 +40,14 @@ statement of the per-match rule, and pin it in `SCORING.md` / `DATA_MODEL.md`
 §7 so the apparent "complete draft / incomplete draft" conflict is resolved in
 writing. (Note: issue 06 already makes an explicitly *locked* group require all
 games, so the `complete` flag only governs the post-deadline auto-count path.)
+
+## Comments
+
+Documentation-only, no behaviour change. Replaced the deliberation comment in
+`score_leaf_group` with a clear statement of the per-match rule, and pinned the
+per-match reading in `SCORING.md` §1 and `DATA_MODEL.md` §7 (resolving the
+"complete draft / incomplete draft" wording: "incomplete" means absent/empty,
+not a partially-filled group). Added a regression test
+(`score_tournament_partially_predicted_group_counts_filled_games_only`) covering
+a partially-predicted unlocked `LockTogether` group. `cargo test -p domain`
+green (44); clippy clean.

@@ -1,6 +1,6 @@
 # 18 — recompute failure after enter_result leaves inconsistent state
 
-Status: ready-for-agent
+Status: done
 Severity: MEDIUM
 Area: crates/api
 
@@ -45,3 +45,21 @@ rebuild — any re-run fully repairs partial state.
 
 A briefly-stale scoreboard after a failed recompute is accepted — same risk
 posture as the issue-02 `unlockResult` decision.
+
+## Comments
+
+`enterResult` now returns a `ResultEntered { recomputePending: Boolean! }` object instead
+of `Boolean`: the locked result is always persisted; a failed recompute yields
+`recomputePending: true` rather than an error. New admin `recompute: Boolean!` mutation
+re-runs the idempotent post-result hook on demand. Raw internal errors (e.g. "no result
+user found") are no longer leaked — the `recompute` mutation maps them to a generic
+"recompute failed; please retry" message. Covered by `enter_result_returns_recompute_pending_false_on_success`,
+`recompute_mutation_runs_for_an_admin`, and `recompute_mutation_requires_admin`.
+
+## Comments — web ripple
+
+`enterResult` in `queries.ts`/`types.ts` now selects `ResultEntered { recomputePending }`.
+`AdminResults.tsx` reads that flag: when true it renders a "Result saved — scoreboard
+refresh pending" notice with a **Refresh scoreboard** button wired to the new
+`recompute` mutation (`RECOMPUTE_MUTATION`). Added the `recomputePendingNotice`,
+`recompute`, `recomputeDone`, `recomputeFailed` i18n strings (en + hu).

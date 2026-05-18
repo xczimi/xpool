@@ -1,6 +1,6 @@
 # 19 — fwc26 group-stage tiebreaker simplified (no H2H, conduct=0, hardcoded map)
 
-Status: ready-for-agent
+Status: done
 Severity: MEDIUM
 Area: crates/fwc26
 
@@ -46,3 +46,18 @@ fragility. Human call on scope — hence `ready-for-human`.
   add a guard test asserting all 8 keys match the `3XXXXX` slots in the
   imported `fwc26.json` fixture, so a fixture drift fails loudly instead of
   silently returning `None`.
+
+## Comments
+
+Done in `crates/fwc26`. Item 1: `compute_standings_for_group` now delegates to
+`domain::rank_group` (the single FIFA ladder, incl. the H2H step); the bespoke
+no-H2H sort and `RawStats` are deleted. The "all games predicted" gate is kept —
+a partially-played group still yields no standings, so `1X`/`2X` slots stay
+`None` (existing partial-results tests still pass). Item 2: the inert `conduct`
+criterion and the `TeamStats.conduct` field are removed; `best_thirds` doc/code
+now states residual ties fall through to the caller's `draw_order`. Item 3: the
+two hardcoded `groups_str → winner_group` matches are consolidated into one
+public `BEST_THIRD_SLOTS` const + `winner_group_for_slot` helper; new
+`tests/fixture_guard_tests.rs` pins all 8 keys to `tournaments/fwc26.json`.
+Verified: `cargo test -p fwc26` green (24 tests), `cargo clippy -p fwc26
+--tests -- -D warnings` clean, `cargo build --workspace` clean.

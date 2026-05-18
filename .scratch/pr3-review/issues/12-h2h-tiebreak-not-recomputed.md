@@ -1,6 +1,6 @@
 # 12 — H2H tiebreak not recomputed per still-tied subgroup
 
-Status: ready-for-agent
+Status: done
 Severity: HIGH
 Area: crates/domain
 
@@ -43,3 +43,14 @@ literally.
 This now also governs **bracket resolution** — `fwc26` delegates to
 `domain::rank_group` (see issue 19) — so a wrong sub-tie would send the wrong
 team to the knockouts. Fixing it here fixes both.
+
+## Comments
+
+Rewrote the tiebreak helpers in `crates/domain/src/scoring.rs` as a recursive
+ladder (`rank_tied` → `rank_h2h` → `rank_h2h_rung` → `rank_all_match`). When an
+H2H rung separates part of a tied set, each strictly-smaller still-tied subset
+re-enters `rank_tied` at step 1, so its H2H table is recomputed among *only*
+those teams. `rank_group`'s public signature is unchanged. Added a failing-then-
+passing regression test (`rank_group_h2h_partially_resolves_subgroup_recomputes_h2h`)
+covering a 3-way tie that partially resolves on H2H GD. `cargo test -p domain`
+green (43); clippy clean.

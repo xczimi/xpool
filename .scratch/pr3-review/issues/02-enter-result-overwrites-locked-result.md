@@ -1,6 +1,6 @@
 # 02 — enter_result can silently overwrite a locked official result
 
-Status: ready-for-agent
+Status: done
 Severity: CRITICAL
 Area: crates/api
 
@@ -43,3 +43,21 @@ This matches the legacy `editable` rule (`not locked`, ADMIN-06).
 Implementation: `unlockResult` is `require_admin`, loads the result user,
 clears `locked` on the matching `MatchPrediction`, `put_player`. `enter_result`
 checks the existing prediction's `locked` before the retain/push.
+
+## Comments
+
+Implemented in `crates/api/src/gql/mutation.rs`: new `unlockResult(gameId: ID!): Boolean!`
+admin mutation (bare `locked = false` flip on the result user, no recompute), and
+`enterResult` now rejects any game whose existing official result is `locked` with an
+error pointing at `unlockResult`. Unlocked results stay freely correctable. Covered by
+`enter_result_rejects_a_locked_result`, `enter_result_allows_correcting_an_unlocked_result`,
+`unlock_result_flips_the_locked_flag`, and `unlock_result_requires_admin` in
+`crates/api/tests/graphql.rs`.
+
+## Comments — web ripple
+
+`AdminResults.tsx` now shows an **Unlock** button per locked game (calls the new
+`unlockResult` mutation, then refetches) so a locked result becomes editable
+again — the deliberate `unlockResult` → `enterResult` two-call sequence. Added
+`UNLOCK_RESULT_MUTATION` to `queries.ts` and the `unlockResult` / `resultUnlocked`
+i18n strings (en + hu).
