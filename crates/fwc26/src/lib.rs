@@ -599,7 +599,8 @@ fn resolve_knockout_pass(
         // If both teams are known and we have a result, determine winner/loser
         if let (Some(home_id), Some(away_id)) = (home, away) {
             if let Some(pred) = result.match_prediction(game_id) {
-                let (winner, loser) = determine_winner_loser(pred, &home_id, &away_id);
+                let (winner, loser) =
+                    determine_winner_loser(pred, &home_id, &away_id, &game.group_id, result);
                 knockout_winners.insert(game_id.clone(), winner);
                 knockout_losers.insert(game_id.clone(), loser);
                 changed = true;
@@ -610,22 +611,41 @@ fn resolve_knockout_pass(
     changed
 }
 
-/// Determine winner and loser from a match prediction.
-/// For knockout matches with equal score (draws are possible in group stage but
-/// not in knockout — but we use standings prediction for the advancer).
-/// Since we don't have access to standings predictions here, we use score only:
-/// if equal, winner = home (this is a simplification; the standings prediction
-/// would be needed for the actual advancer in ET/penalties).
+/// Determine winner and loser from a knockout match prediction.
+///
+/// Knockout matches cannot end drawn: when the 90-minute score is level the
+/// advancer is decided in extra time / penalties. The result user encodes that
+/// advancer in the `StandingsPrediction` of the match's one-match knockout
+/// group — `ordering[0]` is the advancer (`DATA_MODEL.md` §6). This mirrors the
+/// group-stage tie path, which consults the same standings prediction for
+/// tiebreaking.
+///
+/// `group_id` is the id of the match's wrapping one-match group. If the level
+/// match has no usable standings prediction the home team advances as a
+/// last-resort fallback.
 fn determine_winner_loser(
     pred: &MatchPrediction,
     home_id: &TeamId,
     away_id: &TeamId,
+    group_id: &str,
+    result: &Player,
 ) -> (TeamId, TeamId) {
-    if pred.home_score >= pred.away_score {
-        // home wins (or draw → home advances, simplification)
+    if pred.home_score > pred.away_score {
         (home_id.clone(), away_id.clone())
-    } else {
+    } else if pred.away_score > pred.home_score {
         (away_id.clone(), home_id.clone())
+    } else {
+        // Level after 90 minutes → resolve the ET/penalty advancer from the
+        // result user's standings prediction for this one-match group.
+        let advancer = result
+            .standings_prediction(group_id)
+            .and_then(|sp| sp.ordering.first())
+            .filter(|first| *first == home_id || *first == away_id);
+        match advancer {
+            Some(first) if first == away_id => (away_id.clone(), home_id.clone()),
+            // first == home_id, or no usable prediction → home advances.
+            _ => (home_id.clone(), away_id.clone()),
+        }
     }
 }
 

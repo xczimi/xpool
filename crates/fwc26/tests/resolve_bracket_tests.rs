@@ -564,6 +564,70 @@ fn test_resolve_self_correcting() {
     // The important property is self-correction, verified by running both versions
 }
 
+/// A drawn knockout match resolves the advancer via the result user's
+/// penalty/standings prediction for that one-match knockout group, not by
+/// defaulting to the home team.
+#[test]
+fn test_resolve_knockout_draw_uses_standings_prediction() {
+    let t = build_test_tournament();
+
+    // Provide group predictions for A and B so M73 (2A vs 2B) resolves to A3 vs B3.
+    let mut match_preds = Vec::new();
+    let mut standings_preds = Vec::new();
+    let ids_a: Vec<&str> = vec!["M1", "M2", "M3"];
+    let ids_b: Vec<&str> = vec!["M4", "M5", "M6"];
+    let (mp_a, sp_a) = group_predictions('A', &ids_a);
+    let (mp_b, sp_b) = group_predictions('B', &ids_b);
+    match_preds.extend(mp_a);
+    match_preds.extend(mp_b);
+    standings_preds.extend(sp_a);
+    standings_preds.extend(sp_b);
+
+    // M73 ends 1-1 — a knockout draw. The away team (B3) is the predicted
+    // ET/penalty advancer per the one-match group's StandingsPrediction.
+    match_preds.push(pred("M73", 1, 1));
+    standings_preds.push(standings_pred("r32-m73", vec!["B3", "A3"], vec![]));
+
+    let result = result_player(match_preds, standings_preds);
+    let resolved = resolve_bracket(&t, &result);
+
+    // M89 home slot is "Winner M74" (undetermined here); but the resolved
+    // winner of M73 must be B3, not the home team A3.
+    // Verify directly via a knockout match that consumes Winner M73.
+    // M73 itself resolves to (A3, B3); the advancer must be B3.
+    let (home, away) = resolved.get("M73").expect("M73 must resolve");
+    assert_eq!(home.as_deref(), Some("A3"));
+    assert_eq!(away.as_deref(), Some("B3"));
+
+    // The bracket winner of M73 should be the away team B3 (penalty advancer),
+    // not the home team A3. We assert this by adding a downstream match.
+    // Build a fresh tournament variant carrying a Winner M73 reference.
+    assert_eq!(
+        winner_of_m73(&t, &result),
+        Some("B3".to_string()),
+        "drawn M73 must advance B3 per the standings prediction, not the home team"
+    );
+}
+
+/// Helper: resolve a tournament where a match references "Winner M73" and
+/// return the resolved team for that slot.
+fn winner_of_m73(base: &Tournament, result: &Player) -> Option<TeamId> {
+    let mut t = base.clone();
+    t.games.insert(
+        "M200".to_string(),
+        game(
+            "M200",
+            "probe",
+            slot_placeholder("Winner M73"),
+            slot_placeholder("2C"),
+        ),
+    );
+    t.groups
+        .insert("probe".to_string(), knockout_group("probe", vec!["M200".to_string()], Round::R16));
+    let resolved = resolve_bracket(&t, result);
+    resolved.get("M200").and_then(|(h, _)| h.clone())
+}
+
 /// Loser slots resolve correctly once SF match result is known.
 #[test]
 fn test_resolve_loser_slot_not_yet_known() {
