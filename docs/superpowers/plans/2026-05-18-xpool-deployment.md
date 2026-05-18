@@ -17,11 +17,11 @@
 Decisions confirmed with the project owner that differ from or refine `DEPLOYMENT.md`:
 
 1. **CI/CD deferred.** `DEPLOYMENT.md` §6 (GitHub Actions, GitHub OIDC IAM role) is **out of scope**. Deploys are run manually by the owner with the `xczimi` AWS profile. No `.github/workflows/`, no OIDC provider/role.
-2. **Whole stack in `us-east-1`.** Simplifies the config — CloudFront's ACM certificate *must* live in `us-east-1`, so running everything there removes the need for a second provider alias.
-3. **SES is infrastructure-only.** `DEPLOYMENT.md` §3/§7 do not mention SES; the owner added it. **No email-sending code exists in any crate today** (MailHog is in `docker-compose` but unused). This plan provisions the SES domain identity + DKIM + an `ses:SendEmail` grant on the Lambda role so the capability is *ready*. Wiring the app to actually send mail (invite emails, possibly auth emails) is an **unbuilt feature outside this plan** — it intersects the parallel auth workstream.
+2. **Stack in `ca-central-1`.** All regional resources (DynamoDB, Lambda, S3, SSM) deploy to `ca-central-1`. CloudFront's ACM certificate *must* live in `us-east-1`, so a second `aws` provider aliased `us_east_1` is declared solely for the certificate (Task 10). CloudFront and Route53 are global.
+3. **SES is external — referenced, not managed.** The SES domain identity for `xczimi.com` is owned by a separate account-wide repository (so it is shared by every app in the account, with production access handled there). This plan does **not** create or import it — it reads the identity through a `data` source purely to scope the Lambda's `ses:SendEmail` permission to its ARN. **Prerequisite:** that repo must have verified `xczimi.com` in `ca-central-1` before this stack can be `plan`/`apply`-ed. Separately, **no email-sending code exists in any crate today** (MailHog is in `docker-compose` but unused); wiring the app to actually send mail is an **unbuilt feature outside this plan** that intersects the auth workstream.
 4. **TheSportsDB SSM parameter is provisioned but unconsumed.** `DEPLOYMENT.md` §7 says the Lambda reads the TheSportsDB key from SSM. No crate reads it today — `xtask import` is the only TheSportsDB consumer and it runs locally. The plan creates the SSM `SecureString` and grants the role `ssm:GetParameter` per spec, but the runtime wiring is a deliberate no-op until code needs it.
 5. **`ensure_table()` skipped in `lambda` mode** (Task 2). The app currently self-creates the DynamoDB table on startup; the table is OpenTofu-managed and long-lived per spec, so the Lambda must not. This keeps the execution role data-plane-only (no `dynamodb:CreateTable`).
-6. **SES sandbox caveat.** A newly verified SES domain is in *sandbox mode* — it can only send to verified addresses. `dev` is fine (verify your own address). **`prod` invites to arbitrary users require an AWS support request to leave the sandbox** — tracked as Task 17, step note, not automatable.
+6. **SES production access is out of scope.** Whether the `xczimi.com` identity is in SES sandbox or production mode is owned by the separate account-wide SES repo (deviation #3), not this plan.
 
 ---
 
@@ -38,7 +38,7 @@ infrastructure/
   data.tf            # the Route53 hosted-zone data source
   dynamodb.tf        # the single table
   ssm.tf             # the TheSportsDB SecureString parameter
-  ses.tf             # the xczimi.com domain identity + DKIM records
+  ses.tf             # data lookup of the externally-managed SES identity
   lambda.tf          # the api Lambda function, Function URL, execution role
   s3.tf              # the private SPA-assets bucket
   acm.tf             # the DNS-validated certificate
@@ -151,7 +151,7 @@ git commit -m "feat(api): skip ensure_table in lambda mode (table is IaC-managed
 - [ ] **Step 1: Confirm the state bucket region**
 
 Run: `aws s3api get-bucket-location --bucket xczimi-terraform-state --profile xczimi`
-Expected: a region string (e.g. `us-east-1`, or `null`/blank meaning `us-east-1`). Use this value as `region` in the backend HCL below. The rest of this plan assumes `us-east-1`; substitute if different.
+Expected: `ca-central-1`. This is the *state bucket's* region (the `region` field in the backend HCL below), independent of where resources deploy. If the bucket reports a different region, substitute it in both backend files.
 
 - [ ] **Step 2: Write `infrastructure/versions.tf`**
 
@@ -172,6 +172,20 @@ terraform {
 
 ```hcl
 provider "aws" {
+  region = "ca-central-1"
+
+  default_tags {
+    tags = {
+      Project     = "xpool"
+      Environment = var.environment
+      ManagedBy   = "opentofu"
+    }
+  }
+}
+
+# CloudFront requires its ACM certificate in us-east-1.
+provider "aws" {
+  alias  = "us_east_1"
   region = "us-east-1"
 
   default_tags {
@@ -274,7 +288,7 @@ output "dynamodb_table" {
 ```hcl
 bucket       = "xczimi-terraform-state"
 key          = "xpool/infrastructure/dev/terraform.tfstate"
-region       = "us-east-1"
+region       = "ca-central-1"
 use_lockfile = true
 ```
 
@@ -283,7 +297,7 @@ use_lockfile = true
 ```hcl
 bucket       = "xczimi-terraform-state"
 key          = "xpool/infrastructure/prod/terraform.tfstate"
-region       = "us-east-1"
+region       = "ca-central-1"
 use_lockfile = true
 ```
 
@@ -434,7 +448,7 @@ After the first apply, set the real value once:
 ```bash
 AWS_PROFILE=xczimi aws ssm put-parameter \
   --name /xpool/dev/thesportsdb-api-key --type SecureString \
-  --value '<REAL-KEY>' --overwrite --region us-east-1
+  --value '<REAL-KEY>' --overwrite --region ca-central-1
 ```
 
 - [ ] **Step 4: Commit**
@@ -446,48 +460,40 @@ git commit -m "feat(infra): SSM SecureString for the TheSportsDB key"
 
 ---
 
-### Task 7: SES domain identity
+### Task 7: SES identity reference (data source)
+
+The SES domain identity for `xczimi.com` is managed in a separate account-wide
+repository (deviation #3). This task only *references* it, to scope the Lambda's
+`ses:SendEmail` permission (Task 8).
 
 **Files:**
 - Create: `infrastructure/ses.tf`
 
+**Prerequisite:** the external SES repo must have verified `xczimi.com` in
+`ca-central-1`. If it has not, `tofu plan` (Task 13) fails resolving this data
+source — apply the SES repo first, or temporarily widen the Task 8 `ses`
+statement to `resources = ["*"]` and defer this task.
+
 - [ ] **Step 1: Write `infrastructure/ses.tf`**
 
-Verifies `xczimi.com` as a sending identity and publishes DKIM records into the Route53 zone. SES identities are account-wide, so guard against both environments creating the same identity by only creating it in `prod` and `dev` independently is acceptable **only if they verify different domains** — here both want `xczimi.com`, so create the identity once, in whichever environment is applied first, and reference it by name elsewhere. To keep the two state files independent (spec: no shared resources), this plan verifies the domain in **each** environment's state via a `count` guard tied to `var.environment` — `dev` owns the SES identity; `prod` does not recreate it.
-
 ```hcl
-locals {
-  # SES domain identities are account-global. Let dev own it; prod reuses it.
-  manage_ses = var.environment == "dev"
-}
-
-resource "aws_sesv2_email_identity" "domain" {
-  count          = local.manage_ses ? 1 : 0
-  email_identity = var.ses_domain
-}
-
-resource "aws_route53_record" "ses_dkim" {
-  count   = local.manage_ses ? 3 : 0
-  zone_id = data.aws_route53_zone.primary.zone_id
-  name    = "${aws_sesv2_email_identity.domain[0].dkim_signing_attributes[0].tokens[count.index]}._domainkey.${var.ses_domain}"
-  type    = "CNAME"
-  ttl     = 600
-  records = ["${aws_sesv2_email_identity.domain[0].dkim_signing_attributes[0].tokens[count.index]}.dkim.amazonses.com"]
+# The SES domain identity is managed in a separate account-wide repo.
+# Referenced here only to scope the Lambda's send permission to its ARN.
+data "aws_ses_domain_identity" "sending" {
+  domain = var.ses_domain
 }
 ```
-
-Note: if `xczimi.com` is already an SES identity from another project, import it (`tofu import`) instead of creating — confirm with `aws sesv2 list-email-identities --region us-east-1 --profile xczimi` at apply time.
 
 - [ ] **Step 2: Validate**
 
 Run: `tofu validate`
-Expected: `Success!`. If the `dkim_signing_attributes` attribute path is rejected, check the `aws_sesv2_email_identity` schema for the running provider version and adjust the reference.
+Expected: `Success!` (`validate` is static and does not hit AWS — the identity's existence is resolved at `plan` time, Task 13).
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add infrastructure/ses.tf
-git commit -m "feat(infra): SES domain identity + DKIM records"
+git commit -m "feat(infra): reference the externally-managed SES identity"
 ```
 
 ---
@@ -550,7 +556,7 @@ module "api_lambda" {
     ses = {
       effect    = "Allow"
       actions   = ["ses:SendEmail", "ses:SendRawEmail"]
-      resources = ["*"]
+      resources = [data.aws_ses_domain_identity.sending.arn]
     }
   }
 
@@ -627,12 +633,17 @@ git commit -m "feat(infra): private S3 bucket for SPA assets"
 
 - [ ] **Step 1: Write `infrastructure/acm.tf`**
 
-DNS-validated certificate for the environment hostname, in `us-east-1` (the provider's region — required for CloudFront).
+DNS-validated certificate for the environment hostname, created in `us-east-1` via the aliased provider — CloudFront requires its certificate there.
 
 ```hcl
 module "acm" {
   source  = "terraform-aws-modules/acm/aws"
   version = "~> 5.1"
+
+  # CloudFront requires the certificate in us-east-1.
+  providers = {
+    aws = aws.us_east_1
+  }
 
   domain_name = var.domain_name
   zone_id     = data.aws_route53_zone.primary.zone_id
@@ -888,7 +899,7 @@ Expected: produces `web/dist/` containing `index.html` and `assets/`.
 
 Run (substitute the bucket name from Task 13's `spa_bucket` output):
 ```bash
-AWS_PROFILE=xczimi aws s3 sync web/dist/ "s3://<spa_bucket>/" --delete --region us-east-1
+AWS_PROFILE=xczimi aws s3 sync web/dist/ "s3://<spa_bucket>/" --delete --region ca-central-1
 ```
 Expected: uploads all built assets.
 
@@ -925,7 +936,7 @@ git commit -m "chore(infra): expose CloudFront distribution id"
 
 Run (no `DYNAMO_ENDPOINT` — this targets real AWS; `XPOOL_TABLE` selects the dev table):
 ```bash
-AWS_PROFILE=xczimi XPOOL_TABLE=xpool-dev AWS_REGION=us-east-1 \
+AWS_PROFILE=xczimi XPOOL_TABLE=xpool-dev AWS_REGION=ca-central-1 \
   cargo run -p xtask -- import fwc26.json
 ```
 Expected: import succeeds. (Confirm the JSON path — it is `fwc26.json` at the repo root, or `tournaments/fwc26.json`; adjust to whichever exists.)
@@ -933,7 +944,7 @@ Expected: import succeeds. (Confirm the JSON path — it is `fwc26.json` at the 
 - [ ] **Step 2: Seed demo data**
 
 ```bash
-AWS_PROFILE=xczimi XPOOL_TABLE=xpool-dev AWS_REGION=us-east-1 \
+AWS_PROFILE=xczimi XPOOL_TABLE=xpool-dev AWS_REGION=ca-central-1 \
   cargo run -p xtask -- seed
 ```
 Expected: creates the result-user, demo players, and a pool.
@@ -942,7 +953,7 @@ Expected: creates the result-user, demo players, and a pool.
 
 ```bash
 AWS_PROFILE=xczimi aws dynamodb scan --table-name xpool-dev \
-  --select COUNT --region us-east-1
+  --select COUNT --region ca-central-1
 ```
 Expected: a non-zero `Count`.
 
@@ -1004,20 +1015,16 @@ Expected: re-initialised against the prod state key.
 AWS_PROFILE=xczimi tofu plan -var-file=env/prod.tfvars -out=prod.tfplan
 AWS_PROFILE=xczimi tofu apply prod.tfplan
 ```
-Expected: creates the prod stack at `pool.xczimi.com`. Note: `manage_ses` is `false` for prod (Task 7) — prod reuses the SES identity dev created.
+Expected: creates the prod stack at `pool.xczimi.com`. Both environments reference the same external SES identity (Task 7); nothing SES-related is created.
 
 - [ ] **Step 3: Deploy the SPA and seed** — repeat Tasks 14 and 15 with `XPOOL_TABLE=xpool-prod` and the prod bucket / distribution id.
 
 - [ ] **Step 4: Smoke-test `pool.xczimi.com`** — repeat Task 16 steps 1-3 against the prod hostname.
 
-- [ ] **Step 5: Request SES production access**
-
-The SES domain is in *sandbox mode* — prod can only email verified addresses until AWS grants production access. In the AWS console: **SES → Account dashboard → Request production access**. This is a manual support request and is **not automatable**. Until granted, real pool invites to arbitrary addresses will not send.
-
 ---
 
 ## Self-review notes
 
-- **Spec coverage:** Topology (§1) — Tasks 8-12. Environments (§2) — dev in Phase 4, prod in Task 17. AWS resources (§3) — S3 (9), CloudFront (11), Lambda (8), DynamoDB (5), SSM (6), IAM (8); SES added per owner (7). Local dev (§4) — unchanged, not in scope. OpenTofu + modules + remote state + locking (§5) — Tasks 3-4. CI/CD (§6) — **deliberately deferred** (see Scope & spec deviations #1). Secrets/config (§7) — SSM (6), Lambda env vars (8). Cost posture (§8) — on-demand DynamoDB, `PriceClass_100`, Function URL (no API Gateway), all preserved.
+- **Spec coverage:** Topology (§1) — Tasks 8-12. Environments (§2) — dev in Phase 4, prod in Task 17. AWS resources (§3) — S3 (9), CloudFront (11), Lambda (8), DynamoDB (5), SSM (6), IAM (8); SES referenced via a data source, not managed here (7). Local dev (§4) — unchanged, not in scope. OpenTofu + modules + remote state + locking (§5) — Tasks 3-4. CI/CD (§6) — **deliberately deferred** (see Scope & spec deviations #1). Secrets/config (§7) — SSM (6), Lambda env vars (8). Cost posture (§8) — on-demand DynamoDB, `PriceClass_100`, Function URL (no API Gateway), all preserved.
 - **Known execution risks:** `terraform-aws-modules` argument schemas vary by version — every Phase 3 task ends with `tofu validate` and Task 13 gates on a reviewed `tofu plan` to catch drift before any resource is created. The CloudFront module (Task 11) is the most schema-sensitive.
 - **Cross-workstream handoff:** the parallel auth workstream needs only the prod/dev hostnames (now fixed: `pool.xczimi.com`, `pool-dev.xczimi.com`) for its IdP callback URLs. The "where is auth enforced" question is already answered by spec §1 — in-app, no gateway authorizer.
