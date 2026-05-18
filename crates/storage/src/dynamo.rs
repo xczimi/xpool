@@ -115,6 +115,24 @@ impl DynamoRepository {
         }
     }
 
+    /// Delete the table. Used by e2e teardown. Idempotent — a missing table
+    /// is treated as success.
+    pub async fn delete_table(&self) -> anyhow::Result<()> {
+        match self
+            .client
+            .delete_table()
+            .table_name(&self.table)
+            .send()
+            .await
+        {
+            Ok(_) => Ok(()),
+            Err(SdkError::ServiceError(e)) if e.err().is_resource_not_found_exception() => {
+                Ok(()) // table already gone — idempotent
+            }
+            Err(e) => Err(e).context("delete_table failed"),
+        }
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────
 
     /// Per-tournament key prefix.

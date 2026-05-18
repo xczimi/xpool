@@ -306,3 +306,16 @@ async fn dynamo_person_round_trip() {
         .expect("Some");
     assert_eq!(got.identity_ids, p.identity_ids);
 }
+
+#[tokio::test]
+async fn dynamo_delete_table_removes_it() {
+    if !dynamo_enabled() {
+        return;
+    }
+    // test_repo() creates a uniquely-named table via ensure_table().
+    let repo = test_repo().await;
+    repo.delete_table().await.unwrap();
+    // ensure_table must now succeed again — proof the table was gone.
+    repo.ensure_table().await.unwrap();
+    repo.delete_table().await.unwrap();
+}
