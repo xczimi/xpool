@@ -151,7 +151,7 @@ git commit -m "feat(api): skip ensure_table in lambda mode (table is IaC-managed
 - [ ] **Step 1: Confirm the state bucket region**
 
 Run: `aws s3api get-bucket-location --bucket xczimi-terraform-state --profile xczimi`
-Expected: `ca-central-1`. This is the *state bucket's* region (the `region` field in the backend HCL below), independent of where resources deploy. If the bucket reports a different region, substitute it in both backend files.
+Expected: `ca-central-1`. This is the *state bucket's* region (the `region` field in `backend.tf` below), independent of where resources deploy. If the bucket reports a different region, substitute it there.
 
 - [ ] **Step 2: Write `infrastructure/versions.tf`**
 
@@ -201,10 +201,14 @@ provider "aws" {
 - [ ] **Step 4: Write `infrastructure/backend.tf`**
 
 ```hcl
-# Partial config — the key differs per environment.
-# Initialise with: tofu init -backend-config=env/<env>.backend.hcl
+# Shared backend settings are literals here; only the per-environment `key`
+# is supplied at init: tofu init -backend-config=env/<env>.backend.hcl
 terraform {
-  backend "s3" {}
+  backend "s3" {
+    bucket       = "xczimi-terraform-state"
+    region       = "ca-central-1"
+    use_lockfile = true
+  }
 }
 ```
 
@@ -286,19 +290,13 @@ output "dynamodb_table" {
 - [ ] **Step 8: Write `infrastructure/env/dev.backend.hcl`**
 
 ```hcl
-bucket       = "xczimi-terraform-state"
-key          = "xpool/infrastructure/dev/terraform.tfstate"
-region       = "ca-central-1"
-use_lockfile = true
+key = "xpool/infrastructure/dev/terraform.tfstate"
 ```
 
 - [ ] **Step 9: Write `infrastructure/env/prod.backend.hcl`**
 
 ```hcl
-bucket       = "xczimi-terraform-state"
-key          = "xpool/infrastructure/prod/terraform.tfstate"
-region       = "ca-central-1"
-use_lockfile = true
+key = "xpool/infrastructure/prod/terraform.tfstate"
 ```
 
 - [ ] **Step 10: Write `infrastructure/env/dev.tfvars`**
