@@ -367,6 +367,46 @@ async fn dynamo_player_concurrent_writes_second_conflicts() {
     assert_eq!(got.nick, "from-a");
 }
 
+/// The new-vs-update decision is condition-driven: a single atomic conditional
+/// `put_item` (`attribute_not_exists(pk) OR #ver = :v`) replaces the old
+/// get-then-branch design. A second insert of an already-existing player id
+/// with a fresh version-0 player finds the item present (so
+/// `attribute_not_exists(pk)` fails) and a stale version (so `#ver = :v` fails)
+/// — both clauses fail and the write is rejected.
+#[tokio::test]
+async fn dynamo_player_second_insert_of_existing_id_conflicts() {
+    if !dynamo_enabled() {
+        return;
+    }
+    let repo = test_repo().await;
+
+    // First insert of a brand-new player succeeds (stored at version 1).
+    repo.put_player(&make_player("reinsert-player", 0))
+        .await
+        .unwrap();
+
+    // A second "insert" of the same id — a fresh version-0 player, as if the
+    // caller never read the existing row — must be rejected: the item exists
+    // and version 0 does not match the stored version 1.
+    let mut second = make_player("reinsert-player", 0);
+    second.nick = "second-insert".to_owned();
+    let err = repo.put_player(&second).await;
+    assert!(
+        err.is_err(),
+        "second insert of an existing player id must conflict"
+    );
+    let msg = err.unwrap_err().to_string();
+    assert!(
+        msg.contains("ConditionalCheckFailed") || msg.contains("optimistic"),
+        "unexpected error: {msg}"
+    );
+
+    // The original write is intact — the rejected insert did not overwrite it.
+    let got = repo.get_player("reinsert-player").await.unwrap().unwrap();
+    assert_eq!(got.nick, "nick-reinsert-player");
+    assert_eq!(got.version, 1);
+}
+
 #[tokio::test]
 async fn dynamo_scoreboard_round_trip() {
     if !dynamo_enabled() {

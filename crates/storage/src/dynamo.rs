@@ -338,16 +338,24 @@ impl Repository for DynamoRepository {
     /// the write is conditioned on the stored version still equalling that
     /// value. On success the item is persisted with `version + 1`.
     ///
-    /// For a **new** player (no item in the table) the write uses
-    /// `attribute_not_exists(pk)` — it fails if the item already exists,
-    /// protecting against lost-update races on first write — and stores
-    /// `version + 1` (so a first write of a version-0 player stores 1).
+    /// The write is a **single atomic conditional `put_item`** — no preceding
+    /// `get_item`. The condition is `attribute_not_exists(pk) OR #ver = :v`
+    /// where `:v` is the caller-supplied (old) version:
     ///
-    /// For an **existing** player the write uses `#ver = :v` where `:v` is the
-    /// caller-supplied (old) version. Two writers that both read version `n`
-    /// race: the first stores `n + 1`, the second's condition (`stored == n`)
-    /// fails. On a conflict `anyhow::Error` is returned with a message
-    /// containing "ConditionalCheckFailed".
+    /// - **New player**: no item exists, so `attribute_not_exists(pk)` holds
+    ///   and the write succeeds, storing `version + 1` (a first write of a
+    ///   version-0 player stores 1). A racing second insert of the same id
+    ///   finds the item present and a version mismatch — both clauses fail —
+    ///   so it is rejected.
+    /// - **Existing player**: `#ver = :v` succeeds only if the stored version
+    ///   still equals the version the caller last read. Two writers that both
+    ///   read version `n` race: the first stores `n + 1`, the second's
+    ///   condition fails.
+    ///
+    /// Because the condition is evaluated atomically with the write, the
+    /// new-vs-update decision is condition-driven — never a stale read. On a
+    /// conflict `anyhow::Error` is returned with a message containing
+    /// "ConditionalCheckFailed".
     async fn put_player(&self, p: &Player) -> anyhow::Result<()> {
         let pk = format!("{}#PLAYER", self.t());
         let sk = p.id.clone();
@@ -360,19 +368,10 @@ impl Repository for DynamoRepository {
         };
         let data = serde_json::to_string(&stored)?;
 
-        // Check whether the item already exists to decide which condition to use.
-        let existing = self
-            .client
-            .get_item()
-            .table_name(&self.table)
-            .key("pk", AttributeValue::S(pk.clone()))
-            .key("sk", AttributeValue::S(sk.clone()))
-            .projection_expression("#ver")
-            .expression_attribute_names("#ver", "version")
-            .send()
-            .await
-            .context("get_item for put_player condition check")?;
-
+        // One atomic conditional put: the item must either not yet exist
+        // (first write) or still carry the version the caller last read
+        // (in-place update). No prior `get_item` — the branch is the
+        // condition itself, so it is evaluated atomically with the write.
         let put = self
             .client
             .put_item()
@@ -380,18 +379,10 @@ impl Repository for DynamoRepository {
             .item("pk", AttributeValue::S(pk.clone()))
             .item("sk", AttributeValue::S(sk.clone()))
             .item("data", AttributeValue::S(data))
-            .item("version", AttributeValue::N(next_version.to_string()));
-
-        let put = if existing.item.is_none() {
-            // First write: only succeed if the item truly does not exist yet.
-            put.condition_expression("attribute_not_exists(pk)")
-        } else {
-            // Subsequent write: succeed only if the stored version still
-            // equals the version the caller last read.
-            put.condition_expression("#ver = :v")
-                .expression_attribute_names("#ver", "version")
-                .expression_attribute_values(":v", AttributeValue::N(p.version.to_string()))
-        };
+            .item("version", AttributeValue::N(next_version.to_string()))
+            .condition_expression("attribute_not_exists(pk) OR #ver = :v")
+            .expression_attribute_names("#ver", "version")
+            .expression_attribute_values(":v", AttributeValue::N(p.version.to_string()));
 
         put.send().await.map_err(|e| match e {
             SdkError::ServiceError(ref se) => {
