@@ -6,15 +6,17 @@ export const TOURNAMENT_QUERY = `
       root
       groups {
         id name parent round lockMode carriesStandings
-        childGroupIds childGameIds deadline
+        childGroupIds childGameIds deadline deadlinePassed
       }
       games {
         id kickoff venue groupId
         home { teamId description }
         away { teamId description }
+        resultPending withinTodayWindow
       }
       teams { id name shortCode flag externalId }
     }
+    now
   }
 `
 

@@ -36,6 +36,8 @@ export interface SingleGame {
   groupId: string
   home: TeamSlot
   away: TeamSlot
+  resultPending: boolean
+  withinTodayWindow: boolean
 }
 
 export interface GroupGame {
@@ -51,6 +53,7 @@ export interface GroupGame {
   childGameIds: string[]
   /** Earliest kickoff in the subtree — the prediction deadline. */
   deadline: string | null
+  deadlinePassed: boolean
 }
 
 export interface Tournament {
