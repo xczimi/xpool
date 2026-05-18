@@ -9,6 +9,7 @@ pub mod clock;
 pub mod gql;
 pub mod recompute;
 pub mod router;
+pub mod timeflags;
 
 use std::sync::Arc;
 use storage::Repository;
