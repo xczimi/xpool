@@ -11,14 +11,14 @@
 //!
 //! Both are pure-function calls; this module is glue only.
 
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use domain::scoring::{score_tournament, ScoringConfig};
 use storage::{Repository, Scoreboard};
 
 /// Run the wholesale recompute. Loads the coarse items, calls the pure
 /// `domain`/`fwc26` functions, and writes back the `Scoreboard` and the
 /// bracket-resolved `Tournament`.
-pub async fn recompute(repo: &dyn Repository) -> anyhow::Result<()> {
+pub async fn recompute(repo: &dyn Repository, now: DateTime<Utc>) -> anyhow::Result<()> {
     let players = repo.list_players().await?;
 
     let result_user = players
@@ -33,7 +33,6 @@ pub async fn recompute(repo: &dyn Repository) -> anyhow::Result<()> {
 
     // 1. Scoreboard: score every real player vs the result user.
     let config = ScoringConfig::default();
-    let now = Utc::now();
     let mut scoreboard = Scoreboard::default();
     for player in &players {
         if player.is_result_user {

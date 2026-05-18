@@ -7,7 +7,6 @@
 use crate::auth::CurrentPlayer;
 use crate::gql::types::*;
 use async_graphql::{Context, Object};
-use chrono::Utc;
 use domain::scoring::{is_perfect, ScoringConfig};
 use std::collections::HashMap;
 use storage::Repository;
@@ -18,6 +17,11 @@ pub struct QueryRoot;
 fn repo<'a>(ctx: &'a Context<'_>) -> &'a dyn Repository {
     ctx.data_unchecked::<std::sync::Arc<dyn Repository>>()
         .as_ref()
+}
+
+/// The request's `now` (the clock seam — `.specs/TESTING.md` §3.2).
+fn now(ctx: &Context<'_>) -> chrono::DateTime<chrono::Utc> {
+    ctx.data_unchecked::<crate::clock::RequestNow>().0
 }
 
 #[Object]
@@ -115,7 +119,7 @@ impl QueryRoot {
 
         let games = tournament.games_in(&group_id);
         let deadline = tournament.deadline(&group_id);
-        let now = Utc::now();
+        let now = now(ctx);
 
         let mut tips = Vec::new();
         for player in &players {

@@ -49,7 +49,8 @@ async fn graphql_handler(
     req: GraphQLRequest,
 ) -> GraphQLResponse {
     let current = resolve_current_player(state.repo.as_ref(), &headers).await;
-    let req = req.into_inner().data(current);
+    let now = crate::clock::RequestNow(crate::clock::resolve_now(&headers));
+    let req = req.into_inner().data(current).data(now);
     state.schema.execute(req).await.into()
 }
 

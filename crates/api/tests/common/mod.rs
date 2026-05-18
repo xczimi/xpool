@@ -135,6 +135,17 @@ pub async fn run(
     vars: Variables,
     as_player: Option<&str>,
 ) -> async_graphql::Response {
+    run_at(repo, query, vars, as_player, Utc::now()).await
+}
+
+/// Like `run`, but with an explicit `now` injected into the GraphQL context.
+pub async fn run_at(
+    repo: &Arc<dyn Repository>,
+    query: &str,
+    vars: Variables,
+    as_player: Option<&str>,
+    now: chrono::DateTime<chrono::Utc>,
+) -> async_graphql::Response {
     use api::auth::CurrentPlayer;
     let schema = api::gql::build_schema(repo.clone());
 
@@ -145,7 +156,10 @@ pub async fn run(
         },
         None => CurrentPlayer::Visitor,
     };
-    let req = Request::new(query).variables(vars).data(current);
+    let req = Request::new(query)
+        .variables(vars)
+        .data(current)
+        .data(api::clock::RequestNow(now));
     schema.execute(req).await
 }
 
@@ -162,7 +176,8 @@ pub async fn run_with_snapshot(
     let schema = api::gql::build_schema(repo.clone());
     let req = Request::new(query)
         .variables(vars)
-        .data(CurrentPlayer::Authenticated(Box::new(snapshot)));
+        .data(CurrentPlayer::Authenticated(Box::new(snapshot)))
+        .data(api::clock::RequestNow(Utc::now()));
     schema.execute(req).await
 }
 

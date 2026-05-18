@@ -8,9 +8,10 @@
 //! `X-Dev-Now` / `XPOOL_NOW` are dev stubs with the same exposure as
 //! `X-Dev-Player` — they must be gated off before any real deployment.
 
+use axum::http::HeaderMap;
 use chrono::{DateTime, Utc};
 
-/// `now`, placed in the GraphQL context. Resolvers read it via [`now`].
+/// `now`, placed in the GraphQL context. Resolvers read it from the GraphQL context.
 #[derive(Clone, Copy, Debug)]
 pub struct RequestNow(pub DateTime<Utc>);
 
@@ -19,6 +20,14 @@ fn parse_instant(s: &str) -> Option<DateTime<Utc>> {
     DateTime::parse_from_rfc3339(s.trim())
         .ok()
         .map(|d| d.with_timezone(&Utc))
+}
+
+/// Resolve `now` for a real request: `X-Dev-Now` header, then `XPOOL_NOW`
+/// env, then the real clock.
+pub fn resolve_now(headers: &HeaderMap) -> DateTime<Utc> {
+    let header = headers.get("x-dev-now").and_then(|v| v.to_str().ok());
+    let env = std::env::var("XPOOL_NOW").ok();
+    resolve_now_from(header, env.as_deref(), Utc::now())
 }
 
 /// Resolve `now` from an optional header value and env value. Pure — the

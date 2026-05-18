@@ -21,6 +21,11 @@ fn repo<'a>(ctx: &'a Context<'_>) -> &'a Arc<dyn Repository> {
     ctx.data_unchecked::<Arc<dyn Repository>>()
 }
 
+/// The request's `now` (the clock seam — `.specs/TESTING.md` §3.2).
+fn now(ctx: &Context<'_>) -> chrono::DateTime<chrono::Utc> {
+    ctx.data_unchecked::<crate::clock::RequestNow>().0
+}
+
 /// A fresh opaque pool join code — 8 uppercase hex characters.
 fn generate_join_code() -> String {
     uuid::Uuid::new_v4()
@@ -350,7 +355,7 @@ impl MutationRoot {
         repo.put_player(&result_user).await?;
 
         // Wholesale recompute: scoreboard + bracket resolution.
-        recompute(repo.as_ref())
+        recompute(repo.as_ref(), now(ctx))
             .await
             .map_err(|e| async_graphql::Error::new(e.to_string()))?;
         Ok(true)

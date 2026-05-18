@@ -5,7 +5,7 @@
 mod common;
 
 use async_graphql::Variables;
-use chrono::Duration;
+use chrono::{Duration, Utc};
 use common::*;
 use serde_json::json;
 use storage::Repository;
@@ -744,5 +744,55 @@ async fn pools_query_returns_only_the_callers_pools() {
     let ids = d["pools"].as_array().unwrap();
     assert_eq!(ids.len(), 1, "only Alice's own pool");
     assert_eq!(ids[0]["id"], json!("alice-pool"));
+}
+
+// ── tips visibility: clock-driven (UC-9 / clock seam) ────────────────────────
+
+#[tokio::test]
+async fn tips_visibility_uses_the_request_clock() {
+    // A tournament whose only group kicks off 24h in the future.
+    let repo = seeded_repo(Duration::hours(24)).await;
+    // Bob saved an unlocked draft.
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [{ "gameId": GAME_1, "homeScore": 1, "awayScore": 0 }],
+        "lock": false
+    }));
+    run(&repo, SUBMIT, vars, Some(BOB)).await;
+
+    // Viewed by ALICE *before* kickoff -> Bob's draft is hidden.
+    let before = run_at(
+        &repo,
+        r#"query($g: ID!){ tips(groupId:$g){ playerId gameId prediction{ homeScore } } }"#,
+        Variables::from_json(json!({ "g": GROUP_A })),
+        Some(ALICE),
+        Utc::now(),
+    )
+    .await;
+    let bob_before = find_tip(&before, BOB, GAME_1);
+    assert!(bob_before["prediction"].is_null(), "hidden before kickoff");
+
+    // Viewed with the clock advanced past kickoff -> Bob's draft is revealed.
+    let after = run_at(
+        &repo,
+        r#"query($g: ID!){ tips(groupId:$g){ playerId gameId prediction{ homeScore } } }"#,
+        Variables::from_json(json!({ "g": GROUP_A })),
+        Some(ALICE),
+        Utc::now() + Duration::hours(48),
+    )
+    .await;
+    let bob_after = find_tip(&after, BOB, GAME_1);
+    assert_eq!(bob_after["prediction"]["homeScore"], json!(1), "revealed after kickoff");
+}
+
+/// Find a tip entry from a `tips` query response matching `player_id` and `game_id`.
+fn find_tip(resp: &async_graphql::Response, player_id: &str, game_id: &str) -> serde_json::Value {
+    data(resp)["tips"]
+        .as_array()
+        .expect("tips array")
+        .iter()
+        .find(|t| t["playerId"] == player_id && t["gameId"] == game_id)
+        .unwrap_or_else(|| panic!("no tip found for player={player_id} game={game_id}"))
+        .clone()
 }
 
