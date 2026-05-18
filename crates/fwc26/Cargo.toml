@@ -1,0 +1,12 @@
+[package]
+name = "fwc26"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+domain.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+chrono = { version = "0.4", features = ["serde"] }

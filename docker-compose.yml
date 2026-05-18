@@ -1,0 +1,15 @@
+services:
+  # DynamoDB Local in in-memory mode — the on-disk sqlite4java backend
+  # crashloops on some hosts; in-memory is reliable for local dev. State is
+  # reset on container restart; re-run `xtask import` + `xtask seed` after.
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    command: ["-jar", "DynamoDBLocal.jar", "-inMemory", "-sharedDb"]
+    ports:
+      - "8000:8000"
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"

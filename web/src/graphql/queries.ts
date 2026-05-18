@@ -1,0 +1,187 @@
+/** GraphQL query & mutation documents — the agreed reconciled schema. */
+
+export const TOURNAMENT_QUERY = `
+  query Tournament {
+    tournament {
+      root
+      groups {
+        id name parent round lockMode carriesStandings
+        childGroupIds childGameIds deadline deadlinePassed
+      }
+      games {
+        id kickoff venue groupId
+        home { teamId description }
+        away { teamId description }
+        resultPending withinTodayWindow
+      }
+      teams { id name shortCode flag externalId }
+    }
+    now
+  }
+`
+
+export const ME_QUERY = `
+  query Me {
+    me {
+      id nick fullName isResultUser version
+      matchPredictions { gameId homeScore awayScore locked }
+      standingsPredictions { groupId ordering drawOrder locked }
+    }
+  }
+`
+
+/** The result user's locked match predictions — official scores. */
+export const RESULTS_QUERY = `
+  query Results {
+    results { gameId homeScore awayScore locked }
+  }
+`
+
+export const SCOREBOARD_QUERY = `
+  query Scoreboard($pool: ID) {
+    scoreboard(pool: $pool) {
+      playerId nick total
+      stages { round points }
+    }
+  }
+`
+
+export const POOLS_QUERY = `
+  query Pools {
+    pools { id name owner members joinCode }
+  }
+`
+
+export const TIPS_QUERY = `
+  query Tips($groupId: ID!) {
+    tips(groupId: $groupId) {
+      playerId nick gameId
+      prediction { gameId homeScore awayScore locked }
+    }
+  }
+`
+
+export const PERFECTS_QUERY = `
+  query Perfects {
+    perfects { playerId nick gameId }
+  }
+`
+
+/** All players — for the dev-login picker and the admin player list. */
+export const PLAYERS_QUERY = `
+  query Players {
+    players { id nick fullName isResultUser }
+  }
+`
+
+export const SUBMIT_GROUP_MUTATION = `
+  mutation SubmitGroup(
+    $groupId: ID!
+    $predictions: [MatchPredictionInput!]!
+    $standings: StandingsInput
+    $lock: Boolean!
+  ) {
+    submitGroup(
+      groupId: $groupId
+      predictions: $predictions
+      standings: $standings
+      lock: $lock
+    ) {
+      id version
+      matchPredictions { gameId homeScore awayScore locked }
+      standingsPredictions { groupId ordering drawOrder locked }
+    }
+  }
+`
+
+export const UPDATE_PROFILE_MUTATION = `
+  mutation UpdateProfile($nick: String, $fullName: String) {
+    updateProfile(nick: $nick, fullName: $fullName) {
+      id nick fullName
+    }
+  }
+`
+
+export const INVITE_MUTATION = `
+  mutation Invite($inviteeId: ID!) {
+    invite(inviteeId: $inviteeId)
+  }
+`
+
+const POOL_FIELDS = 'id name owner members joinCode'
+
+export const CREATE_POOL_MUTATION = `
+  mutation CreatePool($id: ID!, $name: String!) {
+    createPool(id: $id, name: $name) { ${POOL_FIELDS} }
+  }
+`
+
+export const UPDATE_POOL_MUTATION = `
+  mutation UpdatePool($id: ID!, $name: String!) {
+    updatePool(id: $id, name: $name) { ${POOL_FIELDS} }
+  }
+`
+
+export const JOIN_POOL_MUTATION = `
+  mutation JoinPool($joinCode: String!) {
+    joinPool(joinCode: $joinCode) { ${POOL_FIELDS} }
+  }
+`
+
+export const LEAVE_POOL_MUTATION = `
+  mutation LeavePool($id: ID!) {
+    leavePool(id: $id) { ${POOL_FIELDS} }
+  }
+`
+
+export const REMOVE_MEMBER_MUTATION = `
+  mutation RemoveMember($poolId: ID!, $memberId: ID!) {
+    removeMember(poolId: $poolId, memberId: $memberId) { ${POOL_FIELDS} }
+  }
+`
+
+export const ROTATE_JOIN_CODE_MUTATION = `
+  mutation RotateJoinCode($id: ID!) {
+    rotateJoinCode(id: $id) { ${POOL_FIELDS} }
+  }
+`
+
+export const DELETE_POOL_MUTATION = `
+  mutation DeletePool($id: ID!) {
+    deletePool(id: $id)
+  }
+`
+
+export const ENTER_RESULT_MUTATION = `
+  mutation EnterResult(
+    $gameId: ID!
+    $homeScore: Int!
+    $awayScore: Int!
+    $advancer: ID
+    $lock: Boolean!
+  ) {
+    enterResult(
+      gameId: $gameId
+      homeScore: $homeScore
+      awayScore: $awayScore
+      advancer: $advancer
+      lock: $lock
+    ) {
+      recomputePending
+    }
+  }
+`
+
+/** Admin-only — flip a locked official result back to editable. */
+export const UNLOCK_RESULT_MUTATION = `
+  mutation UnlockResult($gameId: ID!) {
+    unlockResult(gameId: $gameId)
+  }
+`
+
+/** Admin-only — re-run the idempotent post-result recompute on demand. */
+export const RECOMPUTE_MUTATION = `
+  mutation Recompute {
+    recompute
+  }
+`

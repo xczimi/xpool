@@ -4,3 +4,22 @@
 .settings
 *~
 
+# IDE
+.idea
+
+# Rust
+/target
+**/*.rs.bk
+
+# Node
+node_modules
+web/dist
+
+# Local env
+.env
+.env.local
+
+# E2E run artefacts
+web/.e2e-table
+web/.e2e-api.pid
+web/.e2e-api.log

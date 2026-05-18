@@ -60,7 +60,6 @@ Legacy names in parentheses.
 | **SingleGame** | A match | kickoff time, location, home team, away team, parent group, external match id |
 | **MatchPrediction** (`Result`) | One player's score prediction for one match | player, match, homeScore, awayScore, `locked` |
 | **StandingsPrediction** (`GroupResult`) | One player's predicted finishing order for a group | player, group, `draw_order` (manual tiebreak), `locked` |
-| **Motd** | A site-wide banner message | text |
 
 ### Constraints to enforce explicitly
 

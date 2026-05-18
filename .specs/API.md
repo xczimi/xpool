@@ -55,12 +55,25 @@ Queries mirror the coarse storage items, so each is near-zero assembly:
 
 | Query | Returns |
 |---|---|
-| `tournament` | the `<t>#TOURNAMENT` structure (tree, matches, teams) |
+| `now` | the server's resolved request clock (`DateTime<Utc>`) — the clock seam the SPA renders time-dependent state against |
+| `tournament` | the `<t>#TOURNAMENT` structure (tree, matches, teams) with time-derived flags (see below) |
 | `scoreboard(pool?)` | the materialised `<t>#SCOREBOARD`, filtered to a pool |
 | `me` | the current player + their predictions |
 | `pools` | the player's pools |
 | `tips(groupId)` | all players' *visible* predictions for a group (computed — visibility-filtered) |
 | `perfects` | perfect predictions |
+
+The `tournament` resolver also loads the player list to find the result user's locked
+match predictions; these are used to derive `resultPending` on each game.
+
+Time-derived flags exposed on tournament sub-types (all computed against the request `now`):
+
+- **`Group.deadlinePassed`** — `true` once the group's earliest-kickoff deadline is in the past.
+- **`Game.resultPending`** — `true` when the estimated match end (kickoff + round buffer) has passed but no locked official result exists yet; drives smart polling.
+- **`Game.withinTodayWindow`** — `true` when the game falls within the ±2-day Today window (UC-11).
+
+The SPA renders, not computes, these flags — they are derived server-side against the
+authoritative request clock so the client has no time-handling logic.
 
 The SPA caches these (urql normalised cache) and composes the ~11 screens
 client-side. Most screens are a render of one or two cached queries.

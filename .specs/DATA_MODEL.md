@@ -53,7 +53,6 @@ Pool ──▶ owner: Player,  members: [Player]
 | **MatchPrediction** | per-tournament | One Player's score prediction for one SingleGame. |
 | **StandingsPrediction** | per-tournament | One Player's predicted team ordering for one GroupGame. |
 | **Pool** | per-tournament | A named subset of Players sharing a scoreboard. |
-| **Motd** | per-tournament | Site-wide banner message. |
 
 ## 4. Tournament structure — recursive tree
 
@@ -105,9 +104,17 @@ as results land is **FWC26-specific application code** (using `FWC26_RULES.md`
 - `locked` = the player's **explicit, early, irreversible** lock.
 - **Effective-locked** (what scoring and visibility use) is derived:
   `locked OR (now > node deadline AND prediction is complete)`.
-  A complete draft auto-counts after the deadline; an incomplete/absent one
-  scores 0. Implemented as a **pure function** — no scheduled job, the stored
-  `locked` is never auto-mutated.
+  Implemented as a **pure function** — no scheduled job, the stored `locked`
+  is never auto-mutated.
+- **"Complete" is per-prediction, not per-group.** A `MatchPrediction` always
+  carries both `u8` scores, so it is *always* complete; it auto-counts after
+  the deadline. A `StandingsPrediction` is complete when its `ordering` is
+  non-empty. There is no group-level "all matches predicted" requirement on
+  this auto-count path: a player who predicted only *some* games of a
+  `LockTogether` group still has each filled game auto-count after the
+  deadline, while the unpredicted games (no `MatchPrediction` at all) score 0.
+  An "incomplete draft scores 0" therefore means an *absent or empty*
+  prediction, not a partially-filled group.
 - **Visibility** (UC-9): a prediction is visible to others when
   `effective-locked OR match kicked off`.
 
@@ -142,7 +149,6 @@ Single DynamoDB table, on-demand. Two key zones:
 | Tournament | `<t>#TOURNAMENT` | the GroupGame tree, SingleGames, Teams |
 | Pool | `<t>#POOL` / `<poolId>` | name, owner, member ids |
 | Scoreboard | `<t>#SCOREBOARD` | materialized `playerId → {stage → score}`; recomputed wholesale on result change (see [`SCORING.md`](./SCORING.md) §8) |
-| Motd | `<t>#MOTD` | banner text |
 
 Notes:
 - **Coarse-grained**: a Player's whole prediction set lives on the one Player
@@ -189,5 +195,5 @@ Decisions that override the existing specs or are non-obvious:
   behind a single auth seam: the edge resolves an `Identity` → `Person` →
   `(Person, current tournament)` → `Player`.
 - **Pool membership management** — separate concern, not modelled here.
-- **Minor / not yet grilled**: `Team` fields, score-value bounds/validation,
-  `Motd` shape.
+- **Minor / not yet grilled**: `Team` fields, score-value bounds/validation.
+- **Motd** (site-wide banner) was **dropped** — see `SCENARIOS.md` ADMIN-08.

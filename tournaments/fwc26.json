@@ -1,0 +1,2593 @@
+{
+  "tournament_id": "fwc26",
+  "teams": [
+    {
+      "id": "MEX",
+      "name": "Mexico",
+      "short_code": "MEX",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "RSA",
+      "name": "South Africa",
+      "short_code": "RSA",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "KOR",
+      "name": "South Korea",
+      "short_code": "KOR",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "CZE",
+      "name": "Czechia",
+      "short_code": "CZE",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "CAN",
+      "name": "Canada",
+      "short_code": "CAN",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "BIH",
+      "name": "Bosnia and Herzegovina",
+      "short_code": "BIH",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "QAT",
+      "name": "Qatar",
+      "short_code": "QAT",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "SUI",
+      "name": "Switzerland",
+      "short_code": "SUI",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "BRA",
+      "name": "Brazil",
+      "short_code": "BRA",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "MAR",
+      "name": "Morocco",
+      "short_code": "MAR",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "HAI",
+      "name": "Haiti",
+      "short_code": "HAI",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "SCO",
+      "name": "Scotland",
+      "short_code": "SCO",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "USA",
+      "name": "USA",
+      "short_code": "USA",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "PAR",
+      "name": "Paraguay",
+      "short_code": "PAR",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "AUS",
+      "name": "Australia",
+      "short_code": "AUS",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "TUR",
+      "name": "Turkiye",
+      "short_code": "TUR",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "GER",
+      "name": "Germany",
+      "short_code": "GER",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "CUW",
+      "name": "Curacao",
+      "short_code": "CUW",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "CIV",
+      "name": "Ivory Coast",
+      "short_code": "CIV",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "ECU",
+      "name": "Ecuador",
+      "short_code": "ECU",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "NED",
+      "name": "Netherlands",
+      "short_code": "NED",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "JPN",
+      "name": "Japan",
+      "short_code": "JPN",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "SWE",
+      "name": "Sweden",
+      "short_code": "SWE",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "TUN",
+      "name": "Tunisia",
+      "short_code": "TUN",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "ESP",
+      "name": "Spain",
+      "short_code": "ESP",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "CPV",
+      "name": "Cape Verde",
+      "short_code": "CPV",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "KSA",
+      "name": "Saudi Arabia",
+      "short_code": "KSA",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "URU",
+      "name": "Uruguay",
+      "short_code": "URU",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "BEL",
+      "name": "Belgium",
+      "short_code": "BEL",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "EGY",
+      "name": "Egypt",
+      "short_code": "EGY",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "IRN",
+      "name": "Iran",
+      "short_code": "IRN",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "NZL",
+      "name": "New Zealand",
+      "short_code": "NZL",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "FRA",
+      "name": "France",
+      "short_code": "FRA",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "SEN",
+      "name": "Senegal",
+      "short_code": "SEN",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "IRQ",
+      "name": "Iraq",
+      "short_code": "IRQ",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "NOR",
+      "name": "Norway",
+      "short_code": "NOR",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "ARG",
+      "name": "Argentina",
+      "short_code": "ARG",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "ALG",
+      "name": "Algeria",
+      "short_code": "ALG",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "AUT",
+      "name": "Austria",
+      "short_code": "AUT",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "JOR",
+      "name": "Jordan",
+      "short_code": "JOR",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "POR",
+      "name": "Portugal",
+      "short_code": "POR",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "COD",
+      "name": "DR Congo",
+      "short_code": "COD",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "UZB",
+      "name": "Uzbekistan",
+      "short_code": "UZB",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "COL",
+      "name": "Colombia",
+      "short_code": "COL",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "ENG",
+      "name": "England",
+      "short_code": "ENG",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "CRO",
+      "name": "Croatia",
+      "short_code": "CRO",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "GHA",
+      "name": "Ghana",
+      "short_code": "GHA",
+      "flag": null,
+      "external_id": null
+    },
+    {
+      "id": "PAN",
+      "name": "Panama",
+      "short_code": "PAN",
+      "flag": null,
+      "external_id": null
+    }
+  ],
+  "groups": [
+    {
+      "id": "A",
+      "name": "Group A",
+      "parent": "GROUPSTAGE",
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M1",
+          "M2",
+          "M25",
+          "M28",
+          "M53",
+          "M54"
+        ]
+      }
+    },
+    {
+      "id": "B",
+      "name": "Group B",
+      "parent": "GROUPSTAGE",
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M3",
+          "M5",
+          "M26",
+          "M27",
+          "M49",
+          "M50"
+        ]
+      }
+    },
+    {
+      "id": "C",
+      "name": "Group C",
+      "parent": "GROUPSTAGE",
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M6",
+          "M7",
+          "M30",
+          "M31",
+          "M51",
+          "M52"
+        ]
+      }
+    },
+    {
+      "id": "D",
+      "name": "Group D",
+      "parent": "GROUPSTAGE",
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M4",
+          "M8",
+          "M29",
+          "M32",
+          "M59",
+          "M60"
+        ]
+      }
+    },
+    {
+      "id": "E",
+      "name": "Group E",
+      "parent": "GROUPSTAGE",
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M9",
+          "M11",
+          "M34",
+          "M35",
+          "M55",
+          "M56"
+        ]
+      }
+    },
+    {
+      "id": "F",
+      "name": "Group F",
+      "parent": "GROUPSTAGE",
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M10",
+          "M12",
+          "M33",
+          "M36",
+          "M57",
+          "M58"
+        ]
+      }
+    },
+    {
+      "id": "G",
+      "name": "Group G",
+      "parent": "GROUPSTAGE",
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M13",
+          "M15",
+          "M37",
+          "M39",
+          "M63",
+          "M64"
+        ]
+      }
+    },
+    {
+      "id": "H",
+      "name": "Group H",
+      "parent": "GROUPSTAGE",
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M14",
+          "M16",
+          "M38",
+          "M40",
+          "M65",
+          "M66"
+        ]
+      }
+    },
+    {
+      "id": "I",
+      "name": "Group I",
+      "parent": "GROUPSTAGE",
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M17",
+          "M18",
+          "M42",
+          "M43",
+          "M61",
+          "M62"
+        ]
+      }
+    },
+    {
+      "id": "J",
+      "name": "Group J",
+      "parent": "GROUPSTAGE",
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M19",
+          "M20",
+          "M41",
+          "M44",
+          "M71",
+          "M72"
+        ]
+      }
+    },
+    {
+      "id": "K",
+      "name": "Group K",
+      "parent": "GROUPSTAGE",
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M21",
+          "M24",
+          "M45",
+          "M48",
+          "M69",
+          "M70"
+        ]
+      }
+    },
+    {
+      "id": "L",
+      "name": "Group L",
+      "parent": "GROUPSTAGE",
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M22",
+          "M23",
+          "M46",
+          "M47",
+          "M67",
+          "M68"
+        ]
+      }
+    },
+    {
+      "id": "GROUPSTAGE",
+      "name": "Group Stage",
+      "parent": "ROOT",
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": false,
+      "children": {
+        "groups": [
+          "A",
+          "B",
+          "C",
+          "D",
+          "E",
+          "F",
+          "G",
+          "H",
+          "I",
+          "J",
+          "K",
+          "L"
+        ]
+      }
+    },
+    {
+      "id": "KO-M73",
+      "name": "Match M73",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M73"
+        ]
+      }
+    },
+    {
+      "id": "KO-M74",
+      "name": "Match M74",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M74"
+        ]
+      }
+    },
+    {
+      "id": "KO-M75",
+      "name": "Match M75",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M75"
+        ]
+      }
+    },
+    {
+      "id": "KO-M76",
+      "name": "Match M76",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M76"
+        ]
+      }
+    },
+    {
+      "id": "KO-M77",
+      "name": "Match M77",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M77"
+        ]
+      }
+    },
+    {
+      "id": "KO-M78",
+      "name": "Match M78",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M78"
+        ]
+      }
+    },
+    {
+      "id": "KO-M79",
+      "name": "Match M79",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M79"
+        ]
+      }
+    },
+    {
+      "id": "KO-M80",
+      "name": "Match M80",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M80"
+        ]
+      }
+    },
+    {
+      "id": "KO-M81",
+      "name": "Match M81",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M81"
+        ]
+      }
+    },
+    {
+      "id": "KO-M82",
+      "name": "Match M82",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M82"
+        ]
+      }
+    },
+    {
+      "id": "KO-M83",
+      "name": "Match M83",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M83"
+        ]
+      }
+    },
+    {
+      "id": "KO-M84",
+      "name": "Match M84",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M84"
+        ]
+      }
+    },
+    {
+      "id": "KO-M85",
+      "name": "Match M85",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M85"
+        ]
+      }
+    },
+    {
+      "id": "KO-M86",
+      "name": "Match M86",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M86"
+        ]
+      }
+    },
+    {
+      "id": "KO-M87",
+      "name": "Match M87",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M87"
+        ]
+      }
+    },
+    {
+      "id": "KO-M88",
+      "name": "Match M88",
+      "parent": "R32",
+      "round": "R32",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M88"
+        ]
+      }
+    },
+    {
+      "id": "KO-M89",
+      "name": "Match M89",
+      "parent": "R16",
+      "round": "R16",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M89"
+        ]
+      }
+    },
+    {
+      "id": "KO-M90",
+      "name": "Match M90",
+      "parent": "R16",
+      "round": "R16",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M90"
+        ]
+      }
+    },
+    {
+      "id": "KO-M91",
+      "name": "Match M91",
+      "parent": "R16",
+      "round": "R16",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M91"
+        ]
+      }
+    },
+    {
+      "id": "KO-M92",
+      "name": "Match M92",
+      "parent": "R16",
+      "round": "R16",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M92"
+        ]
+      }
+    },
+    {
+      "id": "KO-M93",
+      "name": "Match M93",
+      "parent": "R16",
+      "round": "R16",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M93"
+        ]
+      }
+    },
+    {
+      "id": "KO-M94",
+      "name": "Match M94",
+      "parent": "R16",
+      "round": "R16",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M94"
+        ]
+      }
+    },
+    {
+      "id": "KO-M95",
+      "name": "Match M95",
+      "parent": "R16",
+      "round": "R16",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M95"
+        ]
+      }
+    },
+    {
+      "id": "KO-M96",
+      "name": "Match M96",
+      "parent": "R16",
+      "round": "R16",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M96"
+        ]
+      }
+    },
+    {
+      "id": "KO-M97",
+      "name": "Match M97",
+      "parent": "QF",
+      "round": "QF",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M97"
+        ]
+      }
+    },
+    {
+      "id": "KO-M98",
+      "name": "Match M98",
+      "parent": "QF",
+      "round": "QF",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M98"
+        ]
+      }
+    },
+    {
+      "id": "KO-M99",
+      "name": "Match M99",
+      "parent": "QF",
+      "round": "QF",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M99"
+        ]
+      }
+    },
+    {
+      "id": "KO-M100",
+      "name": "Match M100",
+      "parent": "QF",
+      "round": "QF",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M100"
+        ]
+      }
+    },
+    {
+      "id": "KO-M101",
+      "name": "Match M101",
+      "parent": "SF",
+      "round": "SF",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M101"
+        ]
+      }
+    },
+    {
+      "id": "KO-M102",
+      "name": "Match M102",
+      "parent": "SF",
+      "round": "SF",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M102"
+        ]
+      }
+    },
+    {
+      "id": "KO-M103",
+      "name": "Match M103",
+      "parent": "THIRD",
+      "round": "ThirdPlace",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M103"
+        ]
+      }
+    },
+    {
+      "id": "KO-M104",
+      "name": "Match M104",
+      "parent": "FINAL",
+      "round": "Final",
+      "lock_mode": "LockPerMatch",
+      "carries_standings": true,
+      "children": {
+        "games": [
+          "M104"
+        ]
+      }
+    },
+    {
+      "id": "R32",
+      "name": "Round of 32",
+      "parent": "KNOCKOUT",
+      "round": "R32",
+      "lock_mode": "LockTogether",
+      "carries_standings": false,
+      "children": {
+        "groups": [
+          "KO-M73",
+          "KO-M74",
+          "KO-M75",
+          "KO-M76",
+          "KO-M77",
+          "KO-M78",
+          "KO-M79",
+          "KO-M80",
+          "KO-M81",
+          "KO-M82",
+          "KO-M83",
+          "KO-M84",
+          "KO-M85",
+          "KO-M86",
+          "KO-M87",
+          "KO-M88"
+        ]
+      }
+    },
+    {
+      "id": "R16",
+      "name": "Round of 16",
+      "parent": "KNOCKOUT",
+      "round": "R16",
+      "lock_mode": "LockTogether",
+      "carries_standings": false,
+      "children": {
+        "groups": [
+          "KO-M89",
+          "KO-M90",
+          "KO-M91",
+          "KO-M92",
+          "KO-M93",
+          "KO-M94",
+          "KO-M95",
+          "KO-M96"
+        ]
+      }
+    },
+    {
+      "id": "QF",
+      "name": "Quarter-finals",
+      "parent": "KNOCKOUT",
+      "round": "QF",
+      "lock_mode": "LockTogether",
+      "carries_standings": false,
+      "children": {
+        "groups": [
+          "KO-M97",
+          "KO-M98",
+          "KO-M99",
+          "KO-M100"
+        ]
+      }
+    },
+    {
+      "id": "SF",
+      "name": "Semi-finals",
+      "parent": "KNOCKOUT",
+      "round": "SF",
+      "lock_mode": "LockTogether",
+      "carries_standings": false,
+      "children": {
+        "groups": [
+          "KO-M101",
+          "KO-M102"
+        ]
+      }
+    },
+    {
+      "id": "THIRD",
+      "name": "Third-place play-off",
+      "parent": "KNOCKOUT",
+      "round": "ThirdPlace",
+      "lock_mode": "LockTogether",
+      "carries_standings": false,
+      "children": {
+        "groups": [
+          "KO-M103"
+        ]
+      }
+    },
+    {
+      "id": "FINAL",
+      "name": "Final",
+      "parent": "KNOCKOUT",
+      "round": "Final",
+      "lock_mode": "LockTogether",
+      "carries_standings": false,
+      "children": {
+        "groups": [
+          "KO-M104"
+        ]
+      }
+    },
+    {
+      "id": "KNOCKOUT",
+      "name": "Knockout Stage",
+      "parent": "ROOT",
+      "round": "R32",
+      "lock_mode": "LockTogether",
+      "carries_standings": false,
+      "children": {
+        "groups": [
+          "R32",
+          "R16",
+          "QF",
+          "SF",
+          "THIRD",
+          "FINAL"
+        ]
+      }
+    },
+    {
+      "id": "ROOT",
+      "name": "FIFA World Cup 2026",
+      "parent": null,
+      "round": "GroupStage",
+      "lock_mode": "LockTogether",
+      "carries_standings": false,
+      "children": {
+        "groups": [
+          "GROUPSTAGE",
+          "KNOCKOUT"
+        ]
+      }
+    }
+  ],
+  "games": [
+    {
+      "id": "M1",
+      "kickoff": "2026-06-11T19:00:00Z",
+      "venue": null,
+      "group_id": "A",
+      "home": {
+        "team_id": "MEX",
+        "description": "A1"
+      },
+      "away": {
+        "team_id": "RSA",
+        "description": "A2"
+      }
+    },
+    {
+      "id": "M2",
+      "kickoff": "2026-06-12T02:00:00Z",
+      "venue": null,
+      "group_id": "A",
+      "home": {
+        "team_id": "KOR",
+        "description": "A3"
+      },
+      "away": {
+        "team_id": "CZE",
+        "description": "A4"
+      }
+    },
+    {
+      "id": "M3",
+      "kickoff": "2026-06-12T19:00:00Z",
+      "venue": null,
+      "group_id": "B",
+      "home": {
+        "team_id": "CAN",
+        "description": "B1"
+      },
+      "away": {
+        "team_id": "BIH",
+        "description": "B2"
+      }
+    },
+    {
+      "id": "M4",
+      "kickoff": "2026-06-13T01:00:00Z",
+      "venue": null,
+      "group_id": "D",
+      "home": {
+        "team_id": "USA",
+        "description": "D1"
+      },
+      "away": {
+        "team_id": "PAR",
+        "description": "D2"
+      }
+    },
+    {
+      "id": "M5",
+      "kickoff": "2026-06-13T19:00:00Z",
+      "venue": null,
+      "group_id": "B",
+      "home": {
+        "team_id": "QAT",
+        "description": "B3"
+      },
+      "away": {
+        "team_id": "SUI",
+        "description": "B4"
+      }
+    },
+    {
+      "id": "M6",
+      "kickoff": "2026-06-13T22:00:00Z",
+      "venue": null,
+      "group_id": "C",
+      "home": {
+        "team_id": "BRA",
+        "description": "C1"
+      },
+      "away": {
+        "team_id": "MAR",
+        "description": "C2"
+      }
+    },
+    {
+      "id": "M7",
+      "kickoff": "2026-06-14T01:00:00Z",
+      "venue": null,
+      "group_id": "C",
+      "home": {
+        "team_id": "HAI",
+        "description": "C3"
+      },
+      "away": {
+        "team_id": "SCO",
+        "description": "C4"
+      }
+    },
+    {
+      "id": "M8",
+      "kickoff": "2026-06-14T04:00:00Z",
+      "venue": null,
+      "group_id": "D",
+      "home": {
+        "team_id": "AUS",
+        "description": "D3"
+      },
+      "away": {
+        "team_id": "TUR",
+        "description": "D4"
+      }
+    },
+    {
+      "id": "M9",
+      "kickoff": "2026-06-14T17:00:00Z",
+      "venue": null,
+      "group_id": "E",
+      "home": {
+        "team_id": "GER",
+        "description": "E1"
+      },
+      "away": {
+        "team_id": "CUW",
+        "description": "E2"
+      }
+    },
+    {
+      "id": "M10",
+      "kickoff": "2026-06-14T20:00:00Z",
+      "venue": null,
+      "group_id": "F",
+      "home": {
+        "team_id": "NED",
+        "description": "F1"
+      },
+      "away": {
+        "team_id": "JPN",
+        "description": "F2"
+      }
+    },
+    {
+      "id": "M11",
+      "kickoff": "2026-06-14T23:00:00Z",
+      "venue": null,
+      "group_id": "E",
+      "home": {
+        "team_id": "CIV",
+        "description": "E3"
+      },
+      "away": {
+        "team_id": "ECU",
+        "description": "E4"
+      }
+    },
+    {
+      "id": "M12",
+      "kickoff": "2026-06-15T02:00:00Z",
+      "venue": null,
+      "group_id": "F",
+      "home": {
+        "team_id": "SWE",
+        "description": "F3"
+      },
+      "away": {
+        "team_id": "TUN",
+        "description": "F4"
+      }
+    },
+    {
+      "id": "M13",
+      "kickoff": "2026-06-15T16:00:00Z",
+      "venue": null,
+      "group_id": "G",
+      "home": {
+        "team_id": "ESP",
+        "description": "G1"
+      },
+      "away": {
+        "team_id": "CPV",
+        "description": "G2"
+      }
+    },
+    {
+      "id": "M14",
+      "kickoff": "2026-06-15T19:00:00Z",
+      "venue": null,
+      "group_id": "H",
+      "home": {
+        "team_id": "BEL",
+        "description": "H1"
+      },
+      "away": {
+        "team_id": "EGY",
+        "description": "H2"
+      }
+    },
+    {
+      "id": "M15",
+      "kickoff": "2026-06-15T22:00:00Z",
+      "venue": null,
+      "group_id": "G",
+      "home": {
+        "team_id": "KSA",
+        "description": "G3"
+      },
+      "away": {
+        "team_id": "URU",
+        "description": "G4"
+      }
+    },
+    {
+      "id": "M16",
+      "kickoff": "2026-06-16T01:00:00Z",
+      "venue": null,
+      "group_id": "H",
+      "home": {
+        "team_id": "IRN",
+        "description": "H3"
+      },
+      "away": {
+        "team_id": "NZL",
+        "description": "H4"
+      }
+    },
+    {
+      "id": "M17",
+      "kickoff": "2026-06-16T19:00:00Z",
+      "venue": null,
+      "group_id": "I",
+      "home": {
+        "team_id": "FRA",
+        "description": "I1"
+      },
+      "away": {
+        "team_id": "SEN",
+        "description": "I2"
+      }
+    },
+    {
+      "id": "M18",
+      "kickoff": "2026-06-16T22:00:00Z",
+      "venue": null,
+      "group_id": "I",
+      "home": {
+        "team_id": "IRQ",
+        "description": "I3"
+      },
+      "away": {
+        "team_id": "NOR",
+        "description": "I4"
+      }
+    },
+    {
+      "id": "M19",
+      "kickoff": "2026-06-17T01:00:00Z",
+      "venue": null,
+      "group_id": "J",
+      "home": {
+        "team_id": "ARG",
+        "description": "J1"
+      },
+      "away": {
+        "team_id": "ALG",
+        "description": "J2"
+      }
+    },
+    {
+      "id": "M20",
+      "kickoff": "2026-06-17T04:00:00Z",
+      "venue": null,
+      "group_id": "J",
+      "home": {
+        "team_id": "AUT",
+        "description": "J3"
+      },
+      "away": {
+        "team_id": "JOR",
+        "description": "J4"
+      }
+    },
+    {
+      "id": "M21",
+      "kickoff": "2026-06-17T17:00:00Z",
+      "venue": null,
+      "group_id": "K",
+      "home": {
+        "team_id": "POR",
+        "description": "K1"
+      },
+      "away": {
+        "team_id": "COD",
+        "description": "K2"
+      }
+    },
+    {
+      "id": "M22",
+      "kickoff": "2026-06-17T20:00:00Z",
+      "venue": null,
+      "group_id": "L",
+      "home": {
+        "team_id": "ENG",
+        "description": "L1"
+      },
+      "away": {
+        "team_id": "CRO",
+        "description": "L2"
+      }
+    },
+    {
+      "id": "M23",
+      "kickoff": "2026-06-17T23:00:00Z",
+      "venue": null,
+      "group_id": "L",
+      "home": {
+        "team_id": "GHA",
+        "description": "L3"
+      },
+      "away": {
+        "team_id": "PAN",
+        "description": "L4"
+      }
+    },
+    {
+      "id": "M24",
+      "kickoff": "2026-06-18T02:00:00Z",
+      "venue": null,
+      "group_id": "K",
+      "home": {
+        "team_id": "UZB",
+        "description": "K3"
+      },
+      "away": {
+        "team_id": "COL",
+        "description": "K4"
+      }
+    },
+    {
+      "id": "M25",
+      "kickoff": "2026-06-18T16:00:00Z",
+      "venue": null,
+      "group_id": "A",
+      "home": {
+        "team_id": "CZE",
+        "description": "A4"
+      },
+      "away": {
+        "team_id": "RSA",
+        "description": "A2"
+      }
+    },
+    {
+      "id": "M26",
+      "kickoff": "2026-06-18T19:00:00Z",
+      "venue": null,
+      "group_id": "B",
+      "home": {
+        "team_id": "SUI",
+        "description": "B4"
+      },
+      "away": {
+        "team_id": "BIH",
+        "description": "B2"
+      }
+    },
+    {
+      "id": "M27",
+      "kickoff": "2026-06-18T22:00:00Z",
+      "venue": null,
+      "group_id": "B",
+      "home": {
+        "team_id": "CAN",
+        "description": "B1"
+      },
+      "away": {
+        "team_id": "QAT",
+        "description": "B3"
+      }
+    },
+    {
+      "id": "M28",
+      "kickoff": "2026-06-19T01:00:00Z",
+      "venue": null,
+      "group_id": "A",
+      "home": {
+        "team_id": "MEX",
+        "description": "A1"
+      },
+      "away": {
+        "team_id": "KOR",
+        "description": "A3"
+      }
+    },
+    {
+      "id": "M29",
+      "kickoff": "2026-06-19T19:00:00Z",
+      "venue": null,
+      "group_id": "D",
+      "home": {
+        "team_id": "USA",
+        "description": "D1"
+      },
+      "away": {
+        "team_id": "AUS",
+        "description": "D3"
+      }
+    },
+    {
+      "id": "M30",
+      "kickoff": "2026-06-19T22:00:00Z",
+      "venue": null,
+      "group_id": "C",
+      "home": {
+        "team_id": "SCO",
+        "description": "C4"
+      },
+      "away": {
+        "team_id": "MAR",
+        "description": "C2"
+      }
+    },
+    {
+      "id": "M31",
+      "kickoff": "2026-06-20T00:30:00Z",
+      "venue": null,
+      "group_id": "C",
+      "home": {
+        "team_id": "BRA",
+        "description": "C1"
+      },
+      "away": {
+        "team_id": "HAI",
+        "description": "C3"
+      }
+    },
+    {
+      "id": "M32",
+      "kickoff": "2026-06-20T03:00:00Z",
+      "venue": null,
+      "group_id": "D",
+      "home": {
+        "team_id": "TUR",
+        "description": "D4"
+      },
+      "away": {
+        "team_id": "PAR",
+        "description": "D2"
+      }
+    },
+    {
+      "id": "M33",
+      "kickoff": "2026-06-20T17:00:00Z",
+      "venue": null,
+      "group_id": "F",
+      "home": {
+        "team_id": "NED",
+        "description": "F1"
+      },
+      "away": {
+        "team_id": "SWE",
+        "description": "F3"
+      }
+    },
+    {
+      "id": "M34",
+      "kickoff": "2026-06-20T20:00:00Z",
+      "venue": null,
+      "group_id": "E",
+      "home": {
+        "team_id": "GER",
+        "description": "E1"
+      },
+      "away": {
+        "team_id": "CIV",
+        "description": "E3"
+      }
+    },
+    {
+      "id": "M35",
+      "kickoff": "2026-06-21T00:00:00Z",
+      "venue": null,
+      "group_id": "E",
+      "home": {
+        "team_id": "ECU",
+        "description": "E4"
+      },
+      "away": {
+        "team_id": "CUW",
+        "description": "E2"
+      }
+    },
+    {
+      "id": "M36",
+      "kickoff": "2026-06-21T04:00:00Z",
+      "venue": null,
+      "group_id": "F",
+      "home": {
+        "team_id": "TUN",
+        "description": "F4"
+      },
+      "away": {
+        "team_id": "JPN",
+        "description": "F2"
+      }
+    },
+    {
+      "id": "M37",
+      "kickoff": "2026-06-21T16:00:00Z",
+      "venue": null,
+      "group_id": "G",
+      "home": {
+        "team_id": "ESP",
+        "description": "G1"
+      },
+      "away": {
+        "team_id": "KSA",
+        "description": "G3"
+      }
+    },
+    {
+      "id": "M38",
+      "kickoff": "2026-06-21T19:00:00Z",
+      "venue": null,
+      "group_id": "H",
+      "home": {
+        "team_id": "BEL",
+        "description": "H1"
+      },
+      "away": {
+        "team_id": "IRN",
+        "description": "H3"
+      }
+    },
+    {
+      "id": "M39",
+      "kickoff": "2026-06-21T22:00:00Z",
+      "venue": null,
+      "group_id": "G",
+      "home": {
+        "team_id": "URU",
+        "description": "G4"
+      },
+      "away": {
+        "team_id": "CPV",
+        "description": "G2"
+      }
+    },
+    {
+      "id": "M40",
+      "kickoff": "2026-06-22T01:00:00Z",
+      "venue": null,
+      "group_id": "H",
+      "home": {
+        "team_id": "NZL",
+        "description": "H4"
+      },
+      "away": {
+        "team_id": "EGY",
+        "description": "H2"
+      }
+    },
+    {
+      "id": "M41",
+      "kickoff": "2026-06-22T17:00:00Z",
+      "venue": null,
+      "group_id": "J",
+      "home": {
+        "team_id": "ARG",
+        "description": "J1"
+      },
+      "away": {
+        "team_id": "AUT",
+        "description": "J3"
+      }
+    },
+    {
+      "id": "M42",
+      "kickoff": "2026-06-22T21:00:00Z",
+      "venue": null,
+      "group_id": "I",
+      "home": {
+        "team_id": "FRA",
+        "description": "I1"
+      },
+      "away": {
+        "team_id": "IRQ",
+        "description": "I3"
+      }
+    },
+    {
+      "id": "M43",
+      "kickoff": "2026-06-23T00:00:00Z",
+      "venue": null,
+      "group_id": "I",
+      "home": {
+        "team_id": "NOR",
+        "description": "I4"
+      },
+      "away": {
+        "team_id": "SEN",
+        "description": "I2"
+      }
+    },
+    {
+      "id": "M44",
+      "kickoff": "2026-06-23T03:00:00Z",
+      "venue": null,
+      "group_id": "J",
+      "home": {
+        "team_id": "JOR",
+        "description": "J4"
+      },
+      "away": {
+        "team_id": "ALG",
+        "description": "J2"
+      }
+    },
+    {
+      "id": "M45",
+      "kickoff": "2026-06-23T17:00:00Z",
+      "venue": null,
+      "group_id": "K",
+      "home": {
+        "team_id": "POR",
+        "description": "K1"
+      },
+      "away": {
+        "team_id": "UZB",
+        "description": "K3"
+      }
+    },
+    {
+      "id": "M46",
+      "kickoff": "2026-06-23T20:00:00Z",
+      "venue": null,
+      "group_id": "L",
+      "home": {
+        "team_id": "ENG",
+        "description": "L1"
+      },
+      "away": {
+        "team_id": "GHA",
+        "description": "L3"
+      }
+    },
+    {
+      "id": "M47",
+      "kickoff": "2026-06-23T23:00:00Z",
+      "venue": null,
+      "group_id": "L",
+      "home": {
+        "team_id": "PAN",
+        "description": "L4"
+      },
+      "away": {
+        "team_id": "CRO",
+        "description": "L2"
+      }
+    },
+    {
+      "id": "M48",
+      "kickoff": "2026-06-24T02:00:00Z",
+      "venue": null,
+      "group_id": "K",
+      "home": {
+        "team_id": "COL",
+        "description": "K4"
+      },
+      "away": {
+        "team_id": "COD",
+        "description": "K2"
+      }
+    },
+    {
+      "id": "M49",
+      "kickoff": "2026-06-24T19:00:00Z",
+      "venue": null,
+      "group_id": "B",
+      "home": {
+        "team_id": "BIH",
+        "description": "B2"
+      },
+      "away": {
+        "team_id": "QAT",
+        "description": "B3"
+      }
+    },
+    {
+      "id": "M50",
+      "kickoff": "2026-06-24T19:00:00Z",
+      "venue": null,
+      "group_id": "B",
+      "home": {
+        "team_id": "SUI",
+        "description": "B4"
+      },
+      "away": {
+        "team_id": "CAN",
+        "description": "B1"
+      }
+    },
+    {
+      "id": "M51",
+      "kickoff": "2026-06-24T22:00:00Z",
+      "venue": null,
+      "group_id": "C",
+      "home": {
+        "team_id": "MAR",
+        "description": "C2"
+      },
+      "away": {
+        "team_id": "HAI",
+        "description": "C3"
+      }
+    },
+    {
+      "id": "M52",
+      "kickoff": "2026-06-24T22:00:00Z",
+      "venue": null,
+      "group_id": "C",
+      "home": {
+        "team_id": "SCO",
+        "description": "C4"
+      },
+      "away": {
+        "team_id": "BRA",
+        "description": "C1"
+      }
+    },
+    {
+      "id": "M53",
+      "kickoff": "2026-06-25T01:00:00Z",
+      "venue": null,
+      "group_id": "A",
+      "home": {
+        "team_id": "CZE",
+        "description": "A4"
+      },
+      "away": {
+        "team_id": "MEX",
+        "description": "A1"
+      }
+    },
+    {
+      "id": "M54",
+      "kickoff": "2026-06-25T01:00:00Z",
+      "venue": null,
+      "group_id": "A",
+      "home": {
+        "team_id": "RSA",
+        "description": "A2"
+      },
+      "away": {
+        "team_id": "KOR",
+        "description": "A3"
+      }
+    },
+    {
+      "id": "M55",
+      "kickoff": "2026-06-25T20:00:00Z",
+      "venue": null,
+      "group_id": "E",
+      "home": {
+        "team_id": "CUW",
+        "description": "E2"
+      },
+      "away": {
+        "team_id": "CIV",
+        "description": "E3"
+      }
+    },
+    {
+      "id": "M56",
+      "kickoff": "2026-06-25T20:00:00Z",
+      "venue": null,
+      "group_id": "E",
+      "home": {
+        "team_id": "ECU",
+        "description": "E4"
+      },
+      "away": {
+        "team_id": "GER",
+        "description": "E1"
+      }
+    },
+    {
+      "id": "M57",
+      "kickoff": "2026-06-25T23:00:00Z",
+      "venue": null,
+      "group_id": "F",
+      "home": {
+        "team_id": "JPN",
+        "description": "F2"
+      },
+      "away": {
+        "team_id": "SWE",
+        "description": "F3"
+      }
+    },
+    {
+      "id": "M58",
+      "kickoff": "2026-06-25T23:00:00Z",
+      "venue": null,
+      "group_id": "F",
+      "home": {
+        "team_id": "TUN",
+        "description": "F4"
+      },
+      "away": {
+        "team_id": "NED",
+        "description": "F1"
+      }
+    },
+    {
+      "id": "M59",
+      "kickoff": "2026-06-26T02:00:00Z",
+      "venue": null,
+      "group_id": "D",
+      "home": {
+        "team_id": "PAR",
+        "description": "D2"
+      },
+      "away": {
+        "team_id": "AUS",
+        "description": "D3"
+      }
+    },
+    {
+      "id": "M60",
+      "kickoff": "2026-06-26T02:00:00Z",
+      "venue": null,
+      "group_id": "D",
+      "home": {
+        "team_id": "TUR",
+        "description": "D4"
+      },
+      "away": {
+        "team_id": "USA",
+        "description": "D1"
+      }
+    },
+    {
+      "id": "M61",
+      "kickoff": "2026-06-26T19:00:00Z",
+      "venue": null,
+      "group_id": "I",
+      "home": {
+        "team_id": "NOR",
+        "description": "I4"
+      },
+      "away": {
+        "team_id": "FRA",
+        "description": "I1"
+      }
+    },
+    {
+      "id": "M62",
+      "kickoff": "2026-06-26T19:00:00Z",
+      "venue": null,
+      "group_id": "I",
+      "home": {
+        "team_id": "SEN",
+        "description": "I2"
+      },
+      "away": {
+        "team_id": "IRQ",
+        "description": "I3"
+      }
+    },
+    {
+      "id": "M63",
+      "kickoff": "2026-06-27T00:00:00Z",
+      "venue": null,
+      "group_id": "G",
+      "home": {
+        "team_id": "CPV",
+        "description": "G2"
+      },
+      "away": {
+        "team_id": "KSA",
+        "description": "G3"
+      }
+    },
+    {
+      "id": "M64",
+      "kickoff": "2026-06-27T00:00:00Z",
+      "venue": null,
+      "group_id": "G",
+      "home": {
+        "team_id": "URU",
+        "description": "G4"
+      },
+      "away": {
+        "team_id": "ESP",
+        "description": "G1"
+      }
+    },
+    {
+      "id": "M65",
+      "kickoff": "2026-06-27T03:00:00Z",
+      "venue": null,
+      "group_id": "H",
+      "home": {
+        "team_id": "EGY",
+        "description": "H2"
+      },
+      "away": {
+        "team_id": "IRN",
+        "description": "H3"
+      }
+    },
+    {
+      "id": "M66",
+      "kickoff": "2026-06-27T03:00:00Z",
+      "venue": null,
+      "group_id": "H",
+      "home": {
+        "team_id": "NZL",
+        "description": "H4"
+      },
+      "away": {
+        "team_id": "BEL",
+        "description": "H1"
+      }
+    },
+    {
+      "id": "M67",
+      "kickoff": "2026-06-27T21:00:00Z",
+      "venue": null,
+      "group_id": "L",
+      "home": {
+        "team_id": "CRO",
+        "description": "L2"
+      },
+      "away": {
+        "team_id": "GHA",
+        "description": "L3"
+      }
+    },
+    {
+      "id": "M68",
+      "kickoff": "2026-06-27T21:00:00Z",
+      "venue": null,
+      "group_id": "L",
+      "home": {
+        "team_id": "PAN",
+        "description": "L4"
+      },
+      "away": {
+        "team_id": "ENG",
+        "description": "L1"
+      }
+    },
+    {
+      "id": "M69",
+      "kickoff": "2026-06-27T23:30:00Z",
+      "venue": null,
+      "group_id": "K",
+      "home": {
+        "team_id": "COL",
+        "description": "K4"
+      },
+      "away": {
+        "team_id": "POR",
+        "description": "K1"
+      }
+    },
+    {
+      "id": "M70",
+      "kickoff": "2026-06-27T23:30:00Z",
+      "venue": null,
+      "group_id": "K",
+      "home": {
+        "team_id": "COD",
+        "description": "K2"
+      },
+      "away": {
+        "team_id": "UZB",
+        "description": "K3"
+      }
+    },
+    {
+      "id": "M71",
+      "kickoff": "2026-06-28T02:00:00Z",
+      "venue": null,
+      "group_id": "J",
+      "home": {
+        "team_id": "ALG",
+        "description": "J2"
+      },
+      "away": {
+        "team_id": "AUT",
+        "description": "J3"
+      }
+    },
+    {
+      "id": "M72",
+      "kickoff": "2026-06-28T02:00:00Z",
+      "venue": null,
+      "group_id": "J",
+      "home": {
+        "team_id": "JOR",
+        "description": "J4"
+      },
+      "away": {
+        "team_id": "ARG",
+        "description": "J1"
+      }
+    },
+    {
+      "id": "M73",
+      "kickoff": "2026-06-28T19:00:00Z",
+      "venue": null,
+      "group_id": "KO-M73",
+      "home": {
+        "team_id": null,
+        "description": "2A"
+      },
+      "away": {
+        "team_id": null,
+        "description": "2B"
+      }
+    },
+    {
+      "id": "M74",
+      "kickoff": "2026-06-29T17:00:00Z",
+      "venue": null,
+      "group_id": "KO-M74",
+      "home": {
+        "team_id": null,
+        "description": "1E"
+      },
+      "away": {
+        "team_id": null,
+        "description": "3ABCDF"
+      }
+    },
+    {
+      "id": "M75",
+      "kickoff": "2026-06-29T20:30:00Z",
+      "venue": null,
+      "group_id": "KO-M75",
+      "home": {
+        "team_id": null,
+        "description": "1F"
+      },
+      "away": {
+        "team_id": null,
+        "description": "2C"
+      }
+    },
+    {
+      "id": "M76",
+      "kickoff": "2026-06-30T01:00:00Z",
+      "venue": null,
+      "group_id": "KO-M76",
+      "home": {
+        "team_id": null,
+        "description": "1C"
+      },
+      "away": {
+        "team_id": null,
+        "description": "2F"
+      }
+    },
+    {
+      "id": "M77",
+      "kickoff": "2026-06-30T17:00:00Z",
+      "venue": null,
+      "group_id": "KO-M77",
+      "home": {
+        "team_id": null,
+        "description": "1I"
+      },
+      "away": {
+        "team_id": null,
+        "description": "3CDFGH"
+      }
+    },
+    {
+      "id": "M78",
+      "kickoff": "2026-06-30T21:00:00Z",
+      "venue": null,
+      "group_id": "KO-M78",
+      "home": {
+        "team_id": null,
+        "description": "2E"
+      },
+      "away": {
+        "team_id": null,
+        "description": "2I"
+      }
+    },
+    {
+      "id": "M79",
+      "kickoff": "2026-07-01T01:00:00Z",
+      "venue": null,
+      "group_id": "KO-M79",
+      "home": {
+        "team_id": null,
+        "description": "1A"
+      },
+      "away": {
+        "team_id": null,
+        "description": "3CEFHI"
+      }
+    },
+    {
+      "id": "M80",
+      "kickoff": "2026-07-01T16:00:00Z",
+      "venue": null,
+      "group_id": "KO-M80",
+      "home": {
+        "team_id": null,
+        "description": "1L"
+      },
+      "away": {
+        "team_id": null,
+        "description": "3EHIJK"
+      }
+    },
+    {
+      "id": "M81",
+      "kickoff": "2026-07-01T20:00:00Z",
+      "venue": null,
+      "group_id": "KO-M81",
+      "home": {
+        "team_id": null,
+        "description": "1D"
+      },
+      "away": {
+        "team_id": null,
+        "description": "3BEFIJ"
+      }
+    },
+    {
+      "id": "M82",
+      "kickoff": "2026-07-02T00:00:00Z",
+      "venue": null,
+      "group_id": "KO-M82",
+      "home": {
+        "team_id": null,
+        "description": "1G"
+      },
+      "away": {
+        "team_id": null,
+        "description": "3AEHIJ"
+      }
+    },
+    {
+      "id": "M83",
+      "kickoff": "2026-07-02T19:00:00Z",
+      "venue": null,
+      "group_id": "KO-M83",
+      "home": {
+        "team_id": null,
+        "description": "2K"
+      },
+      "away": {
+        "team_id": null,
+        "description": "2L"
+      }
+    },
+    {
+      "id": "M84",
+      "kickoff": "2026-07-02T23:00:00Z",
+      "venue": null,
+      "group_id": "KO-M84",
+      "home": {
+        "team_id": null,
+        "description": "1H"
+      },
+      "away": {
+        "team_id": null,
+        "description": "2J"
+      }
+    },
+    {
+      "id": "M85",
+      "kickoff": "2026-07-03T03:00:00Z",
+      "venue": null,
+      "group_id": "KO-M85",
+      "home": {
+        "team_id": null,
+        "description": "1B"
+      },
+      "away": {
+        "team_id": null,
+        "description": "3EFGIJ"
+      }
+    },
+    {
+      "id": "M86",
+      "kickoff": "2026-07-03T18:00:00Z",
+      "venue": null,
+      "group_id": "KO-M86",
+      "home": {
+        "team_id": null,
+        "description": "1J"
+      },
+      "away": {
+        "team_id": null,
+        "description": "2H"
+      }
+    },
+    {
+      "id": "M87",
+      "kickoff": "2026-07-03T22:00:00Z",
+      "venue": null,
+      "group_id": "KO-M87",
+      "home": {
+        "team_id": null,
+        "description": "1K"
+      },
+      "away": {
+        "team_id": null,
+        "description": "3DEIJL"
+      }
+    },
+    {
+      "id": "M88",
+      "kickoff": "2026-07-04T01:30:00Z",
+      "venue": null,
+      "group_id": "KO-M88",
+      "home": {
+        "team_id": null,
+        "description": "2D"
+      },
+      "away": {
+        "team_id": null,
+        "description": "2G"
+      }
+    },
+    {
+      "id": "M89",
+      "kickoff": "2026-07-04T17:00:00Z",
+      "venue": null,
+      "group_id": "KO-M89",
+      "home": {
+        "team_id": null,
+        "description": "Winner M74"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M77"
+      }
+    },
+    {
+      "id": "M90",
+      "kickoff": "2026-07-04T21:00:00Z",
+      "venue": null,
+      "group_id": "KO-M90",
+      "home": {
+        "team_id": null,
+        "description": "Winner M73"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M75"
+      }
+    },
+    {
+      "id": "M91",
+      "kickoff": "2026-07-05T20:00:00Z",
+      "venue": null,
+      "group_id": "KO-M91",
+      "home": {
+        "team_id": null,
+        "description": "Winner M76"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M78"
+      }
+    },
+    {
+      "id": "M92",
+      "kickoff": "2026-07-06T00:00:00Z",
+      "venue": null,
+      "group_id": "KO-M92",
+      "home": {
+        "team_id": null,
+        "description": "Winner M79"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M80"
+      }
+    },
+    {
+      "id": "M93",
+      "kickoff": "2026-07-06T19:00:00Z",
+      "venue": null,
+      "group_id": "KO-M93",
+      "home": {
+        "team_id": null,
+        "description": "Winner M83"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M84"
+      }
+    },
+    {
+      "id": "M94",
+      "kickoff": "2026-07-07T00:00:00Z",
+      "venue": null,
+      "group_id": "KO-M94",
+      "home": {
+        "team_id": null,
+        "description": "Winner M81"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M82"
+      }
+    },
+    {
+      "id": "M95",
+      "kickoff": "2026-07-07T16:00:00Z",
+      "venue": null,
+      "group_id": "KO-M95",
+      "home": {
+        "team_id": null,
+        "description": "Winner M86"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M88"
+      }
+    },
+    {
+      "id": "M96",
+      "kickoff": "2026-07-07T20:00:00Z",
+      "venue": null,
+      "group_id": "KO-M96",
+      "home": {
+        "team_id": null,
+        "description": "Winner M85"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M87"
+      }
+    },
+    {
+      "id": "M97",
+      "kickoff": "2026-07-09T20:00:00Z",
+      "venue": null,
+      "group_id": "KO-M97",
+      "home": {
+        "team_id": null,
+        "description": "Winner M89"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M90"
+      }
+    },
+    {
+      "id": "M98",
+      "kickoff": "2026-07-10T19:00:00Z",
+      "venue": null,
+      "group_id": "KO-M98",
+      "home": {
+        "team_id": null,
+        "description": "Winner M93"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M94"
+      }
+    },
+    {
+      "id": "M99",
+      "kickoff": "2026-07-11T21:00:00Z",
+      "venue": null,
+      "group_id": "KO-M99",
+      "home": {
+        "team_id": null,
+        "description": "Winner M91"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M92"
+      }
+    },
+    {
+      "id": "M100",
+      "kickoff": "2026-07-12T01:00:00Z",
+      "venue": null,
+      "group_id": "KO-M100",
+      "home": {
+        "team_id": null,
+        "description": "Winner M95"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M96"
+      }
+    },
+    {
+      "id": "M101",
+      "kickoff": "2026-07-14T19:00:00Z",
+      "venue": null,
+      "group_id": "KO-M101",
+      "home": {
+        "team_id": null,
+        "description": "Winner M97"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M98"
+      }
+    },
+    {
+      "id": "M102",
+      "kickoff": "2026-07-15T19:00:00Z",
+      "venue": null,
+      "group_id": "KO-M102",
+      "home": {
+        "team_id": null,
+        "description": "Winner M99"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M100"
+      }
+    },
+    {
+      "id": "M103",
+      "kickoff": "2026-07-18T21:00:00Z",
+      "venue": null,
+      "group_id": "KO-M103",
+      "home": {
+        "team_id": null,
+        "description": "Loser M101"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Loser M102"
+      }
+    },
+    {
+      "id": "M104",
+      "kickoff": "2026-07-19T19:00:00Z",
+      "venue": null,
+      "group_id": "KO-M104",
+      "home": {
+        "team_id": null,
+        "description": "Winner M101"
+      },
+      "away": {
+        "team_id": null,
+        "description": "Winner M102"
+      }
+    }
+  ]
+}

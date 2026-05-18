@@ -83,6 +83,13 @@ predict or see the betting screens until they log in.
 
 ## 3. Use cases
 
+> ⚠️ **Superseded by [`SCENARIOS.md`](./SCENARIOS.md).** The structured,
+> test-linked scenario catalog is the authoritative behaviour inventory — it
+> reconciles these use cases with the legacy `archive/` app, adds Pools and the
+> revised Auth/Identity decisions, and records deliberately dropped behaviour.
+> The prose below is kept for narrative context; when it conflicts with
+> `SCENARIOS.md`, the catalog wins.
+
 ### 3.1 Authentication & onboarding
 
 **UC-1 — Visitor browses public pages.** Anyone can view the schedule,

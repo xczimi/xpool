@@ -5,7 +5,55 @@ Euro). Players predict match scores and compete on a points scoreboard.
 
 > **Status: rewrite in progress.** The original app (Google App Engine,
 > Python 2.7) has been moved to [`archive/`](./archive/) for reference. The new
-> implementation will be built at the repo root.
+> implementation lives at the repo root — see [Running locally](#running-locally).
+
+## Architecture
+
+A Rust workspace plus a React SPA, all runnable locally:
+
+| Crate / dir | Role |
+|---|---|
+| `crates/domain` | Pure entities + the scoring engine (no I/O) |
+| `crates/fwc26` | FIFA World Cup 26 logic — Annexe C, bracket resolution |
+| `crates/storage` | `Repository` trait — in-memory fake + DynamoDB adapter |
+| `crates/api` | axum + async-graphql server (`/api/graphql`) |
+| `crates/xtask` | Import / seed CLI |
+| `web/` | React + Vite + TypeScript SPA (urql GraphQL client) |
+| `tournaments/fwc26.json` | The FWC26 tournament definition (104 matches) |
+
+## Running locally
+
+Prerequisites: the Rust toolchain ([`rustup`](https://rustup.rs/)), Node 20+, Docker.
+
+```sh
+# 1. Start DynamoDB Local + MailHog
+docker compose up -d
+
+# 2. Import the tournament and seed demo data
+export DYNAMO_ENDPOINT=http://localhost:8000
+cargo run -p xtask -- import tournaments/fwc26.json
+cargo run -p xtask -- seed
+
+# 3. Run the API (http://localhost:3000)
+cargo run -p api
+
+# 4. In another terminal, run the SPA (http://localhost:5173)
+cd web && npm install && npm run dev
+```
+
+The SPA proxies `/api` to the server. DynamoDB Local runs in-memory — after a
+container restart, re-run the `import` and `seed` steps.
+
+**Dev login:** auth is a stub — the SPA sends an `X-Dev-Player` header. Pick a
+seeded player in the SPA's auth bar. Seeded ids: `result-user` (the admin /
+official results), and `demo-ada`, `demo-alan`, `demo-grace`, `demo-linus`,
+`demo-margaret`, `demo-dennis`. There is one demo pool, `pool-demo`.
+
+**Tests:** `cargo test` (workspace) and `cd web && npm run build`.
+DynamoDB integration tests are gated behind `DYNAMO_TEST=1`.
+
+The implementation plan is in
+[`docs/superpowers/plans/`](./docs/superpowers/plans/).
 
 ## Documentation
 
@@ -24,6 +72,7 @@ Specs and reference docs for agentic development live in [`.specs/`](./.specs/).
 | [`.specs/FWC26_RULES.md`](./.specs/FWC26_RULES.md) | FIFA World Cup 26 competition rules — tournament structure, tiebreakers, knockout bracket |
 | [`.specs/DATA_SOURCES.md`](./.specs/DATA_SOURCES.md) | Tournament data sources — FotMob calendar feed, TheSportsDB, and the ingestion flow |
 | [`.specs/THESPORTSDB_API.md`](./.specs/THESPORTSDB_API.md) | TheSportsDB API reference — endpoints and the World Cup 26 ingestion subset |
+| [`.specs/LEGACY_I18N.md`](./.specs/LEGACY_I18N.md) | Legacy UI strings (English/Hungarian) extracted from the old app — i18n reconciliation reference |
 
 ## `archive/`
 
