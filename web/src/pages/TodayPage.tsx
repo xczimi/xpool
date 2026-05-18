@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -13,8 +13,6 @@ import { usePolledQuery } from '../lib/usePolledQuery'
 import { pollIntervalMs } from '../lib/polling'
 import { byKickoff, formatKickoff, slotLabel, teamIndex } from '../lib/format'
 
-const WINDOW_MS = 2 * 24 * 60 * 60 * 1000
-
 /**
  * Today / Fresh — a flat list of matches within ~±2 days of now (UC-11).
  * Polls only while a match is result-pending (API.md §7). Logged-in players
@@ -23,9 +21,6 @@ const WINDOW_MS = 2 * 24 * 60 * 60 * 1000
 export function TodayPage() {
   const { t, locale } = useI18n()
   const { playerId } = useAuth()
-  // Snapshot "now" once per mount so render stays pure (smart polling drives
-  // refresh; the ±2-day window does not need second-precision).
-  const [now] = useState(() => Date.now())
 
   // First fetch (no polling) to learn whether anything is result-pending.
   const [probe] = useQuery<{
@@ -42,12 +37,8 @@ export function TodayPage() {
     return map
   }, [resultsResult.data])
   const interval = useMemo(
-    () =>
-      pollIntervalMs(
-        probe.data?.tournament?.games ?? [],
-        new Set(resultsByGame.keys()),
-      ),
-    [probe.data, resultsByGame],
+    () => pollIntervalMs(probe.data?.tournament?.games ?? []),
+    [probe.data],
   )
   const [result, reexecute] = usePolledQuery<{
     tournament: Tournament | null
@@ -96,7 +87,7 @@ export function TodayPage() {
   if (!tournament) return <ErrorView />
 
   const games = tournament.games
-    .filter((g) => Math.abs(Date.parse(g.kickoff) - now) <= WINDOW_MS)
+    .filter((g) => g.withinTodayWindow)
     .sort(byKickoff)
 
   return (

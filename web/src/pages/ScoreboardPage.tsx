@@ -7,11 +7,7 @@ import {
   SCOREBOARD_QUERY,
   TOURNAMENT_QUERY,
 } from '../graphql/queries'
-import {
-  RESULTS_QUERY,
-} from '../graphql/queries'
 import type {
-  MatchPrediction,
   Pool,
   ScoreEntry,
   Tournament,
@@ -37,15 +33,10 @@ export function ScoreboardPage() {
   const [probe] = useQuery<{
     tournament: Tournament | null
   }>({ query: TOURNAMENT_QUERY })
-  const [resultsResult] = useQuery<{ results: MatchPrediction[] }>({
-    query: RESULTS_QUERY,
-  })
-  const interval = useMemo(() => {
-    const resultIds = new Set(
-      (resultsResult.data?.results ?? []).map((r) => r.gameId),
-    )
-    return pollIntervalMs(probe.data?.tournament?.games ?? [], resultIds)
-  }, [probe.data, resultsResult.data])
+  const interval = useMemo(
+    () => pollIntervalMs(probe.data?.tournament?.games ?? []),
+    [probe.data],
+  )
   const [result, reexecute] = usePolledQuery<{
     scoreboard: ScoreEntry[]
   }>({ query: SCOREBOARD_QUERY, variables: { pool: poolId } }, interval)

@@ -102,13 +102,9 @@ export function GroupTipForm({
   const [drawOrder, setDrawOrder] = useState<string[]>(initialDrawOrder)
   const [flash, setFlash] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  // Snapshot "now" once per mount so render stays pure.
-  const [now] = useState(() => Date.now())
 
   // The deadline has passed → the whole group is read-only (UC-7).
-  const deadlinePassed = group.deadline
-    ? now > Date.parse(group.deadline)
-    : false
+  const deadlinePassed = group.deadlinePassed
   const groupLocked =
     deadlinePassed ||
     (games.length > 0 && games.every((g) => matches[g.id]?.locked))
