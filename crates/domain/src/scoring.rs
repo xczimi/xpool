@@ -615,7 +615,12 @@ fn score_group_node(
             let games: Vec<&SingleGame> =
                 game_ids.iter().filter_map(|id| t.games.get(id)).collect();
 
-            let deadline = t.deadline(group_id).unwrap_or_else(Utc::now);
+            // A leaf group with no resolvable games has no deadline. `domain`
+            // is clock-free (CLAUDE.md "Server-authoritative clock") — never
+            // fall back to the wall clock. Treat an unresolvable deadline as
+            // "far in the future" so an unscored leaf group is never silently
+            // auto-locked (`now > deadline` stays false for any real `now`).
+            let deadline = t.deadline(group_id).unwrap_or(DateTime::<Utc>::MAX_UTC);
             let raw = score_leaf_group(group, &games, prediction, result, now, deadline, c);
             let multiplied = raw * c.multiplier(group.round);
             *breakdown.entry(group.round).or_insert(0) += multiplied;
@@ -669,9 +674,10 @@ mod unit_tests {
 
     #[test]
     fn effective_locked_truth_table() {
-        let past = Utc::now() - chrono::Duration::hours(1);
-        let future = Utc::now() + chrono::Duration::hours(1);
-        let now = Utc::now();
+        // Fixed timestamps — `domain` is clock-free, even in tests.
+        let now = chrono::TimeZone::with_ymd_and_hms(&Utc, 2026, 6, 1, 12, 0, 0).unwrap();
+        let past = now - chrono::Duration::hours(1);
+        let future = now + chrono::Duration::hours(1);
 
         // locked=true → always true
         assert!(effective_locked(true, now, future, false));

@@ -857,6 +857,62 @@ fn score_tournament_per_round_breakdown() {
     assert_eq!(scores.get(&Round::Final).copied().unwrap_or(0), 30);
 }
 
+/// Issue #11 — a leaf group with no resolvable games has no deadline.
+/// Scoring must NOT consult the wall clock to invent one; an unresolvable
+/// deadline must be treated as "not yet passed" so an unscored, unlocked
+/// leaf group is never silently auto-locked — regardless of `now`.
+#[test]
+fn score_tournament_unresolvable_leaf_group_never_auto_locks() {
+    let c = default_config();
+
+    // Leaf group references a game id that is absent from `t.games`,
+    // so `t.deadline("g")` resolves to None.
+    let mut groups = HashMap::new();
+    let mut teams = HashMap::new();
+    groups.insert(
+        "g".to_string(),
+        GroupGame {
+            id: "g".to_string(),
+            name: "g".to_string(),
+            parent: None,
+            round: Round::GroupStage,
+            lock_mode: LockMode::LockTogether,
+            carries_standings: true,
+            children: GroupChildren::Games(vec!["missing_game".to_string()]),
+        },
+    );
+    for t_id in ["A", "B"] {
+        teams.insert(
+            t_id.to_string(),
+            Team {
+                id: t_id.to_string(),
+                name: t_id.to_string(),
+                short_code: t_id.to_string(),
+                flag: None,
+                external_id: None,
+            },
+        );
+    }
+    let t = Tournament {
+        root: "g".to_string(),
+        groups,
+        games: HashMap::new(),
+        teams,
+    };
+
+    // Prediction has an UNLOCKED standings ordering. If scoring fell back to
+    // `Utc::now()` for the missing deadline, a far-future `now` would make
+    // `now > deadline` true and auto-lock it. With a far-future deadline it
+    // never does, so this stays 0 independent of the clock.
+    let pred_player = make_player("p1", vec![], vec![make_sp("g", vec!["A", "B"], false)]);
+    let result_player = make_player("result", vec![], vec![make_sp("g", vec!["A", "B"], true)]);
+
+    // `now` is far in the future — deliberately well past any real wall clock.
+    let now = Utc.with_ymd_and_hms(2099, 1, 1, 0, 0, 0).unwrap();
+    let scores = score_tournament(&t, &pred_player, &result_player, now, &c);
+    assert_eq!(scores.get(&Round::GroupStage).copied().unwrap_or(0), 0);
+}
+
 // ─── multiplier table (explicit, regression §10 #3) ─────────────────────────
 
 #[test]
