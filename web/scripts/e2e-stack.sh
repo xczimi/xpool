@@ -29,10 +29,18 @@ export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-local}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-local}"
 
+# A fresh table per run — isolates this run from every previous run.
+# DynamoDB Local is in-memory and the container is long-lived, so the table
+# name must be unique; teardown drops it.
+export XPOOL_TABLE="xpool-e2e-$(date +%s)"
+TABLE_FILE="$REPO_ROOT/web/.e2e-table"
+echo "$XPOOL_TABLE" > "$TABLE_FILE"
+
 PID_FILE="$REPO_ROOT/web/.e2e-api.pid"
 API_LOG="$REPO_ROOT/web/.e2e-api.log"
 
 log() { echo "[e2e-stack] $*"; }
+log "using fresh table $XPOOL_TABLE"
 
 # cargo is not on PATH — mise provides the Rust toolchain.
 cargo() { mise exec -- cargo "$@"; }
