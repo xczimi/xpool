@@ -11,6 +11,11 @@ import { devLogin, expectNoErrorView, watchNetwork } from './helpers'
 // two specs on different groups makes the suite order-independent.
 const TEST_GROUP = 'Group B'
 
+// The e2e API clock defaults to 2026-06-20 (mid-tournament). At that point
+// ALL group stage groups are locked (first kicks off 2026-06-12). Override the
+// dev clock to before the tournament so Group B predictions remain editable.
+const PRE_TOURNAMENT = '2026-01-01T12:00:00Z'
+
 /** Open `TEST_GROUP` in the My Tips sub-navigation. */
 async function selectTestGroup(page: Page) {
   await expect(page.locator('.tip-form')).toBeVisible()
@@ -38,6 +43,11 @@ async function fillScores(page: Page, home: string, away: string) {
 test('My Tips: enter scores, save, and they persist across a reload', async ({
   page,
 }) => {
+  // Pin the clock to before the tournament so group-stage predictions are editable.
+  await page.addInitScript((value) => {
+    localStorage.setItem('xpool.devNow', value)
+  }, PRE_TOURNAMENT)
+
   const net = watchNetwork(page)
   await page.goto('/')
   await devLogin(page, 'demo-ada')

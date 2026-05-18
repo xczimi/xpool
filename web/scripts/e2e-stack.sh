@@ -36,11 +36,16 @@ export XPOOL_TABLE="xpool-e2e-$(date +%s)"
 TABLE_FILE="$REPO_ROOT/web/.e2e-table"
 echo "$XPOOL_TABLE" > "$TABLE_FILE"
 
+# Default the API clock to mid-tournament so the seeded fixture is "live".
+# Individual tests override per-request via the dev clock (X-Dev-Now).
+export XPOOL_NOW="${XPOOL_NOW:-2026-06-20T12:00:00Z}"
+
 PID_FILE="$REPO_ROOT/web/.e2e-api.pid"
 API_LOG="$REPO_ROOT/web/.e2e-api.log"
 
 log() { echo "[e2e-stack] $*"; }
 log "using fresh table $XPOOL_TABLE"
+log "API clock (XPOOL_NOW) = $XPOOL_NOW"
 
 # cargo is not on PATH — mise provides the Rust toolchain.
 cargo() { mise exec -- cargo "$@"; }
