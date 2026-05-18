@@ -26,6 +26,15 @@ different baseline.
 A prediction contributes only when **effective-locked** (`DATA_MODEL.md` §7);
 a result counts only when locked. Unlocked → 0.
 
+"Effective-locked" is decided **per `MatchPrediction`**, never per group. The
+`complete` term in `effective_locked` is read per-match: a `MatchPrediction`
+always carries both `u8` scores, so it is always complete. In an unlocked
+`LockTogether` group, each game a player *did* predict auto-counts on its own
+after the deadline; games the player left unpredicted have no `MatchPrediction`
+and simply score 0. There is no group-level "all matches predicted" gate on
+this auto-count path. (An explicit *lock* of a whole group is a separate bulk
+action, and that path may require all games — see `DATA_MODEL.md` §7.)
+
 ## 2. `ScoringConfig`
 
 A struct of **centralized source-code constants**, passed into the engine. Not

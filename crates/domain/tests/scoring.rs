@@ -535,6 +535,41 @@ fn rank_group_all_goals_tiebreak() {
     assert_eq!(result[2], "C");
 }
 
+/// Issue #12 — a 3-way tie that *partially* resolves via H2H: the H2H step
+/// separates one team but leaves a subset still tied. The whole §4 ladder must
+/// be re-applied to that subset from step 1, with H2H stats RECOMPUTED among
+/// *only* the still-tied teams (their games against each other).
+///
+/// Group A/B/C (no 4th team), every game decisive:
+///   A 1-0 B,  C 3-0 A,  B 2-0 C
+/// Overall points: A=3, B=3, C=3 — all tied.
+///   H2H points (whole group): 3 each — still tied.
+///   H2H goal difference: A=-2, B=+1, C=+1 — A separates to the BOTTOM.
+/// {B,C} remain tied on H2H GD. FIFA: restart the ladder for {B,C} with H2H
+/// recomputed among only {B,C} = just their direct game B 2-0 C → B above C.
+/// Correct order: B, C, A.
+///
+/// The pre-fix engine reused the *3-team* H2H stats for {B,C}: 3-team H2H
+/// goals-for is B=2, C=3 → it would wrongly rank C above B (C, B, A).
+#[test]
+fn rank_group_h2h_partially_resolves_subgroup_recomputes_h2h() {
+    let group = make_leaf_group("g1", vec!["m1", "m2", "m3"]);
+    let games = [
+        make_single_game("m1", "g1", "A", "B"),
+        make_single_game("m2", "g1", "C", "A"),
+        make_single_game("m3", "g1", "B", "C"),
+    ];
+    let preds = [
+        mp("m1", 1, 0, true), // A beats B 1-0
+        mp("m2", 3, 0, true), // C beats A 3-0
+        mp("m3", 2, 0, true), // B beats C 2-0
+    ];
+    let game_refs: Vec<&SingleGame> = games.iter().collect();
+    let pred_refs: Vec<&MatchPrediction> = preds.iter().collect();
+    let result = rank_group(&group, &game_refs, &pred_refs, &[]);
+    assert_eq!(result, vec!["B".to_string(), "C".to_string(), "A".to_string()]);
+}
+
 // ─── score_tournament ───────────────────────────────────────────────────────
 
 fn make_player(
@@ -911,6 +946,68 @@ fn score_tournament_unresolvable_leaf_group_never_auto_locks() {
     let now = Utc.with_ymd_and_hms(2099, 1, 1, 0, 0, 0).unwrap();
     let scores = score_tournament(&t, &pred_player, &result_player, now, &c);
     assert_eq!(scores.get(&Round::GroupStage).copied().unwrap_or(0), 0);
+}
+
+/// Issue #23 — `complete` is read PER MATCH, not per group. In an unlocked
+/// `LockTogether` group a player predicted only *some* games of, each predicted
+/// game still auto-counts after the deadline; the unpredicted game has no
+/// `MatchPrediction` and scores 0. No group-level "all matches predicted" gate.
+#[test]
+fn score_tournament_partially_predicted_group_counts_filled_games_only() {
+    let c = default_config();
+
+    // Two-game LockTogether group; both kickoffs at 2026-06-01 12:00 UTC.
+    let mut groups = HashMap::new();
+    let mut games = HashMap::new();
+    let mut teams = HashMap::new();
+
+    for (gid, home, away) in [("m1", "A", "B"), ("m2", "C", "D")] {
+        games.insert(gid.to_string(), make_single_game(gid, "g", home, away));
+    }
+    groups.insert(
+        "g".to_string(),
+        GroupGame {
+            id: "g".to_string(),
+            name: "g".to_string(),
+            parent: None,
+            round: Round::GroupStage,
+            lock_mode: LockMode::LockTogether,
+            carries_standings: false,
+            children: GroupChildren::Games(vec!["m1".to_string(), "m2".to_string()]),
+        },
+    );
+    for t_id in ["A", "B", "C", "D"] {
+        teams.insert(
+            t_id.to_string(),
+            Team {
+                id: t_id.to_string(),
+                name: t_id.to_string(),
+                short_code: t_id.to_string(),
+                flag: None,
+                external_id: None,
+            },
+        );
+    }
+    let t = Tournament {
+        root: "g".to_string(),
+        groups,
+        games,
+        teams,
+    };
+
+    // Player predicted ONLY m1 (a perfect 2-1); m2 was left unpredicted.
+    // Group is NOT explicitly locked, and `now` is past the deadline.
+    let now = Utc.with_ymd_and_hms(2026, 6, 2, 0, 0, 0).unwrap();
+    let pred_player = make_player("p1", vec![mp("m1", 2, 1, false)], vec![]);
+    let result_player = make_player(
+        "result",
+        vec![mp("m1", 2, 1, true), mp("m2", 0, 0, true)],
+        vec![],
+    );
+
+    let scores = score_tournament(&t, &pred_player, &result_player, now, &c);
+    // m1 auto-counts (perfect = 4); m2 has no prediction → 0. Total 4.
+    assert_eq!(scores.get(&Round::GroupStage).copied().unwrap_or(0), 4);
 }
 
 // ─── multiplier table (explicit, regression §10 #3) ─────────────────────────

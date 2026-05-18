@@ -179,282 +179,197 @@ fn h2h_games<'a>(teams: &[&TeamId], games: &[&'a SingleGame]) -> Vec<&'a SingleG
         .collect()
 }
 
-/// Compare two teams using the §4 ladder. Returns `Less` if `a` ranks above `b`
-/// (i.e., lower index = better rank = "less" in sort order).
+/// Rank a set of teams by the `SCORING.md` §4 ladder.
 ///
-/// Ladder:
-/// 1. Overall points (desc)
-/// 2. H2H points (desc) among the tied subgroup
-/// 3. H2H GD (desc)
-/// 4. H2H goals for (desc)
-/// 5. All-match GD (desc)
-/// 6. All-match goals for (desc)
-/// 7. draw_order position (asc)
-fn rank_group_sort(
+/// This is the recursive core and the **entry point**. It handles one tied
+/// set per call:
+///
+/// 1. Partition by **overall points** (descending). Single-team partitions are
+///    placed directly.
+/// 2. Each still-tied partition runs the head-to-head sub-ladder
+///    (`rank_h2h`) — H2H points, then H2H goal difference, then H2H goals —
+///    with H2H stats recomputed among *only* that partition's teams.
+/// 3. A subset still tied after H2H falls to all-match goal difference, then
+///    all-match goals (`rank_all_match`).
+/// 4. Anything still tied falls to the player's manual `draw_order`.
+///
+/// **Strict-FIFA reapplication (issue #12):** whenever an H2H rung *separates*
+/// part of a tied set but leaves a smaller subset tied, that subset re-enters
+/// here at step 1 — so its H2H table is recomputed among only its own teams.
+/// `all_stats` (the whole-group table, used for steps 3–4) never changes.
+fn rank_tied(
     teams: &[TeamId],
     all_stats: &HashMap<TeamId, TeamStats>,
     games: &[&SingleGame],
     predictions: &[&MatchPrediction],
     draw_order: &[TeamId],
 ) -> Vec<TeamId> {
-    if teams.is_empty() {
-        return vec![];
-    }
-    if teams.len() == 1 {
+    if teams.len() <= 1 {
         return teams.to_vec();
     }
 
-    // Group by overall points.
-    let mut by_points: HashMap<i32, Vec<TeamId>> = HashMap::new();
-    for t in teams {
-        let pts = all_stats.get(t).map_or(0, |s| s.points);
-        by_points.entry(pts).or_default().push(t.clone());
-    }
-
-    let mut pts_sorted: Vec<i32> = by_points.keys().copied().collect();
-    pts_sorted.sort_by(|a, b| b.cmp(a)); // descending
-
-    let mut result: Vec<TeamId> = Vec::new();
-
-    for pts in pts_sorted {
-        let group = by_points.remove(&pts).unwrap();
-        if group.len() == 1 {
-            result.push(group.into_iter().next().unwrap());
-            continue;
-        }
-        // Tied group — resolve recursively with h2h and GD criteria.
-        let group_refs: Vec<&TeamId> = group.iter().collect();
-        let h2h = h2h_games(&group_refs, games);
-        let h2h_stats = compute_stats(&group, &h2h, predictions);
-
-        // Try h2h tiebreak sub-sort within this tied group.
-        let sorted = sort_tied_group(&group, all_stats, &h2h_stats, &h2h, predictions, draw_order);
-        result.extend(sorted);
-    }
-
-    result
+    partition_and_rank(
+        teams,
+        |t| all_stats.get(t).map_or(0, |s| s.points),
+        |tied| rank_h2h(tied, all_stats, games, predictions, draw_order),
+    )
 }
 
-/// Recursively break a tied group using H2H, then all-match criteria, then draw_order.
-fn sort_tied_group(
+/// Head-to-head sub-ladder (`SCORING.md` §4 step 2) for a points-tied set.
+///
+/// H2H stats are **recomputed among only `teams`** — their games against each
+/// other — then the three H2H rungs (points, goal difference, goals) are
+/// applied in order. When a rung separates part of the set, each still-tied
+/// subset that is *strictly smaller* restarts the whole ladder via `rank_tied`
+/// (strict-FIFA reapplication, issue #12); a subset that did not shrink simply
+/// advances to the next rung. A set that survives all three H2H rungs intact
+/// falls through to the all-match steps.
+fn rank_h2h(
     teams: &[TeamId],
     all_stats: &HashMap<TeamId, TeamStats>,
-    h2h_stats: &HashMap<TeamId, TeamStats>,
-    h2h_games_list: &[&SingleGame],
+    games: &[&SingleGame],
     predictions: &[&MatchPrediction],
     draw_order: &[TeamId],
 ) -> Vec<TeamId> {
-    if teams.len() == 1 {
+    if teams.len() <= 1 {
         return teams.to_vec();
     }
 
-    // Sort by h2h points desc
-    let sub = sort_by_criteria(teams, |t| {
-        let pts = h2h_stats.get(t).map_or(0, |s| s.points);
-        -pts // negate for descending
-    });
+    // Recompute H2H stats over *only* the still-tied teams.
+    let team_refs: Vec<&TeamId> = teams.iter().collect();
+    let h2h = h2h_games(&team_refs, games);
+    let h2h_stats = compute_stats(teams, &h2h, predictions);
 
-    // If any sub-group further resolves, split and recurse.
-    let resolved = split_and_resolve_groups(
-        &sub,
-        |group| {
-            let pts: Vec<i32> = group
-                .iter()
-                .map(|t| h2h_stats.get(t).map_or(0, |s| s.points))
-                .collect();
-            pts.windows(2).all(|w| w[0] == w[1])
-        },
-        |group| {
-            // h2h GD, then h2h goals, then all GD, then all goals, then draw_order
-            resolve_sub_group(
-                group,
-                all_stats,
-                h2h_stats,
-                h2h_games_list,
-                predictions,
-                draw_order,
-                1,
-            )
-        },
-    );
+    // The three H2H rungs, each a metric over the recomputed H2H table.
+    let h2h_metrics: [fn(&TeamStats) -> i32; 3] = [
+        |s| s.points,
+        |s| s.goal_diff(),
+        |s| s.goals_for,
+    ];
 
-    resolved
+    rank_h2h_rung(
+        teams,
+        &h2h_stats,
+        all_stats,
+        games,
+        predictions,
+        draw_order,
+        &h2h_metrics,
+        0,
+    )
 }
 
-/// Resolve a group that was tied on H2H points: try h2h GD.
-#[allow(clippy::only_used_in_recursion)]
-fn resolve_sub_group(
+/// Apply one H2H rung (`metrics[idx]`) to a tied set.
+///
+/// After sorting by the rung's metric, each equal-valued run is examined:
+/// - a run that *shrank* (separated from siblings) and is still tied restarts
+///   the whole ladder at `rank_tied` — strict-FIFA reapplication;
+/// - a run equal in size to the input (nothing separated) advances to the next
+///   H2H rung, or to the all-match steps once the H2H rungs are exhausted.
+#[allow(clippy::too_many_arguments)]
+fn rank_h2h_rung(
     teams: &[TeamId],
-    all_stats: &HashMap<TeamId, TeamStats>,
     h2h_stats: &HashMap<TeamId, TeamStats>,
-    h2h_games_list: &[&SingleGame],
+    all_stats: &HashMap<TeamId, TeamStats>,
+    games: &[&SingleGame],
     predictions: &[&MatchPrediction],
     draw_order: &[TeamId],
-    step: u8,
+    metrics: &[fn(&TeamStats) -> i32; 3],
+    idx: usize,
 ) -> Vec<TeamId> {
-    if teams.len() == 1 {
+    if teams.len() <= 1 {
+        return teams.to_vec();
+    }
+    if idx >= metrics.len() {
+        // H2H exhausted with the set still intact — fall to all-match steps.
+        return rank_all_match(teams, all_stats, draw_order, 0);
+    }
+
+    let metric = metrics[idx];
+    partition_and_rank(
+        teams,
+        |t| h2h_stats.get(t).map_or(0, metric),
+        |run| {
+            if run.len() == teams.len() {
+                // Nothing separated on this rung — advance within the same
+                // H2H table to the next rung.
+                rank_h2h_rung(
+                    run, h2h_stats, all_stats, games, predictions, draw_order, metrics,
+                    idx + 1,
+                )
+            } else {
+                // This rung separated the set; the still-tied subset restarts
+                // the whole ladder so its H2H table is recomputed for itself.
+                rank_tied(run, all_stats, games, predictions, draw_order)
+            }
+        },
+    )
+}
+
+/// All-match tiebreak steps (`SCORING.md` §4 steps 3–5) for a subset still tied
+/// after the H2H sub-ladder: all-match goal difference, then all-match goals,
+/// then the manual `draw_order`. These use whole-group stats and never trigger
+/// H2H recomputation.
+fn rank_all_match(
+    teams: &[TeamId],
+    all_stats: &HashMap<TeamId, TeamStats>,
+    draw_order: &[TeamId],
+    step: usize,
+) -> Vec<TeamId> {
+    if teams.len() <= 1 {
         return teams.to_vec();
     }
 
-    match step {
-        1 => {
-            // H2H GD
-            let sub = sort_by_criteria(teams, |t| -(h2h_stats.get(t).map_or(0, |s| s.goal_diff())));
-            split_and_resolve_groups(
-                &sub,
-                |group| {
-                    let vals: Vec<i32> = group
-                        .iter()
-                        .map(|t| h2h_stats.get(t).map_or(0, |s| s.goal_diff()))
-                        .collect();
-                    vals.windows(2).all(|w| w[0] == w[1])
-                },
-                |group| {
-                    resolve_sub_group(
-                        group,
-                        all_stats,
-                        h2h_stats,
-                        h2h_games_list,
-                        predictions,
-                        draw_order,
-                        2,
-                    )
-                },
-            )
-        }
-        2 => {
-            // H2H goals for
-            let sub = sort_by_criteria(teams, |t| -(h2h_stats.get(t).map_or(0, |s| s.goals_for)));
-            split_and_resolve_groups(
-                &sub,
-                |group| {
-                    let vals: Vec<i32> = group
-                        .iter()
-                        .map(|t| h2h_stats.get(t).map_or(0, |s| s.goals_for))
-                        .collect();
-                    vals.windows(2).all(|w| w[0] == w[1])
-                },
-                |group| {
-                    resolve_sub_group(
-                        group,
-                        all_stats,
-                        h2h_stats,
-                        h2h_games_list,
-                        predictions,
-                        draw_order,
-                        3,
-                    )
-                },
-            )
-        }
-        3 => {
-            // All-match GD
-            let sub = sort_by_criteria(teams, |t| -(all_stats.get(t).map_or(0, |s| s.goal_diff())));
-            split_and_resolve_groups(
-                &sub,
-                |group| {
-                    let vals: Vec<i32> = group
-                        .iter()
-                        .map(|t| all_stats.get(t).map_or(0, |s| s.goal_diff()))
-                        .collect();
-                    vals.windows(2).all(|w| w[0] == w[1])
-                },
-                |group| {
-                    resolve_sub_group(
-                        group,
-                        all_stats,
-                        h2h_stats,
-                        h2h_games_list,
-                        predictions,
-                        draw_order,
-                        4,
-                    )
-                },
-            )
-        }
-        4 => {
-            // All-match goals for
-            let sub = sort_by_criteria(teams, |t| -(all_stats.get(t).map_or(0, |s| s.goals_for)));
-            split_and_resolve_groups(
-                &sub,
-                |group| {
-                    let vals: Vec<i32> = group
-                        .iter()
-                        .map(|t| all_stats.get(t).map_or(0, |s| s.goals_for))
-                        .collect();
-                    vals.windows(2).all(|w| w[0] == w[1])
-                },
-                |group| {
-                    resolve_sub_group(
-                        group,
-                        all_stats,
-                        h2h_stats,
-                        h2h_games_list,
-                        predictions,
-                        draw_order,
-                        5,
-                    )
-                },
-            )
-        }
+    let metric: fn(&TeamStats) -> i32 = match step {
+        0 => |s| s.goal_diff(),
+        1 => |s| s.goals_for,
         _ => {
-            // draw_order fallback
+            // Terminal: order by the player's manual draw_order.
             let mut result = teams.to_vec();
-            result.sort_by_key(|t| draw_order.iter().position(|d| d == t).unwrap_or(usize::MAX));
             result
+                .sort_by_key(|t| draw_order.iter().position(|d| d == t).unwrap_or(usize::MAX));
+            return result;
         }
-    }
+    };
+
+    partition_and_rank(
+        teams,
+        |t| all_stats.get(t).map_or(0, metric),
+        |run| rank_all_match(run, all_stats, draw_order, step + 1),
+    )
 }
 
-/// Sort teams by a key function (ascending key = better rank).
-fn sort_by_criteria<F>(teams: &[TeamId], key_fn: F) -> Vec<TeamId>
-where
-    F: Fn(&TeamId) -> i32,
-{
-    let mut sorted = teams.to_vec();
-    sorted.sort_by_key(|t| key_fn(t));
-    sorted
-}
-
-/// Given a sorted list, split into groups with equal criteria values and apply
-/// `resolve_fn` to sub-groups that still have ties.
-fn split_and_resolve_groups<EqualFn, ResolveFn>(
-    sorted: &[TeamId],
-    is_tied: EqualFn,
-    resolve_fn: ResolveFn,
+/// Sort `teams` by `key` (descending = better rank), then split into runs of
+/// equal key. Single-team runs are placed as-is; multi-team runs (still tied)
+/// are passed to `resolve` and the results spliced in order.
+fn partition_and_rank<KeyFn, ResolveFn>(
+    teams: &[TeamId],
+    key: KeyFn,
+    resolve: ResolveFn,
 ) -> Vec<TeamId>
 where
-    EqualFn: Fn(&[TeamId]) -> bool,
+    KeyFn: Fn(&TeamId) -> i32,
     ResolveFn: Fn(&[TeamId]) -> Vec<TeamId>,
 {
-    if sorted.is_empty() {
-        return vec![];
-    }
+    let mut sorted = teams.to_vec();
+    sorted.sort_by_key(|t| std::cmp::Reverse(key(t))); // descending
 
     let mut result: Vec<TeamId> = Vec::new();
     let mut i = 0;
-
     while i < sorted.len() {
-        // Find how many consecutive teams have the same criteria value
+        let k = key(&sorted[i]);
         let mut j = i + 1;
-        while j < sorted.len() {
-            let window = &sorted[i..=j];
-            if is_tied(window) {
-                j += 1;
-            } else {
-                break;
-            }
+        while j < sorted.len() && key(&sorted[j]) == k {
+            j += 1;
         }
-        let group = &sorted[i..j];
-        if group.len() == 1 {
-            result.push(group[0].clone());
+        let run = &sorted[i..j];
+        if run.len() == 1 {
+            result.push(run[0].clone());
         } else {
-            let resolved = resolve_fn(group);
-            result.extend(resolved);
+            result.extend(resolve(run));
         }
         i = j;
     }
-
     result
 }
 
@@ -473,7 +388,7 @@ pub fn rank_group(
 
     let all_stats = compute_stats(&teams, games, predictions);
 
-    rank_group_sort(&teams, &all_stats, games, predictions, draw_order)
+    rank_tied(&teams, &all_stats, games, predictions, draw_order)
 }
 
 /// Standings bonus: `standings_pair_point` per team-pair whose relative order
@@ -529,9 +444,14 @@ fn score_leaf_group(
             if !result_mp.locked {
                 continue;
             }
-            // Prediction must be effective-locked
-            // "complete" for a MatchPrediction: it always has both scores (no Option),
-            // so a MatchPrediction's existence implies it's complete.
+            // Prediction must be effective-locked. `complete` is read
+            // PER MATCH (`DATA_MODEL.md` §7, `SCORING.md` §3): every
+            // `MatchPrediction` is its own draft and always carries both
+            // `u8` scores, so it is always complete. It is therefore passed
+            // `true` here. Consequence: in an unlocked `LockTogether` group,
+            // each game that *was* predicted auto-counts after the deadline
+            // independently; games with no `MatchPrediction` at all simply
+            // score 0 (they never reach this loop body).
             let p_locked = effective_locked(pred_mp.locked, now, deadline, true);
             if !p_locked {
                 continue;

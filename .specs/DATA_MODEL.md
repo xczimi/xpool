@@ -104,9 +104,17 @@ as results land is **FWC26-specific application code** (using `FWC26_RULES.md`
 - `locked` = the player's **explicit, early, irreversible** lock.
 - **Effective-locked** (what scoring and visibility use) is derived:
   `locked OR (now > node deadline AND prediction is complete)`.
-  A complete draft auto-counts after the deadline; an incomplete/absent one
-  scores 0. Implemented as a **pure function** — no scheduled job, the stored
-  `locked` is never auto-mutated.
+  Implemented as a **pure function** — no scheduled job, the stored `locked`
+  is never auto-mutated.
+- **"Complete" is per-prediction, not per-group.** A `MatchPrediction` always
+  carries both `u8` scores, so it is *always* complete; it auto-counts after
+  the deadline. A `StandingsPrediction` is complete when its `ordering` is
+  non-empty. There is no group-level "all matches predicted" requirement on
+  this auto-count path: a player who predicted only *some* games of a
+  `LockTogether` group still has each filled game auto-count after the
+  deadline, while the unpredicted games (no `MatchPrediction` at all) score 0.
+  An "incomplete draft scores 0" therefore means an *absent or empty*
+  prediction, not a partially-filled group.
 - **Visibility** (UC-9): a prediction is visible to others when
   `effective-locked OR match kicked off`.
 
