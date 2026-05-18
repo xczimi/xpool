@@ -97,15 +97,23 @@ These are non-obvious and deliberate — read `.specs/` before changing them:
   functions.
 - **The scoreboard is materialised** and recomputed wholesale in the
   post-result hook (`crates/api/src/recompute.rs`) when a result is entered.
+- **Server-authoritative clock.** The API resolves `now` once per request
+  (`X-Dev-Now` header → `XPOOL_NOW` env → real clock) into the GraphQL
+  context; resolvers read it from there and never call `Utc::now()`. The SPA
+  renders server-derived time flags (`deadlinePassed`, `resultPending`,
+  `withinTodayWindow`) and never branches on `Date.now()`. See `.specs/TESTING.md`.
 - The SPA's urql client is forced to **POST** (`preferGetMethod: false`) —
   urql's GET default would hit the playground page.
 
 ## Source of truth
 
 `.specs/` holds the authoritative design — domain model, scoring, API contract,
-FWC26 rules, deployment. When code and an older spec conflict, `DATA_MODEL.md`
-and `SCORING.md` win (see their "corrections" sections). `docs/superpowers/plans/`
-holds implementation plans. `archive/` is legacy reference only.
+FWC26 rules, deployment. `SCENARIOS.md` is the test-linked behaviour catalogue
+(supersedes `REWRITE_USE_CASES.md` §3); `TESTING.md` is the test strategy
+(layers, isolation, the clock model). When code and an older spec conflict,
+`DATA_MODEL.md` and `SCORING.md` win (see their "corrections" sections).
+`docs/superpowers/plans/` holds implementation plans. `archive/` is legacy
+reference only.
 
 ## Conventions
 
