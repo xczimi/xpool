@@ -17,14 +17,25 @@ Talks to the GraphQL API at `/api/graphql`; Vite proxies `/api` →
 
 ```sh
 npm install
-npm run dev      # dev server, proxies /api to :3000
-npm run build    # tsc -b && vite build
-npm run lint     # eslint
-npm run e2e      # Playwright end-to-end suite (boots the full live stack)
+npm run dev            # dev server, proxies /api to :3000
+npm run build          # tsc -b && vite build
+npm run lint           # eslint
+npm run test           # Vitest — unit tests for src/lib/ pure logic
+npm run test:watch     # Vitest in watch mode
+npm run test:coverage  # Vitest with a v8 coverage report (80% threshold on src/lib/)
+npm run e2e            # Playwright end-to-end suite (boots the full live stack)
 ```
 
-The build and lint do **not** require the backend to be running. `npm run e2e`
-does — see below.
+The build, lint and unit tests do **not** require the backend to be running.
+`npm run e2e` does — see below.
+
+## Unit tests (`npm run test`)
+
+[Vitest](https://vitest.dev) covers the SPA's pure logic layer — `src/lib/`
+(`standings.ts`, `rounds.ts`, `format.ts`, `polling.ts`). Tests live next to
+the code as `*.test.ts`. `npm run test:coverage` enforces an 80% threshold
+over `src/lib/` (React hooks such as `usePolledQuery.ts` are excluded — they
+are effect-driven, exercised by the e2e suite). Config: `vitest.config.ts`.
 
 ## End-to-end tests (`npm run e2e`)
 
@@ -149,5 +160,5 @@ The schema below is the **agreed reconciled contract** — the `api` crate's
   documents exist but pool membership management is out of scope per
   `DATA_MODEL.md` §8). The Scoreboard pool selector reads existing pools.
 - A Playwright **end-to-end suite** (`npm run e2e`, see above) covers the
-  cross-stack flows. Pure helpers in `src/lib/` are structured to be unit
-  testable, but a component/unit test runner has not been added.
+  cross-stack flows; **Vitest** (`npm run test`, see above) covers the pure
+  helpers in `src/lib/`. A React component test runner has not been added.

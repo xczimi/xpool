@@ -1,5 +1,5 @@
 import { useI18n } from '../i18n/useI18n'
-import { ROUND_LABELS, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
+import { roundLabel, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
 
 /**
  * Player-facing rules of play (REWRITE_USE_CASES §5, SCORING.md). Static copy.
@@ -48,7 +48,7 @@ export function RulesPage() {
         <tbody>
           {ROUND_ORDER.map((r) => (
             <tr key={r}>
-              <td>{ROUND_LABELS[r]}</td>
+              <td>{roundLabel(r, t)}</td>
               <td>×{STAGE_MULTIPLIERS[r]}</td>
             </tr>
           ))}

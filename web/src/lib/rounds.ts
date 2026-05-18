@@ -1,14 +1,29 @@
 import type { Round } from '../graphql/types'
+import type { StringKey } from '../i18n/strings'
 
-/** Human-readable round labels. */
-export const ROUND_LABELS: Record<Round, string> = {
-  GROUP_STAGE: 'Group Stage',
-  R32: 'Round of 32',
-  R16: 'Round of 16',
-  QF: 'Quarter-final',
-  SF: 'Semi-final',
-  THIRD_PLACE: 'Third place',
-  FINAL: 'Final',
+/**
+ * Map each round to its i18n catalogue key. Round names are first-class
+ * translated strings (CLAUDE.md i18n) — render them via `roundLabel`, never
+ * a hardcoded English constant.
+ */
+const ROUND_LABEL_KEYS: Record<Round, StringKey> = {
+  GROUP_STAGE: 'roundGroupStage',
+  R32: 'roundR32',
+  R16: 'roundR16',
+  QF: 'roundQF',
+  SF: 'roundSF',
+  THIRD_PLACE: 'roundThirdPlace',
+  FINAL: 'roundFinal',
+}
+
+/** The i18n string key for a round's display label. */
+export function roundLabelKey(round: Round): StringKey {
+  return ROUND_LABEL_KEYS[round]
+}
+
+/** Localised display label for a round, given a translator `t`. */
+export function roundLabel(round: Round, t: (key: StringKey) => string): string {
+  return t(roundLabelKey(round))
 }
 
 /** Display order for per-stage scoreboard breakdowns. */

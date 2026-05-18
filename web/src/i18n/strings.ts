@@ -97,6 +97,15 @@ const en = {
   allTipsTitle: 'All Tips',
   hiddenTip: 'hidden',
 
+  // round labels
+  roundGroupStage: 'Group Stage',
+  roundR32: 'Round of 32',
+  roundR16: 'Round of 16',
+  roundQF: 'Quarter-final',
+  roundSF: 'Semi-final',
+  roundThirdPlace: 'Third place',
+  roundFinal: 'Final',
+
   // scoreboard
   scoreboardTitle: 'Scoreboard',
   pool: 'Pool',
@@ -236,6 +245,14 @@ const hu: Record<StringKey, string> = {
 
   allTipsTitle: 'Összes tipp',
   hiddenTip: 'rejtett',
+
+  roundGroupStage: 'Csoportkör',
+  roundR32: 'Legjobb 32',
+  roundR16: 'Nyolcaddöntő',
+  roundQF: 'Negyeddöntő',
+  roundSF: 'Elődöntő',
+  roundThirdPlace: 'Bronzmérkőzés',
+  roundFinal: 'Döntő',
 
   scoreboardTitle: 'Tippverseny',
   pool: 'Liga',

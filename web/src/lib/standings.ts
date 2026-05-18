@@ -22,60 +22,65 @@ export function goalDiff(s: TeamStats): number {
  * goal difference, then goals scored. Head-to-head and the manual `draw_order`
  * tiebreak are applied separately via `applyDrawOrder`.
  */
+/** A zeroed `TeamStats` for a team that has not played yet. */
+function emptyStats(teamId: string): TeamStats {
+  return {
+    teamId,
+    played: 0,
+    won: 0,
+    drawn: 0,
+    lost: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+    points: 0,
+  }
+}
+
+/** Fold one match's goals (from this team's perspective) into a fresh stats. */
+function recordMatch(s: TeamStats, scored: number, conceded: number): TeamStats {
+  const win = scored > conceded
+  const loss = scored < conceded
+  const draw = scored === conceded
+  return {
+    ...s,
+    played: s.played + 1,
+    won: s.won + (win ? 1 : 0),
+    drawn: s.drawn + (draw ? 1 : 0),
+    lost: s.lost + (loss ? 1 : 0),
+    goalsFor: s.goalsFor + scored,
+    goalsAgainst: s.goalsAgainst + conceded,
+    points: s.points + (win ? 3 : draw ? 1 : 0),
+  }
+}
+
 export function computeStandings(
   games: SingleGame[],
   scoreOf: (gameId: string) => { home: number; away: number } | null,
 ): TeamStats[] {
-  const stats = new Map<string, TeamStats>()
-  const ensure = (teamId: string): TeamStats => {
-    let s = stats.get(teamId)
-    if (!s) {
-      s = {
-        teamId,
-        played: 0,
-        won: 0,
-        drawn: 0,
-        lost: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-        points: 0,
-      }
-      stats.set(teamId, s)
-    }
-    return s
-  }
-
-  for (const game of games) {
+  // Fold every game into a fresh map of fresh `TeamStats` objects — no input
+  // or accumulator object is ever mutated in place.
+  const stats = games.reduce((acc, game) => {
     const home = game.home.teamId
     const away = game.away.teamId
-    if (!home || !away) continue
-    ensure(home)
-    ensure(away)
+    if (!home || !away) return acc
+
+    const withTeams = new Map(acc)
+    if (!withTeams.has(home)) withTeams.set(home, emptyStats(home))
+    if (!withTeams.has(away)) withTeams.set(away, emptyStats(away))
+
     const score = scoreOf(game.id)
-    if (!score) continue
-    const h = stats.get(home)!
-    const a = stats.get(away)!
-    h.played += 1
-    a.played += 1
-    h.goalsFor += score.home
-    h.goalsAgainst += score.away
-    a.goalsFor += score.away
-    a.goalsAgainst += score.home
-    if (score.home > score.away) {
-      h.won += 1
-      h.points += 3
-      a.lost += 1
-    } else if (score.home < score.away) {
-      a.won += 1
-      a.points += 3
-      h.lost += 1
-    } else {
-      h.drawn += 1
-      a.drawn += 1
-      h.points += 1
-      a.points += 1
-    }
-  }
+    if (!score) return withTeams
+
+    withTeams.set(
+      home,
+      recordMatch(withTeams.get(home)!, score.home, score.away),
+    )
+    withTeams.set(
+      away,
+      recordMatch(withTeams.get(away)!, score.away, score.home),
+    )
+    return withTeams
+  }, new Map<string, TeamStats>())
 
   return [...stats.values()].sort((x, y) => {
     if (y.points !== x.points) return y.points - x.points

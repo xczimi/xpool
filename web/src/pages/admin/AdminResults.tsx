@@ -10,6 +10,9 @@ import type { MatchPrediction, Tournament } from '../../graphql/types'
 import { ErrorView, Loading } from '../../components/StatusViews'
 import { byKickoff, formatKickoff, slotLabel, teamIndex } from '../../lib/format'
 
+/** Valid score values, 0–9 (matches GroupTipForm — legacy range). */
+const SCORE_OPTIONS = Array.from({ length: 10 }, (_, i) => i)
+
 /** Admin results entry — calls `enterResult` per match (UC-14). */
 export function AdminResults() {
   const { t, locale } = useI18n()
@@ -113,8 +116,17 @@ function ResultRow({
   )
   const [busy, setBusy] = useState(false)
 
+  // A score is valid only when it is a non-empty, in-range integer. The
+  // `<select>` already constrains input; this guards against any other path.
+  const isValidScore = (raw: string): boolean => {
+    if (raw === '') return false
+    const n = Number(raw)
+    return Number.isInteger(n) && SCORE_OPTIONS.includes(n)
+  }
+  const inputsValid = isValidScore(home) && isValidScore(away)
+
   const save = async (lock: boolean) => {
-    if (home === '' || away === '') return
+    if (!inputsValid) return
     setBusy(true)
     try {
       await onSave(Number(home), Number(away), lock)
@@ -128,34 +140,26 @@ function ResultRow({
       <td>{kickoff}</td>
       <td>{label}</td>
       <td className="score-cell">
-        <input
-          type="number"
-          min={0}
-          value={home}
-          disabled={locked}
-          onChange={(e) => setHome(e.target.value)}
-        />
+        <ScoreSelect value={home} disabled={locked} onChange={setHome} />
         <span>:</span>
-        <input
-          type="number"
-          min={0}
-          value={away}
-          disabled={locked}
-          onChange={(e) => setAway(e.target.value)}
-        />
+        <ScoreSelect value={away} disabled={locked} onChange={setAway} />
       </td>
       <td>
         {locked ? (
           <span className="state-locked">{t('locked')}</span>
         ) : (
           <>
-            <button type="button" disabled={busy} onClick={() => save(false)}>
+            <button
+              type="button"
+              disabled={busy || !inputsValid}
+              onClick={() => save(false)}
+            >
               {t('save')}
             </button>
             <button
               type="button"
               className="primary"
-              disabled={busy}
+              disabled={busy || !inputsValid}
               onClick={() => save(true)}
             >
               {t('enterResult')}
@@ -164,5 +168,31 @@ function ResultRow({
         )}
       </td>
     </tr>
+  )
+}
+
+/** Constrained 0–9 score picker — mirrors GroupTipForm's `ScoreInput`. */
+function ScoreSelect({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: string
+  disabled: boolean
+  onChange: (v: string) => void
+}) {
+  return (
+    <select
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      <option value="">–</option>
+      {SCORE_OPTIONS.map((n) => (
+        <option key={n} value={n}>
+          {n}
+        </option>
+      ))}
+    </select>
   )
 }

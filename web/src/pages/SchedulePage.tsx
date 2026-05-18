@@ -5,7 +5,7 @@ import { RESULTS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
 import type { MatchPrediction, Tournament } from '../graphql/types'
 import { ErrorView, Loading } from '../components/StatusViews'
 import { byKickoff, formatKickoff, slotLabel, teamIndex } from '../lib/format'
-import { ROUND_LABELS } from '../lib/rounds'
+import { roundLabel } from '../lib/rounds'
 
 /** Full fixture list, grouped by tournament group (UC-12). Public, read-only. */
 export function SchedulePage() {
@@ -62,7 +62,7 @@ export function SchedulePage() {
           <div key={group.id} className="schedule-group">
             <h3>
               {group.name}{' '}
-              <span className="round-tag">{ROUND_LABELS[group.round]}</span>
+              <span className="round-tag">{roundLabel(group.round, t)}</span>
             </h3>
             <table className="data-table">
               <thead>

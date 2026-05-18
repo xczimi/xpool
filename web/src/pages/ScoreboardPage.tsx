@@ -15,7 +15,7 @@ import type {
 import { ErrorView, Loading } from '../components/StatusViews'
 import { usePolledQuery } from '../lib/usePolledQuery'
 import { pollIntervalMs } from '../lib/polling'
-import { ROUND_LABELS, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
+import { roundLabel, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
 
 /** Ranked leaderboard, overall + per stage, with pool selector (UC-8). */
 export function ScoreboardPage() {
@@ -83,7 +83,7 @@ export function ScoreboardPage() {
             <th>{t('player')}</th>
             {ROUND_ORDER.map((r) => (
               <th key={r}>
-                {ROUND_LABELS[r]}
+                {roundLabel(r, t)}
                 <br />
                 <small>
                   {t('multiplier')} ×{STAGE_MULTIPLIERS[r]}

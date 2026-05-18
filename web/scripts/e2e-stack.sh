@@ -102,7 +102,7 @@ cargo run -q -p xtask -- seed
 log "building the API"
 cargo build -q -p api
 API_BIN="$(mise exec -- cargo metadata --no-deps --format-version 1 \
-  | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).target_directory))')/debug/api"
+  | jq -r .target_directory)/debug/api"
 if [ ! -x "$API_BIN" ]; then
   log "ERROR: API binary not found at $API_BIN"
   exit 1
