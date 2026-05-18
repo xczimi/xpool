@@ -1,4 +1,4 @@
-import type { Round } from '../graphql/types'
+import type { GroupGame, Round } from '../graphql/types'
 import type { StringKey } from '../i18n/strings'
 
 /**
@@ -24,6 +24,73 @@ export function roundLabelKey(round: Round): StringKey {
 /** Localised display label for a round, given a translator `t`. */
 export function roundLabel(round: Round, t: (key: StringKey) => string): string {
   return t(roundLabelKey(round))
+}
+
+/**
+ * Leaf groups (those holding matches) ordered chronologically by their
+ * `deadline` — the earliest kickoff in the group's subtree. Groups without a
+ * scheduled deadline sort last. Returns a new array; the input is not mutated.
+ * Shared by the My Tips / All Tips pages and the `GroupSubNav` pills so the
+ * default-selected group and the rendered order always agree.
+ */
+export function chronologicalLeafGroups(groups: GroupGame[]): GroupGame[] {
+  const deadlineMs = (g: GroupGame): number =>
+    g.deadline ? Date.parse(g.deadline) : Number.POSITIVE_INFINITY
+  return groups
+    .filter((g) => g.childGameIds.length > 0)
+    .slice()
+    .sort((a, b) => deadlineMs(a) - deadlineMs(b))
+}
+
+/** A group node is a leaf when it directly holds matches. */
+function isLeafGroup(g: GroupGame): boolean {
+  return g.childGameIds.length > 0
+}
+
+/**
+ * The round-level group nodes — the internal nodes whose children are all
+ * leaf groups (Group Stage parents the 12 groups; each knockout round parents
+ * its one-match groups). Excludes the root and the bare `Knockout Stage`
+ * container, whose children are themselves internal nodes. Ordered by
+ * `ROUND_ORDER`. Drives the round-tab navigation.
+ */
+export function roundNodes(groups: GroupGame[]): GroupGame[] {
+  const byId = new Map(groups.map((g) => [g.id, g]))
+  return groups
+    .filter(
+      (g) =>
+        g.childGroupIds.length > 0 &&
+        g.childGroupIds.every((id) => {
+          const child = byId.get(id)
+          return child !== undefined && isLeafGroup(child)
+        }),
+    )
+    .slice()
+    .sort((a, b) => ROUND_ORDER.indexOf(a.round) - ROUND_ORDER.indexOf(b.round))
+}
+
+/**
+ * The leaf groups directly under a round node, ordered chronologically.
+ */
+export function leafGroupsOfRound(
+  roundNode: GroupGame,
+  groups: GroupGame[],
+): GroupGame[] {
+  const byId = new Map(groups.map((g) => [g.id, g]))
+  const children = roundNode.childGroupIds
+    .map((id) => byId.get(id))
+    .filter((g): g is GroupGame => g !== undefined)
+  return chronologicalLeafGroups(children)
+}
+
+/**
+ * The round the player should land on: the first round still open to predict
+ * (its deadline has not passed), falling back to the last round once the
+ * tournament is over. Server-authoritative — reads `deadlinePassed`, never the
+ * wall clock.
+ */
+export function currentRoundNode(rounds: GroupGame[]): GroupGame | null {
+  return rounds.find((r) => !r.deadlinePassed) ?? rounds[rounds.length - 1] ?? null
 }
 
 /** Display order for per-stage scoreboard breakdowns. */

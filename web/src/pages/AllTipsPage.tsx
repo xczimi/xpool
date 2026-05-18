@@ -3,49 +3,65 @@ import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import { TIPS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
-import type { Tip, Tournament } from '../graphql/types'
+import type { Round, Tip, Tournament } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
-import { GroupSubNav } from '../components/GroupSubNav'
+import { RoundNav } from '../components/RoundNav'
 import { byKickoff, slotCode, teamIndex } from '../lib/format'
+import { currentRoundNode, leafGroupsOfRound, roundNodes } from '../lib/rounds'
 
 /**
- * All Tips (UC-9) — a grid of every player's predictions for a group. The API
- * already applies hidden-until-locked visibility; a tip whose nested
- * `prediction` is null shows as "hidden".
+ * All Tips (UC-9) — a grid of every player's predictions. Round tabs pick a
+ * round; the Group Stage round shows one group, a knockout round shows every
+ * match in the round (the tips query takes the round node id — its `games_in`
+ * is recursive). The API already applies hidden-until-locked visibility.
  */
 export function AllTipsPage() {
   const { t } = useI18n()
   const { playerId } = useAuth()
-  const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
+  const [selectedRound, setSelectedRound] = useState<Round | null>(null)
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
 
   const [tournamentResult] = useQuery<{
     tournament: Tournament | null
   }>({ query: TOURNAMENT_QUERY })
 
   const tournament = tournamentResult.data?.tournament ?? null
-  const leafGroups = useMemo(
-    () => (tournament?.groups ?? []).filter((g) => g.childGameIds.length > 0),
+  const rounds = useMemo(
+    () => roundNodes(tournament?.groups ?? []),
     [tournament],
   )
-  const activeGroupId = selectedGroup ?? leafGroups[0]?.id ?? null
+  const activeRound =
+    selectedRound ?? currentRoundNode(rounds)?.round ?? rounds[0]?.round ?? null
+  const activeRoundNode = rounds.find((r) => r.round === activeRound) ?? null
+  const roundLeaves = activeRoundNode
+    ? leafGroupsOfRound(activeRoundNode, tournament?.groups ?? [])
+    : []
+  const isGroupStage = activeRound === 'GROUP_STAGE'
+  const activeGroupId = selectedGroupId ?? roundLeaves[0]?.id ?? null
+
+  // Group Stage queries one leaf group; a knockout round queries the round
+  // node — the `tips` resolver walks its subtree.
+  const tipsGroupId = isGroupStage ? activeGroupId : (activeRoundNode?.id ?? null)
 
   const [tipsResult, refetchTips] = useQuery<{ tips: Tip[] }>({
     query: TIPS_QUERY,
-    variables: { groupId: activeGroupId },
-    pause: !activeGroupId,
+    variables: { groupId: tipsGroupId },
+    pause: !tipsGroupId,
   })
 
   if (!playerId) return <NeedsLogin />
   if (tournamentResult.fetching) return <Loading />
   if (!tournament) return <ErrorView />
 
-  const activeGroup = leafGroups.find((g) => g.id === activeGroupId) ?? null
   const teams = teamIndex(tournament.teams)
-  const games = activeGroup
-    ? tournament.games
-        .filter((g) => activeGroup.childGameIds.includes(g.id))
-        .sort(byKickoff)
-    : []
+  const shownGameIds = new Set(
+    isGroupStage
+      ? (roundLeaves.find((g) => g.id === activeGroupId)?.childGameIds ?? [])
+      : roundLeaves.flatMap((g) => g.childGameIds),
+  )
+  const games = tournament.games
+    .filter((g) => shownGameIds.has(g.id))
+    .sort(byKickoff)
 
   const tips = tipsResult.data?.tips ?? []
   // playerId -> nick
@@ -59,10 +75,15 @@ export function AllTipsPage() {
   return (
     <section className="page">
       <h2>{t('allTipsTitle')}</h2>
-      <GroupSubNav
+      <RoundNav
         groups={tournament.groups}
-        selectedId={activeGroupId}
-        onSelect={setSelectedGroup}
+        selectedRound={activeRound}
+        onSelectRound={(round) => {
+          setSelectedRound(round)
+          setSelectedGroupId(null)
+        }}
+        selectedGroupId={activeGroupId}
+        onSelectGroup={setSelectedGroupId}
       />
 
       {tipsResult.fetching && <Loading />}
@@ -73,7 +94,7 @@ export function AllTipsPage() {
         />
       )}
 
-      {activeGroup && !tipsResult.fetching && (
+      {!tipsResult.fetching && games.length > 0 && (
         <div className="grid-scroll">
           <table className="data-table compact">
             <thead>

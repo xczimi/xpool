@@ -31,6 +31,12 @@ body { margin: 0; background: var(--bg); }
 .app-footer { padding: 1rem 1.25rem; color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(--border); text-align: center; }
 .page h2 { margin-top: 0; }
 .home-links { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
+.round-nav { margin: 0.75rem 0; }
+.round-tabs { display: flex; flex-wrap: wrap; gap: 0.3rem; }
+.round-tab { padding: 0.4rem 0.85rem; border: 1px solid var(--border); background: var(--surface); border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: var(--ink); }
+.round-tab:hover { background: #eef1f5; }
+.round-tab.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.round-nav .group-subnav { margin: 0.5rem 0 0; }
 .group-subnav { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.75rem 0; }
 .subnav-item { padding: 0.3rem 0.65rem; border: 1px solid var(--border); background: var(--surface); border-radius: 4px; cursor: pointer; font-size: 0.85rem; text-decoration: none; color: var(--ink); }
 .subnav-item.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }

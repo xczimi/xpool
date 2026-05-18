@@ -1,4 +1,5 @@
 import type { GroupGame } from '../graphql/types'
+import { chronologicalLeafGroups } from '../lib/rounds'
 
 /**
  * Sub-navigation for tournament groups — leaf groups only (those holding
@@ -13,7 +14,7 @@ export function GroupSubNav({
   selectedId: string | null
   onSelect: (groupId: string) => void
 }) {
-  const leaves = groups.filter((g) => g.childGameIds.length > 0)
+  const leaves = chronologicalLeafGroups(groups)
   return (
     <div className="group-subnav">
       {leaves.map((g) => (

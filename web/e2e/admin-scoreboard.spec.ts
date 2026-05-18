@@ -31,16 +31,29 @@ function matchRows(page: Page) {
     .locator('tbody tr')
 }
 
+// The e2e API clock defaults to 2026-06-20 (mid-tournament), when the group
+// stage is locked and My Tips opens on the R32 round. Pin the clock to before
+// the tournament so Group A is editable and My Tips opens on the Group Stage
+// round. This spec locks Group A; mytips.spec.ts uses Group B — keeping them on
+// different groups makes the suite order-independent.
+const PRE_TOURNAMENT = '2026-01-01T12:00:00Z'
+
 test('admin result credits a predicting player on the scoreboard', async ({
   page,
 }) => {
   const net = watchNetwork(page)
 
-  // ── 1. demo-ada locks predictions for the first group ──────────────────────
+  await page.addInitScript((value) => {
+    localStorage.setItem('xpool.devNow', value)
+  }, PRE_TOURNAMENT)
+
+  // ── 1. demo-ada locks predictions for Group A ──────────────────────────────
   await page.goto('/')
   await devLogin(page, 'demo-ada')
   await page.getByRole('link', { name: 'My Tips' }).click()
-  await expect(page.locator('.tip-form')).toBeVisible()
+  // Group Stage is the default round; open Group A explicitly.
+  await page.locator('.group-subnav button', { hasText: /^Group A$/ }).click()
+  await expect(page.locator('.tip-form h3')).toContainText('Group A')
 
   // Predict every match 2:1 — a unique, recognisable scoreline.
   await fillAll(page, '2', '1')
@@ -73,9 +86,9 @@ test('admin result credits a predicting player on the scoreboard', async ({
     .locator('table.data-table tbody tr')
     .filter({ hasText: firstMatchLabel! })
     .first()
-  const inputs = resultRow.locator('.score-cell input')
-  await inputs.nth(0).fill('2')
-  await inputs.nth(1).fill('1')
+  const scores = resultRow.locator('.score-cell select')
+  await scores.nth(0).selectOption('2')
+  await scores.nth(1).selectOption('1')
   await resultRow.getByRole('button', { name: 'Enter result' }).click()
   await expect(resultRow.locator('.state-locked')).toBeVisible()
 

@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
-import type { Round } from '../graphql/types'
-import { ROUND_ORDER, STAGE_MULTIPLIERS, roundLabel, roundLabelKey } from './rounds'
+import type { GroupGame, Round } from '../graphql/types'
+import {
+  ROUND_ORDER,
+  STAGE_MULTIPLIERS,
+  chronologicalLeafGroups,
+  currentRoundNode,
+  leafGroupsOfRound,
+  roundLabel,
+  roundLabelKey,
+  roundNodes,
+} from './rounds'
 import { catalogues } from '../i18n/strings'
 import type { StringKey } from '../i18n/strings'
 
@@ -51,6 +60,125 @@ describe('roundLabelKey', () => {
 
   it('translates the group stage to Hungarian', () => {
     expect(catalogues.hu[roundLabelKey('GROUP_STAGE')]).toBe('Csoportkör')
+  })
+})
+
+describe('chronologicalLeafGroups', () => {
+  const group = (
+    id: string,
+    deadline: string | null,
+    childGameIds: string[],
+  ): GroupGame => ({
+    id,
+    name: id,
+    parent: null,
+    round: 'GROUP_STAGE',
+    lockMode: 'LOCK_TOGETHER',
+    carriesStandings: true,
+    childGroupIds: [],
+    childGameIds,
+    deadline,
+    deadlinePassed: false,
+  })
+
+  it('orders leaf groups by deadline ascending', () => {
+    const groups = [
+      group('c', '2026-06-15T12:00:00Z', ['g3']),
+      group('a', '2026-06-11T12:00:00Z', ['g1']),
+      group('b', '2026-06-13T12:00:00Z', ['g2']),
+    ]
+    expect(chronologicalLeafGroups(groups).map((g) => g.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  it('drops non-leaf groups (no child games)', () => {
+    const groups = [
+      group('leaf', '2026-06-11T12:00:00Z', ['g1']),
+      group('internal', '2026-06-10T12:00:00Z', []),
+    ]
+    expect(chronologicalLeafGroups(groups).map((g) => g.id)).toEqual(['leaf'])
+  })
+
+  it('sorts a null-deadline group last', () => {
+    const groups = [
+      group('tbd', null, ['g2']),
+      group('scheduled', '2026-06-11T12:00:00Z', ['g1']),
+    ]
+    expect(chronologicalLeafGroups(groups).map((g) => g.id)).toEqual(['scheduled', 'tbd'])
+  })
+
+  it('does not mutate the input array', () => {
+    const groups = [
+      group('c', '2026-06-15T12:00:00Z', ['g3']),
+      group('a', '2026-06-11T12:00:00Z', ['g1']),
+    ]
+    const before = groups.map((g) => g.id)
+    chronologicalLeafGroups(groups)
+    expect(groups.map((g) => g.id)).toEqual(before)
+  })
+})
+
+describe('roundNodes / leafGroupsOfRound / currentRoundNode', () => {
+  const node = (
+    id: string,
+    round: Round,
+    opts: {
+      childGroupIds?: string[]
+      childGameIds?: string[]
+      deadline?: string | null
+      deadlinePassed?: boolean
+    },
+  ): GroupGame => ({
+    id,
+    name: id,
+    parent: null,
+    round,
+    lockMode: 'LOCK_TOGETHER',
+    carriesStandings: false,
+    childGroupIds: opts.childGroupIds ?? [],
+    childGameIds: opts.childGameIds ?? [],
+    deadline: opts.deadline ?? null,
+    deadlinePassed: opts.deadlinePassed ?? false,
+  })
+
+  // ROOT -> GROUPSTAGE -> {A,B}; ROOT -> KNOCKOUT -> {R32 -> {M1,M2}, FINAL -> {M3}}
+  const tree: GroupGame[] = [
+    node('ROOT', 'GROUP_STAGE', { childGroupIds: ['GROUPSTAGE', 'KNOCKOUT'] }),
+    node('GROUPSTAGE', 'GROUP_STAGE', { childGroupIds: ['A', 'B'] }),
+    node('KNOCKOUT', 'R32', { childGroupIds: ['R32', 'FINAL'] }),
+    node('R32', 'R32', { childGroupIds: ['M1', 'M2'] }),
+    node('FINAL', 'FINAL', { childGroupIds: ['M3'] }),
+    node('A', 'GROUP_STAGE', { childGameIds: ['g1'], deadline: '2026-06-11T12:00:00Z' }),
+    node('B', 'GROUP_STAGE', { childGameIds: ['g2'], deadline: '2026-06-12T12:00:00Z' }),
+    node('M1', 'R32', { childGameIds: ['g3'], deadline: '2026-07-01T12:00:00Z' }),
+    node('M2', 'R32', { childGameIds: ['g4'], deadline: '2026-06-30T12:00:00Z' }),
+    node('M3', 'FINAL', { childGameIds: ['g5'], deadline: '2026-07-19T12:00:00Z' }),
+  ]
+
+  it('returns exactly the round nodes, ordered, excluding root and container', () => {
+    expect(roundNodes(tree).map((g) => g.id)).toEqual(['GROUPSTAGE', 'R32', 'FINAL'])
+  })
+
+  it('lists a round node’s leaf groups chronologically', () => {
+    const r32 = roundNodes(tree).find((g) => g.id === 'R32')!
+    // M2 (Jun 30) before M1 (Jul 1)
+    expect(leafGroupsOfRound(r32, tree).map((g) => g.id)).toEqual(['M2', 'M1'])
+  })
+
+  it('currentRoundNode picks the first round whose deadline has not passed', () => {
+    const rounds = [
+      node('GROUPSTAGE', 'GROUP_STAGE', { childGroupIds: ['A'], deadlinePassed: true }),
+      node('R32', 'R32', { childGroupIds: ['M1'], deadlinePassed: false }),
+      node('FINAL', 'FINAL', { childGroupIds: ['M3'], deadlinePassed: false }),
+    ]
+    expect(currentRoundNode(rounds)?.id).toBe('R32')
+  })
+
+  it('currentRoundNode falls back to the last round when all have passed', () => {
+    const rounds = [
+      node('GROUPSTAGE', 'GROUP_STAGE', { childGroupIds: ['A'], deadlinePassed: true }),
+      node('FINAL', 'FINAL', { childGroupIds: ['M3'], deadlinePassed: true }),
+    ]
+    expect(currentRoundNode(rounds)?.id).toBe('FINAL')
   })
 })
 

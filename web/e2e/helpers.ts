@@ -97,7 +97,9 @@ export async function expectNoErrorView(page: Page): Promise<void> {
 
 /** Log out via the auth bar, if currently logged in. */
 export async function devLogout(page: Page): Promise<void> {
-  const logoutBtn = page.locator('.auth-bar button')
+  // Direct child only — the logout button. A nested `.dev-clock` reset button
+  // also exists when a dev clock is pinned, so `.auth-bar button` is ambiguous.
+  const logoutBtn = page.locator('.auth-bar > button')
   if (await logoutBtn.isVisible().catch(() => false)) {
     await logoutBtn.click()
   }
