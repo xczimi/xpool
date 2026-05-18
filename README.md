@@ -23,7 +23,7 @@ A Rust workspace plus a React SPA, all runnable locally:
 
 ## Running locally
 
-Prerequisites: [`mise`](https://mise.jdx.dev/) (provides Rust), Node 20+, Docker.
+Prerequisites: the Rust toolchain ([`rustup`](https://rustup.rs/)), Node 20+, Docker.
 
 ```sh
 # 1. Start DynamoDB Local + MailHog

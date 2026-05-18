@@ -11,8 +11,8 @@ maintained); the new implementation is at the repo root.
 
 ## Toolchain
 
-Rust is installed via `mise` (`mise.toml` pins `rust = "latest"`); `cargo` is
-on `PATH` — invoke it directly. Node/npm are on `PATH` too.
+Rust is installed natively via `rustup` (rust-lang's recommended installer);
+`cargo` is on `PATH` — invoke it directly. Node/npm are on `PATH` too.
 
 ```sh
 cargo build --workspace

@@ -47,9 +47,6 @@ log() { echo "[e2e-stack] $*"; }
 log "using fresh table $XPOOL_TABLE"
 log "API clock (XPOOL_NOW) = $XPOOL_NOW"
 
-# cargo is not on PATH — mise provides the Rust toolchain.
-cargo() { mise exec -- cargo "$@"; }
-
 # ── 1. kill stale processes ──────────────────────────────────────────────────
 # Only the API (:3000) is killed here. The Vite dev server (:5173) is owned by
 # Playwright's `webServer` (with `reuseExistingServer`), which Playwright may
@@ -101,7 +98,7 @@ cargo run -q -p xtask -- seed
 # stop it cleanly.
 log "building the API"
 cargo build -q -p api
-API_BIN="$(mise exec -- cargo metadata --no-deps --format-version 1 \
+API_BIN="$(cargo metadata --no-deps --format-version 1 \
   | jq -r .target_directory)/debug/api"
 if [ ! -x "$API_BIN" ]; then
   log "ERROR: API binary not found at $API_BIN"

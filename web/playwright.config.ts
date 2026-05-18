@@ -9,8 +9,8 @@ import { defineConfig, devices } from '@playwright/test'
  * - `webServer` starts the Vite dev server; Playwright waits for it.
  * - `globalTeardown` stops the API (docker is left running).
  *
- * Run with `npm run e2e`. Prerequisites: Docker, the Rust toolchain via
- * `mise`, and `npx playwright install chromium` already done.
+ * Run with `npm run e2e`. Prerequisites: Docker, the Rust toolchain
+ * (`rustup`), and `npx playwright install chromium` already done.
  */
 export default defineConfig({
   testDir: './e2e',

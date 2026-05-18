@@ -44,7 +44,7 @@ Local + the axum API + this Vite dev server). A `build`-only check cannot catch
 SPA↔API integration bugs (a GraphQL schema mismatch, urql sending a query as
 GET); these tests do.
 
-**Prerequisites:** Docker, the Rust toolchain via `mise`, Node, and the
+**Prerequisites:** Docker, the Rust toolchain (`rustup`), Node, and the
 Playwright browser binary:
 
 ```sh

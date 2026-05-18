@@ -16,9 +16,6 @@ export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-local}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-local}"
 
-# cargo is not on PATH — mise provides the Rust toolchain.
-cargo() { mise exec -- cargo "$@"; }
-
 log() { echo "[e2e-teardown] $*"; }
 
 if [ -f "$PID_FILE" ]; then
