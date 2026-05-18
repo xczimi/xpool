@@ -60,7 +60,7 @@ async fn main() -> anyhow::Result<()> {
         }
         Command::DropTable => {
             repo.delete_table().await?;
-            println!("dropped table {}", std::env::var("XPOOL_TABLE").unwrap_or_default());
+            println!("dropped table {}", repo.table);
         }
     }
 
