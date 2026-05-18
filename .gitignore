@@ -4,6 +4,9 @@
 .settings
 *~
 
+# IDE
+.idea
+
 # Rust
 /target
 **/*.rs.bk
