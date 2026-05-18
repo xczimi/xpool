@@ -61,6 +61,8 @@ button.primary { background: var(--accent); color: var(--accent-ink); border-col
 .poll-note { color: #137333; font-size: 0.8rem; margin: 0.2rem 0; }
 .round-tag { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
 .hint { font-size: 0.8rem; color: var(--muted); }
+.notice { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.7rem; margin: 0.6rem 0; border: 1px solid var(--border); border-radius: 4px; background: #fff8e1; font-size: 0.85rem; }
+.notice.error { background: #fdecea; color: var(--locked); }
 
 /* pools */
 .pool-forms { display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 1.5rem; }

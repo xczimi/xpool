@@ -3,10 +3,16 @@ import { useMutation, useQuery } from 'urql'
 import { useI18n } from '../../i18n/useI18n'
 import {
   ENTER_RESULT_MUTATION,
+  RECOMPUTE_MUTATION,
   RESULTS_QUERY,
   TOURNAMENT_QUERY,
+  UNLOCK_RESULT_MUTATION,
 } from '../../graphql/queries'
-import type { MatchPrediction, Tournament } from '../../graphql/types'
+import type {
+  MatchPrediction,
+  ResultEntered,
+  Tournament,
+} from '../../graphql/types'
 import { ErrorView, Loading } from '../../components/StatusViews'
 import { byKickoff, formatKickoff, slotLabel, teamIndex } from '../../lib/format'
 
@@ -23,7 +29,19 @@ export function AdminResults() {
   const [resultsQuery, refetchResults] = useQuery<{
     results: MatchPrediction[]
   }>({ query: RESULTS_QUERY })
-  const [, enterResult] = useMutation(ENTER_RESULT_MUTATION)
+  const [, enterResult] = useMutation<{ enterResult: ResultEntered }>(
+    ENTER_RESULT_MUTATION,
+  )
+  const [, unlockResult] = useMutation<{ unlockResult: boolean }>(
+    UNLOCK_RESULT_MUTATION,
+  )
+  const [recomputeState, recompute] = useMutation<{ recompute: boolean }>(
+    RECOMPUTE_MUTATION,
+  )
+
+  /** True after a failed post-result recompute — surfaces the manual notice. */
+  const [recomputePending, setRecomputePending] = useState(false)
+  const [recomputeDone, setRecomputeDone] = useState(false)
 
   const tournament = result.data?.tournament ?? null
   const teams = useMemo(
@@ -44,9 +62,51 @@ export function AdminResults() {
 
   const games = [...tournament.games].sort(byKickoff)
 
+  const refresh = () => {
+    refetch({ requestPolicy: 'network-only' })
+    refetchResults({ requestPolicy: 'network-only' })
+  }
+
+  const runRecompute = async () => {
+    setRecomputeDone(false)
+    const res = await recompute({})
+    if (res.error || !res.data?.recompute) {
+      // The error notice stays; `recomputeState.error` drives the message.
+      return
+    }
+    setRecomputePending(false)
+    setRecomputeDone(true)
+    refresh()
+  }
+
   return (
     <div>
       <h3>{t('adminResults')}</h3>
+
+      {recomputePending && (
+        <div className="notice" role="status">
+          <span>{t('recomputePendingNotice')}</span>
+          <button
+            type="button"
+            className="primary"
+            disabled={recomputeState.fetching}
+            onClick={runRecompute}
+          >
+            {t('recompute')}
+          </button>
+        </div>
+      )}
+      {recomputeDone && (
+        <div className="notice" role="status">
+          {t('recomputeDone')}
+        </div>
+      )}
+      {recomputeState.error && (
+        <div className="notice error" role="alert">
+          {t('recomputeFailed')}
+        </div>
+      )}
+
       <table className="data-table">
         <thead>
           <tr>
@@ -72,15 +132,24 @@ export function AdminResults() {
                 initialAway={official?.awayScore ?? null}
                 locked={official?.locked ?? false}
                 onSave={async (home, away, lock) => {
-                  await enterResult({
+                  const res = await enterResult({
                     gameId: game.id,
                     homeScore: home,
                     awayScore: away,
                     advancer: null,
                     lock,
                   })
-                  refetch({ requestPolicy: 'network-only' })
-                  refetchResults({ requestPolicy: 'network-only' })
+                  if (res.error) throw res.error
+                  setRecomputeDone(false)
+                  setRecomputePending(
+                    res.data?.enterResult.recomputePending ?? false,
+                  )
+                  refresh()
+                }}
+                onUnlock={async () => {
+                  const res = await unlockResult({ gameId: game.id })
+                  if (res.error) throw res.error
+                  refresh()
                 }}
               />
             )
@@ -98,6 +167,7 @@ function ResultRow({
   initialAway,
   locked,
   onSave,
+  onUnlock,
 }: {
   gameId: string
   label: string
@@ -106,6 +176,7 @@ function ResultRow({
   initialAway: number | null
   locked: boolean
   onSave: (home: number, away: number, lock: boolean) => Promise<void>
+  onUnlock: () => Promise<void>
 }) {
   const { t } = useI18n()
   const [home, setHome] = useState(
@@ -135,6 +206,15 @@ function ResultRow({
     }
   }
 
+  const unlock = async () => {
+    setBusy(true)
+    try {
+      await onUnlock()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <tr>
       <td>{kickoff}</td>
@@ -146,7 +226,12 @@ function ResultRow({
       </td>
       <td>
         {locked ? (
-          <span className="state-locked">{t('locked')}</span>
+          <>
+            <span className="state-locked">{t('locked')}</span>
+            <button type="button" disabled={busy} onClick={unlock}>
+              {t('unlockResult')}
+            </button>
+          </>
         ) : (
           <>
             <button
