@@ -1,6 +1,6 @@
 # 28 — round-tab state can desync from the selected group
 
-Status: ready-for-agent
+Status: done
 Severity: MEDIUM
 Area: web
 
@@ -28,3 +28,10 @@ interacts so it no longer floats with `currentRoundNode`.
 - Switching the current round (e.g. via the dev clock) does not strand the
   page in an unexplained empty state.
 - `web` build + lint + test green.
+
+## Comments
+
+Added a `useEffect` (placed with the other hooks, before the early returns) in
+both `MyTipsPage.tsx` and `AllTipsPage.tsx` that clears `selectedGroupId` when
+the derived `activeRound` changes, tracked via a `useRef`. A round flip from a
+`tournament` refetch no longer strands the page in the empty group state.

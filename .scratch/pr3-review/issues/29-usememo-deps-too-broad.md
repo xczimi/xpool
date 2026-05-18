@@ -1,6 +1,6 @@
 # 29 — useMemo dependencies are the whole `tournament` object
 
-Status: ready-for-agent
+Status: done
 Severity: MEDIUM
 Area: web
 
@@ -22,3 +22,9 @@ Narrow each `useMemo` dependency to the field it actually reads
 
 - The memo deps reference only the consumed fields.
 - `web` build + lint green.
+
+## Comments
+
+Narrowed the memo deps: `roundNodes` memos in MyTips/AllTips now depend on
+`tournament?.groups`, and the `teamIndex` memo in `AdminResults.tsx` on
+`tournament?.teams`. They no longer recompute on every urql poll tick.

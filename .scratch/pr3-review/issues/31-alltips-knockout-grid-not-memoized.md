@@ -1,6 +1,6 @@
 # 31 — All Tips knockout grid rebuilds derived data every render
 
-Status: ready-for-agent
+Status: done
 Severity: MEDIUM
 Area: web
 
@@ -22,3 +22,10 @@ large.)
 
 - The derived maps are memoized.
 - `web` build + lint + test green.
+
+## Comments
+
+Memoized `teams` (`[tournament?.teams]`), `tips` (`[tipsResult.data]`),
+`players` and `tipMap` (`[tips]`) in `AllTipsPage.tsx`. Hoisted `tipKey` to
+module scope so the `tipMap` memo can use it. Memos sit before the early
+returns to keep hook order stable. Virtualization noted as a future concern.

@@ -1,6 +1,6 @@
 # 26 — AdminResults unlock succeeds with no confirmation
 
-Status: ready-for-agent
+Status: done
 Severity: HIGH
 Area: web
 
@@ -22,3 +22,10 @@ or, if a notice is deliberately not wanted, remove the orphaned key.
 
 - Unlocking a result shows a visible confirmation.
 - `web` build + lint green; no orphaned i18n key.
+
+## Comments
+
+Wired the orphaned `resultUnlocked` key: added a `resultUnlocked` state in
+`AdminResults.tsx`, set it on a successful `onUnlock`, and render a `notice`
+`role="status"` mirroring the `recomputeDone` path. The flag is cleared on
+`enterResult` and `recompute` so only the latest action's notice shows.

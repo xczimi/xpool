@@ -1,6 +1,6 @@
 # 30 — AdminResults follow-up refetches are unguarded
 
-Status: ready-for-agent
+Status: done
 Severity: MEDIUM
 Area: web
 
@@ -22,3 +22,11 @@ handled.
 
 - A failed post-mutation refetch shows an error rather than stale data.
 - `web` build + lint + test green.
+
+## Comments
+
+urql v5's `useQuery` re-execute returns `void`, so the refetch promise cannot
+be awaited. Instead surfaced `resultsQuery.error` as a `refreshFailed` error
+notice (new i18n key, en+hu); a failed `RESULTS_QUERY` refetch after a mutation
+now shows an error rather than silently leaving stale data. Tournament-refetch
+failures were already covered by the existing `result.error` ErrorView.

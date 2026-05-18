@@ -1,6 +1,6 @@
 # 24 — enterResult accepts `advancer` but never persists it
 
-Status: ready-for-agent
+Status: done
 Severity: HIGH
 Area: crates/api
 
@@ -34,3 +34,15 @@ Reject an `advancer` that is not one of the match's two teams.
 - API test: a drawn knockout result entered with `advancer` set resolves the
   bracket to that team (not the home team) after recompute.
 - `cargo test -p api` green.
+
+## Comments
+
+`enter_result` now loads the tournament when `advancer` is `Some`, finds the
+game's `group_id` and its two resolved team ids, rejects an advancer not in the
+match, and persists a `StandingsPrediction` (`ordering = [advancer, other]`,
+`draw_order = []`, `locked` mirroring the result) on the result user. The
+`#[allow(unused_variables)]` is gone. New API tests
+(`enter_result_advancer_resolves_a_drawn_knockout_to_that_team`,
+`enter_result_rejects_an_advancer_not_in_the_match`) use a new
+`seeded_repo_with_knockout` fixture (one-match R32 + R16 groups) and confirm a
+drawn knockout advances the chosen team downstream. 64 api tests green.
