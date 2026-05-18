@@ -63,10 +63,11 @@ impl Repository for InMemoryRepository {
         Ok(inner.players.values().cloned().collect())
     }
 
-    /// Optimistic concurrency: if a player with `p.id` already exists and its
-    /// stored `version` differs from `p.version`, returns `Err`. On success
-    /// stores the player as given (the caller is responsible for bumping
-    /// `version` before calling this).
+    /// Optimistic concurrency: the repository owns the `version` counter. The
+    /// caller passes the `Player` with the version it last read; if a player
+    /// with `p.id` already exists and its stored `version` differs from
+    /// `p.version`, returns `Err`. On success the player is stored with
+    /// `version + 1`.
     async fn put_player(&self, p: &Player) -> anyhow::Result<()> {
         let mut inner = self.inner.lock().unwrap();
         if let Some(existing) = inner.players.get(&p.id) {
@@ -80,7 +81,11 @@ impl Repository for InMemoryRepository {
                 );
             }
         }
-        inner.players.insert(p.id.clone(), p.clone());
+        let stored = Player {
+            version: p.version.saturating_add(1),
+            ..p.clone()
+        };
+        inner.players.insert(p.id.clone(), stored);
         Ok(())
     }
 

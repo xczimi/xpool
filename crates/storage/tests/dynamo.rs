@@ -28,8 +28,12 @@ fn dynamo_enabled() -> bool {
     std::env::var("DYNAMO_TEST").as_deref() == Ok("1")
 }
 
-/// Build a repository scoped to the test tournament id, with a unique table
-/// name so tests can run in isolation.
+/// Build a repository scoped to the shared test tournament id and the shared
+/// `xpool-test` table. Most tests use this — they isolate themselves by using
+/// unique player/pool/person ids, so they can share one table safely.
+///
+/// Tests that mutate the table itself (e.g. `delete_table`) must NOT use this;
+/// they should call [`unique_table_repo`] for a private table.
 async fn test_repo() -> DynamoRepository {
     // Use a dedicated test table to avoid polluting the dev table.
     std::env::set_var(
@@ -44,6 +48,18 @@ async fn test_repo() -> DynamoRepository {
     let repo = DynamoRepository::from_env().await.expect("build repo");
     repo.ensure_table().await.expect("ensure_table");
     repo
+}
+
+/// Build a repository backed by a freshly-named table, so a test that creates
+/// or deletes the table itself cannot interfere with tests running in
+/// parallel against the shared `xpool-test` table.
+async fn unique_table_repo(suffix: &str) -> DynamoRepository {
+    let base = test_repo().await;
+    DynamoRepository {
+        client: base.client.clone(),
+        table: format!("xpool-test-{suffix}-{}", std::process::id()),
+        tournament_id: base.tournament_id.clone(),
+    }
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -160,7 +176,9 @@ async fn dynamo_player_round_trip() {
 
     let got = repo.get_player("dynamo-p1").await.unwrap().expect("Some");
     assert_eq!(got.nick, p.nick);
-    assert_eq!(got.version, 0);
+    // The repository owns the version counter: a first write of a version-0
+    // player is stored at version 1.
+    assert_eq!(got.version, 1);
 }
 
 #[tokio::test]
@@ -178,6 +196,42 @@ async fn dynamo_player_list() {
     let ids: Vec<_> = players.iter().map(|p| p.id.as_str()).collect();
     assert!(ids.contains(&"list-a"), "list-a missing from {:?}", ids);
     assert!(ids.contains(&"list-b"), "list-b missing from {:?}", ids);
+}
+
+/// `scan_prefix` must paginate: a single DynamoDB `Scan` returns at most 1 MB,
+/// so a player set larger than that spans multiple pages. Using a dedicated
+/// tournament namespace isolates the scan from other tests. Each player
+/// carries a large `referrer` padding so ~60 players exceed the 1 MB page
+/// limit; if the pagination loop were missing, `list_players` would return a
+/// truncated list and the assertion would fail.
+#[tokio::test]
+async fn dynamo_scan_prefix_paginates_past_one_page() {
+    if !dynamo_enabled() {
+        return;
+    }
+    let base = test_repo().await;
+    // A repository scoped to a unique tournament namespace.
+    let repo = DynamoRepository {
+        client: base.client.clone(),
+        table: base.table.clone(),
+        tournament_id: format!("paginate-{}", std::process::id()),
+    };
+
+    // ~20 KB of padding per player; 60 players ≈ 1.2 MB > one 1 MB page.
+    let padding = "x".repeat(20_000);
+    let count = 60;
+    for i in 0..count {
+        let mut p = make_player(&format!("page-{i:03}"), 0);
+        p.referrer = Some(padding.clone());
+        repo.put_player(&p).await.unwrap();
+    }
+
+    let players = repo.list_players().await.unwrap();
+    assert_eq!(
+        players.len(),
+        count,
+        "scan_prefix truncated the result — pagination loop did not run"
+    );
 }
 
 #[tokio::test]
@@ -212,14 +266,51 @@ async fn dynamo_player_optimistic_concurrency_success() {
     let p = make_player("occ-ok-player", 0);
     repo.put_player(&p).await.unwrap();
 
-    // Caller bumps version before writing
-    let mut updated = p.clone();
+    // Re-read to obtain the repository-bumped version, then update.
+    let mut updated = repo.get_player("occ-ok-player").await.unwrap().unwrap();
+    assert_eq!(updated.version, 1);
     updated.nick = "updated".to_owned();
-    updated.version = 0; // same version — OCC passes
     repo.put_player(&updated).await.unwrap();
 
     let got = repo.get_player("occ-ok-player").await.unwrap().unwrap();
     assert_eq!(got.nick, "updated");
+    assert_eq!(got.version, 2);
+}
+
+/// Two writers that both read the same base version race: the first wins and
+/// the repository bumps the stored version; the second's stale write is
+/// rejected with a version-conflict error.
+#[tokio::test]
+async fn dynamo_player_concurrent_writes_second_conflicts() {
+    if !dynamo_enabled() {
+        return;
+    }
+    let repo = test_repo().await;
+
+    repo.put_player(&make_player("occ-race-player", 0))
+        .await
+        .unwrap();
+
+    // Both writers read the same base state.
+    let base = repo.get_player("occ-race-player").await.unwrap().unwrap();
+    let mut writer_a = base.clone();
+    writer_a.nick = "from-a".to_owned();
+    let mut writer_b = base.clone();
+    writer_b.nick = "from-b".to_owned();
+
+    // First write wins.
+    repo.put_player(&writer_a).await.unwrap();
+    // Second write read a now-stale version — must fail.
+    let err = repo.put_player(&writer_b).await;
+    assert!(err.is_err(), "expected version-conflict error");
+    let msg = err.unwrap_err().to_string();
+    assert!(
+        msg.contains("ConditionalCheckFailed") || msg.contains("optimistic"),
+        "unexpected error: {msg}"
+    );
+
+    let got = repo.get_player("occ-race-player").await.unwrap().unwrap();
+    assert_eq!(got.nick, "from-a");
 }
 
 #[tokio::test]
@@ -312,8 +403,10 @@ async fn dynamo_delete_table_removes_it() {
     if !dynamo_enabled() {
         return;
     }
-    // test_repo() creates a uniquely-named table via ensure_table().
-    let repo = test_repo().await;
+    // Use a uniquely-named table so deleting it cannot pull the shared
+    // `xpool-test` table out from under tests running in parallel.
+    let repo = unique_table_repo("delete").await;
+    repo.ensure_table().await.unwrap();
     repo.delete_table().await.unwrap();
     // ensure_table must now succeed again — proof the table was gone.
     repo.ensure_table().await.unwrap();

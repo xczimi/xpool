@@ -21,7 +21,8 @@ pub struct Scoreboard {
 }
 
 /// Persistence abstraction. One DynamoDB table behind it; an in-memory fake for
-/// tests. `put_player` enforces optimistic concurrency on `Player::version`.
+/// tests. `put_player` enforces optimistic concurrency on `Player::version`:
+/// the repository owns the counter and bumps it on each write.
 #[async_trait]
 pub trait Repository: Send + Sync {
     async fn get_tournament(&self) -> anyhow::Result<Option<Tournament>>;
@@ -29,8 +30,10 @@ pub trait Repository: Send + Sync {
 
     async fn get_player(&self, id: &str) -> anyhow::Result<Option<Player>>;
     async fn list_players(&self) -> anyhow::Result<Vec<Player>>;
-    /// Fails if the stored `version` does not match `p.version` (the caller
-    /// must bump `version` on write).
+    /// Optimistic concurrency: pass the `Player` with the `version` it was
+    /// last read at. Fails if the stored `version` no longer matches; on
+    /// success the repository persists the player at `version + 1`. The
+    /// caller does **not** bump `version`.
     async fn put_player(&self, p: &Player) -> anyhow::Result<()>;
 
     async fn get_scoreboard(&self) -> anyhow::Result<Option<Scoreboard>>;

@@ -30,7 +30,7 @@ use aws_sdk_dynamodb::{
     operation::put_item::PutItemError,
     types::{
         AttributeDefinition, AttributeValue, BillingMode, KeySchemaElement, KeyType,
-        ScalarAttributeType,
+        ScalarAttributeType, TableStatus,
     },
     Client,
 };
@@ -83,6 +83,12 @@ impl DynamoRepository {
 
     /// Create the table if it does not already exist (on-demand billing).
     /// Idempotent — silently succeeds if the table exists.
+    ///
+    /// `create_table` returns while the table is still `CREATING`; an
+    /// immediate `put_item`/`get_item` can then fail with
+    /// `ResourceNotFoundException`. After issuing the create this polls
+    /// `describe_table` until the table reports `TableStatus::Active`, so the
+    /// repository is safe to use the moment `ensure_table` returns.
     pub async fn ensure_table(&self) -> anyhow::Result<()> {
         let result = self
             .client
@@ -107,12 +113,42 @@ impl DynamoRepository {
             .await;
 
         match result {
-            Ok(_) => Ok(()),
+            Ok(_) => {}
             Err(SdkError::ServiceError(e)) if e.err().is_resource_in_use_exception() => {
-                Ok(()) // table already exists — idempotent
+                // table already exists — idempotent
             }
-            Err(e) => Err(e).context("create_table failed"),
+            Err(e) => return Err(e).context("create_table failed"),
         }
+
+        self.wait_for_active().await
+    }
+
+    /// Poll `describe_table` until the table reports `TableStatus::Active`.
+    /// Bounded so a stuck table surfaces an error instead of hanging forever.
+    async fn wait_for_active(&self) -> anyhow::Result<()> {
+        // 60 attempts × 500 ms = 30 s ceiling. DynamoDB Local activates almost
+        // instantly; real AWS typically settles within a few seconds.
+        for _ in 0..60 {
+            let desc = self
+                .client
+                .describe_table()
+                .table_name(&self.table)
+                .send()
+                .await
+                .with_context(|| format!("describe_table {}", self.table))?;
+
+            let status = desc.table.and_then(|t| t.table_status);
+            if status == Some(TableStatus::Active) {
+                return Ok(());
+            }
+
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        }
+
+        anyhow::bail!(
+            "table {} did not become ACTIVE within the timeout",
+            self.table
+        )
     }
 
     /// Delete the table. Used by e2e teardown. Idempotent — a missing table
@@ -199,29 +235,46 @@ impl DynamoRepository {
     }
 
     /// Scan items whose `pk` begins with `prefix` and deserialise them.
+    ///
+    /// DynamoDB returns at most 1 MB of data per `Scan` call and sets
+    /// `LastEvaluatedKey` when more items remain. This loops on
+    /// `ExclusiveStartKey` until the scan is exhausted, so callers always get
+    /// the complete result set.
     async fn scan_prefix<T: serde::de::DeserializeOwned>(
         &self,
         prefix: &str,
     ) -> anyhow::Result<Vec<T>> {
-        let resp = self
-            .client
-            .scan()
-            .table_name(&self.table)
-            .filter_expression("begins_with(pk, :pfx)")
-            .expression_attribute_values(":pfx", AttributeValue::S(prefix.to_owned()))
-            .send()
-            .await
-            .with_context(|| format!("scan prefix={prefix}"))?;
-
         let mut results = Vec::new();
-        for item in resp.items.unwrap_or_default() {
-            let data = item
-                .get("data")
-                .and_then(|v| v.as_s().ok())
-                .context("missing `data` attribute in scan result")?;
-            let value: T = serde_json::from_str(data).context("deserialise scan item")?;
-            results.push(value);
+        let mut last_evaluated_key = None;
+
+        loop {
+            let resp = self
+                .client
+                .scan()
+                .table_name(&self.table)
+                .filter_expression("begins_with(pk, :pfx)")
+                .expression_attribute_values(":pfx", AttributeValue::S(prefix.to_owned()))
+                .set_exclusive_start_key(last_evaluated_key.clone())
+                .send()
+                .await
+                .with_context(|| format!("scan prefix={prefix}"))?;
+
+            for item in resp.items.unwrap_or_default() {
+                let data = item
+                    .get("data")
+                    .and_then(|v| v.as_s().ok())
+                    .context("missing `data` attribute in scan result")?;
+                let value: T = serde_json::from_str(data).context("deserialise scan item")?;
+                results.push(value);
+            }
+
+            // Continue until DynamoDB stops returning a continuation key.
+            last_evaluated_key = resp.last_evaluated_key;
+            if last_evaluated_key.is_none() {
+                break;
+            }
         }
+
         Ok(results)
     }
 }
@@ -254,20 +307,31 @@ impl Repository for DynamoRepository {
 
     /// Optimistic concurrency via a DynamoDB conditional write.
     ///
+    /// The **repository** owns the `version` counter: the caller passes the
+    /// `Player` exactly as it was last read (with the version it read), and
+    /// the write is conditioned on the stored version still equalling that
+    /// value. On success the item is persisted with `version + 1`.
+    ///
     /// For a **new** player (no item in the table) the write uses
-    /// `attribute_not_exists(pk)` — it will fail if the item already exists,
-    /// protecting against lost-update races on first write.
+    /// `attribute_not_exists(pk)` — it fails if the item already exists,
+    /// protecting against lost-update races on first write — and stores
+    /// `version + 1` (so a first write of a version-0 player stores 1).
     ///
-    /// For an **existing** player the write uses
-    /// `#ver = :v` — it fails if the stored `version` no longer matches,
-    /// which is the standard OCC check.
-    ///
-    /// The caller is responsible for bumping `Player::version` before calling
-    /// this method. On a conflict `anyhow::Error` is returned with a message
+    /// For an **existing** player the write uses `#ver = :v` where `:v` is the
+    /// caller-supplied (old) version. Two writers that both read version `n`
+    /// race: the first stores `n + 1`, the second's condition (`stored == n`)
+    /// fails. On a conflict `anyhow::Error` is returned with a message
     /// containing "ConditionalCheckFailed".
     async fn put_player(&self, p: &Player) -> anyhow::Result<()> {
         let pk = format!("{}#PLAYER#{}", self.t(), p.id);
-        let data = serde_json::to_string(p)?;
+        // Persist the player with the next version; the in-memory `data` blob
+        // and the bare `version` attribute stay consistent.
+        let next_version = p.version.saturating_add(1);
+        let stored = Player {
+            version: next_version,
+            ..p.clone()
+        };
+        let data = serde_json::to_string(&stored)?;
 
         // Check whether the item already exists to decide which condition to use.
         let existing = self
@@ -287,13 +351,14 @@ impl Repository for DynamoRepository {
             .table_name(&self.table)
             .item("pk", AttributeValue::S(pk.clone()))
             .item("data", AttributeValue::S(data))
-            .item("version", AttributeValue::N(p.version.to_string()));
+            .item("version", AttributeValue::N(next_version.to_string()));
 
         let put = if existing.item.is_none() {
             // First write: only succeed if the item truly does not exist yet.
             put.condition_expression("attribute_not_exists(pk)")
         } else {
-            // Subsequent write: succeed only if stored version matches.
+            // Subsequent write: succeed only if the stored version still
+            // equals the version the caller last read.
             put.condition_expression("#ver = :v")
                 .expression_attribute_names("#ver", "version")
                 .expression_attribute_values(":v", AttributeValue::N(p.version.to_string()))

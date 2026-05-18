@@ -170,7 +170,9 @@ async fn player_round_trip() {
         .await
         .unwrap()
         .expect("should be Some");
-    assert_eq!(got, p);
+    // The repository owns the version counter: a first write of a version-0
+    // player is stored at version 1.
+    assert_eq!(got, Player { version: 1, ..p });
 }
 
 #[tokio::test]
@@ -205,20 +207,55 @@ async fn player_first_insert_succeeds() {
     repo.put_player(&p).await.unwrap();
 }
 
-/// Second write with the same version succeeds (caller hasn't bumped yet —
-/// acts as a no-conflict update).
+/// A second write that re-reads the freshly-bumped version succeeds and the
+/// repository bumps the version again.
 #[tokio::test]
-async fn player_update_same_version_succeeds() {
+async fn player_update_re_read_version_succeeds() {
     let repo = InMemoryRepository::new();
-    let mut p = make_player("p1", 0);
+    let p = make_player("p1", 0);
     repo.put_player(&p).await.unwrap();
 
-    // Update with the same version — allowed
-    p.nick = "updated-nick".to_owned();
-    repo.put_player(&p).await.unwrap();
+    // Re-read to obtain the repository-bumped version, then update.
+    let mut current = repo.get_player("p1").await.unwrap().unwrap();
+    assert_eq!(current.version, 1);
+    current.nick = "updated-nick".to_owned();
+    repo.put_player(&current).await.unwrap();
 
     let got = repo.get_player("p1").await.unwrap().unwrap();
     assert_eq!(got.nick, "updated-nick");
+    assert_eq!(got.version, 2);
+}
+
+/// Two writers that both read the same base version race: the first wins and
+/// bumps the version; the second's stale write is rejected. This would pass
+/// even if OCC were a no-op only if the repo failed to bump — it does bump,
+/// so the conflict is real.
+#[tokio::test]
+async fn player_concurrent_writes_second_conflicts() {
+    let repo = InMemoryRepository::new();
+    repo.put_player(&make_player("p1", 0)).await.unwrap();
+
+    // Both writers read the current state (version 1).
+    let base = repo.get_player("p1").await.unwrap().unwrap();
+    assert_eq!(base.version, 1);
+
+    let mut writer_a = base.clone();
+    writer_a.nick = "from-a".to_owned();
+    let mut writer_b = base.clone();
+    writer_b.nick = "from-b".to_owned();
+
+    // First write wins, stores version 2.
+    repo.put_player(&writer_a).await.unwrap();
+    // Second write read version 1 too — must be rejected.
+    let err = repo.put_player(&writer_b).await;
+    assert!(err.is_err(), "expected version-conflict error");
+    assert!(
+        err.unwrap_err().to_string().contains("optimistic concurrency"),
+        "expected an optimistic-concurrency conflict"
+    );
+
+    let got = repo.get_player("p1").await.unwrap().unwrap();
+    assert_eq!(got.nick, "from-a");
 }
 
 /// Write with a stale version must fail.
