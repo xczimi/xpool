@@ -26,10 +26,31 @@ fn now(ctx: &Context<'_>) -> chrono::DateTime<chrono::Utc> {
 
 #[Object]
 impl QueryRoot {
-    /// The `<t>#TOURNAMENT` structure — tree, matches, teams.
+    /// The `<t>#TOURNAMENT` structure with time-derived flags (`TESTING.md` §3.3).
     async fn tournament(&self, ctx: &Context<'_>) -> async_graphql::Result<Option<Tournament>> {
-        let t = repo(ctx).get_tournament().await?;
-        Ok(t.as_ref().map(Tournament::from))
+        let repo = repo(ctx);
+        let Some(t) = repo.get_tournament().await? else {
+            return Ok(None);
+        };
+        // Locked official results = the result user's locked match predictions.
+        let players = repo.list_players().await?;
+        let locked: std::collections::HashSet<String> = players
+            .iter()
+            .find(|p| p.is_result_user)
+            .map(|r| {
+                r.match_predictions
+                    .iter()
+                    .filter(|p| p.locked)
+                    .map(|p| p.game_id.clone())
+                    .collect()
+            })
+            .unwrap_or_default();
+        Ok(Some(Tournament::build(&t, now(ctx), &locked)))
+    }
+
+    /// The request's resolved `now` — the server clock the SPA renders against.
+    async fn now(&self, ctx: &Context<'_>) -> chrono::DateTime<chrono::Utc> {
+        now(ctx)
     }
 
     /// The materialised scoreboard, optionally filtered to a pool's members.

@@ -785,6 +785,42 @@ async fn tips_visibility_uses_the_request_clock() {
     assert_eq!(bob_after["prediction"]["homeScore"], json!(1), "revealed after kickoff");
 }
 
+#[tokio::test]
+async fn tournament_exposes_time_flags_against_the_request_clock() {
+    // Group A kicks off 24h in the future.
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let q = r#"{
+      now
+      tournament {
+        groups { id deadlinePassed }
+        games { id resultPending withinTodayWindow }
+      }
+    }"#;
+
+    // Clock = real now -> deadline not passed, nothing result-pending,
+    // the games (24h out) are within the ±2-day Today window.
+    let early = run_at(&repo, q, Variables::default(), None, Utc::now()).await;
+    assert!(early.errors.is_empty(), "{:?}", early.errors);
+    let d = data(&early);
+    let group_a = d["tournament"]["groups"].as_array().unwrap()
+        .iter().find(|g| g["id"] == json!(GROUP_A)).unwrap();
+    assert_eq!(group_a["deadlinePassed"], json!(false));
+    let game = &d["tournament"]["games"].as_array().unwrap()[0];
+    assert_eq!(game["resultPending"], json!(false));
+    assert_eq!(game["withinTodayWindow"], json!(true));
+
+    // Clock = 10 days later -> deadline passed, results pending, games are
+    // now well outside the Today window.
+    let late = run_at(&repo, q, Variables::default(), None, Utc::now() + Duration::days(10)).await;
+    let d = data(&late);
+    let group_a = d["tournament"]["groups"].as_array().unwrap()
+        .iter().find(|g| g["id"] == json!(GROUP_A)).unwrap();
+    assert_eq!(group_a["deadlinePassed"], json!(true));
+    let game = &d["tournament"]["games"].as_array().unwrap()[0];
+    assert_eq!(game["resultPending"], json!(true));
+    assert_eq!(game["withinTodayWindow"], json!(false));
+}
+
 /// Find a tip entry from a `tips` query response matching `player_id` and `game_id`.
 fn find_tip(resp: &async_graphql::Response, player_id: &str, game_id: &str) -> serde_json::Value {
     data(resp)["tips"]

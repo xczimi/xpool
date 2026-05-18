@@ -95,10 +95,17 @@ pub struct Game {
     pub group_id: String,
     pub home: TeamSlot,
     pub away: TeamSlot,
+    pub result_pending: bool,
+    pub within_today_window: bool,
 }
 
-impl From<&domain::SingleGame> for Game {
-    fn from(g: &domain::SingleGame) -> Self {
+impl Game {
+    fn build(
+        g: &domain::SingleGame,
+        round: domain::Round,
+        now: chrono::DateTime<chrono::Utc>,
+        locked_result_game_ids: &std::collections::HashSet<String>,
+    ) -> Self {
         Game {
             id: g.id.clone(),
             kickoff: g.kickoff,
@@ -106,6 +113,13 @@ impl From<&domain::SingleGame> for Game {
             group_id: g.group_id.clone(),
             home: (&g.home).into(),
             away: (&g.away).into(),
+            result_pending: crate::timeflags::result_pending(
+                g.kickoff,
+                round,
+                locked_result_game_ids.contains(&g.id),
+                now,
+            ),
+            within_today_window: crate::timeflags::within_today_window(g.kickoff, now),
         }
     }
 }
@@ -124,16 +138,22 @@ pub struct Group {
     pub child_game_ids: Vec<String>,
     /// The earliest kickoff in this node's subtree, if it has any games.
     pub deadline: Option<chrono::DateTime<chrono::Utc>>,
+    pub deadline_passed: bool,
 }
 
 impl Group {
     /// Build a `Group` from a tournament node, computing the subtree deadline
     /// from the full tournament (the deadline is not stored on the node).
-    fn from_node(g: &domain::GroupGame, tournament: &domain::Tournament) -> Self {
+    fn build(
+        g: &domain::GroupGame,
+        tournament: &domain::Tournament,
+        now: chrono::DateTime<chrono::Utc>,
+    ) -> Self {
         let (child_group_ids, child_game_ids) = match &g.children {
             domain::GroupChildren::Groups(ids) => (ids.clone(), Vec::new()),
             domain::GroupChildren::Games(ids) => (Vec::new(), ids.clone()),
         };
+        let deadline = tournament.deadline(&g.id);
         Group {
             id: g.id.clone(),
             name: g.name.clone(),
@@ -143,7 +163,8 @@ impl Group {
             carries_standings: g.carries_standings,
             child_group_ids,
             child_game_ids,
-            deadline: tournament.deadline(&g.id),
+            deadline,
+            deadline_passed: crate::timeflags::deadline_passed(deadline, now),
         }
     }
 }
@@ -157,12 +178,27 @@ pub struct Tournament {
     pub teams: Vec<Team>,
 }
 
-impl From<&domain::Tournament> for Tournament {
-    fn from(t: &domain::Tournament) -> Self {
+impl Tournament {
+    pub fn build(
+        t: &domain::Tournament,
+        now: chrono::DateTime<chrono::Utc>,
+        locked_result_game_ids: &std::collections::HashSet<String>,
+    ) -> Self {
         Tournament {
             root: t.root.clone(),
-            groups: t.groups.values().map(|g| Group::from_node(g, t)).collect(),
-            games: t.games.values().map(Game::from).collect(),
+            groups: t.groups.values().map(|g| Group::build(g, t, now)).collect(),
+            games: t
+                .games
+                .values()
+                .map(|g| {
+                    let round = t
+                        .groups
+                        .get(&g.group_id)
+                        .map(|grp| grp.round)
+                        .unwrap_or(domain::Round::GroupStage);
+                    Game::build(g, round, now, locked_result_game_ids)
+                })
+                .collect(),
             teams: t.teams.values().map(Team::from).collect(),
         }
     }
