@@ -467,10 +467,11 @@ repository (deviation #3). This task only *references* it, to scope the Lambda's
 **Files:**
 - Create: `infrastructure/ses.tf`
 
-**Prerequisite:** the external SES repo must have verified `xczimi.com` in
-`ca-central-1`. If it has not, `tofu plan` (Task 13) fails resolving this data
-source — apply the SES repo first, or temporarily widen the Task 8 `ses`
-statement to `resources = ["*"]` and defer this task.
+**Prerequisite:** ✅ The `xczimi.com` SES domain identity is deployed (managed
+by the external account-wide SES repo). The `data` source resolves it via the
+`ca-central-1` provider — if the identity was verified in a different region,
+point the data source at a provider for that region, or `tofu plan` (Task 13)
+will fail here.
 
 - [ ] **Step 1: Write `infrastructure/ses.tf`**
 
@@ -1015,7 +1016,9 @@ AWS_PROFILE=xczimi tofu apply prod.tfplan
 ```
 Expected: creates the prod stack at `pool.xczimi.com`. Both environments reference the same external SES identity (Task 7); nothing SES-related is created.
 
-- [ ] **Step 3: Deploy the SPA and seed** — repeat Tasks 14 and 15 with `XPOOL_TABLE=xpool-prod` and the prod bucket / distribution id.
+- [ ] **Step 3: Deploy the SPA and load tournament data** — repeat Task 14 (SPA build + sync + invalidation) and **Task 15 Step 1 only** (import the tournament JSON) with `XPOOL_TABLE=xpool-prod` and the prod bucket / distribution id.
+
+Do **not** run `xtask seed` (Task 15 Step 2) against prod — it creates 6 demo players and a demo pool. Prod needs a real result-user bootstrap (the result/admin user, real config, no demo data), which does **not** exist as an `xtask` command today. **Open item:** build a prod bootstrap before prod is usable, and settle the result/admin user's identity — including whether it carries an email such as `pool@xczimi.com` — with the auth workstream (the `Player` model has no `email` field today).
 
 - [ ] **Step 4: Smoke-test `pool.xczimi.com`** — repeat Task 16 steps 1-3 against the prod hostname.
 
