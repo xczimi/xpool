@@ -249,6 +249,9 @@ pub struct Pool {
     pub name: String,
     pub owner: String,
     pub members: Vec<String>,
+    /// The code that admits a player to this pool. Visible to members only —
+    /// the `pools` query already returns a pool solely to its owner/members.
+    pub join_code: String,
 }
 
 impl From<&domain::Pool> for Pool {
@@ -258,6 +261,7 @@ impl From<&domain::Pool> for Pool {
             name: p.name.clone(),
             owner: p.owner.clone(),
             members: p.members.clone(),
+            join_code: p.join_code.clone(),
         }
     }
 }

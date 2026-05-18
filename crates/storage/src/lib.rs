@@ -38,6 +38,8 @@ pub trait Repository: Send + Sync {
 
     async fn list_pools(&self) -> anyhow::Result<Vec<Pool>>;
     async fn put_pool(&self, p: &Pool) -> anyhow::Result<()>;
+    /// Remove a pool. A no-op if no pool with `id` exists.
+    async fn delete_pool(&self, id: &str) -> anyhow::Result<()>;
 
     async fn get_identity(
         &self,

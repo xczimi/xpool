@@ -247,12 +247,20 @@ async fn dynamo_pool_round_trip() {
         name: "Dynamo Pool".to_owned(),
         owner: "player-x".to_owned(),
         members: vec!["player-x".to_owned()],
+        join_code: "DYNCODE1".to_owned(),
     };
     repo.put_pool(&pool).await.unwrap();
 
     let pools = repo.list_pools().await.unwrap();
     let ids: Vec<_> = pools.iter().map(|p| p.id.as_str()).collect();
     assert!(ids.contains(&"dynamo-pool-1"), "{ids:?}");
+
+    repo.delete_pool("dynamo-pool-1").await.unwrap();
+    let after = repo.list_pools().await.unwrap();
+    assert!(
+        !after.iter().any(|p| p.id == "dynamo-pool-1"),
+        "pool should be gone after delete_pool"
+    );
 }
 
 #[tokio::test]

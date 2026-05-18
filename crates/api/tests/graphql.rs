@@ -8,6 +8,7 @@ use async_graphql::Variables;
 use chrono::Duration;
 use common::*;
 use serde_json::json;
+use storage::Repository;
 
 // ── Auth-required queries ────────────────────────────────────────────────────
 
@@ -500,5 +501,248 @@ async fn tournament_group_carries_subtree_deadline() {
         group_a["deadline"].is_string(),
         "leaf group has a deadline: {group_a:?}"
     );
+}
+
+// ── Pools (SCENARIOS.md §5) ──────────────────────────────────────────────────
+
+const CREATE_POOL: &str = r#"
+mutation($id: ID!, $name: String!) {
+  createPool(id: $id, name: $name) { id name owner members joinCode }
+}"#;
+
+/// Create a pool as `actor` and return its join code.
+async fn make_pool(repo: &std::sync::Arc<dyn Repository>, id: &str, actor: &str) -> String {
+    let vars = Variables::from_json(json!({ "id": id, "name": "Friends" }));
+    let resp = run(repo, CREATE_POOL, vars, Some(actor)).await;
+    assert!(resp.errors.is_empty(), "createPool failed: {:?}", resp.errors);
+    data(&resp)["createPool"]["joinCode"]
+        .as_str()
+        .expect("joinCode string")
+        .to_owned()
+}
+
+#[tokio::test]
+async fn create_pool_sets_owner_membership_and_a_join_code() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let vars = Variables::from_json(json!({ "id": "p1", "name": "Friends" }));
+    let resp = run(&repo, CREATE_POOL, vars, Some(ALICE)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let pool = &data(&resp)["createPool"];
+    assert_eq!(pool["owner"], json!(ALICE));
+    assert_eq!(pool["members"], json!([ALICE]));
+    assert!(
+        !pool["joinCode"].as_str().unwrap().is_empty(),
+        "a join code is generated"
+    );
+}
+
+#[tokio::test]
+async fn create_pool_rejected_for_the_result_user() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let vars = Variables::from_json(json!({ "id": "p1", "name": "Friends" }));
+    let resp = run(&repo, CREATE_POOL, vars, Some(RESULT_ID)).await;
+    assert!(!resp.errors.is_empty(), "result user must be rejected");
+}
+
+#[tokio::test]
+async fn join_pool_adds_the_caller_via_the_join_code() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let code = make_pool(&repo, "p1", ALICE).await;
+    let vars = Variables::from_json(json!({ "code": code }));
+    let resp = run(
+        &repo,
+        r#"mutation($code: String!) { joinPool(joinCode: $code) { members } }"#,
+        vars,
+        Some(BOB),
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    assert_eq!(data(&resp)["joinPool"]["members"], json!([ALICE, BOB]));
+}
+
+#[tokio::test]
+async fn join_pool_rejects_an_unknown_code() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let vars = Variables::from_json(json!({ "code": "NOSUCHCODE" }));
+    let resp = run(
+        &repo,
+        r#"mutation($code: String!) { joinPool(joinCode: $code) { id } }"#,
+        vars,
+        Some(BOB),
+    )
+    .await;
+    assert!(!resp.errors.is_empty(), "unknown code must be rejected");
+}
+
+#[tokio::test]
+async fn leave_pool_removes_the_caller() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let code = make_pool(&repo, "p1", ALICE).await;
+    run(
+        &repo,
+        r#"mutation($code: String!) { joinPool(joinCode: $code) { id } }"#,
+        Variables::from_json(json!({ "code": code })),
+        Some(BOB),
+    )
+    .await;
+    let resp = run(
+        &repo,
+        r#"mutation($id: ID!) { leavePool(id: $id) { members } }"#,
+        Variables::from_json(json!({ "id": "p1" })),
+        Some(BOB),
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    assert_eq!(data(&resp)["leavePool"]["members"], json!([ALICE]));
+}
+
+#[tokio::test]
+async fn leave_pool_rejects_the_owner() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    make_pool(&repo, "p1", ALICE).await;
+    let resp = run(
+        &repo,
+        r#"mutation($id: ID!) { leavePool(id: $id) { id } }"#,
+        Variables::from_json(json!({ "id": "p1" })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(!resp.errors.is_empty(), "owner cannot leave");
+}
+
+#[tokio::test]
+async fn remove_member_lets_the_owner_drop_a_member() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let code = make_pool(&repo, "p1", ALICE).await;
+    run(
+        &repo,
+        r#"mutation($code: String!) { joinPool(joinCode: $code) { id } }"#,
+        Variables::from_json(json!({ "code": code })),
+        Some(BOB),
+    )
+    .await;
+    let resp = run(
+        &repo,
+        r#"mutation($p: ID!, $m: ID!) { removeMember(poolId: $p, memberId: $m) { members } }"#,
+        Variables::from_json(json!({ "p": "p1", "m": BOB })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    assert_eq!(data(&resp)["removeMember"]["members"], json!([ALICE]));
+}
+
+#[tokio::test]
+async fn remove_member_rejected_for_a_non_owner() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let code = make_pool(&repo, "p1", ALICE).await;
+    run(
+        &repo,
+        r#"mutation($code: String!) { joinPool(joinCode: $code) { id } }"#,
+        Variables::from_json(json!({ "code": code })),
+        Some(BOB),
+    )
+    .await;
+    let resp = run(
+        &repo,
+        r#"mutation($p: ID!, $m: ID!) { removeMember(poolId: $p, memberId: $m) { id } }"#,
+        Variables::from_json(json!({ "p": "p1", "m": ALICE })),
+        Some(BOB),
+    )
+    .await;
+    assert!(!resp.errors.is_empty(), "non-owner cannot remove members");
+}
+
+#[tokio::test]
+async fn rotate_join_code_changes_the_code_for_the_owner() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let code = make_pool(&repo, "p1", ALICE).await;
+    let resp = run(
+        &repo,
+        r#"mutation($id: ID!) { rotateJoinCode(id: $id) { joinCode } }"#,
+        Variables::from_json(json!({ "id": "p1" })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let new_code = data(&resp)["rotateJoinCode"]["joinCode"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+    assert_ne!(new_code, code, "the code must change");
+    assert!(!new_code.is_empty());
+}
+
+#[tokio::test]
+async fn rotate_join_code_rejected_for_a_non_owner() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    make_pool(&repo, "p1", ALICE).await;
+    let resp = run(
+        &repo,
+        r#"mutation($id: ID!) { rotateJoinCode(id: $id) { id } }"#,
+        Variables::from_json(json!({ "id": "p1" })),
+        Some(BOB),
+    )
+    .await;
+    assert!(!resp.errors.is_empty(), "non-owner cannot rotate the code");
+}
+
+#[tokio::test]
+async fn delete_pool_removes_it_for_the_owner() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    make_pool(&repo, "p1", ALICE).await;
+    let resp = run(
+        &repo,
+        r#"mutation($id: ID!) { deletePool(id: $id) }"#,
+        Variables::from_json(json!({ "id": "p1" })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    assert_eq!(data(&resp)["deletePool"], json!(true));
+    assert!(repo.list_pools().await.unwrap().is_empty(), "pool is gone");
+}
+
+#[tokio::test]
+async fn delete_pool_rejected_for_a_non_owner() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    make_pool(&repo, "p1", ALICE).await;
+    let resp = run(
+        &repo,
+        r#"mutation($id: ID!) { deletePool(id: $id) }"#,
+        Variables::from_json(json!({ "id": "p1" })),
+        Some(BOB),
+    )
+    .await;
+    assert!(!resp.errors.is_empty(), "non-owner cannot delete the pool");
+    assert_eq!(repo.list_pools().await.unwrap().len(), 1, "pool survives");
+}
+
+#[tokio::test]
+async fn update_pool_renames_for_the_owner() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    make_pool(&repo, "p1", ALICE).await;
+    let resp = run(
+        &repo,
+        r#"mutation($id: ID!, $n: String!) { updatePool(id: $id, name: $n) { name } }"#,
+        Variables::from_json(json!({ "id": "p1", "n": "Office League" })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    assert_eq!(data(&resp)["updatePool"]["name"], json!("Office League"));
+}
+
+#[tokio::test]
+async fn pools_query_returns_only_the_callers_pools() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    make_pool(&repo, "alice-pool", ALICE).await;
+    make_pool(&repo, "bob-pool", BOB).await;
+    let resp = run(&repo, "{ pools { id } }", Variables::default(), Some(ALICE)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let d = data(&resp);
+    let ids = d["pools"].as_array().unwrap();
+    assert_eq!(ids.len(), 1, "only Alice's own pool");
+    assert_eq!(ids[0]["id"], json!("alice-pool"));
 }
 

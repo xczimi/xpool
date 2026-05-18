@@ -110,6 +110,12 @@ impl Repository for InMemoryRepository {
         Ok(())
     }
 
+    async fn delete_pool(&self, id: &str) -> anyhow::Result<()> {
+        let mut inner = self.inner.lock().unwrap();
+        inner.pools.remove(id);
+        Ok(())
+    }
+
     // ── Identity ───────────────────────────────────────────────────────────
 
     async fn get_identity(

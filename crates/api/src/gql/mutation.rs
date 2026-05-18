@@ -21,6 +21,31 @@ fn repo<'a>(ctx: &'a Context<'_>) -> &'a Arc<dyn Repository> {
     ctx.data_unchecked::<Arc<dyn Repository>>()
 }
 
+/// A fresh opaque pool join code — 8 uppercase hex characters.
+fn generate_join_code() -> String {
+    uuid::Uuid::new_v4()
+        .simple()
+        .to_string()
+        .chars()
+        .take(8)
+        .collect::<String>()
+        .to_uppercase()
+}
+
+/// Load a pool by id, or a GraphQL "not found" error.
+async fn load_pool(repo: &Arc<dyn Repository>, id: &str) -> async_graphql::Result<DomainPool> {
+    repo.list_pools()
+        .await?
+        .into_iter()
+        .find(|p| p.id == id)
+        .ok_or_else(|| async_graphql::Error::new("pool not found"))
+}
+
+/// Map a domain `PoolError` to a GraphQL error.
+fn pool_err(e: domain::pool::PoolError) -> async_graphql::Error {
+    async_graphql::Error::new(e.to_string())
+}
+
 /// Apply a batch of predictions for one group onto a player, returning the
 /// next player state. Pure helper.
 ///
@@ -141,7 +166,8 @@ impl MutationRoot {
         unreachable!("loop returns on both attempts")
     }
 
-    /// Create a pool owned by the current player.
+    /// Create a pool owned by the current player (POOL-01). The result user
+    /// cannot own a pool (POOL-12).
     async fn create_pool(
         &self,
         ctx: &Context<'_>,
@@ -149,45 +175,107 @@ impl MutationRoot {
         name: String,
     ) -> async_graphql::Result<Pool> {
         let viewer = CurrentPlayer::require(ctx)?;
+        if viewer.is_result_user {
+            return Err(async_graphql::Error::new(
+                "the result user cannot own a pool",
+            ));
+        }
         let pool = DomainPool {
             id,
             name,
             owner: viewer.id.clone(),
             members: vec![viewer.id.clone()],
+            join_code: generate_join_code(),
         };
         repo(ctx).put_pool(&pool).await?;
         Ok(Pool::from(&pool))
     }
 
-    /// Update a pool's name and/or members. Only the owner may update.
+    /// Rename a pool (POOL-08). Owner-only.
     async fn update_pool(
         &self,
         ctx: &Context<'_>,
         id: String,
-        name: Option<String>,
-        members: Option<Vec<String>>,
+        name: String,
     ) -> async_graphql::Result<Pool> {
         let viewer = CurrentPlayer::require(ctx)?;
         let repo = repo(ctx);
-        let mut pool = repo
+        let pool = load_pool(repo, &id).await?;
+        let updated = domain::pool::rename(&pool, &viewer.id, name).map_err(pool_err)?;
+        repo.put_pool(&updated).await?;
+        Ok(Pool::from(&updated))
+    }
+
+    /// Join a pool by its join code (POOL-02).
+    async fn join_pool(
+        &self,
+        ctx: &Context<'_>,
+        join_code: String,
+    ) -> async_graphql::Result<Pool> {
+        let viewer = CurrentPlayer::require(ctx)?;
+        let repo = repo(ctx);
+        let pool = repo
             .list_pools()
             .await?
             .into_iter()
-            .find(|p| p.id == id)
-            .ok_or_else(|| async_graphql::Error::new("pool not found"))?;
+            .find(|p| p.join_code == join_code)
+            .ok_or_else(|| async_graphql::Error::new("no pool with that join code"))?;
+        let updated = domain::pool::join(&pool, viewer).map_err(pool_err)?;
+        repo.put_pool(&updated).await?;
+        Ok(Pool::from(&updated))
+    }
+
+    /// Leave a pool (POOL-05). The owner cannot leave (POOL-10).
+    async fn leave_pool(&self, ctx: &Context<'_>, id: String) -> async_graphql::Result<Pool> {
+        let viewer = CurrentPlayer::require(ctx)?;
+        let repo = repo(ctx);
+        let pool = load_pool(repo, &id).await?;
+        let updated = domain::pool::leave(&pool, &viewer.id).map_err(pool_err)?;
+        repo.put_pool(&updated).await?;
+        Ok(Pool::from(&updated))
+    }
+
+    /// Remove a member from a pool (POOL-04). Owner-only.
+    async fn remove_member(
+        &self,
+        ctx: &Context<'_>,
+        pool_id: String,
+        member_id: String,
+    ) -> async_graphql::Result<Pool> {
+        let viewer = CurrentPlayer::require(ctx)?;
+        let repo = repo(ctx);
+        let pool = load_pool(repo, &pool_id).await?;
+        let updated =
+            domain::pool::remove_member(&pool, &viewer.id, &member_id).map_err(pool_err)?;
+        repo.put_pool(&updated).await?;
+        Ok(Pool::from(&updated))
+    }
+
+    /// Rotate a pool's join code (POOL-03). Owner-only.
+    async fn rotate_join_code(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+    ) -> async_graphql::Result<Pool> {
+        let viewer = CurrentPlayer::require(ctx)?;
+        let repo = repo(ctx);
+        let pool = load_pool(repo, &id).await?;
+        let updated = domain::pool::set_join_code(&pool, &viewer.id, generate_join_code())
+            .map_err(pool_err)?;
+        repo.put_pool(&updated).await?;
+        Ok(Pool::from(&updated))
+    }
+
+    /// Delete a pool (POOL-09). Owner-only.
+    async fn delete_pool(&self, ctx: &Context<'_>, id: String) -> async_graphql::Result<bool> {
+        let viewer = CurrentPlayer::require(ctx)?;
+        let repo = repo(ctx);
+        let pool = load_pool(repo, &id).await?;
         if pool.owner != viewer.id {
-            return Err(async_graphql::Error::new(
-                "only the pool owner may update it",
-            ));
+            return Err(async_graphql::Error::new("only the pool owner may delete it"));
         }
-        if let Some(name) = name {
-            pool.name = name;
-        }
-        if let Some(members) = members {
-            pool.members = members;
-        }
-        repo.put_pool(&pool).await?;
-        Ok(Pool::from(&pool))
+        repo.delete_pool(&id).await?;
+        Ok(true)
     }
 
     /// Update the current player's profile (nick / full name).

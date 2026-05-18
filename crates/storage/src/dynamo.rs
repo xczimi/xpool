@@ -168,6 +168,18 @@ impl DynamoRepository {
         Ok(())
     }
 
+    /// Delete an item by `pk`. A no-op if the item does not exist.
+    async fn delete_item(&self, pk: &str) -> anyhow::Result<()> {
+        self.client
+            .delete_item()
+            .table_name(&self.table)
+            .key("pk", AttributeValue::S(pk.to_owned()))
+            .send()
+            .await
+            .with_context(|| format!("delete_item pk={pk}"))?;
+        Ok(())
+    }
+
     /// Scan items whose `pk` begins with `prefix` and deserialise them.
     async fn scan_prefix<T: serde::de::DeserializeOwned>(
         &self,
@@ -308,6 +320,11 @@ impl Repository for DynamoRepository {
     async fn put_pool(&self, p: &Pool) -> anyhow::Result<()> {
         let pk = format!("{}#POOL#{}", self.t(), p.id);
         self.put_item_simple(&pk, p).await
+    }
+
+    async fn delete_pool(&self, id: &str) -> anyhow::Result<()> {
+        let pk = format!("{}#POOL#{}", self.t(), id);
+        self.delete_item(&pk).await
     }
 
     // ── Identity ───────────────────────────────────────────────────────────

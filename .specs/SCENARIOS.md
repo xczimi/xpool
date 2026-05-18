@@ -556,14 +556,14 @@ Given  a logged-in player.
 When   they create a named pool.
 Then   a `Pool` is created with them as **owner and member**; a join code is
        generated.
-Tests: `pool_round_trip`, `pool_list_multiple`, `pool_overwrite`, `dynamo_pool_round_trip` (storage)
+Tests: `create_pool_sets_owner_membership_and_a_join_code` (api) · `pool_round_trip`, `dynamo_pool_round_trip` (storage) · web/e2e/pools.spec.ts
 
 ### POOL-02 — Join a pool with a join code
 Status: new · Actor: Player · Screen: Pools
 Given  a player holds a valid join code.
 When   they join.
 Then   they are added to the pool's members.
-Tests: —
+Tests: `join_adds_a_new_member`, `join_is_idempotent_for_an_existing_member` (domain) · `join_pool_adds_the_caller_via_the_join_code`, `join_pool_rejects_an_unknown_code` (api) · web/e2e/pools.spec.ts
 Note:  The code also bootstraps brand-new players — see AUTH-11/AUTH-12.
 
 ### POOL-03 — Owner rotates the join code
@@ -572,7 +572,7 @@ Given  a pool owner.
 When   they rotate the join code.
 Then   a new code is issued; the old code no longer admits anyone. Existing
        members are unaffected.
-Tests: —
+Tests: `set_join_code_replaces_the_code_for_the_owner`, `set_join_code_rejects_a_non_owner` (domain) · `rotate_join_code_changes_the_code_for_the_owner`, `rotate_join_code_rejected_for_a_non_owner` (api)
 
 ### POOL-04 — Owner removes a member
 Status: new · Actor: Pool owner · Screen: Pools
@@ -580,14 +580,14 @@ Given  a pool with members.
 When   the owner removes a member.
 Then   that player is dropped from the member list (their global score is
        untouched).
-Tests: —
+Tests: `remove_member_drops_a_member_when_requested_by_the_owner`, `remove_member_rejects_a_non_owner_requester` (domain) · `remove_member_lets_the_owner_drop_a_member`, `remove_member_rejected_for_a_non_owner` (api)
 
 ### POOL-05 — Member leaves a pool
 Status: new · Actor: Player · Screen: Pools
 Given  a member of a pool they do not own.
 When   they leave.
 Then   they are removed from the member list.
-Tests: —
+Tests: `leave_removes_a_member`, `leave_rejects_a_non_member` (domain) · `leave_pool_removes_the_caller` (api)
 
 ### POOL-06 — Pool scoreboard and roster are members-only
 Status: new · Actor: Player / Visitor · Screen: Scoreboard
@@ -595,7 +595,7 @@ Given  a custom pool.
 When   a non-member (player or visitor) tries to view its scoreboard or roster.
 Then   access is refused — only the owner and members can see it; the pool is
        not discoverable.
-Tests: —
+Tests: `pools_query_returns_only_the_callers_pools` (api)
 Note:  Contrast BROWSE-02: the implicit "everyone" pool scoreboard is public.
 
 ### POOL-07 — Pool scoreboard ranks the global score among members
@@ -606,17 +606,18 @@ Then   it is one `GetItem` of the scoreboard, filtered to pool members, sorted
        — the **same per-player score** as the global board.
 Tests: —
 Note:  Predictions, results, and the scoring engine are untouched by pools.
+       The `scoreboard(pool:)` filtering itself is not yet covered.
 
 ### POOL-08 — Owner renames a pool
 Status: new · Actor: Pool owner · Screen: Pools
-Tests: `pool_overwrite` (storage)
+Tests: `rename_changes_the_name_for_the_owner`, `rename_rejects_a_non_owner` (domain) · `update_pool_renames_for_the_owner` (api)
 
 ### POOL-09 — Owner deletes a pool
 Status: new · Actor: Pool owner · Screen: Pools
 Given  a pool owner.
 When   they delete the pool.
 Then   the pool is removed; members' scores and other pools are untouched.
-Tests: —
+Tests: `pool_delete_removes_only_the_named_pool`, `pool_delete_is_a_noop_for_an_unknown_pool` (storage) · `delete_pool_removes_it_for_the_owner`, `delete_pool_rejected_for_a_non_owner` (api)
 
 ### POOL-10 — Owner cannot leave without deleting
 Status: new · Actor: Pool owner · Screen: Pools
@@ -624,7 +625,7 @@ Given  a pool owner is always a member.
 When   they try to leave.
 Then   they cannot — they must delete the pool. There is **no ownership
        transfer**.
-Tests: —
+Tests: `leave_rejects_the_owner` (domain) · `leave_pool_rejects_the_owner` (api)
 
 ### POOL-11 — A player belongs to many pools
 Status: new · Actor: Player · Screen: Pools
@@ -632,7 +633,7 @@ Given  a player.
 When   they create and/or join several pools.
 Then   all are listed; no cap is enforced. The `pools` query returns the
        player's pools.
-Tests: `pool_list_multiple` (storage)
+Tests: `pool_list_multiple` (storage) · `pools_query_returns_only_the_callers_pools` (api)
 
 ### POOL-12 — The result-user is never a pool owner or member
 Status: new · Actor: (system) · Screen: Pools
@@ -640,7 +641,7 @@ Given  the result-user `Player`.
 When   pools are created or membership is computed.
 Then   the result-user can never own or belong to a pool — consistent with its
        exclusion from all player listings.
-Tests: —
+Tests: `join_rejects_the_result_user` (domain) · `create_pool_rejected_for_the_result_user` (api)
 
 ---
 

@@ -17,6 +17,7 @@ const ITEMS: NavItem[] = [
   { to: '/alltips', label: 'navAllTips', access: 'player' },
   { to: '/scoreboard', label: 'navScoreboard', access: 'public' },
   { to: '/perfect', label: 'navPerfect', access: 'public' },
+  { to: '/pools', label: 'navPools', access: 'player' },
   { to: '/profile', label: 'navProfile', access: 'player' },
   { to: '/invite', label: 'navInvite', access: 'player' },
   { to: '/rules', label: 'navRules', access: 'public' },

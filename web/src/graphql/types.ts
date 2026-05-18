@@ -104,6 +104,7 @@ export interface Pool {
   name: string
   owner: string
   members: string[]
+  joinCode: string
 }
 
 export interface Tip {

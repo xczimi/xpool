@@ -90,6 +90,7 @@ pub async fn seed(repo: &dyn Repository) -> anyhow::Result<()> {
     }
 
     // One demo pool owned by the first demo player, with all demo players.
+    // The join code is fixed so end-to-end tests can rely on it.
     let pool = Pool {
         id: "pool-demo".to_owned(),
         name: "Demo Pool".to_owned(),
@@ -98,6 +99,7 @@ pub async fn seed(repo: &dyn Repository) -> anyhow::Result<()> {
             .iter()
             .map(|(id, _, _)| id.to_string())
             .collect(),
+        join_code: "DEMOPOOL".to_owned(),
     };
     repo.put_pool(&pool).await?;
 

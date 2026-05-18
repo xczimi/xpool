@@ -7,6 +7,7 @@ import { MyTipsPage } from './pages/MyTipsPage'
 import { AllTipsPage } from './pages/AllTipsPage'
 import { ScoreboardPage } from './pages/ScoreboardPage'
 import { PerfectPage } from './pages/PerfectPage'
+import { PoolsPage } from './pages/PoolsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { InvitePage } from './pages/InvitePage'
 import { RulesPage } from './pages/RulesPage'
@@ -23,6 +24,7 @@ export function App() {
         <Route path="alltips" element={<AllTipsPage />} />
         <Route path="scoreboard" element={<ScoreboardPage />} />
         <Route path="perfect" element={<PerfectPage />} />
+        <Route path="pools" element={<PoolsPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="invite" element={<InvitePage />} />
         <Route path="rules" element={<RulesPage />} />

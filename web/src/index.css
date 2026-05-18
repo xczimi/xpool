@@ -61,3 +61,17 @@ button.primary { background: var(--accent); color: var(--accent-ink); border-col
 .poll-note { color: #137333; font-size: 0.8rem; margin: 0.2rem 0; }
 .round-tag { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
 .hint { font-size: 0.8rem; color: var(--muted); }
+
+/* pools */
+.pool-forms { display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.pool-list { list-style: none; display: flex; flex-direction: column; gap: 1rem; }
+.pool-card { border: 1px solid var(--border); border-radius: 6px; padding: 0.8rem 1rem; }
+.pool-card h3 { margin: 0 0 0.3rem; }
+.owner-tag { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
+.join-code { font-size: 0.85rem; color: var(--muted); margin: 0.2rem 0; }
+.join-code code { background: #eef1f5; padding: 0.1rem 0.35rem; border-radius: 3px; }
+.pool-members { list-style: none; display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.4rem 0; }
+.pool-members li { display: flex; align-items: center; gap: 0.3rem; font-size: 0.9rem; }
+.pool-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+.link-button { border: none; background: none; color: var(--locked); padding: 0; font-size: 0.78rem; text-decoration: underline; }
+button.danger { color: var(--locked); border-color: var(--locked); }

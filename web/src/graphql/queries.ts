@@ -46,7 +46,7 @@ export const SCOREBOARD_QUERY = `
 
 export const POOLS_QUERY = `
   query Pools {
-    pools { id name owner members }
+    pools { id name owner members joinCode }
   }
 `
 
@@ -106,15 +106,47 @@ export const INVITE_MUTATION = `
   }
 `
 
+const POOL_FIELDS = 'id name owner members joinCode'
+
 export const CREATE_POOL_MUTATION = `
   mutation CreatePool($id: ID!, $name: String!) {
-    createPool(id: $id, name: $name) { id name owner members }
+    createPool(id: $id, name: $name) { ${POOL_FIELDS} }
   }
 `
 
 export const UPDATE_POOL_MUTATION = `
-  mutation UpdatePool($id: ID!, $name: String, $members: [ID!]) {
-    updatePool(id: $id, name: $name, members: $members) { id name owner members }
+  mutation UpdatePool($id: ID!, $name: String!) {
+    updatePool(id: $id, name: $name) { ${POOL_FIELDS} }
+  }
+`
+
+export const JOIN_POOL_MUTATION = `
+  mutation JoinPool($joinCode: String!) {
+    joinPool(joinCode: $joinCode) { ${POOL_FIELDS} }
+  }
+`
+
+export const LEAVE_POOL_MUTATION = `
+  mutation LeavePool($id: ID!) {
+    leavePool(id: $id) { ${POOL_FIELDS} }
+  }
+`
+
+export const REMOVE_MEMBER_MUTATION = `
+  mutation RemoveMember($poolId: ID!, $memberId: ID!) {
+    removeMember(poolId: $poolId, memberId: $memberId) { ${POOL_FIELDS} }
+  }
+`
+
+export const ROTATE_JOIN_CODE_MUTATION = `
+  mutation RotateJoinCode($id: ID!) {
+    rotateJoinCode(id: $id) { ${POOL_FIELDS} }
+  }
+`
+
+export const DELETE_POOL_MUTATION = `
+  mutation DeletePool($id: ID!) {
+    deletePool(id: $id)
   }
 `
 

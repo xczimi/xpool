@@ -91,6 +91,7 @@ fn make_pool(id: &str) -> Pool {
         name: format!("Pool {id}"),
         owner: "player-1".to_owned(),
         members: vec!["player-1".to_owned(), "player-2".to_owned()],
+        join_code: format!("CODE-{id}"),
     }
 }
 
@@ -308,12 +309,36 @@ async fn pool_overwrite() {
         name: "New Name".to_owned(),
         owner: "player-1".to_owned(),
         members: vec![],
+        join_code: "CODE-p".to_owned(),
     };
     repo.put_pool(&updated).await.unwrap();
 
     let got = repo.list_pools().await.unwrap();
     assert_eq!(got.len(), 1);
     assert_eq!(got[0].name, "New Name");
+}
+
+#[tokio::test]
+async fn pool_delete_removes_only_the_named_pool() {
+    let repo = InMemoryRepository::new();
+    repo.put_pool(&make_pool("a")).await.unwrap();
+    repo.put_pool(&make_pool("b")).await.unwrap();
+
+    repo.delete_pool("a").await.unwrap();
+
+    let pools = repo.list_pools().await.unwrap();
+    assert_eq!(pools.len(), 1);
+    assert_eq!(pools[0].id, "b");
+}
+
+#[tokio::test]
+async fn pool_delete_is_a_noop_for_an_unknown_pool() {
+    let repo = InMemoryRepository::new();
+    repo.put_pool(&make_pool("a")).await.unwrap();
+
+    repo.delete_pool("ghost").await.unwrap();
+
+    assert_eq!(repo.list_pools().await.unwrap().len(), 1);
 }
 
 // ── identity ──────────────────────────────────────────────────────────────────
