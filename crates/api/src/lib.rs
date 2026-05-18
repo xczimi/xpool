@@ -5,6 +5,7 @@
 //! (`X-Dev-Player` header → `CurrentPlayer` in context).
 
 pub mod auth;
+pub mod clock;
 pub mod gql;
 pub mod recompute;
 pub mod router;
