@@ -198,14 +198,14 @@ async fn dynamo_player_list() {
     assert!(ids.contains(&"list-b"), "list-b missing from {:?}", ids);
 }
 
-/// `scan_prefix` must paginate: a single DynamoDB `Scan` returns at most 1 MB,
-/// so a player set larger than that spans multiple pages. Using a dedicated
-/// tournament namespace isolates the scan from other tests. Each player
-/// carries a large `referrer` padding so ~60 players exceed the 1 MB page
-/// limit; if the pagination loop were missing, `list_players` would return a
-/// truncated list and the assertion would fail.
+/// `list_players` must paginate: a single DynamoDB `Query` returns at most
+/// 1 MB, so a player set larger than that spans multiple pages. Using a
+/// dedicated tournament namespace isolates the query from other tests. Each
+/// player carries a large `referrer` padding so ~60 players exceed the 1 MB
+/// page limit; if the pagination loop were missing, `list_players` would
+/// return a truncated list and the assertion would fail.
 #[tokio::test]
-async fn dynamo_scan_prefix_paginates_past_one_page() {
+async fn dynamo_list_players_paginates_past_one_page() {
     if !dynamo_enabled() {
         return;
     }
@@ -230,7 +230,61 @@ async fn dynamo_scan_prefix_paginates_past_one_page() {
     assert_eq!(
         players.len(),
         count,
-        "scan_prefix truncated the result — pagination loop did not run"
+        "list_players truncated the result — Query pagination loop did not run"
+    );
+}
+
+/// `list_players` queries a single `<t>#PLAYER` partition, so it must return
+/// only the players of its own tournament namespace — never another
+/// tournament's players, and never Persons/Identities/Tournaments/Pools.
+#[tokio::test]
+async fn dynamo_list_players_is_namespace_isolated() {
+    if !dynamo_enabled() {
+        return;
+    }
+    let base = test_repo().await;
+    let pid = std::process::id();
+
+    let repo_a = DynamoRepository {
+        client: base.client.clone(),
+        table: base.table.clone(),
+        tournament_id: format!("iso-a-{pid}"),
+    };
+    let repo_b = DynamoRepository {
+        client: base.client.clone(),
+        table: base.table.clone(),
+        tournament_id: format!("iso-b-{pid}"),
+    };
+
+    repo_a.put_player(&make_player("a-only", 0)).await.unwrap();
+    repo_b.put_player(&make_player("b-only", 0)).await.unwrap();
+    // A pool in namespace A shares the tournament prefix but a different
+    // partition — it must not leak into list_players.
+    repo_a
+        .put_pool(&Pool {
+            id: "a-pool".to_owned(),
+            name: "A Pool".to_owned(),
+            owner: "a-only".to_owned(),
+            members: vec!["a-only".to_owned()],
+            join_code: format!("ISOCODE{pid}"),
+        })
+        .await
+        .unwrap();
+
+    let a_players = repo_a.list_players().await.unwrap();
+    let a_ids: Vec<_> = a_players.iter().map(|p| p.id.as_str()).collect();
+    assert_eq!(
+        a_ids,
+        vec!["a-only"],
+        "namespace A's list_players leaked items: {a_ids:?}"
+    );
+
+    let b_players = repo_b.list_players().await.unwrap();
+    let b_ids: Vec<_> = b_players.iter().map(|p| p.id.as_str()).collect();
+    assert_eq!(
+        b_ids,
+        vec!["b-only"],
+        "namespace B's list_players leaked items: {b_ids:?}"
     );
 }
 
