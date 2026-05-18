@@ -104,7 +104,7 @@ Given  matches exist within ±2 days of now.
 When   the visitor opens Today.
 Then   a flat list of up to **12** matches within the ±2-day window is shown
        with results; prediction/points columns are empty (not logged in).
-Tests: —
+Tests: `within_today_window_spans_two_days_either_side` (api) · `tournament_exposes_time_flags_against_the_request_clock` (api) · web/e2e/time.spec.ts
 Note:  Legacy window: `time` ≥ now−2d AND ≤ now+2d, `fetch(12)`
        (`archive/control.py:381`). Carried forward verbatim.
 
@@ -365,7 +365,7 @@ Status: keep · Actor: Player · Screen: My Tips
 Given  a group whose deadline (earliest kickoff in its subtree) has passed.
 When   a non-result-user player opens it.
 Then   inputs are read-only; the player can no longer edit.
-Tests: `tournament_group_carries_subtree_deadline` (api)
+Tests: `tournament_group_carries_subtree_deadline` · `tips_visibility_uses_the_request_clock` · `tournament_exposes_time_flags_against_the_request_clock` (api)
 Note:  Legacy `editable` rule, `archive/control.py:518`.
 
 ### PRED-08 — A complete draft auto-counts after the deadline
@@ -375,21 +375,21 @@ When   the deadline passes.
 Then   the prediction is **effective-locked** —
        `locked OR (now > deadline AND complete)` — and scores normally. The
        stored `locked` flag is never auto-mutated.
-Tests: `effective_locked_after_deadline_and_complete`, `effective_locked_when_explicitly_locked`, `effective_locked_truth_table`, `score_tournament_auto_locked_after_deadline` (domain)
+Tests: `effective_locked_after_deadline_and_complete`, `effective_locked_when_explicitly_locked`, `effective_locked_truth_table`, `score_tournament_auto_locked_after_deadline` (domain) · `tournament_exposes_time_flags_against_the_request_clock` (api)
 
 ### PRED-09 — An incomplete draft scores zero after the deadline
 Status: keep · Actor: Player · Screen: (scoring)
 Given  a player left an **incomplete** or absent prediction.
 When   the deadline passes.
 Then   it is not effective-locked; it scores 0.
-Tests: `effective_locked_after_deadline_but_incomplete`, `score_tournament_unlocked_prediction_scores_zero` (domain)
+Tests: `effective_locked_after_deadline_but_incomplete`, `score_tournament_unlocked_prediction_scores_zero` (domain) · `tips_visibility_uses_the_request_clock` (api)
 
 ### PRED-10 — Before the deadline, an unlocked prediction is not effective-locked
 Status: keep · Actor: Player · Screen: (scoring)
 Given  a complete draft before its deadline.
 When   it is scored or checked for visibility.
 Then   it is **not** effective-locked — scores 0, hidden from others.
-Tests: `effective_locked_before_deadline_not_locked`, `effective_locked_exactly_at_deadline_not_locked` (domain)
+Tests: `effective_locked_before_deadline_not_locked`, `effective_locked_exactly_at_deadline_not_locked` (domain) · `tips_visibility_uses_the_request_clock` (api)
 Note:  The deadline boundary is exclusive: *at* the deadline, still not locked.
 
 ### PRED-11 — Concurrent saves resolve via optimistic concurrency

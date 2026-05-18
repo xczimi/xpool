@@ -390,7 +390,7 @@ fn rank_group_4_team_by_points() {
         make_single_game("m4", "g1", "B", "D"),
         make_single_game("m5", "g1", "A", "D"),
         make_single_game("m6", "g1", "C", "B")];
-    let preds = vec![
+    let preds = [
         mp("m1", 2, 0, true), // A beats B
         mp("m2", 2, 0, true), // C beats D
         mp("m3", 2, 0, true), // A beats C
@@ -423,7 +423,7 @@ fn rank_group_h2h_tiebreak() {
     let games = [make_single_game("m1", "g1", "A", "B"),
         make_single_game("m2", "g1", "A", "C"),
         make_single_game("m3", "g1", "B", "C")];
-    let preds = vec![
+    let preds = [
         mp("m1", 1, 0, true), // A beats B
         mp("m2", 1, 0, true), // A beats C
         mp("m3", 1, 0, true), // B beats C
@@ -449,7 +449,7 @@ fn rank_group_h2h_points_tiebreak() {
     let games = [make_single_game("m1", "g1", "A", "B"),
         make_single_game("m2", "g1", "A", "C"),
         make_single_game("m3", "g1", "B", "C")];
-    let preds = vec![
+    let preds = [
         mp("m1", 1, 1, true), // A draws B
         mp("m2", 2, 0, true), // A beats C
         mp("m3", 2, 0, true), // B beats C
@@ -481,7 +481,7 @@ fn rank_group_all_gd_tiebreak() {
     let games = [make_single_game("m1", "g1", "A", "B"),
         make_single_game("m2", "g1", "A", "C"),
         make_single_game("m3", "g1", "B", "C")];
-    let preds = vec![
+    let preds = [
         mp("m1", 1, 1, true), // A draws B
         mp("m2", 3, 0, true), // A beats C 3-0
         mp("m3", 2, 0, true), // B beats C 2-0
@@ -520,7 +520,7 @@ fn rank_group_all_goals_tiebreak() {
     let games = [make_single_game("m1", "g1", "A", "B"),
         make_single_game("m2", "g1", "A", "C"),
         make_single_game("m3", "g1", "B", "C")];
-    let preds = vec![
+    let preds = [
         mp("m1", 0, 0, true), // A draws B
         mp("m2", 1, 0, true), // A beats C 1-0
         mp("m3", 1, 0, true), // B beats C 1-0

@@ -51,6 +51,8 @@ cd web && npm run dev                      # :5173
 ```
 
 DynamoDB Local runs **in-memory** — re-run `import` + `seed` after any restart.
+The API clock is overridable via `XPOOL_NOW` (env) or `X-Dev-Now` (header) for testing
+time-dependent behaviour; the e2e suite uses a fresh DynamoDB table per run. See `.specs/TESTING.md`.
 Seeded dev players: `result-user` (the admin / official results), `demo-ada`,
 `demo-alan`, `demo-grace`, `demo-linus`, `demo-margaret`, `demo-dennis`.
 
