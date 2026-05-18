@@ -23,6 +23,9 @@ pub type XpoolSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 pub fn build_schema(repo: Arc<dyn Repository>) -> XpoolSchema {
     Schema::build(QueryRoot, MutationRoot, EmptySubscription)
         .data(repo)
-        .limit_depth(12) // simple query-depth cap (API.md §2)
+        // Simple query-depth cap (API.md §2). Must stay above the standard
+        // GraphQL introspection query (`__schema → types → fields → args →
+        // type → ofType ×7`, depth ~13) or GraphiQL cannot load the schema.
+        .limit_depth(20)
         .finish()
 }
