@@ -145,8 +145,10 @@ git commit -m "feat(api): skip ensure_table in lambda mode (table is IaC-managed
 ### Task 3: Scaffold the `infrastructure/` configuration
 
 **Files:**
-- Create: `infrastructure/versions.tf`, `providers.tf`, `backend.tf`, `variables.tf`, `data.tf`, `outputs.tf`
+- Create: `infrastructure/versions.tf`, `providers.tf`, `backend.tf`, `variables.tf`, `data.tf`
 - Create: `infrastructure/env/dev.backend.hcl`, `dev.tfvars`, `prod.backend.hcl`, `prod.tfvars`
+
+(`outputs.tf` is created later, in Task 12 — it references resources defined across Phase 3.)
 
 - [ ] **Step 1: Confirm the state bucket region**
 
@@ -258,48 +260,19 @@ data "aws_route53_zone" "primary" {
 }
 ```
 
-- [ ] **Step 7: Write `infrastructure/outputs.tf`**
-
-```hcl
-output "cloudfront_domain" {
-  description = "The CloudFront distribution domain name."
-  value       = module.cloudfront.cloudfront_distribution_domain_name
-}
-
-output "site_url" {
-  description = "The public URL for this environment."
-  value       = "https://${var.domain_name}"
-}
-
-output "lambda_function_url" {
-  description = "The raw Lambda Function URL (origin for /api/*)."
-  value       = aws_lambda_function_url.api.function_url
-}
-
-output "spa_bucket" {
-  description = "The S3 bucket name for SPA assets."
-  value       = module.spa_bucket.s3_bucket_id
-}
-
-output "dynamodb_table" {
-  description = "The DynamoDB table name."
-  value       = module.dynamodb.dynamodb_table_id
-}
-```
-
-- [ ] **Step 8: Write `infrastructure/env/dev.backend.hcl`**
+- [ ] **Step 7: Write `infrastructure/env/dev.backend.hcl`**
 
 ```hcl
 key = "xpool/infrastructure/dev/terraform.tfstate"
 ```
 
-- [ ] **Step 9: Write `infrastructure/env/prod.backend.hcl`**
+- [ ] **Step 8: Write `infrastructure/env/prod.backend.hcl`**
 
 ```hcl
 key = "xpool/infrastructure/prod/terraform.tfstate"
 ```
 
-- [ ] **Step 10: Write `infrastructure/env/dev.tfvars`**
+- [ ] **Step 9: Write `infrastructure/env/dev.tfvars`**
 
 ```hcl
 environment           = "dev"
@@ -308,7 +281,7 @@ route53_zone_name     = "xczimi.com"
 current_tournament_id = "fwc26"
 ```
 
-- [ ] **Step 11: Write `infrastructure/env/prod.tfvars`**
+- [ ] **Step 10: Write `infrastructure/env/prod.tfvars`**
 
 ```hcl
 environment           = "prod"
@@ -317,7 +290,7 @@ route53_zone_name     = "xczimi.com"
 current_tournament_id = "fwc26"
 ```
 
-- [ ] **Step 12: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
 git add infrastructure/
@@ -366,7 +339,7 @@ git commit -m "chore(infra): gitignore OpenTofu working files"
 
 ## Phase 3 — Resource definitions
 
-Each task in this phase writes one `.tf` file and ends with `tofu validate`. **No `tofu apply` runs until Phase 4** — the resources are interdependent, so a full `tofu plan` is deferred to Task 13.
+Each task in this phase writes one `.tf` file and ends with `tofu validate`. When a task introduces a new `module` block, run `tofu init -backend=false` first — it installs the newly-referenced module so `validate` can resolve it (`-backend=false` skips the backend, so no credentials are needed). **No `tofu apply` runs until Phase 4** — the resources are interdependent, so a full `tofu plan` is deferred to Task 13.
 
 ### Task 5: DynamoDB table
 
@@ -804,10 +777,10 @@ git commit -m "feat(infra): CloudFront distribution with S3 + Lambda origins"
 
 ---
 
-### Task 12: Route53 alias record
+### Task 12: Route53 alias record + stack outputs
 
 **Files:**
-- Create: `infrastructure/route53.tf`
+- Create: `infrastructure/route53.tf`, `infrastructure/outputs.tf`
 
 - [ ] **Step 1: Write `infrastructure/route53.tf`**
 
@@ -837,16 +810,45 @@ resource "aws_route53_record" "site_ipv6" {
 }
 ```
 
-- [ ] **Step 2: Validate**
+- [ ] **Step 2: Write `infrastructure/outputs.tf`**
+
+```hcl
+output "cloudfront_domain" {
+  description = "The CloudFront distribution domain name."
+  value       = module.cloudfront.cloudfront_distribution_domain_name
+}
+
+output "site_url" {
+  description = "The public URL for this environment."
+  value       = "https://${var.domain_name}"
+}
+
+output "lambda_function_url" {
+  description = "The raw Lambda Function URL (origin for /api/*)."
+  value       = aws_lambda_function_url.api.function_url
+}
+
+output "spa_bucket" {
+  description = "The S3 bucket name for SPA assets."
+  value       = module.spa_bucket.s3_bucket_id
+}
+
+output "dynamodb_table" {
+  description = "The DynamoDB table name."
+  value       = module.dynamodb.dynamodb_table_id
+}
+```
+
+- [ ] **Step 3: Validate**
 
 Run: `tofu validate`
-Expected: `Success!`
+Expected: `Success!` — this is the first validate with every resource present.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
-git add infrastructure/route53.tf
-git commit -m "feat(infra): Route53 alias records to CloudFront"
+git add infrastructure/route53.tf infrastructure/outputs.tf
+git commit -m "feat(infra): Route53 alias records + stack outputs"
 ```
 
 ---
