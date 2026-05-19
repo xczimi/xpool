@@ -23,3 +23,10 @@ web/dist
 web/.e2e-table
 web/.e2e-api.pid
 web/.e2e-api.log
+
+# OpenTofu
+infrastructure/.terraform/
+infrastructure/.terraform.lock.hcl
+*.tfstate
+*.tfstate.*
+*.tfplan
