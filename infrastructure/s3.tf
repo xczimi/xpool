@@ -13,5 +13,3 @@ module "spa_bucket" {
     enabled = false
   }
 }
-
-data "aws_caller_identity" "current" {}
