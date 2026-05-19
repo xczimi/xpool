@@ -26,7 +26,7 @@ variable "lambda_package_path" {
 }
 
 variable "ses_domain" {
-  description = "Domain to verify as an SES sending identity."
+  description = "SES sending domain, looked up via a data source; the identity is managed in a separate account-wide repo."
   type        = string
   default     = "xczimi.com"
 }
