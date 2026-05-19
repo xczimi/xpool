@@ -13,3 +13,26 @@ module "spa_bucket" {
     enabled = false
   }
 }
+
+data "aws_iam_policy_document" "spa_bucket_oac" {
+  statement {
+    actions   = ["s3:GetObject"]
+    resources = ["${module.spa_bucket.s3_bucket_arn}/*"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["cloudfront.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "AWS:SourceArn"
+      values   = [module.cloudfront.cloudfront_distribution_arn]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "spa_bucket_oac" {
+  bucket = module.spa_bucket.s3_bucket_id
+  policy = data.aws_iam_policy_document.spa_bucket_oac.json
+}
