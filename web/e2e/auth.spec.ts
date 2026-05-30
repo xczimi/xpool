@@ -66,3 +66,15 @@ test('visiting /profile as a visitor shows the auth-required state, not a crash'
   await net.assertNoGraphqlErrors()
   net.assertNoPageErrors()
 })
+
+test('an invalid Bearer token gates player-only routes', async ({ page }) => {
+  await page.goto('/')
+  // Plant a bad JWT in localStorage where the urql client reads it.
+  await page.evaluate(() => localStorage.setItem('xpool.jwt', 'not.a.jwt'))
+  await page.reload()
+
+  // Hit a player-only route — the SPA should render the auth-required state,
+  // not a crash or a bare error view.
+  await page.goto('/profile')
+  await expect(page.getByText('Login required')).toBeVisible()
+})
