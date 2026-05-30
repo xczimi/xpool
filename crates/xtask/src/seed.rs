@@ -63,17 +63,22 @@ pub async fn seed(repo: &dyn Repository) -> anyhow::Result<()> {
     )
     .await?;
 
-    // Demo players, each with a Person + dev Identity.
+    // Demo players, each with a Person + email Identity.
+    // The identity is keyed at ("email", "{player_id}@dev.invalid") so that
+    // `dev_login` — which mints JWTs with `email = "{id}@dev.invalid"` — routes
+    // through `identity_key_for("dev" connection) → ("email", email)` and finds
+    // this row, resolving to the Player rather than AuthenticatedUnclaimed.
     for (player_id, nick, full_name) in DEMO_PLAYERS {
         let person_id = format!("person-{nick}");
         let identity_id = format!("identity-{nick}");
+        let dev_email = format!("{player_id}@dev.invalid");
 
         let identity = Identity {
             id: identity_id.clone(),
-            provider: "dev".to_owned(),
-            provider_id: player_id.to_owned(),
+            provider: "email".to_owned(),
+            provider_id: dev_email.clone(),
             person_id: person_id.clone(),
-            verified_email: None,
+            verified_email: Some(dev_email),
         };
         repo.put_identity(&identity).await?;
 
@@ -105,4 +110,40 @@ pub async fn seed(repo: &dyn Repository) -> anyhow::Result<()> {
     repo.put_pool(&pool).await?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use storage::InMemoryRepository;
+
+    #[tokio::test]
+    async fn demo_identities_are_resolvable_by_dev_login() {
+        let repo = InMemoryRepository::new();
+        seed(&repo).await.expect("seed failed");
+
+        for (player_id, nick, _) in DEMO_PLAYERS {
+            let expected_email = format!("{player_id}@dev.invalid");
+            // `dev_login` resolves via identity_key_for("dev") → ("email", email).
+            // Verify the identity row keyed at ("email", email) exists and has
+            // verified_email set.
+            let identity = repo
+                .get_identity("email", &expected_email)
+                .await
+                .expect("repo error")
+                .unwrap_or_else(|| panic!("no identity row for {nick} at ({expected_email})"));
+
+            assert_eq!(
+                identity.verified_email.as_deref(),
+                Some(expected_email.as_str()),
+                "verified_email mismatch for {nick}"
+            );
+            // Person row must exist so the resolver can find the player.
+            let person_id = format!("person-{nick}");
+            assert!(
+                repo.get_person(&person_id).await.expect("repo error").is_some(),
+                "missing Person row for {nick}"
+            );
+        }
+    }
 }
