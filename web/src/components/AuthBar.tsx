@@ -1,10 +1,42 @@
 import type { ChangeEvent } from 'react'
 import { useQuery } from 'urql'
+import { useAuth0 } from '@auth0/auth0-react'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY, PLAYERS_QUERY } from '../graphql/queries'
 import type { Player, PlayerSummary } from '../graphql/types'
 import { getDevNow, setDevNow, clearDevNow } from '../auth/devAuth'
+import { auth0Enabled } from '../auth/auth0Provider'
+
+export function AuthBar() {
+  if (auth0Enabled) return <ProdAuthBar />
+  return <DevAuthBar />
+}
+
+/**
+ * Production auth bar. Uses Auth0 redirect flow.
+ * i18n: strings are hardcoded English for now; localisation deferred to a
+ * later UI-polish phase (the plan puts prod-mode string polish out of scope).
+ */
+function ProdAuthBar() {
+  const { isAuthenticated, loginWithRedirect, logout, user } = useAuth0()
+  if (!isAuthenticated) {
+    return (
+      <div className="auth-bar">
+        <span>You are outside.</span>{' '}
+        <button onClick={() => void loginWithRedirect()}>Log in</button>
+      </div>
+    )
+  }
+  return (
+    <div className="auth-bar">
+      <span>Logged in as {user?.name ?? user?.email ?? 'player'}</span>{' '}
+      <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
+        Log out
+      </button>
+    </div>
+  )
+}
 
 function DevClock() {
   const { t } = useI18n()
@@ -44,7 +76,7 @@ function DevClock() {
  * localStorage. The urql client sends `Authorization: Bearer <jwt>` on every
  * request. "Log out" clears the token.
  */
-export function AuthBar() {
+function DevAuthBar() {
   const { label, login, logout } = useAuth()
   const { t } = useI18n()
 
