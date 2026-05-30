@@ -13,12 +13,12 @@ import { NavBar } from './NavBar'
  * auth bar, horizontal nav, content area, footer.
  */
 export function Layout() {
-  const { playerId } = useAuth()
+  const { label } = useAuth()
   const { t } = useI18n()
 
   const [meResult] = useQuery<{ me: Player | null }>({
     query: ME_QUERY,
-    pause: !playerId,
+    pause: !label,
   })
 
   const me = meResult.data?.me ?? null

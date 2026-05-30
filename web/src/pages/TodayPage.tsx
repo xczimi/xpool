@@ -20,7 +20,7 @@ import { byKickoff, formatKickoff, slotLabel, teamIndex } from '../lib/format'
  */
 export function TodayPage() {
   const { t, locale } = useI18n()
-  const { playerId } = useAuth()
+  const { label } = useAuth()
 
   // First fetch (no polling) to learn whether anything is result-pending.
   const [probe] = useQuery<{
@@ -56,7 +56,7 @@ export function TodayPage() {
 
   const [meResult] = useQuery<{ me: Player | null }>({
     query: ME_QUERY,
-    pause: !playerId,
+    pause: !label,
   })
 
   const tournament = result.data?.tournament ?? null
@@ -103,7 +103,7 @@ export function TodayPage() {
               <th>{t('kickoff')}</th>
               <th>{t('match')}</th>
               <th>{t('result')}</th>
-              {playerId && <th>{t('yourTip')}</th>}
+              {label && <th>{t('yourTip')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -121,7 +121,7 @@ export function TodayPage() {
                       return r ? `${r.homeScore}–${r.awayScore}` : '—'
                     })()}
                   </td>
-                  {playerId && (
+                  {label && (
                     <td>
                       {tip
                         ? `${tip.home}–${tip.away} ${

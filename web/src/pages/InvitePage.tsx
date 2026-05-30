@@ -15,13 +15,13 @@ import { NeedsLogin } from '../components/StatusViews'
  */
 export function InvitePage() {
   const { t } = useI18n()
-  const { playerId } = useAuth()
+  const { label } = useAuth()
   const [inviteState, invite] = useMutation(INVITE_MUTATION)
 
   const [inviteeId, setInviteeId] = useState('')
   const [flash, setFlash] = useState<string | null>(null)
 
-  if (!playerId) return <NeedsLogin />
+  if (!label) return <NeedsLogin />
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()

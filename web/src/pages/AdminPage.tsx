@@ -12,13 +12,13 @@ import { AdminPlayers } from './admin/AdminPlayers'
 /** Admin area (UC-13..16) with sub-routes under /admin. */
 export function AdminPage() {
   const { t } = useI18n()
-  const { playerId } = useAuth()
+  const { label } = useAuth()
   const [meResult] = useQuery<{ me: Player | null }>({
     query: ME_QUERY,
-    pause: !playerId,
+    pause: !label,
   })
 
-  if (!playerId) return <NeedsLogin />
+  if (!label) return <NeedsLogin />
   if (meResult.fetching) return <Loading />
   if (!meResult.data?.me?.isResultUser) return <NeedsAdmin />
 

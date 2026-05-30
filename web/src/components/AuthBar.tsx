@@ -39,17 +39,18 @@ function DevClock() {
 }
 
 /**
- * Dev auth bar. Auth is a stub (API.md §8) — there is no real login. A visitor
- * picks a seeded player from the `players` list; the choice is stored and sent
- * as the `X-Dev-Player` header on every request. "Log out" clears it.
+ * Dev auth bar. A visitor picks a seeded player from the `players` list; the
+ * choice triggers `POST /api/dev/login` which mints a JWT stored in
+ * localStorage. The urql client sends `Authorization: Bearer <jwt>` on every
+ * request. "Log out" clears the token.
  */
 export function AuthBar() {
-  const { playerId, login, logout } = useAuth()
+  const { label, login, logout } = useAuth()
   const { t } = useI18n()
 
   const [meResult] = useQuery<{ me: Player | null }>({
     query: ME_QUERY,
-    pause: !playerId,
+    pause: !label,
   })
   const [playersResult] = useQuery<{ players: PlayerSummary[] }>({
     query: PLAYERS_QUERY,
@@ -58,13 +59,13 @@ export function AuthBar() {
   const me = meResult.data?.me
   const players = playersResult.data?.players ?? []
 
-  if (playerId) {
+  if (label) {
     // An id that resolves to no player (e.g. a stale localStorage value).
     const unknown = !meResult.fetching && !me
     return (
       <div className="auth-bar">
         <span>
-          {t('loggedInAs')} <strong>{me?.nick ?? playerId}</strong>
+          {t('loggedInAs')} <strong>{me?.nick ?? label}</strong>
           {me?.isResultUser ? ' (admin)' : ''}
           {unknown && (
             <em className="auth-warn"> — unknown player id, pick one below</em>
@@ -84,7 +85,7 @@ export function AuthBar() {
       <span className="auth-picker">
         <select
           defaultValue=""
-          onChange={(e) => e.target.value && login(e.target.value)}
+          onChange={(e) => { if (e.target.value) { void login(e.target.value) } }}
         >
           <option value="" disabled>
             {t('logIn')}…

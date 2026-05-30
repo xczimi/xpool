@@ -28,7 +28,7 @@ import { GroupTipForm } from './mytips/GroupTipForm'
  */
 export function MyTipsPage() {
   const { t } = useI18n()
-  const { playerId } = useAuth()
+  const { label } = useAuth()
   const [selectedRound, setSelectedRound] = useState<Round | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
 
@@ -37,7 +37,7 @@ export function MyTipsPage() {
   }>({ query: TOURNAMENT_QUERY })
   const [meResult, refetchMe] = useQuery<{ me: Player | null }>({
     query: ME_QUERY,
-    pause: !playerId,
+    pause: !label,
   })
   const [resultsResult] = useQuery<{ results: MatchPrediction[] }>({
     query: RESULTS_QUERY,
@@ -66,7 +66,7 @@ export function MyTipsPage() {
     }
   }, [activeRound])
 
-  if (!playerId) return <NeedsLogin />
+  if (!label) return <NeedsLogin />
   if (tournamentResult.fetching || meResult.fetching) return <Loading />
   if (tournamentResult.error)
     return (

@@ -1,10 +1,10 @@
 import { createContext } from 'react'
 
-export interface AuthState {
-  /** The chosen dev player id, or null for a visitor. */
-  playerId: string | null
-  login: (playerId: string) => void
+export type AuthState = {
+  /** Display label for the currently-active player (dev mode); null = visitor. */
+  label: string | null
+  login: (playerId: string) => Promise<void>
   logout: () => void
 }
 
-export const AuthContext = createContext<AuthState | undefined>(undefined)
+export const AuthContext = createContext<AuthState | null>(null)

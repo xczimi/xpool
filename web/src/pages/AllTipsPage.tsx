@@ -20,7 +20,7 @@ const tipKey = (playerId: string, gameId: string) => `${playerId}::${gameId}`
 
 export function AllTipsPage() {
   const { t } = useI18n()
-  const { playerId } = useAuth()
+  const { label } = useAuth()
   const [selectedRound, setSelectedRound] = useState<Round | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
 
@@ -82,7 +82,7 @@ export function AllTipsPage() {
     [tips],
   )
 
-  if (!playerId) return <NeedsLogin />
+  if (!label) return <NeedsLogin />
   if (tournamentResult.fetching) return <Loading />
   if (!tournament) return <ErrorView />
 

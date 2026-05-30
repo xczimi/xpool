@@ -9,15 +9,15 @@ import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 /** Profile / account settings (UC-4). */
 export function ProfilePage() {
   const { t } = useI18n()
-  const { playerId } = useAuth()
+  const { label } = useAuth()
   const [meResult] = useQuery<{ me: Player | null }>({
     query: ME_QUERY,
-    pause: !playerId,
+    pause: !label,
   })
 
   const me = meResult.data?.me ?? null
 
-  if (!playerId) return <NeedsLogin />
+  if (!label) return <NeedsLogin />
   if (meResult.fetching) return <Loading />
   if (meResult.error) return <ErrorView message={meResult.error.message} />
   if (!me) return <ErrorView />
