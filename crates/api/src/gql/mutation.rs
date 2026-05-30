@@ -5,11 +5,12 @@
 //! admin mutation requires the result user and triggers the wholesale
 //! post-result recompute.
 
+use crate::auth::invite_code::{encode_invite, InvitePayload, UsePolicy};
 use crate::auth::CurrentPlayer;
 use crate::gql::inputs::{validate_score, MatchPredictionInput, StandingsInput};
 use crate::gql::types::*;
 use crate::recompute::recompute;
-use async_graphql::{Context, Object};
+use async_graphql::{Context, Object, SimpleObject};
 use domain::{
     MatchPrediction, Player as DomainPlayer, Pool as DomainPool,
     StandingsPrediction as DomainStandingsPrediction,
@@ -137,6 +138,15 @@ fn apply_group_predictions(
         standings_predictions,
         ..player.clone()
     })
+}
+
+/// Returned by `createInvite` — the opaque code and the full shareable URL.
+#[derive(SimpleObject)]
+pub struct InviteLink {
+    /// The raw opaque token (for programmatic use / testing).
+    pub code: String,
+    /// The full `<origin>/invite/<code>` URL the inviter shares.
+    pub link: String,
 }
 
 pub struct MutationRoot;
@@ -568,5 +578,37 @@ impl MutationRoot {
                 async_graphql::Error::new("recompute failed; please retry")
             })?;
         Ok(true)
+    }
+
+    /// Generate a referral or pool-join invite link (spec §5).
+    ///
+    /// When `pool` is `None` a single-use referral code is generated; when a
+    /// pool id is supplied a multi-use pool-join code is generated instead.
+    /// The returned `link` is the full URL the inviter shares; `code` is the
+    /// raw opaque token for programmatic use / testing.
+    async fn create_invite(
+        &self,
+        ctx: &Context<'_>,
+        pool: Option<String>,
+    ) -> async_graphql::Result<InviteLink> {
+        let me = CurrentPlayer::require(ctx)?;
+        let secret = std::env::var("INVITE_CODE_SECRET")
+            .map_err(|_| async_graphql::Error::new("INVITE_CODE_SECRET not configured"))?;
+        let use_policy = match &pool {
+            Some(_) => UsePolicy::MultiUseUntilRotated,
+            None => UsePolicy::SingleUse,
+        };
+        let payload = InvitePayload {
+            referrer: me.id.clone(),
+            pool,
+            expires_at: chrono::Utc::now() + chrono::Duration::days(30),
+            use_policy,
+        };
+        let code = encode_invite(secret.as_bytes(), &payload)
+            .map_err(|e| async_graphql::Error::new(format!("encode failed: {e}")))?;
+        let origin = std::env::var("XPOOL_PUBLIC_ORIGIN")
+            .unwrap_or_else(|_| "http://localhost:5173".to_owned());
+        let link = format!("{origin}/invite/{code}");
+        Ok(InviteLink { code, link })
     }
 }
