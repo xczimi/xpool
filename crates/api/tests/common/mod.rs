@@ -278,3 +278,99 @@ pub async fn test_app() -> (axum::Router, Arc<dyn Repository>) {
     let app = api::build_app(repo.clone(), false, None);
     (app, repo)
 }
+
+/// Like `test_app`, but sets `LOCAL_AUTH_ISSUER=1` before building the router
+/// so the trust-list accepts local-issuer JWTs minted by the helpers below.
+/// Call this instead of `test_app()` from any test that uses `query_as` or
+/// `query_with_bearer`.
+pub async fn test_app_with_local_auth() -> (axum::Router, Arc<dyn Repository>) {
+    // SAFETY: single-threaded test harness; the env mutation is visible to
+    // `TrustList::from_env()` which is called synchronously inside build_app.
+    unsafe {
+        std::env::set_var("LOCAL_AUTH_ISSUER", "1");
+    }
+    test_app().await
+}
+
+/// Mint a valid local-issuer Bearer token for `player_id` and return the
+/// corresponding `Authorization` header name/value pair.
+///
+/// The caller must have built their router via `test_app_with_local_auth()`
+/// (or otherwise set `LOCAL_AUTH_ISSUER` before constructing the router)
+/// so the trust-list accepts the resulting token.
+#[allow(dead_code)]
+pub fn auth_header(player_id: &str) -> (axum::http::HeaderName, axum::http::HeaderValue) {
+    let email = format!("{player_id}@dev.invalid");
+    let token = api::auth::local_issuer::mint_for_test(player_id, &email);
+    (
+        axum::http::header::AUTHORIZATION,
+        format!("Bearer {token}").parse().unwrap(),
+    )
+}
+
+/// Drop-in helper: attach a local-issuer Bearer header for `player_id` to a
+/// request builder. Intended for one-off requests in tests; prefer `query_as`
+/// for full GraphQL round-trips.
+#[allow(dead_code)]
+pub fn with_player(
+    builder: axum::http::request::Builder,
+    player_id: &str,
+) -> axum::http::request::Builder {
+    let (name, value) = auth_header(player_id);
+    builder.header(name, value)
+}
+
+/// POST a GraphQL body authenticated as `player_id`, return the parsed
+/// response JSON. Used by mutation/query tests in Tasks 15-17.
+///
+/// The `app` must have been built via `test_app_with_local_auth()`.
+#[allow(dead_code)]
+pub async fn query_as(
+    app: &axum::Router,
+    player_id: &str,
+    body: &str,
+) -> serde_json::Value {
+    let (name, value) = auth_header(player_id);
+    let req = axum::http::Request::builder()
+        .method("POST")
+        .uri("/api/graphql")
+        .header(axum::http::header::CONTENT_TYPE, "application/json")
+        .header(name, value)
+        .body(axum::body::Body::from(body.to_owned()))
+        .unwrap();
+    let res = tower::ServiceExt::oneshot(app.clone(), req).await.unwrap();
+    let bytes = http_body_util::BodyExt::collect(res.into_body())
+        .await
+        .unwrap()
+        .to_bytes();
+    serde_json::from_slice(&bytes).unwrap()
+}
+
+/// Same as `query_as`, but with a pre-minted Bearer token. Used when testing
+/// the unclaimed / claim flows for arbitrary subs where `player_id` is not
+/// known ahead of time.
+///
+/// The `app` must have been built via `test_app_with_local_auth()`.
+#[allow(dead_code)]
+pub async fn query_with_bearer(
+    app: &axum::Router,
+    bearer: &str,
+    body: &str,
+) -> serde_json::Value {
+    let req = axum::http::Request::builder()
+        .method("POST")
+        .uri("/api/graphql")
+        .header(axum::http::header::CONTENT_TYPE, "application/json")
+        .header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {bearer}"),
+        )
+        .body(axum::body::Body::from(body.to_owned()))
+        .unwrap();
+    let res = tower::ServiceExt::oneshot(app.clone(), req).await.unwrap();
+    let bytes = http_body_util::BodyExt::collect(res.into_body())
+        .await
+        .unwrap()
+        .to_bytes();
+    serde_json::from_slice(&bytes).unwrap()
+}
