@@ -6,10 +6,10 @@
 //! the dev-login endpoint instead (one auth code path).
 
 pub mod local_issuer;
+pub mod jwt;
+pub mod auth0_jwks;
 
 // Filled in by later tasks:
-//   pub mod jwt;
-//   pub mod auth0_jwks;
 //   pub mod resolution;
 //   pub mod seam;
 //   pub mod invite_code;
