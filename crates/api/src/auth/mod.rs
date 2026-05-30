@@ -21,28 +21,44 @@ pub mod local_issuer;
 use async_graphql::Context;
 use domain::Player;
 
+/// The verified-identity claims-set the seam extracts from a JWT, *before*
+/// any Identity/Person lookup. Carried through the AUTH-06 unclaimed state
+/// so the claim flow can act on it.
+#[derive(Clone, Debug)]
+pub struct VerifiedIdentity {
+    /// "email" | "sms" | "google" | "dev"
+    pub connection: String,
+    /// The original `sub` from the JWT (Auth0 connection-specific or local).
+    pub sub: String,
+    pub verified_email: Option<String>,
+    pub verified_phone: Option<String>,
+}
+
 /// The viewer of a request, placed in the GraphQL context.
-///
-/// `Visitor` — no `X-Dev-Player` header; unauthenticated.
-/// `Authenticated` — a resolved `Player`.
 #[derive(Clone, Debug)]
 pub enum CurrentPlayer {
+    /// No / invalid token.
     Visitor,
-    Authenticated(Box<Player>),
+    /// Valid token, verified contact, but no `Person`/`Player` (AUTH-06).
+    AuthenticatedUnclaimed(VerifiedIdentity),
+    /// Resolved `Player` (including the result-user).
+    Player(Box<Player>),
 }
 
 impl CurrentPlayer {
-    /// The authenticated player, or a GraphQL auth error for a visitor.
+    /// The authenticated player, or a GraphQL auth error otherwise.
     pub fn require<'a>(ctx: &'a Context<'_>) -> async_graphql::Result<&'a Player> {
         match ctx.data_unchecked::<CurrentPlayer>() {
-            CurrentPlayer::Authenticated(p) => Ok(p),
-            CurrentPlayer::Visitor => Err(async_graphql::Error::new(
-                "authentication required: send an X-Dev-Player header",
-            )),
+            CurrentPlayer::Player(p) => Ok(p),
+            CurrentPlayer::AuthenticatedUnclaimed(_) => {
+                Err(async_graphql::Error::new("invitation required"))
+            }
+            CurrentPlayer::Visitor => {
+                Err(async_graphql::Error::new("authentication required"))
+            }
         }
     }
 
-    /// The authenticated player only if they are the result user (admin).
     pub fn require_admin<'a>(ctx: &'a Context<'_>) -> async_graphql::Result<&'a Player> {
         let player = Self::require(ctx)?;
         if !player.is_result_user {

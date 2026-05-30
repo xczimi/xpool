@@ -34,7 +34,7 @@ async fn resolve_current_player(repo: &dyn Repository, headers: &HeaderMap) -> C
 
     match player_id {
         Some(id) => match repo.get_player(&id).await {
-            Ok(Some(player)) => CurrentPlayer::Authenticated(Box::new(player)),
+            Ok(Some(player)) => CurrentPlayer::Player(Box::new(player)),
             _ => CurrentPlayer::Visitor,
         },
         None => CurrentPlayer::Visitor,

@@ -235,7 +235,7 @@ pub async fn run_at(
 
     let current = match as_player {
         Some(id) => match repo.get_player(id).await.unwrap() {
-            Some(p) => CurrentPlayer::Authenticated(Box::new(p)),
+            Some(p) => CurrentPlayer::Player(Box::new(p)),
             None => CurrentPlayer::Visitor,
         },
         None => CurrentPlayer::Visitor,
@@ -260,7 +260,7 @@ pub async fn run_with_snapshot(
     let schema = api::gql::build_schema(repo.clone());
     let req = Request::new(query)
         .variables(vars)
-        .data(CurrentPlayer::Authenticated(Box::new(snapshot)))
+        .data(CurrentPlayer::Player(Box::new(snapshot)))
         .data(api::clock::RequestNow(Utc::now()));
     schema.execute(req).await
 }
