@@ -3,7 +3,7 @@ import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY } from '../graphql/queries'
-import type { Player } from '../graphql/types'
+import type { Me } from '../graphql/types'
 import { Loading, NeedsAdmin, NeedsLogin } from '../components/StatusViews'
 import { AdminResults } from './admin/AdminResults'
 import { AdminTeams } from './admin/AdminTeams'
@@ -13,14 +13,15 @@ import { AdminPlayers } from './admin/AdminPlayers'
 export function AdminPage() {
   const { t } = useI18n()
   const { label } = useAuth()
-  const [meResult] = useQuery<{ me: Player | null }>({
+  const [meResult] = useQuery<{ me: Me }>({
     query: ME_QUERY,
     pause: !label,
   })
 
   if (!label) return <NeedsLogin />
   if (meResult.fetching) return <Loading />
-  if (!meResult.data?.me?.isResultUser) return <NeedsAdmin />
+  const mePlayer = meResult.data?.me?.__typename === 'Player' ? meResult.data.me : null
+  if (!mePlayer?.isResultUser) return <NeedsAdmin />
 
   return (
     <section className="page">

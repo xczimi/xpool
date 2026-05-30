@@ -11,7 +11,7 @@ import {
 import type {
   GroupGame,
   MatchPrediction,
-  Player,
+  Me,
   Round,
   Tournament,
 } from '../graphql/types'
@@ -35,7 +35,7 @@ export function MyTipsPage() {
   const [tournamentResult, refetchTournament] = useQuery<{
     tournament: Tournament | null
   }>({ query: TOURNAMENT_QUERY })
-  const [meResult, refetchMe] = useQuery<{ me: Player | null }>({
+  const [meResult, refetchMe] = useQuery<{ me: Me }>({
     query: ME_QUERY,
     pause: !label,
   })
@@ -45,7 +45,8 @@ export function MyTipsPage() {
   const [, submitGroup] = useMutation(SUBMIT_GROUP_MUTATION)
 
   const tournament = tournamentResult.data?.tournament ?? null
-  const me = meResult.data?.me ?? null
+  const meRaw = meResult.data?.me ?? null
+  const me = meRaw?.__typename === 'Player' ? meRaw : null
   const results = resultsResult.data?.results ?? []
 
   const rounds = useMemo(

@@ -5,7 +5,7 @@ import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY, RESULTS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
 import type {
   MatchPrediction,
-  Player,
+  Me,
   Tournament,
 } from '../graphql/types'
 import { ErrorView, Loading } from '../components/StatusViews'
@@ -54,7 +54,7 @@ export function TodayPage() {
     return () => clearInterval(id)
   }, [interval, refetchResults])
 
-  const [meResult] = useQuery<{ me: Player | null }>({
+  const [meResult] = useQuery<{ me: Me }>({
     query: ME_QUERY,
     pause: !label,
   })
@@ -66,7 +66,8 @@ export function TodayPage() {
   )
   const tipFor = useMemo(() => {
     const map = new Map<string, { home: number; away: number; locked: boolean }>()
-    for (const p of meResult.data?.me?.matchPredictions ?? []) {
+    const mePlayer = meResult.data?.me?.__typename === 'Player' ? meResult.data.me : null
+    for (const p of mePlayer?.matchPredictions ?? []) {
       map.set(p.gameId, {
         home: p.homeScore,
         away: p.awayScore,

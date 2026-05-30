@@ -3,19 +3,20 @@ import { useMutation, useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY, UPDATE_PROFILE_MUTATION } from '../graphql/queries'
-import type { Player } from '../graphql/types'
+import type { Me, Player } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 
 /** Profile / account settings (UC-4). */
 export function ProfilePage() {
   const { t } = useI18n()
   const { label } = useAuth()
-  const [meResult] = useQuery<{ me: Player | null }>({
+  const [meResult] = useQuery<{ me: Me }>({
     query: ME_QUERY,
     pause: !label,
   })
 
-  const me = meResult.data?.me ?? null
+  const meRaw = meResult.data?.me ?? null
+  const me = meRaw?.__typename === 'Player' ? meRaw : null
 
   if (!label) return <NeedsLogin />
   if (meResult.fetching) return <Loading />

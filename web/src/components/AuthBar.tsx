@@ -4,7 +4,7 @@ import { useAuth0 } from '@auth0/auth0-react'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY, PLAYERS_QUERY } from '../graphql/queries'
-import type { Player, PlayerSummary } from '../graphql/types'
+import type { Me, PlayerSummary } from '../graphql/types'
 import { getDevNow, setDevNow, clearDevNow } from '../auth/devAuth'
 import { auth0Enabled } from '../auth/auth0Provider'
 
@@ -80,7 +80,7 @@ function DevAuthBar() {
   const { label, login, logout } = useAuth()
   const { t } = useI18n()
 
-  const [meResult] = useQuery<{ me: Player | null }>({
+  const [meResult] = useQuery<{ me: Me }>({
     query: ME_QUERY,
     pause: !label,
   })
@@ -88,7 +88,8 @@ function DevAuthBar() {
     query: PLAYERS_QUERY,
   })
 
-  const me = meResult.data?.me
+  const meRaw = meResult.data?.me
+  const me = meRaw?.__typename === 'Player' ? meRaw : null
   const players = playersResult.data?.players ?? []
 
   if (label) {

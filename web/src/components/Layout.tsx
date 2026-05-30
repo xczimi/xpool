@@ -3,7 +3,7 @@ import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY } from '../graphql/queries'
-import type { Player } from '../graphql/types'
+import type { Me } from '../graphql/types'
 import { AuthBar } from './AuthBar'
 import { LanguageSelector } from './LanguageSelector'
 import { NavBar } from './NavBar'
@@ -17,12 +17,13 @@ export function Layout() {
   const { label } = useAuth()
   const { t } = useI18n()
 
-  const [meResult] = useQuery<{ me: Player | null }>({
+  const [meResult] = useQuery<{ me: Me }>({
     query: ME_QUERY,
     pause: !label,
   })
 
-  const me = meResult.data?.me ?? null
+  const meRaw = meResult.data?.me ?? null
+  const me = meRaw?.__typename === 'Player' ? meRaw : null
 
   return (
     <div className="app">

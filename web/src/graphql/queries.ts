@@ -23,9 +23,17 @@ export const TOURNAMENT_QUERY = `
 export const ME_QUERY = `
   query Me {
     me {
-      id nick fullName isResultUser version
-      matchPredictions { gameId homeScore awayScore locked }
-      standingsPredictions { groupId ordering drawOrder locked }
+      __typename
+      ... on Player {
+        id nick fullName isResultUser version
+        matchPredictions { gameId homeScore awayScore locked }
+        standingsPredictions { groupId ordering drawOrder locked }
+      }
+      ... on UnclaimedViewer {
+        email
+        phone
+        linkCandidate { personId provider }
+      }
     }
   }
 `
