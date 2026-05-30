@@ -8,7 +8,7 @@
 //! `infrastructure/secrets.tf`). This middleware is the matching gate.
 //!
 //! Activation is by env-var presence, mirroring the `XPOOL_NOW` /
-//! `X-Dev-Player` dev-stub philosophy in `clock.rs` / `auth.rs`: when
+//! `LOCAL_AUTH_ISSUER` dev-stub philosophy in `clock.rs` / `auth/`: when
 //! `CLOUDFRONT_SECRET` is unset the middleware is *not* attached at all and
 //! the local `cargo run -p api` flow is byte-for-byte identical to before
 //! this commit. When the env var is set (Lambda runtime, or local with

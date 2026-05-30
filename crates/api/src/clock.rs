@@ -6,7 +6,7 @@
 //!   3. `Utc::now()`              (production)
 //!
 //! `X-Dev-Now` / `XPOOL_NOW` are dev stubs with the same exposure as
-//! `X-Dev-Player` — they must be gated off before any real deployment.
+//! `LOCAL_AUTH_ISSUER` — they must be gated off before any real deployment.
 
 use axum::http::HeaderMap;
 use chrono::{DateTime, Utc};
