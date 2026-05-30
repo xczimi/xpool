@@ -7,6 +7,7 @@ import type { Player } from '../graphql/types'
 import { AuthBar } from './AuthBar'
 import { LanguageSelector } from './LanguageSelector'
 import { NavBar } from './NavBar'
+import { UnclaimedBanner } from './UnclaimedBanner'
 
 /**
  * Persistent chrome (REWRITE_USE_CASES §4): header (tagline + language),
@@ -35,6 +36,7 @@ export function Layout() {
 
       <AuthBar />
       <NavBar isAdmin={Boolean(me?.isResultUser)} />
+      <UnclaimedBanner />
 
       <main className="content">
         <Outlet />
