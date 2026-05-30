@@ -39,6 +39,10 @@ export function clearToken(): void {
   } catch { /* ignore */ }
 }
 
+export function setTokenFromAuth0(token: string): void {
+  try { localStorage.setItem(TOKEN_KEY, token) } catch { /* ignore */ }
+}
+
 // Dev-clock storage stays as-is.
 const NOW_KEY = 'xpool.devNow'
 export function getDevNow(): string | null {
