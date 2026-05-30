@@ -17,3 +17,14 @@ resource "random_password" "cloudfront_secret" {
   length  = 32
   special = false
 }
+
+# Signing key for the app's HS256 invite-code payload (see
+# crates/api/src/auth/invite_code.rs and the spec §5). Rotating this
+# invalidates every outstanding invite link, which is acceptable — codes
+# expire on a 30-day TTL anyway. To rotate:
+#   tofu taint random_password.invite_code_secret
+#   bin/deploy-infra <env>
+resource "random_password" "invite_code_secret" {
+  length  = 32
+  special = false # url-safe base alphabet — the secret feeds an HMAC, not a URL
+}
