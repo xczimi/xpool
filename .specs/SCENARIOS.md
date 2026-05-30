@@ -128,12 +128,14 @@ Tests: —
 
 ## 2. Auth & Identity — `AUTH`
 
-The credential layer is **Auth0** (passwordless email, Google, email+password);
-mechanism wiring is `future`. The **behavioural contract** — what login,
-invitation, claiming, linking, and profile editing must *do* — is decided.
+The credential layer is **Auth0**, fully passwordless (passwordless email,
+passwordless SMS, Google). The behavioural contract — what login, invitation,
+claiming, linking, and profile editing must *do* — is decided here; the
+mechanism is implemented (see
+[`docs/superpowers/specs/2026-05-30-auth-design.md`](../docs/superpowers/specs/2026-05-30-auth-design.md)).
 `Identity → Person → Player` (`DATA_MODEL.md` §3).
 
-### AUTH-01 — Dev-stub resolves the current player
+### AUTH-01 — Local-issuer JWT resolves the current player
 Status: keep · Actor: Player · Screen: (all)
 Given  the API is running in Phase-1 dev-stub mode.
 When   a request carries a Bearer JWT minted by `POST /api/dev/login` for a seeded player (the local-issuer path).
