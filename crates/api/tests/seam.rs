@@ -21,7 +21,7 @@ async fn bearer_token_resolves_to_player() {
     let req = Request::post("/api/graphql")
         .header("content-type", "application/json")
         .header("authorization", format!("Bearer {token}"))
-        .body(Body::from(r#"{"query":"{ me { id } }"}"#))
+        .body(Body::from(r#"{"query":"{ me { __typename ... on Player { id } } }"}"#))
         .unwrap();
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
@@ -35,10 +35,12 @@ async fn no_bearer_is_visitor() {
     let (app, _repo) = common::test_app_with_local_auth().await;
     let req = Request::post("/api/graphql")
         .header("content-type", "application/json")
-        .body(Body::from(r#"{"query":"{ me { id } }"}"#))
+        .body(Body::from(r#"{"query":"{ me { __typename } }"}"#))
         .unwrap();
     let res = app.oneshot(req).await.unwrap();
     let body = res.into_body().collect().await.unwrap().to_bytes();
     let v: serde_json::Value = serde_json::from_slice(&body).unwrap();
-    assert!(v["errors"][0]["message"].as_str().unwrap().contains("authentication required"));
+    // Visitor → me returns null, no auth error at the field level any more.
+    assert!(v["errors"].is_null() || v["errors"].as_array().map(|e| e.is_empty()).unwrap_or(true));
+    assert!(v["data"]["me"].is_null());
 }

@@ -13,11 +13,12 @@ use storage::Repository;
 // ── Auth-required queries ────────────────────────────────────────────────────
 
 #[tokio::test]
-async fn me_requires_authentication() {
+async fn me_returns_null_for_visitor() {
     let repo = seeded_repo(Duration::hours(24)).await;
-    let resp = run(&repo, "{ me { id } }", Variables::default(), None).await;
-    assert!(!resp.errors.is_empty(), "visitor must get an auth error");
-    assert!(resp.errors[0].message.contains("authentication required"));
+    let resp = run(&repo, "{ me { __typename } }", Variables::default(), None).await;
+    // me is now nullable — a Visitor gets null, no auth error at the field level.
+    assert!(resp.errors.is_empty(), "visitor me must not error: {:?}", resp.errors);
+    assert!(data(&resp)["me"].is_null(), "visitor gets null me");
 }
 
 #[tokio::test]
@@ -25,16 +26,16 @@ async fn me_returns_player_when_authenticated() {
     let repo = seeded_repo(Duration::hours(24)).await;
     let resp = run(
         &repo,
-        "{ me { id nick } }",
+        "{ me { __typename ... on Player { id nick } } }",
         Variables::default(),
         Some(ALICE),
     )
     .await;
     assert!(resp.errors.is_empty(), "{:?}", resp.errors);
-    assert_eq!(
-        data(&resp),
-        json!({ "me": { "id": "alice", "nick": "alice" } })
-    );
+    let d = data(&resp);
+    assert_eq!(d["me"]["__typename"], json!("Player"));
+    assert_eq!(d["me"]["id"], json!("alice"));
+    assert_eq!(d["me"]["nick"], json!("alice"));
 }
 
 #[tokio::test]

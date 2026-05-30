@@ -717,6 +717,65 @@ impl MutationRoot {
         })
     }
 
+    /// Attach a new Identity to an existing Person by confirming that the
+    /// current session's verified email matches one already in the system via
+    /// a different provider (AUTH-13 cross-provider linking).
+    ///
+    /// The caller must be `AuthenticatedUnclaimed` (i.e. `me` returns an
+    /// `UnclaimedViewer` with a `linkCandidate`). The `personId` must be the
+    /// one surfaced in `linkCandidate` — a defense-in-depth check verifies the
+    /// verified email still belongs to that Person before writing.
+    async fn confirm_link(
+        &self,
+        ctx: &Context<'_>,
+        person_id: String,
+    ) -> async_graphql::Result<ClaimResult> {
+        let viewer = ctx.data_unchecked::<crate::auth::CurrentPlayer>();
+        let unclaimed = match viewer {
+            crate::auth::CurrentPlayer::AuthenticatedUnclaimed(u) => u.clone(),
+            _ => return Err(async_graphql::Error::new("not in a link-prompt state")),
+        };
+        let repo = repo(ctx);
+
+        // Defense in depth: verify the verified email actually matches a Person
+        // via some existing Identity row.
+        let email = unclaimed.verified_email.as_deref().ok_or_else(|| {
+            async_graphql::Error::new("no verified email on the auth session")
+        })?;
+        let hits = repo.find_identities_by_verified_email(email).await?;
+        if !hits.iter().any(|i| i.person_id == person_id) {
+            return Err(async_graphql::Error::new(
+                "verified email does not belong to that Person",
+            ));
+        }
+
+        let (provider, provider_id) = identity_key_for_unclaimed(&unclaimed)
+            .ok_or_else(|| async_graphql::Error::new("no usable contact"))?;
+        let identity = domain::Identity {
+            id: uuid::Uuid::new_v4().to_string(),
+            provider,
+            provider_id,
+            person_id: person_id.clone(),
+            verified_email: unclaimed.verified_email.clone(),
+        };
+        repo.put_identity(&identity).await?;
+
+        let mut person = repo
+            .get_person(&person_id)
+            .await?
+            .ok_or_else(|| async_graphql::Error::new("person not found"))?;
+        person.identity_ids.push(identity.id.clone());
+        repo.put_person(&person).await?;
+
+        let player = repo
+            .get_player(&person_id)
+            .await?
+            .ok_or_else(|| async_graphql::Error::new("player not found"))?;
+        Ok(ClaimResult {
+            player: PlayerSummary::from(&player),
+        })
+    }
+
     /// Generate a referral or pool-join invite link (spec §5).
     ///
     /// When `pool` is `None` a single-use referral code is generated; when a

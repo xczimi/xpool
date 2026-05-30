@@ -10,6 +10,7 @@ use async_graphql::{Context, Object};
 use domain::scoring::{is_perfect, ScoringConfig};
 use std::collections::HashMap;
 use storage::Repository;
+use std::sync::Arc;
 
 pub struct QueryRoot;
 
@@ -117,10 +118,36 @@ impl QueryRoot {
         Ok(entries)
     }
 
-    /// The current player + their predictions. Requires authentication.
-    async fn me(&self, ctx: &Context<'_>) -> async_graphql::Result<Player> {
-        let player = CurrentPlayer::require(ctx)?;
-        Ok(Player::from(player))
+    /// The current viewer — either a resolved `Player` or an `UnclaimedViewer`
+    /// (authenticated but not yet linked to a Person/Player). Returns `null`
+    /// for unauthenticated visitors. When `UnclaimedViewer.linkCandidate` is
+    /// set, the UI should prompt AUTH-13 cross-provider linking via
+    /// `confirmLink` rather than a normal `claimInvite`.
+    async fn me(&self, ctx: &Context<'_>) -> async_graphql::Result<Option<Viewer>> {
+        match ctx.data_unchecked::<CurrentPlayer>() {
+            CurrentPlayer::Visitor => Ok(None),
+            CurrentPlayer::Player(p) => Ok(Some(Viewer::Player(Box::new(Player::from(p.as_ref()))))),
+            CurrentPlayer::AuthenticatedUnclaimed(u) => {
+                let repo = ctx.data_unchecked::<Arc<dyn Repository>>();
+                let candidate = if let Some(email) = &u.verified_email {
+                    repo.find_identities_by_verified_email(email)
+                        .await
+                        .ok()
+                        .and_then(|mut hits| hits.pop())
+                        .map(|i| LinkCandidate {
+                            person_id: i.person_id,
+                            provider: i.provider,
+                        })
+                } else {
+                    None
+                };
+                Ok(Some(Viewer::Unclaimed(UnclaimedViewer {
+                    email: u.verified_email.clone(),
+                    phone: u.verified_phone.clone(),
+                    link_candidate: candidate,
+                })))
+            }
+        }
     }
 
     /// The pools the current player belongs to. Requires authentication.
