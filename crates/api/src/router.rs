@@ -53,8 +53,9 @@ pub fn build_router(
 ) -> Router {
     let state = AppState { schema, repo: repo.clone() };
     let trust = TrustList::from_env();
-    let seam_state = SeamState { trust, repo };
+    let seam_state = SeamState { trust, repo: repo.clone() };
 
+    // Core routes go behind the auth seam.
     let mut router = Router::new()
         .route(
             "/api/graphql",
@@ -66,6 +67,26 @@ pub fn build_router(
             seam_state,
             auth_seam,
         ));
+
+    // Dev-login route is mounted AFTER the seam layer so it is NOT wrapped
+    // by auth middleware — it is the token-minting endpoint itself.
+    // Double-gated: `dev_auth` Cargo feature (excluded from lambda builds)
+    // AND `LOCAL_AUTH_ISSUER` env var (absent in production config).
+    #[cfg(feature = "dev_auth")]
+    {
+        use crate::auth::dev_login::{dev_login, DevLoginState};
+        use axum::routing::post;
+        if std::env::var("LOCAL_AUTH_ISSUER")
+            .ok()
+            .filter(|v| !v.is_empty())
+            .is_some()
+        {
+            router = router.route(
+                "/api/dev/login",
+                post(dev_login).with_state(DevLoginState { repo }),
+            );
+        }
+    }
 
     if cors {
         router = router.layer(CorsLayer::permissive());

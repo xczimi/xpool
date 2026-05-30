@@ -13,7 +13,8 @@ pub mod resolution;
 
 // Filled in by later tasks:
 //   pub mod invite_code;
-//   #[cfg(feature = "dev_auth")] pub mod dev_login;
+#[cfg(feature = "dev_auth")]
+pub mod dev_login;
 
 // CurrentPlayer moves here in Task 4. Re-exported at the module root for
 // callers that used `crate::auth::CurrentPlayer` previously.
