@@ -101,6 +101,7 @@ fn make_identity(provider: &str, provider_id: &str, person_id: &str) -> Identity
         provider: provider.to_owned(),
         provider_id: provider_id.to_owned(),
         person_id: person_id.to_owned(),
+        verified_email: None,
     }
 }
 

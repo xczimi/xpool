@@ -73,6 +73,7 @@ pub async fn seed(repo: &dyn Repository) -> anyhow::Result<()> {
             provider: "dev".to_owned(),
             provider_id: player_id.to_owned(),
             person_id: person_id.clone(),
+            verified_email: None,
         };
         repo.put_identity(&identity).await?;
 
