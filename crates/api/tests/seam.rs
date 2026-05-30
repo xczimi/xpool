@@ -31,6 +31,19 @@ async fn bearer_token_resolves_to_player() {
 }
 
 #[tokio::test]
+async fn invalid_bearer_returns_401() {
+    let (app, _repo) = common::test_app_with_local_auth().await;
+
+    let req = Request::post("/api/graphql")
+        .header("content-type", "application/json")
+        .header("authorization", "Bearer not.a.real.token")
+        .body(Body::from(r#"{"query":"{ me { __typename } }"}"#))
+        .unwrap();
+    let res = app.oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+}
+
+#[tokio::test]
 async fn no_bearer_is_visitor() {
     let (app, _repo) = common::test_app_with_local_auth().await;
     let req = Request::post("/api/graphql")
