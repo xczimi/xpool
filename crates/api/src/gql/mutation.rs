@@ -641,6 +641,20 @@ impl MutationRoot {
             .map_err(|e| async_graphql::Error::new(format!("invalid invite: {e}")))?;
         let repo = repo(ctx);
 
+        // SingleUse enforcement: atomically mark the code as claimed before any
+        // other writes. This runs even when the viewer is already a Player (AUTH-12
+        // shortcut), so a single-use code cannot be replayed. Multi-use codes skip
+        // this check entirely.
+        if payload.use_policy == UsePolicy::SingleUse {
+            let claimed = repo
+                .claim_invite_code(&code)
+                .await
+                .map_err(|e| async_graphql::Error::new(e.to_string()))?;
+            if !claimed {
+                return Err(async_graphql::Error::new("invite already claimed"));
+            }
+        }
+
         // Already a resolved Player → AUTH-12: optionally join pool, return as-is.
         if let crate::auth::CurrentPlayer::Player(p) = viewer {
             if let Some(pool_id) = payload.pool.clone() {

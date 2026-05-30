@@ -113,6 +113,36 @@ async fn me_for_unclaimed_with_email_match_signals_link_path() {
 }
 
 #[tokio::test]
+async fn single_use_invite_rejects_a_second_claim() {
+    unsafe {
+        std::env::set_var("INVITE_CODE_SECRET", "test-secret-must-be-32-bytes-long");
+    }
+    let (app, repo) = common::test_app_with_local_auth().await;
+    common::seed_identity_for(&repo, common::ALICE, "alice@dev.invalid").await;
+
+    let create_body = r#"{"query":"mutation { createInvite(pool: null) { code } }"}"#;
+    let res = common::query_as(&app, common::ALICE, create_body).await;
+    let code = res["data"]["createInvite"]["code"].as_str().unwrap().to_string();
+
+    // First claim succeeds.
+    let token1 = api::auth::local_issuer::mint_for_test("auth0|first", "first@example.com");
+    let claim = format!(
+        r#"{{"query":"mutation {{ claimInvite(code: \"{code}\", nick: \"First\", fullName: \"F.\") {{ player {{ id }} }} }}"}}"#,
+    );
+    let res1 = common::query_with_bearer(&app, &token1, &claim).await;
+    assert!(res1.get("errors").is_none(), "first claim: {res1:?}");
+
+    // Second claim of the same code fails.
+    let token2 = api::auth::local_issuer::mint_for_test("auth0|second", "second@example.com");
+    let res2 = common::query_with_bearer(&app, &token2, &claim).await;
+    let errs = res2["errors"].as_array().expect("errors array");
+    assert!(
+        errs.iter().any(|e| e["message"].as_str().unwrap_or("").contains("already claimed")),
+        "second claim should fail with 'already claimed': {res2:?}"
+    );
+}
+
+#[tokio::test]
 async fn confirm_link_attaches_a_new_identity_to_an_existing_person() {
     let (app, repo) = common::test_app_with_local_auth().await;
     repo.put_person(&domain::Person {

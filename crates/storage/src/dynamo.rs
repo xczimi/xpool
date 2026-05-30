@@ -458,6 +458,38 @@ impl Repository for DynamoRepository {
         self.put_item_simple(&pk, SINGLETON_SK, p).await
     }
 
+    // ── Invite code usage ──────────────────────────────────────────────────
+
+    /// Atomically mark a single-use invite code as claimed using a conditional
+    /// `PutItem`. The item key is `INVITE_USED#<code>` (pk) / `#` (sk).
+    ///
+    /// `attribute_not_exists(pk)` succeeds only when no item with that pk
+    /// exists yet — i.e., this is the first claim. A
+    /// `ConditionalCheckFailedException` means the code was already claimed and
+    /// we return `false`. Other errors propagate.
+    async fn claim_invite_code(&self, code: &str) -> anyhow::Result<bool> {
+        let pk = format!("INVITE_USED#{code}");
+        let result = self
+            .client
+            .put_item()
+            .table_name(&self.table)
+            .item("pk", AttributeValue::S(pk.clone()))
+            .item("sk", AttributeValue::S(SINGLETON_SK.to_owned()))
+            .condition_expression("attribute_not_exists(pk)")
+            .send()
+            .await;
+
+        match result {
+            Ok(_) => Ok(true),
+            Err(SdkError::ServiceError(ref se))
+                if matches!(se.err(), PutItemError::ConditionalCheckFailedException(_)) =>
+            {
+                Ok(false)
+            }
+            Err(e) => Err(anyhow::anyhow!("claim_invite_code pk={pk}: {e}")),
+        }
+    }
+
     // ── Identity lookup ────────────────────────────────────────────────────
 
     /// Return every `Identity` whose `verified_email` matches `email`.
