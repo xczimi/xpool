@@ -36,3 +36,5 @@ lambda_http = { version = "0.13", optional = true }
 lambda_runtime = { version = "0.13", optional = true }
 
 [dev-dependencies]
+tower = { version = "0.5", features = ["util"] }
+http-body-util = "0.1"

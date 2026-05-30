@@ -66,8 +66,18 @@ async fn health() -> impl IntoResponse {
     "ok"
 }
 
-/// Build the axum router. `cors` enables permissive CORS for local dev.
-pub fn build_router(schema: XpoolSchema, repo: Arc<dyn Repository>, cors: bool) -> Router {
+/// Build the axum router.
+///
+/// `cors` enables permissive CORS for local dev. `cloudfront_secret`, when
+/// `Some(_)`, attaches the `cloudfront_auth` middleware that gates every
+/// route on a matching `X-CloudFront-Secret` header. Leaving it `None` keeps
+/// the router open — that's the local-dev path. See `cloudfront_auth.rs`.
+pub fn build_router(
+    schema: XpoolSchema,
+    repo: Arc<dyn Repository>,
+    cors: bool,
+    cloudfront_secret: Option<String>,
+) -> Router {
     let state = AppState { schema, repo };
 
     let mut router = Router::new()
@@ -80,6 +90,12 @@ pub fn build_router(schema: XpoolSchema, repo: Arc<dyn Repository>, cors: bool) 
 
     if cors {
         router = router.layer(CorsLayer::permissive());
+    }
+    if let Some(expected) = cloudfront_secret {
+        router = router.layer(axum::middleware::from_fn_with_state(
+            expected,
+            crate::cloudfront_auth::require_cloudfront_secret,
+        ));
     }
     router
 }
