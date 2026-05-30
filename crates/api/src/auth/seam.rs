@@ -7,7 +7,8 @@
 //! error. An invalid token IS an error (`401`).
 
 use crate::auth::jwt::{verify_token, TrustList, VerifiedClaims};
-use crate::auth::{CurrentPlayer, VerifiedIdentity};
+use crate::auth::CurrentPlayer;
+use crate::auth::resolution::resolve_player;
 use axum::{
     extract::{Request, State},
     http::{header, HeaderMap, StatusCode},
@@ -47,18 +48,5 @@ pub async fn auth_seam(
 }
 
 async fn to_current_player(claims: VerifiedClaims, repo: &dyn Repository) -> CurrentPlayer {
-    // Task 13 replaces this with the full §3 algorithm via
-    // `resolution::resolve_player`. Placeholder for now: if a Player whose
-    // id equals the JWT's `sub` exists, that's the player; otherwise
-    // unclaimed.
-    if let Ok(Some(player)) = repo.get_player(&claims.sub).await {
-        CurrentPlayer::Player(Box::new(player))
-    } else {
-        CurrentPlayer::AuthenticatedUnclaimed(VerifiedIdentity {
-            connection: claims.connection,
-            sub: claims.sub,
-            verified_email: claims.verified_email,
-            verified_phone: claims.verified_phone,
-        })
-    }
+    resolve_player(repo, claims).await
 }

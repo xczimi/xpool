@@ -4,8 +4,8 @@
 use async_graphql::{Request, Variables};
 use chrono::{Duration, Utc};
 use domain::{
-    GroupChildren, GroupGame, LockMode, MatchPrediction, Player, Round, SingleGame, Team, TeamSlot,
-    Tournament,
+    GroupChildren, GroupGame, Identity, LockMode, MatchPrediction, Person, Player, Round,
+    SingleGame, Team, TeamSlot, Tournament,
 };
 use serde_json::Value;
 use std::collections::HashMap;
@@ -344,6 +344,32 @@ pub async fn query_as(
         .unwrap()
         .to_bytes();
     serde_json::from_slice(&bytes).unwrap()
+}
+
+/// Seed an `Identity` + `Person` row for `player_id` so that a local-issuer
+/// JWT minted with `mint_for_test(player_id, email)` resolves to that player
+/// through the §3 algorithm. The identity is keyed at `("email", email)`.
+///
+/// Call this after `test_app_with_local_auth()` when a test needs an
+/// authenticated HTTP request to land on a specific player.
+#[allow(dead_code)]
+pub async fn seed_identity_for(repo: &Arc<dyn Repository>, player_id: &str, email: &str) {
+    let identity_id = format!("i-{player_id}");
+    repo.put_identity(&Identity {
+        id: identity_id.clone(),
+        provider: "email".to_owned(),
+        provider_id: email.to_owned(),
+        person_id: player_id.to_owned(),
+        verified_email: Some(email.to_owned()),
+    })
+    .await
+    .unwrap();
+    repo.put_person(&Person {
+        id: player_id.to_owned(),
+        identity_ids: vec![identity_id],
+    })
+    .await
+    .unwrap();
 }
 
 /// Same as `query_as`, but with a pre-minted Bearer token. Used when testing

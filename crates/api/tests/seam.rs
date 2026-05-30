@@ -1,8 +1,6 @@
 //! End-to-end: a request with a valid Bearer JWT for a seeded player
-//! resolves to `CurrentPlayer::Player`. No header → `Visitor`. The
-//! Identity→Person→Player resolver itself comes in Task 13; this test
-//! uses the placeholder seam path (sub == player_id matches the seeded
-//! player directly).
+//! resolves to `CurrentPlayer::Player`. No header → `Visitor`. Uses
+//! the real Identity→Person→Player resolver (Task 13).
 
 mod common;
 
@@ -14,8 +12,10 @@ use tower::ServiceExt;
 
 #[tokio::test]
 async fn bearer_token_resolves_to_player() {
-    std::env::set_var("LOCAL_AUTH_ISSUER", "1");
-    let (app, _repo) = common::test_app().await;
+    let (app, repo) = common::test_app_with_local_auth().await;
+
+    // Seed Identity + Person so the real §3 resolver can link the JWT to alice.
+    common::seed_identity_for(&repo, common::ALICE, "alice@example.com").await;
 
     let token = mint_for_test(common::ALICE, "alice@example.com");
     let req = Request::post("/api/graphql")
@@ -32,8 +32,7 @@ async fn bearer_token_resolves_to_player() {
 
 #[tokio::test]
 async fn no_bearer_is_visitor() {
-    std::env::set_var("LOCAL_AUTH_ISSUER", "1");
-    let (app, _repo) = common::test_app().await;
+    let (app, _repo) = common::test_app_with_local_auth().await;
     let req = Request::post("/api/graphql")
         .header("content-type", "application/json")
         .body(Body::from(r#"{"query":"{ me { id } }"}"#))
