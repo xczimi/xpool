@@ -457,4 +457,57 @@ impl Repository for DynamoRepository {
         let pk = format!("PERSON#{}", p.id);
         self.put_item_simple(&pk, SINGLETON_SK, p).await
     }
+
+    // ── Identity lookup ────────────────────────────────────────────────────
+
+    /// Return every `Identity` whose `verified_email` matches `email`.
+    ///
+    /// # Scale note
+    ///
+    /// Linear scan of the identity partition. With ~hundreds of identities at
+    /// hobby scale this is cheap; if scale grows materially, add a GSI on
+    /// `verified_email` and switch to `Query`. (Spec §3.)
+    async fn find_identities_by_verified_email(
+        &self,
+        email: &str,
+    ) -> anyhow::Result<Vec<Identity>> {
+        // Identity items have pk = IDENTITY#<provider>#<providerId>.  There is
+        // no single partition that groups all identities together, so we use a
+        // table-wide Scan filtered to items whose pk starts with "IDENTITY#",
+        // then post-filter in Rust on the verified_email field stored in `data`.
+        let mut results: Vec<Identity> = Vec::new();
+        let mut last_evaluated_key = None;
+
+        loop {
+            let resp = self
+                .client
+                .scan()
+                .table_name(&self.table)
+                .filter_expression("begins_with(pk, :prefix)")
+                .expression_attribute_values(":prefix", AttributeValue::S("IDENTITY#".to_owned()))
+                .set_exclusive_start_key(last_evaluated_key.clone())
+                .send()
+                .await
+                .context("scan identity partition")?;
+
+            for item in resp.items.unwrap_or_default() {
+                let data = item
+                    .get("data")
+                    .and_then(|v| v.as_s().ok())
+                    .context("missing `data` attribute in scan result")?;
+                let identity: Identity =
+                    serde_json::from_str(data).context("deserialise identity scan item")?;
+                if identity.verified_email.as_deref() == Some(email) {
+                    results.push(identity);
+                }
+            }
+
+            last_evaluated_key = resp.last_evaluated_key;
+            if last_evaluated_key.is_none() {
+                break;
+            }
+        }
+
+        Ok(results)
+    }
 }

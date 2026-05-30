@@ -152,4 +152,19 @@ impl Repository for InMemoryRepository {
         inner.persons.insert(p.id.clone(), p.clone());
         Ok(())
     }
+
+    // ── Identity lookup ────────────────────────────────────────────────────
+
+    async fn find_identities_by_verified_email(
+        &self,
+        email: &str,
+    ) -> anyhow::Result<Vec<Identity>> {
+        let inner = self.inner.lock().unwrap();
+        Ok(inner
+            .identities
+            .values()
+            .filter(|i| i.verified_email.as_deref() == Some(email))
+            .cloned()
+            .collect())
+    }
 }
