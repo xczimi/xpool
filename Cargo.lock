@@ -90,6 +90,7 @@ dependencies = [
  "async-graphql",
  "async-graphql-axum",
  "axum",
+ "base64",
  "chrono",
  "domain",
  "fwc26",

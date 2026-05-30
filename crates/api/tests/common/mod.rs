@@ -269,3 +269,12 @@ pub async fn run_with_snapshot(
 pub fn data(resp: &async_graphql::Response) -> Value {
     serde_json::to_value(&resp.data).unwrap()
 }
+
+/// Build an axum router wired to a fresh in-memory repo (tiny tournament +
+/// 3 players, games 24 h in the future). Used by HTTP-level tests such as
+/// `tests/seam.rs` that need to drive the full request stack.
+pub async fn test_app() -> (axum::Router, Arc<dyn Repository>) {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let app = api::build_app(repo.clone(), false, None);
+    (app, repo)
+}
