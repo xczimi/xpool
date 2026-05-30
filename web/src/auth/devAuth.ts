@@ -1,58 +1,52 @@
 /**
- * Dev auth stub. The API resolves the current player from an `X-Dev-Player`
- * header (API.md §8). This module persists the chosen player id in
- * localStorage; the urql client reads it on every request.
+ * Dev auth. Mints a local-issuer JWT against the API's `POST /api/dev/login`
+ * endpoint and stashes it in localStorage. The urql client reads the JWT on
+ * every request and sends `Authorization: Bearer <jwt>`.
+ *
+ * Production builds use Auth0 SPA SDK instead — see auth0Provider.tsx (Phase 5).
  */
 
-const STORAGE_KEY = 'xpool.devPlayerId'
+const TOKEN_KEY = 'xpool.jwt'
+const PLAYER_KEY = 'xpool.devPlayer'
 
-export function getDevPlayerId(): string | null {
-  try {
-    return localStorage.getItem(STORAGE_KEY)
-  } catch {
-    return null
-  }
+export function getToken(): string | null {
+  try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
 }
 
-export function setDevPlayerId(playerId: string): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, playerId)
-  } catch {
-    /* ignore storage failures */
-  }
+export function getDevPlayerLabel(): string | null {
+  try { return localStorage.getItem(PLAYER_KEY) } catch { return null }
 }
 
-export function clearDevPlayerId(): void {
+export async function devLogin(playerId: string): Promise<string> {
+  const res = await fetch('/api/dev/login', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ player: playerId }),
+  })
+  if (!res.ok) throw new Error(`dev-login failed: ${res.status}`)
+  const { token } = (await res.json()) as { token: string }
   try {
-    localStorage.removeItem(STORAGE_KEY)
-  } catch {
-    /* ignore */
-  }
+    localStorage.setItem(TOKEN_KEY, token)
+    localStorage.setItem(PLAYER_KEY, playerId)
+  } catch { /* ignore */ }
+  return token
 }
 
+export function clearToken(): void {
+  try {
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(PLAYER_KEY)
+  } catch { /* ignore */ }
+}
+
+// Dev-clock storage stays as-is.
 const NOW_KEY = 'xpool.devNow'
-
-/** The dev clock override (RFC3339), or null for the real clock. */
 export function getDevNow(): string | null {
-  try {
-    return localStorage.getItem(NOW_KEY)
-  } catch {
-    return null
-  }
+  try { return localStorage.getItem(NOW_KEY) } catch { return null }
 }
-
 export function setDevNow(iso: string): void {
-  try {
-    localStorage.setItem(NOW_KEY, iso)
-  } catch {
-    /* ignore */
-  }
+  try { localStorage.setItem(NOW_KEY, iso) } catch { /* ignore */ }
 }
-
 export function clearDevNow(): void {
-  try {
-    localStorage.removeItem(NOW_KEY)
-  } catch {
-    /* ignore */
-  }
+  try { localStorage.removeItem(NOW_KEY) } catch { /* ignore */ }
 }
