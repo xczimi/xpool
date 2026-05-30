@@ -1,9 +1,22 @@
-//! The auth seam (`API.md` §8, `DATA_MODEL.md` §12).
+//! The auth seam (`docs/superpowers/specs/2026-05-30-auth-design.md`).
 //!
-//! Phase 1 is a **dev stub**: the edge reads the `X-Dev-Player` header,
-//! resolves the `Player`, and places a `CurrentPlayer` in the GraphQL context.
-//! Resolvers read it from context and never re-authenticate. Swapping to real
-//! auth is a change in one place — the header read in `router.rs`.
+//! Bearer-JWT verification, multi-issuer (Auth0 + local). Three-state
+//! `CurrentPlayer`. Identity → Person → Player resolution. The
+//! `X-Dev-Player` header is gone — local dev mints local-issuer JWTs via
+//! the dev-login endpoint instead (one auth code path).
+
+pub mod local_issuer;
+
+// Filled in by later tasks:
+//   pub mod jwt;
+//   pub mod auth0_jwks;
+//   pub mod resolution;
+//   pub mod seam;
+//   pub mod invite_code;
+//   #[cfg(feature = "dev_auth")] pub mod dev_login;
+
+// CurrentPlayer moves here in Task 4. Re-exported at the module root for
+// callers that used `crate::auth::CurrentPlayer` previously.
 
 use async_graphql::Context;
 use domain::Player;
