@@ -51,10 +51,11 @@ Tournament Setup & Results (`ADMIN`).
 
 Settled in the grilling session that produced this document:
 
-- **Auth**: Auth0 managed IdP — passwordless email, Google, email+password.
-  `Identity → Person → Player`; the **Person layer owns identity-linking**
-  (explicit confirmation, never silent). Auth mechanism wiring is `future`;
-  the **behavioural contract** below is decided.
+- **Auth**: Auth0 managed IdP, fully passwordless — passwordless email (magic
+  link via SES), passwordless SMS (OTP code via Twilio), Google. **No
+  email+password.** `Identity → Person → Player`; the **Person layer owns
+  identity-linking** (explicit confirmation, never silent). See
+  [`docs/superpowers/specs/2026-05-30-auth-design.md`](../docs/superpowers/specs/2026-05-30-auth-design.md).
 - **Invite-only**: no open self-signup. Two entry paths — a direct referral, or
   self-join with a custom-pool join code.
 - **No admin role, no web admin features.** "Admin" = whoever can authenticate
@@ -135,16 +136,17 @@ invitation, claiming, linking, and profile editing must *do* — is decided.
 ### AUTH-01 — Dev-stub resolves the current player
 Status: keep · Actor: Player · Screen: (all)
 Given  the API is running in Phase-1 dev-stub mode.
-When   a request carries an `X-Dev-Player` header naming a seeded player.
+When   a request carries a Bearer JWT minted by `POST /api/dev/login` for a seeded player (the local-issuer path).
 Then   the edge resolves that `Player` into the GraphQL context as
        `CurrentPlayer::Authenticated`; resolvers never re-authenticate.
 Tests: `me_returns_player_when_authenticated` (api) · web/e2e/auth.spec.ts
-Note:  This is the **shippable auth today**. AUTH-02..12 are `future` — the
-       contract the real Auth0 integration must satisfy.
+Note:  The dev mechanism is the local-issuer JWT path (`LOCAL_AUTH_ISSUER` env
+       toggles trust; `POST /api/dev/login` mints tokens for seeded players).
+       Production uses Auth0 — AUTH-03..18 below describe the real flows.
 
 ### AUTH-02 — Visitor with no header is unauthenticated
 Status: keep · Actor: Visitor · Screen: (all)
-Given  a request with no `X-Dev-Player` header.
+Given  a request with no Bearer token (or an invalid one).
 When   it reaches the API.
 Then   `CurrentPlayer::Visitor` is placed in context; player-only resolvers
        return an auth error.
@@ -169,14 +171,11 @@ Then   the Auth0 `sub` matches the `Identity`, resolving to their `Player`.
 Tests: —
 
 ### AUTH-05 — Login via email + password
-Status: future · Actor: Player · Screen: Login
-Given  a `Person` has an Auth0-hosted password identity.
-When   they sign in with email + password.
-Then   Auth0 verifies the (properly hashed, Auth0-managed) credential and the
-       app resolves their `Player`.
+Status: dropped · Actor: — · Screen: —
+**Dropped** by the 2026-05-30 auth design — passwordless throughout. Removing
+passwords removes the only justification for a managed-IdP password store and
+reconciles the "don't own password security" and "avoid lock-in" drivers.
 Tests: —
-Note:  changed from legacy — legacy stored passwords **in plaintext**
-       (`archive/model.py:68`). Auth0 owns hashing, reset, lockout.
 
 ### AUTH-06 — Authenticated but unclaimed user is a logged-in visitor
 Status: new · Actor: Visitor · Screen: (all)
@@ -189,58 +188,74 @@ Tests: —
 Note:  New scenario forced by the invite-only + Auth0 combination — Auth0 makes
        authenticating trivial, but authentication ≠ participation.
 
-### AUTH-07 — Player invites a friend (direct referral)
+### AUTH-07 — Player invites a friend (shareable invite link)
 Status: changed · Actor: Player · Screen: Invite
 Given  a logged-in player opens Invite.
-When   they enter a friend's email, nick, and full name.
-Then   a **pending** `Person` + `Player` is **eagerly created** keyed by that
-       email, with `referrer` set to the inviter; a branded invitation email
-       is sent.
-Tests: —
-Note:  changed — legacy generated a bespoke `authcode` token
-       (`archive/control.py:343`). The rewrite drops the token: security rests
-       on Auth0's verified-email login (AUTH-09).
+When   they generate an invite link (optionally also entering an email for
+       the app to send via SES).
+Then   a copyable `https://<origin>/invite/<code>` link is shown — the
+       signed `code` carries `{ referrer = inviter, expiry, use-policy }`.
+       The inviter pastes it into any chat. **No pending `Person`/`Player`
+       is created at invite time** — lazy creation happens at claim
+       (AUTH-09).
+Tests: `create_invite_returns_a_signed_link` (api)
+Note:  changed — the legacy generated an authcode token AND an emailed
+       invitation; the rewrite emits a copyable signed link as the
+       primary artifact, with the email as an optional convenience.
+       AUTH-07 and AUTH-11 collapse into one mechanism — the invitee
+       always supplies their own profile.
 
-### AUTH-08 — Invite to an existing email is rejected
-Status: keep · Actor: Player · Screen: Invite
-Given  the entered email already belongs to a `Person`.
-When   the player submits the invite.
-Then   the invite is rejected with a "this user is already in the system"
-       message; no duplicate is created.
-Tests: —
-Note:  Legacy: `archive/control.py:340`.
+### AUTH-08 — Invitee whose email already belongs to a Person becomes a known player
+Status: changed · Actor: Visitor → Player · Screen: Login → Invite claim
+Given  an invite link, opened by someone whose verified email already
+       belongs to an existing `Person`.
+When   they authenticate (Auth0 passwordless or Google) and submit
+       `claimInvite`.
+Then   no new `Player` is created — the existing `Player` is returned,
+       and the pool (if the code carried one) is joined. The legacy
+       invite-time "this email is already in the system" rejection
+       becomes a claim-time outcome.
+Tests: `claim_invite_for_existing_person_does_not_duplicate` (api)
 
-### AUTH-09 — Invited friend claims their pending account
-Status: changed · Actor: Invited player · Screen: Login → Profile
-Given  a pending `Person`/`Player` exists for an invited email.
-When   the invitee logs in via Auth0 with that **verified** email for the
-       first time.
-Then   the login claims and activates the pending account, links
-       `Identity → Person → Player`, and lands them on Profile.
-Tests: —
-Note:  changed — the deep link in the email is convenience only; the verified
-       email is the security boundary, replacing the non-expiring `authcode`
-       (genuine debt per `DATA_MODEL.md` §11).
+### AUTH-09 — Invited friend claims via a passwordless login
+Status: changed · Actor: Invited person · Screen: Login → Invite claim → Profile
+Given  a valid invite code (no pre-existing pending `Person`/`Player`).
+When   the invitee authenticates passwordless with their own verified
+       email/phone and submits `claimInvite` with the code + their nick
+       + full name.
+Then   a `Person` + `Player` + `Identity` are **created at claim time**;
+       `referrer` is copied from the invite code's payload; the pool is
+       joined if the code carried one; the user lands on Profile.
+Tests: `claim_invite_creates_player_with_referrer` (api)
+Note:  changed — the legacy used a long-lived `authcode` token + an
+       eagerly-created pending row. The rewrite has no pending row
+       (lazy) and no app-stored credential — Auth0's verified
+       email/phone is the security boundary.
 
-### AUTH-10 — Pending players are hidden until claimed
+### AUTH-10 — No pending players to hide
 Status: changed · Actor: (system) · Screen: Scoreboard / All Tips
-Given  an invited `Player` has been created but never logged in.
+Given  the lazy-creation policy.
 When   any player listing, scoreboard, or All Tips grid is rendered.
-Then   the pending player is **excluded** until the account is claimed.
+Then   no special filtering is needed — there are no pending players;
+       a `Player` exists only after claim. AUTH-10's original "hide the
+       legacy `active = false` row" responsibility is dissolved.
 Tests: —
-Note:  Replaces the legacy `active` boolean (`archive/model.py:71`,
-       `LocalUser.actives()`). Activation moves from "first prediction save"
-       (`archive/control.py:412`) to "first login claim" (AUTH-09).
+Note:  changed — replaced the legacy `active` boolean + activation-on-first-prediction
+       mechanism (`archive/control.py:412`) with lazy creation at claim time
+       (AUTH-09).
 
-### AUTH-11 — Self-join with a custom-pool join code
-Status: new · Actor: Visitor → Player · Screen: Join
-Given  a visitor holds a valid pool join code (see POOL-02).
-When   they authenticate via Auth0 and supply their own nick/full name.
-Then   a `Player` is **lazily** created, joined to that pool **and** the
-       implicit global pool; `referrer` = the pool's owner.
+### AUTH-11 — Self-join with a pool join code (uses the same invite mechanism)
+Status: changed · Actor: Visitor → Player · Screen: Invite claim
+Given  a pool join code (POOL-02) — same shape as a referral invite code,
+       but with `pool` set.
+When   the visitor opens the join link, authenticates passwordless, and
+       submits `claimInvite` with their own nick + full name.
+Then   a `Player` is created via the same lazy path as AUTH-09;
+       `referrer` = the pool's owner; the pool is joined.
 Tests: —
-Note:  The second invite path. Asymmetric with AUTH-07: here the joiner
-       supplies their own profile (the owner never typed it).
+Note:  changed — folded into AUTH-07's unified mechanism. The asymmetry
+       between "direct referral" and "self-join" disappears; both
+       paths use the same claimInvite flow.
 
 ### AUTH-12 — Existing person joins a pool by code
 Status: new · Actor: Player · Screen: Join
@@ -299,6 +314,16 @@ Superseded by `Pool` with an opaque, rotatable join code (POOL-02): a join code
 is single-purpose and not conflated with an auth credential, and nothing is
 stored in plaintext.
 Tests: —
+
+### AUTH-18 — Login via passwordless SMS
+Status: future · Actor: Player · Screen: Login
+Given  a `Person` has a linked phone `Identity`.
+When   they request a code, receive it via Twilio, and type it.
+Then   Auth0 verifies the OTP; the app resolves
+       `Identity#phone#<E.164> → Person → Player` and the player is logged in.
+Tests: —
+Note:  SMS passwordless is a typed code, not a clickable link — a phone can't
+       reliably deep-link back into a browser session.
 
 ---
 
