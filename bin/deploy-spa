@@ -1,0 +1,49 @@
+#!/bin/bash
+# xpool SPA: vite build, sync to S3, invalidate CloudFront.
+#
+# Usage: bin/deploy-spa [dev|prod]   # default: dev
+#
+# Looks up the bucket from the AWS account id and the CloudFront distribution
+# from its alias, so no IDs are hardcoded — both are derived at runtime.
+set -euo pipefail
+
+ENV="${1:-dev}"
+case "$ENV" in
+    dev)  ALIAS="pool-dev.xczimi.com" ;;
+    prod) ALIAS="pool.xczimi.com" ;;
+    *) echo "Usage: $0 [dev|prod]"; exit 2 ;;
+esac
+
+PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT"
+
+export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
+export AWS_REGION="${AWS_REGION:-ca-central-1}"
+
+echo "==> resolving bucket + distribution"
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+BUCKET="xpool-spa-${ENV}-${ACCOUNT_ID}"
+DIST_ID=$(aws cloudfront list-distributions \
+    --query "DistributionList.Items[?contains(Aliases.Items, \`${ALIAS}\`)].Id | [0]" \
+    --output text)
+
+if [[ -z "$DIST_ID" || "$DIST_ID" == "None" ]]; then
+    echo "no CloudFront distribution found for alias ${ALIAS}" >&2
+    exit 1
+fi
+
+echo "    bucket=${BUCKET}  distribution=${DIST_ID}  alias=${ALIAS}"
+
+echo "==> vite build"
+( cd web && npm run build )
+
+echo "==> aws s3 sync web/dist -> s3://${BUCKET}"
+aws s3 sync web/dist/ "s3://${BUCKET}/" --delete --no-progress
+
+echo "==> cloudfront invalidate /*"
+aws cloudfront create-invalidation \
+    --distribution-id "$DIST_ID" \
+    --paths "/*" \
+    --no-cli-pager \
+    --query 'Invalidation.{Id:Id,Status:Status}' \
+    --output table

@@ -10,9 +10,17 @@ use storage::{DynamoRepository, Repository};
 /// Build the repository and the axum app shared by both entrypoints.
 async fn app() -> anyhow::Result<axum::Router> {
     let repo = DynamoRepository::from_env().await?;
+    // The deployed table is OpenTofu-managed (see infrastructure/dynamodb.tf).
+    // Only the local/dev server self-creates it against DynamoDB Local.
+    #[cfg(not(feature = "lambda"))]
     repo.ensure_table().await?;
     let repo: Arc<dyn Repository> = Arc::new(repo);
-    Ok(api::build_app(repo, true))
+    // CLOUDFRONT_SECRET present (e.g. running on Lambda where tofu wires it
+    // in) → the X-CloudFront-Secret header is required on every request.
+    // Absent (typical `cargo run -p api`) → the middleware is not attached
+    // and the local stack stays open the same as it always was.
+    let cloudfront_secret = api::cloudfront_auth::read_secret_from_env();
+    Ok(api::build_app(repo, true, cloudfront_secret))
 }
 
 #[cfg(not(feature = "lambda"))]

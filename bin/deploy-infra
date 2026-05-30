@@ -1,0 +1,43 @@
+#!/bin/bash
+# xpool infrastructure: tofu apply against the named env.
+#
+# Usage: bin/deploy-infra [dev|prod]   # default: dev
+#
+# Responsibility split (code is decoupled from infra via
+# ignore_source_code_hash = true on module.api_lambda):
+#
+#   bin/deploy-infra  — touches the function shell, S3, CloudFront,
+#                       DynamoDB, Route53, SSM, IAM (this script).
+#   bin/deploy-api    — ships Lambda code (aws lambda update-function-code).
+#   bin/deploy-spa    — ships the SPA bundle (S3 sync + CF invalidation).
+#
+# Runs with -auto-approve — no interactive yes/no prompt. Run `tofu plan` first
+# if you want to eyeball changes (especially for prod).
+#
+# Extra tofu flags after the env are passed through, so e.g.
+#   bin/deploy-infra dev -target=module.cloudfront
+#   bin/deploy-infra dev -refresh-only
+set -euo pipefail
+
+ENV="${1:-dev}"
+case "$ENV" in
+    dev|prod) [[ $# -gt 0 ]] && shift ;;
+    *) echo "Usage: $0 [dev|prod] [extra tofu flags]"; exit 2 ;;
+esac
+
+PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT/infrastructure"
+
+export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
+
+# .terraform/ holds the resolved backend for whichever env was last inited.
+# If it's missing or stale (env switch), tofu apply will fail with a clear
+# message — re-run with `tofu init -backend-config=env/${ENV}.backend.hcl
+# -reconfigure` to fix.
+if [[ ! -d .terraform ]]; then
+    echo "==> tofu init -backend-config=env/${ENV}.backend.hcl"
+    tofu init -backend-config="env/${ENV}.backend.hcl"
+fi
+
+echo "==> tofu apply -auto-approve -var-file=env/${ENV}.tfvars$([ $# -gt 0 ] && echo " $*")"
+tofu apply -auto-approve -var-file="env/${ENV}.tfvars" "$@"
