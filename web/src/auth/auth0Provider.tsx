@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { Auth0Provider as SdkProvider, useAuth0 } from '@auth0/auth0-react'
-import { setAuth0Getter, setTokenFromAuth0 } from './devAuth'
+import { clearToken, setAuth0Getter, setTokenFromAuth0 } from './devAuth'
 
 const DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN as string | undefined
 const CLIENT = import.meta.env.VITE_AUTH0_CLIENT_ID as string | undefined
@@ -44,6 +44,10 @@ function TokenBridge({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isAuthenticated) {
       setAuth0Getter(null)
+      // Auth0's logout() clears the SDK + tenant session but leaves the
+      // localStorage-seeded JWT in place. Without this, a stale Bearer token
+      // outlives logout and the API keeps returning AuthenticatedUnclaimed.
+      clearToken()
       return
     }
     // Register the getter so every subsequent urql request fetches a fresh token.

@@ -5,7 +5,7 @@ import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY, PLAYERS_QUERY } from '../graphql/queries'
 import type { Me, PlayerSummary } from '../graphql/types'
-import { getDevNow, setDevNow, clearDevNow } from '../auth/devAuth'
+import { clearToken, getDevNow, setDevNow, clearDevNow } from '../auth/devAuth'
 import { auth0Enabled } from '../auth/auth0Provider'
 
 export function AuthBar() {
@@ -31,7 +31,13 @@ function ProdAuthBar() {
   return (
     <div className="auth-bar">
       <span>Logged in as {user?.name ?? user?.email ?? 'player'}</span>{' '}
-      <button onClick={() => logout({ logoutParams: { returnTo: window.location.origin } })}>
+      <button onClick={() => {
+        // Belt-and-suspenders: drop the localStorage JWT before the Auth0
+        // redirect, in case TokenBridge's effect-driven cleanup races with
+        // the urql client's next request.
+        clearToken()
+        logout({ logoutParams: { returnTo: window.location.origin } })
+      }}>
         Log out
       </button>
     </div>
