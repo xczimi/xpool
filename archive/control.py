@@ -4,6 +4,7 @@
 # Copyright 2010 Peter Czimmermann  <xczimi@gmail.com>
 #
 import Cookie
+import os
 import uuid
 import re
 from datetime import datetime, timedelta
@@ -34,8 +35,11 @@ import facebook
 NOW = datetime.utcnow()
 #+timedelta(days=-20)
 
-FACEBOOK_APP_ID = "315323681885269"
-FACEBOOK_APP_SECRET = "f5ca1bb05ba16cd8b594d7c2c8e93980"
+# Legacy xEuroPool Facebook app (App ID 315323681885269) was deactivated by
+# Facebook for inactivity; the old hardcoded secret is dead. Read from env if
+# this archived code is ever resurrected. Never hardcode the secret.
+FACEBOOK_APP_ID = os.environ.get("FACEBOOK_APP_ID", "")
+FACEBOOK_APP_SECRET = os.environ.get("FACEBOOK_APP_SECRET", "")
 
 
 def need_login(func):
