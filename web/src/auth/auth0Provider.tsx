@@ -18,8 +18,18 @@ export function Auth0Gate({ children }: { children: ReactNode }) {
       authorizationParams={{
         redirect_uri: window.location.origin,
         audience: AUDIENCE,
+        // `offline_access` requests a refresh token alongside the access
+        // token — required for `useRefreshTokens` below.
+        scope: 'openid profile email offline_access',
       }}
-      cacheLocation="memory"
+      // localStorage + refresh tokens survives page reload without relying on
+      // Auth0's third-party tenant cookie (blocked by default in Safari/Brave
+      // and being phased out by Chrome). Refresh-token rotation is on by
+      // default for SPA app types in Auth0; the SDK handles rotation
+      // transparently. Trade-off: refresh token is reachable to XSS — accepted
+      // for a hobby app.
+      cacheLocation="localstorage"
+      useRefreshTokens
     >
       <TokenBridge>{children}</TokenBridge>
     </SdkProvider>
