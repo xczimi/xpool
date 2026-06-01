@@ -93,6 +93,7 @@ dependencies = [
  "base64",
  "chrono",
  "domain",
+ "dotenvy",
  "fwc26",
  "hmac 0.12.1",
  "http-body-util",
@@ -1158,6 +1159,12 @@ dependencies = [
  "chrono",
  "serde",
 ]
+
+[[package]]
+name = "dotenvy"
+version = "0.15.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
 name = "dunce"
@@ -3866,6 +3873,7 @@ dependencies = [
  "chrono",
  "clap",
  "domain",
+ "dotenvy",
  "fwc26",
  "serde",
  "serde_json",

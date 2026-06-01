@@ -37,6 +37,9 @@ enum Command {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Workspace-root .env (DYNAMO_ENDPOINT, AWS_*, etc.) — silent no-op if missing.
+    let _ = dotenvy::dotenv();
+
     let cli = Cli::parse();
 
     let repo = DynamoRepository::from_env().await?;

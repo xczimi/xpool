@@ -26,6 +26,14 @@ async fn app() -> anyhow::Result<axum::Router> {
 #[cfg(not(feature = "lambda"))]
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // In dev/test builds, load `.env` from the workspace root before anything
+    // else reads env vars. Silently no-ops when the file doesn't exist (common
+    // in containers / CI). Lambda builds (--features lambda,
+    // --no-default-features) skip this — env vars come from the
+    // Terraform-managed Lambda env.
+    #[cfg(feature = "dev_auth")]
+    let _ = dotenvy::dotenv();
+
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
