@@ -27,6 +27,7 @@ body { margin: 0; background: var(--bg); }
 .nav-link:hover { background: #eef1f5; }
 .nav-link.active { background: var(--accent); color: var(--accent-ink); }
 .flash-bar { margin: 0 0 0.5rem; padding: 0.6rem 1.25rem; background: var(--flash-bg); border: 1px solid var(--flash-border); border-radius: 4px; font-size: 0.9rem; }
+.banner { padding: 0.65rem 1.25rem; background: #fff8e1; border-bottom: 1px solid #f9c846; color: #5a4000; font-size: 0.9rem; }
 .content { flex: 1; padding: 1.25rem; }
 .app-footer { padding: 1rem 1.25rem; color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(--border); text-align: center; }
 .page h2 { margin-top: 0; }

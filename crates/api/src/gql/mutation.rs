@@ -5,11 +5,12 @@
 //! admin mutation requires the result user and triggers the wholesale
 //! post-result recompute.
 
+use crate::auth::invite_code::{decode_invite, encode_invite, InvitePayload, UsePolicy};
 use crate::auth::CurrentPlayer;
 use crate::gql::inputs::{validate_score, MatchPredictionInput, StandingsInput};
 use crate::gql::types::*;
 use crate::recompute::recompute;
-use async_graphql::{Context, Object};
+use async_graphql::{Context, Object, SimpleObject};
 use domain::{
     MatchPrediction, Player as DomainPlayer, Pool as DomainPool,
     StandingsPrediction as DomainStandingsPrediction,
@@ -137,6 +138,54 @@ fn apply_group_predictions(
         standings_predictions,
         ..player.clone()
     })
+}
+
+/// Returned by `createInvite` — the opaque code and the full shareable URL.
+#[derive(SimpleObject)]
+pub struct InviteLink {
+    /// The raw opaque token (for programmatic use / testing).
+    pub code: String,
+    /// The full `<origin>/invite/<code>` URL the inviter shares.
+    pub link: String,
+}
+
+/// Returned by `claimInvite` — the resolved or newly-created player.
+#[derive(SimpleObject)]
+pub struct ClaimResult {
+    pub player: PlayerSummary,
+}
+
+/// Derive the `(provider, provider_id)` key for storing an Identity row,
+/// based on the unclaimed session's verified contact — mirrors the
+/// `resolution::identity_key_for` logic but operates on `VerifiedIdentity`.
+fn identity_key_for_unclaimed(
+    u: &crate::auth::VerifiedIdentity,
+) -> Option<(String, String)> {
+    let claims = crate::auth::jwt::VerifiedClaims {
+        sub: u.sub.clone(),
+        verified_email: u.verified_email.clone(),
+        verified_phone: u.verified_phone.clone(),
+        connection: u.connection.clone(),
+    };
+    crate::auth::resolution::identity_key_for(&claims)
+}
+
+/// Add `player_id` to a pool by id. No-op if already a member.
+async fn add_to_pool(
+    repo: &dyn Repository,
+    player_id: &str,
+    pool_id: &str,
+) -> async_graphql::Result<()> {
+    let pools = repo.list_pools().await?;
+    let mut pool = pools
+        .into_iter()
+        .find(|p| p.id == pool_id)
+        .ok_or_else(|| async_graphql::Error::new(format!("pool not found: {pool_id}")))?;
+    if !pool.members.iter().any(|m| m == player_id) {
+        pool.members.push(player_id.to_owned());
+        repo.put_pool(&pool).await?;
+    }
+    Ok(())
 }
 
 pub struct MutationRoot;
@@ -568,5 +617,208 @@ impl MutationRoot {
                 async_graphql::Error::new("recompute failed; please retry")
             })?;
         Ok(true)
+    }
+
+    /// Claim an invite code: resolve the viewer's identity, create a new
+    /// Person+Player+Identity if needed (lazy creation), or take the AUTH-12
+    /// shortcut if the verified email already maps to an existing Person.
+    ///
+    /// When the viewer is already a `Player`, no duplication occurs — the
+    /// supplied `nick`/`full_name` are silently ignored and the existing player
+    /// is returned. If the invite carries a pool id, the player is added to
+    /// that pool (idempotent).
+    async fn claim_invite(
+        &self,
+        ctx: &Context<'_>,
+        code: String,
+        nick: String,
+        full_name: String,
+    ) -> async_graphql::Result<ClaimResult> {
+        let viewer = ctx.data_unchecked::<crate::auth::CurrentPlayer>();
+        let secret = std::env::var("INVITE_CODE_SECRET")
+            .map_err(|_| async_graphql::Error::new("INVITE_CODE_SECRET not configured"))?;
+        let payload = decode_invite(secret.as_bytes(), &code)
+            .map_err(|e| async_graphql::Error::new(format!("invalid invite: {e}")))?;
+        let repo = repo(ctx);
+
+        // SingleUse enforcement: atomically mark the code as claimed before any
+        // other writes. This runs even when the viewer is already a Player (AUTH-12
+        // shortcut), so a single-use code cannot be replayed. Multi-use codes skip
+        // this check entirely.
+        if payload.use_policy == UsePolicy::SingleUse {
+            let claimed = repo
+                .claim_invite_code(&code)
+                .await
+                .map_err(|e| async_graphql::Error::new(e.to_string()))?;
+            if !claimed {
+                return Err(async_graphql::Error::new("invite already claimed"));
+            }
+        }
+
+        // Already a resolved Player → AUTH-12: optionally join pool, return as-is.
+        if let crate::auth::CurrentPlayer::Player(p) = viewer {
+            if let Some(pool_id) = payload.pool.clone() {
+                add_to_pool(repo.as_ref(), &p.id, &pool_id).await?;
+            }
+            return Ok(ClaimResult {
+                player: PlayerSummary::from(p.as_ref()),
+            });
+        }
+
+        let unclaimed = match viewer {
+            crate::auth::CurrentPlayer::AuthenticatedUnclaimed(u) => u.clone(),
+            crate::auth::CurrentPlayer::Visitor => {
+                return Err(async_graphql::Error::new("authentication required"));
+            }
+            crate::auth::CurrentPlayer::Player(_) => unreachable!(),
+        };
+
+        // AUTH-12 by verified email: if the email is already in the system,
+        // resolve to that existing player without creating a duplicate.
+        if let Some(email) = &unclaimed.verified_email {
+            let hits = repo.find_identities_by_verified_email(email).await?;
+            if let Some(identity) = hits.into_iter().next() {
+                if let Some(player) = repo.get_player(&identity.person_id).await? {
+                    if let Some(pool_id) = payload.pool.clone() {
+                        add_to_pool(repo.as_ref(), &player.id, &pool_id).await?;
+                    }
+                    return Ok(ClaimResult {
+                        player: PlayerSummary::from(&player),
+                    });
+                }
+            }
+        }
+
+        // Lazy creation: build Person + Player + Identity from the unclaimed session.
+        let (provider, provider_id) = identity_key_for_unclaimed(&unclaimed).ok_or_else(|| {
+            async_graphql::Error::new(
+                "no usable verified contact on the auth session",
+            )
+        })?;
+        let nick = validate_profile_field("nick", &nick, MAX_NICK_LEN)?;
+        let full_name = validate_profile_field("full name", &full_name, MAX_FULL_NAME_LEN)?;
+        let person_id = uuid::Uuid::new_v4().to_string();
+        let identity = domain::Identity {
+            id: uuid::Uuid::new_v4().to_string(),
+            provider,
+            provider_id,
+            person_id: person_id.clone(),
+            verified_email: unclaimed.verified_email.clone(),
+        };
+        let person = domain::Person {
+            id: person_id.clone(),
+            identity_ids: vec![identity.id.clone()],
+        };
+        let player = DomainPlayer {
+            id: person_id.clone(),
+            person_id: person_id.clone(),
+            nick: nick.clone(),
+            full_name,
+            referrer: Some(payload.referrer.clone()),
+            is_result_user: false,
+            version: 0,
+            match_predictions: Vec::new(),
+            standings_predictions: Vec::new(),
+        };
+        repo.put_identity(&identity).await?;
+        repo.put_person(&person).await?;
+        repo.put_player(&player).await?;
+        if let Some(pool_id) = payload.pool {
+            add_to_pool(repo.as_ref(), &player.id, &pool_id).await?;
+        }
+        Ok(ClaimResult {
+            player: PlayerSummary::from(&player),
+        })
+    }
+
+    /// Attach a new Identity to an existing Person by confirming that the
+    /// current session's verified email matches one already in the system via
+    /// a different provider (AUTH-13 cross-provider linking).
+    ///
+    /// The caller must be `AuthenticatedUnclaimed` (i.e. `me` returns an
+    /// `UnclaimedViewer` with a `linkCandidate`). The `personId` must be the
+    /// one surfaced in `linkCandidate` — a defense-in-depth check verifies the
+    /// verified email still belongs to that Person before writing.
+    async fn confirm_link(
+        &self,
+        ctx: &Context<'_>,
+        person_id: String,
+    ) -> async_graphql::Result<ClaimResult> {
+        let viewer = ctx.data_unchecked::<crate::auth::CurrentPlayer>();
+        let unclaimed = match viewer {
+            crate::auth::CurrentPlayer::AuthenticatedUnclaimed(u) => u.clone(),
+            _ => return Err(async_graphql::Error::new("not in a link-prompt state")),
+        };
+        let repo = repo(ctx);
+
+        // Defense in depth: verify the verified email actually matches a Person
+        // via some existing Identity row.
+        let email = unclaimed.verified_email.as_deref().ok_or_else(|| {
+            async_graphql::Error::new("no verified email on the auth session")
+        })?;
+        let hits = repo.find_identities_by_verified_email(email).await?;
+        if !hits.iter().any(|i| i.person_id == person_id) {
+            return Err(async_graphql::Error::new(
+                "verified email does not belong to that Person",
+            ));
+        }
+
+        let (provider, provider_id) = identity_key_for_unclaimed(&unclaimed)
+            .ok_or_else(|| async_graphql::Error::new("no usable contact"))?;
+        let identity = domain::Identity {
+            id: uuid::Uuid::new_v4().to_string(),
+            provider,
+            provider_id,
+            person_id: person_id.clone(),
+            verified_email: unclaimed.verified_email.clone(),
+        };
+        repo.put_identity(&identity).await?;
+
+        let mut person = repo
+            .get_person(&person_id)
+            .await?
+            .ok_or_else(|| async_graphql::Error::new("person not found"))?;
+        person.identity_ids.push(identity.id.clone());
+        repo.put_person(&person).await?;
+
+        let player = repo
+            .get_player(&person_id)
+            .await?
+            .ok_or_else(|| async_graphql::Error::new("player not found"))?;
+        Ok(ClaimResult {
+            player: PlayerSummary::from(&player),
+        })
+    }
+
+    /// Generate a referral or pool-join invite link (spec §5).
+    ///
+    /// When `pool` is `None` a single-use referral code is generated; when a
+    /// pool id is supplied a multi-use pool-join code is generated instead.
+    /// The returned `link` is the full URL the inviter shares; `code` is the
+    /// raw opaque token for programmatic use / testing.
+    async fn create_invite(
+        &self,
+        ctx: &Context<'_>,
+        pool: Option<String>,
+    ) -> async_graphql::Result<InviteLink> {
+        let me = CurrentPlayer::require(ctx)?;
+        let secret = std::env::var("INVITE_CODE_SECRET")
+            .map_err(|_| async_graphql::Error::new("INVITE_CODE_SECRET not configured"))?;
+        let use_policy = match &pool {
+            Some(_) => UsePolicy::MultiUseUntilRotated,
+            None => UsePolicy::SingleUse,
+        };
+        let payload = InvitePayload {
+            referrer: me.id.clone(),
+            pool,
+            expires_at: chrono::Utc::now() + chrono::Duration::days(30),
+            use_policy,
+        };
+        let code = encode_invite(secret.as_bytes(), &payload)
+            .map_err(|e| async_graphql::Error::new(format!("encode failed: {e}")))?;
+        let origin = std::env::var("XPOOL_PUBLIC_ORIGIN")
+            .unwrap_or_else(|_| "http://localhost:5173".to_owned());
+        let link = format!("{origin}/invite/{code}");
+        Ok(InviteLink { code, link })
     }
 }

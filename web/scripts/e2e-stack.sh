@@ -40,6 +40,12 @@ echo "$XPOOL_TABLE" > "$TABLE_FILE"
 # Individual tests override per-request via the dev clock (X-Dev-Now).
 export XPOOL_NOW="${XPOOL_NOW:-2026-06-20T12:00:00Z}"
 
+# Auth: local JWT issuer flag (1 = accept dev-minted tokens) and the HMAC
+# secret used to sign/verify them. The secret must be ≥32 bytes; the default
+# is safe for local/CI only — override in production.
+export LOCAL_AUTH_ISSUER="${LOCAL_AUTH_ISSUER:-1}"
+export INVITE_CODE_SECRET="${INVITE_CODE_SECRET:-test-secret-must-be-32-bytes-long}"
+
 PID_FILE="$REPO_ROOT/web/.e2e-api.pid"
 API_LOG="$REPO_ROOT/web/.e2e-api.log"
 

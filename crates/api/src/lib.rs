@@ -1,8 +1,9 @@
 //! xpool API crate — an axum + async-graphql server (`API.md`).
 //!
 //! The GraphQL layer is a thin adapter: coarse load → expose graph → glue to
-//! the pure `domain`/`fwc26` functions. The auth seam is a dev stub
-//! (`X-Dev-Player` header → `CurrentPlayer` in context).
+//! the pure `domain`/`fwc26` functions. The auth seam verifies a Bearer JWT
+//! (multi-issuer: local + Auth0) and injects `CurrentPlayer` into the GraphQL
+//! context; see `docs/superpowers/specs/2026-05-30-auth-design.md` §2.
 
 pub mod auth;
 pub mod clock;

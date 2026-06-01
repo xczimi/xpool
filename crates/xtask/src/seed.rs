@@ -43,14 +43,35 @@ async fn put_player_idempotent(repo: &dyn Repository, mut player: Player) -> any
     repo.put_player(&player).await
 }
 
-/// Seed demo data into the repository. Idempotent.
-pub async fn seed(repo: &dyn Repository) -> anyhow::Result<()> {
+/// Inner seed implementation that takes the result-user email explicitly.
+/// Public callers use [`seed`] which resolves the email from the environment.
+///
+/// The result-user's Identity is keyed by email (`IDENTITY#email#<email>`).
+/// If `RESULT_USER_EMAIL` is changed between runs the old key at the previous
+/// email address will linger as an orphan — the trait has no `delete_identity`
+/// method and adding one just to handle this rare operator action was judged
+/// disproportionate.  Operators who rotate the email can remove the stale row
+/// manually (e.g. via the AWS console or `aws dynamodb delete-item`).
+async fn seed_with_email(repo: &dyn Repository, result_user_email: String) -> anyhow::Result<()> {
     // Result user — its prediction set is the official result (DATA_MODEL §5).
     let result_person = Person {
         id: "person-result".to_owned(),
-        identity_ids: Vec::new(),
+        identity_ids: vec!["identity-result-user".to_owned()],
     };
     repo.put_person(&result_person).await?;
+
+    // The Identity row is what allows the operator to log in as admin.
+    // `put_identity` is last-write-wins on (`email`, <email>), so re-seeding
+    // with a new RESULT_USER_EMAIL updates the row atomically.
+    let result_identity = Identity {
+        id: "identity-result-user".to_owned(),
+        provider: "email".to_owned(),
+        provider_id: result_user_email.clone(),
+        person_id: result_person.id.clone(),
+        verified_email: Some(result_user_email),
+    };
+    repo.put_identity(&result_identity).await?;
+
     put_player_idempotent(
         repo,
         fresh_player(
@@ -63,16 +84,22 @@ pub async fn seed(repo: &dyn Repository) -> anyhow::Result<()> {
     )
     .await?;
 
-    // Demo players, each with a Person + dev Identity.
+    // Demo players, each with a Person + email Identity.
+    // The identity is keyed at ("email", "{player_id}@dev.invalid") so that
+    // `dev_login` — which mints JWTs with `email = "{id}@dev.invalid"` — routes
+    // through `identity_key_for("dev" connection) → ("email", email)` and finds
+    // this row, resolving to the Player rather than AuthenticatedUnclaimed.
     for (player_id, nick, full_name) in DEMO_PLAYERS {
         let person_id = format!("person-{nick}");
         let identity_id = format!("identity-{nick}");
+        let dev_email = format!("{player_id}@dev.invalid");
 
         let identity = Identity {
             id: identity_id.clone(),
-            provider: "dev".to_owned(),
-            provider_id: player_id.to_owned(),
+            provider: "email".to_owned(),
+            provider_id: dev_email.clone(),
             person_id: person_id.clone(),
+            verified_email: Some(dev_email),
         };
         repo.put_identity(&identity).await?;
 
@@ -104,4 +131,102 @@ pub async fn seed(repo: &dyn Repository) -> anyhow::Result<()> {
     repo.put_pool(&pool).await?;
 
     Ok(())
+}
+
+/// Seed demo data into the repository. Idempotent.
+///
+/// Reads `RESULT_USER_EMAIL` from the environment; defaults to
+/// `result-user@dev.invalid` when the variable is absent.
+pub async fn seed(repo: &dyn Repository) -> anyhow::Result<()> {
+    // Result-user email is configurable so the operator's real verified email
+    // can be set in production without touching code.  Defaults to a synthetic
+    // address that no one can authenticate with, effectively disabling admin.
+    let result_user_email = std::env::var("RESULT_USER_EMAIL")
+        .unwrap_or_else(|_| "result-user@dev.invalid".into());
+    seed_with_email(repo, result_user_email).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use storage::InMemoryRepository;
+
+    #[tokio::test]
+    async fn demo_identities_are_resolvable_by_dev_login() {
+        let repo = InMemoryRepository::new();
+        seed_with_email(&repo, "result-user@dev.invalid".into())
+            .await
+            .expect("seed failed");
+
+        for (player_id, nick, _) in DEMO_PLAYERS {
+            let expected_email = format!("{player_id}@dev.invalid");
+            // `dev_login` resolves via identity_key_for("dev") → ("email", email).
+            // Verify the identity row keyed at ("email", email) exists and has
+            // verified_email set.
+            let identity = repo
+                .get_identity("email", &expected_email)
+                .await
+                .expect("repo error")
+                .unwrap_or_else(|| panic!("no identity row for {nick} at ({expected_email})"));
+
+            assert_eq!(
+                identity.verified_email.as_deref(),
+                Some(expected_email.as_str()),
+                "verified_email mismatch for {nick}"
+            );
+            // Person row must exist so the resolver can find the player.
+            let person_id = format!("person-{nick}");
+            assert!(
+                repo.get_person(&person_id).await.expect("repo error").is_some(),
+                "missing Person row for {nick}"
+            );
+        }
+    }
+
+    #[tokio::test]
+    async fn result_user_identity_defaults_to_dev_invalid() {
+        let repo = InMemoryRepository::new();
+        seed_with_email(&repo, "result-user@dev.invalid".into())
+            .await
+            .expect("seed failed");
+
+        let identity = repo
+            .get_identity("email", "result-user@dev.invalid")
+            .await
+            .expect("repo error")
+            .expect("result-user identity row missing");
+        assert_eq!(identity.person_id, "person-result");
+        assert_eq!(
+            identity.verified_email.as_deref(),
+            Some("result-user@dev.invalid")
+        );
+    }
+
+    #[tokio::test]
+    async fn result_user_identity_uses_override_email_when_set() {
+        let repo = InMemoryRepository::new();
+        seed_with_email(&repo, "pool@xczimi.com".into())
+            .await
+            .expect("seed failed");
+
+        let identity = repo
+            .get_identity("email", "pool@xczimi.com")
+            .await
+            .expect("repo error")
+            .expect("result-user identity row missing at overridden email");
+        assert_eq!(identity.person_id, "person-result");
+        assert_eq!(
+            identity.verified_email.as_deref(),
+            Some("pool@xczimi.com")
+        );
+        // Default address must NOT have a row — only the override exists.
+        let old_row = repo
+            .get_identity("email", "result-user@dev.invalid")
+            .await
+            .expect("repo error");
+        assert!(
+            old_row.is_none(),
+            "stale default identity row should not exist when override is active"
+        );
+    }
 }

@@ -30,3 +30,15 @@ variable "ses_domain" {
   type        = string
   default     = "xczimi.com"
 }
+
+variable "auth0_domain" {
+  description = "Auth0 tenant domain (e.g. xpool.us.auth0.com). Empty disables the Auth0 issuer in the API's trust list. Populate per-env in tfvars once the Auth0 tenant exists (see docs/runbooks/auth0-setup.md)."
+  type        = string
+  default     = ""
+}
+
+variable "auth0_audience" {
+  description = "Auth0 API audience identifier the SPA requests and the API validates."
+  type        = string
+  default     = "xpool-api"
+}

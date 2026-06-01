@@ -25,9 +25,9 @@ const ITEMS: NavItem[] = [
 ]
 
 export function NavBar({ isAdmin }: { isAdmin: boolean }) {
-  const { playerId } = useAuth()
+  const { label } = useAuth()
   const { t } = useI18n()
-  const isPlayer = Boolean(playerId)
+  const isPlayer = Boolean(label)
 
   const visible = ITEMS.filter((item) => {
     if (item.access === 'player') return isPlayer

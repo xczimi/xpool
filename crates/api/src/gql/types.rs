@@ -365,3 +365,34 @@ impl From<&domain::Player> for PlayerSummary {
         }
     }
 }
+
+/// An Identity row that could serve as a link target — surfaced on
+/// `UnclaimedViewer` when a different provider already has the same verified
+/// email (AUTH-13).
+#[derive(SimpleObject, Clone, Debug)]
+pub struct LinkCandidate {
+    pub person_id: String,
+    pub provider: String,
+}
+
+/// The viewer state for an authenticated session that has not yet been linked
+/// to a `Person`/`Player` (AUTH-06). When `linkCandidate` is populated the UI
+/// should prompt the user to call `confirmLink` instead of `claimInvite`.
+#[derive(SimpleObject, Clone, Debug)]
+pub struct UnclaimedViewer {
+    pub email: Option<String>,
+    pub phone: Option<String>,
+    /// Set when a `Person` already exists for the verified email via a different
+    /// provider — triggers the AUTH-13 link prompt in the UI.
+    pub link_candidate: Option<LinkCandidate>,
+}
+
+/// The `me` field return type — a union of `Player` (known, resolved) and
+/// `UnclaimedViewer` (authenticated but not yet linked to a Person/Player).
+#[derive(async_graphql::Union, Clone, Debug)]
+pub enum Viewer {
+    /// A fully resolved, claimed player.
+    Player(Box<Player>),
+    /// An authenticated session that has not yet been linked.
+    Unclaimed(UnclaimedViewer),
+}

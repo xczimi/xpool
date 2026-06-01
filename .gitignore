@@ -30,3 +30,11 @@ infrastructure/.terraform.lock.hcl
 *.tfstate
 *.tfstate.*
 *.tfplan
+
+# Claude Code / agent framework — per-machine local state.
+# Note: .claude/settings.json (no .local) IS shared and stays tracked.
+.claude/settings.local.json
+.claude/skills/
+.claude/worktrees/
+.agents/
+skills-lock.json

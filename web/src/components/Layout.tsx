@@ -3,25 +3,27 @@ import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY } from '../graphql/queries'
-import type { Player } from '../graphql/types'
+import type { Me } from '../graphql/types'
 import { AuthBar } from './AuthBar'
 import { LanguageSelector } from './LanguageSelector'
 import { NavBar } from './NavBar'
+import { UnclaimedBanner } from './UnclaimedBanner'
 
 /**
  * Persistent chrome (REWRITE_USE_CASES §4): header (tagline + language),
  * auth bar, horizontal nav, content area, footer.
  */
 export function Layout() {
-  const { playerId } = useAuth()
+  const { label } = useAuth()
   const { t } = useI18n()
 
-  const [meResult] = useQuery<{ me: Player | null }>({
+  const [meResult] = useQuery<{ me: Me }>({
     query: ME_QUERY,
-    pause: !playerId,
+    pause: !label,
   })
 
-  const me = meResult.data?.me ?? null
+  const meRaw = meResult.data?.me ?? null
+  const me = meRaw?.__typename === 'Player' ? meRaw : null
 
   return (
     <div className="app">
@@ -35,6 +37,7 @@ export function Layout() {
 
       <AuthBar />
       <NavBar isAdmin={Boolean(me?.isResultUser)} />
+      <UnclaimedBanner />
 
       <main className="content">
         <Outlet />

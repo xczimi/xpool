@@ -11,7 +11,7 @@ import {
 import type {
   GroupGame,
   MatchPrediction,
-  Player,
+  Me,
   Round,
   Tournament,
 } from '../graphql/types'
@@ -28,16 +28,16 @@ import { GroupTipForm } from './mytips/GroupTipForm'
  */
 export function MyTipsPage() {
   const { t } = useI18n()
-  const { playerId } = useAuth()
+  const { label } = useAuth()
   const [selectedRound, setSelectedRound] = useState<Round | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
 
   const [tournamentResult, refetchTournament] = useQuery<{
     tournament: Tournament | null
   }>({ query: TOURNAMENT_QUERY })
-  const [meResult, refetchMe] = useQuery<{ me: Player | null }>({
+  const [meResult, refetchMe] = useQuery<{ me: Me }>({
     query: ME_QUERY,
-    pause: !playerId,
+    pause: !label,
   })
   const [resultsResult] = useQuery<{ results: MatchPrediction[] }>({
     query: RESULTS_QUERY,
@@ -45,7 +45,8 @@ export function MyTipsPage() {
   const [, submitGroup] = useMutation(SUBMIT_GROUP_MUTATION)
 
   const tournament = tournamentResult.data?.tournament ?? null
-  const me = meResult.data?.me ?? null
+  const meRaw = meResult.data?.me ?? null
+  const me = meRaw?.__typename === 'Player' ? meRaw : null
   const results = resultsResult.data?.results ?? []
 
   const rounds = useMemo(
@@ -66,7 +67,7 @@ export function MyTipsPage() {
     }
   }, [activeRound])
 
-  if (!playerId) return <NeedsLogin />
+  if (!label) return <NeedsLogin />
   if (tournamentResult.fetching || meResult.fetching) return <Loading />
   if (tournamentResult.error)
     return (

@@ -136,13 +136,17 @@ pub struct Person {
     pub identity_ids: Vec<String>,
 }
 
-/// A login credential. Global entity.
+/// A login credential. Global entity. `verified_email` is the
+/// cross-provider match key — when a login arrives via a new provider and
+/// its verified email matches an existing `Person` via this field, AUTH-13
+/// linking is triggered (spec §3, §6).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Identity {
     pub id: String,
     pub provider: String,
     pub provider_id: String,
     pub person_id: String,
+    pub verified_email: Option<String>,
 }
 
 /// A named subset of players sharing a scoreboard (`DATA_MODEL.md` §8).

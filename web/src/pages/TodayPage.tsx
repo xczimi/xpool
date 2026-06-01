@@ -5,7 +5,7 @@ import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY, RESULTS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
 import type {
   MatchPrediction,
-  Player,
+  Me,
   Tournament,
 } from '../graphql/types'
 import { ErrorView, Loading } from '../components/StatusViews'
@@ -20,7 +20,7 @@ import { byKickoff, formatKickoff, slotLabel, teamIndex } from '../lib/format'
  */
 export function TodayPage() {
   const { t, locale } = useI18n()
-  const { playerId } = useAuth()
+  const { label } = useAuth()
 
   // First fetch (no polling) to learn whether anything is result-pending.
   const [probe] = useQuery<{
@@ -54,9 +54,9 @@ export function TodayPage() {
     return () => clearInterval(id)
   }, [interval, refetchResults])
 
-  const [meResult] = useQuery<{ me: Player | null }>({
+  const [meResult] = useQuery<{ me: Me }>({
     query: ME_QUERY,
-    pause: !playerId,
+    pause: !label,
   })
 
   const tournament = result.data?.tournament ?? null
@@ -66,7 +66,8 @@ export function TodayPage() {
   )
   const tipFor = useMemo(() => {
     const map = new Map<string, { home: number; away: number; locked: boolean }>()
-    for (const p of meResult.data?.me?.matchPredictions ?? []) {
+    const mePlayer = meResult.data?.me?.__typename === 'Player' ? meResult.data.me : null
+    for (const p of mePlayer?.matchPredictions ?? []) {
       map.set(p.gameId, {
         home: p.homeScore,
         away: p.awayScore,
@@ -103,7 +104,7 @@ export function TodayPage() {
               <th>{t('kickoff')}</th>
               <th>{t('match')}</th>
               <th>{t('result')}</th>
-              {playerId && <th>{t('yourTip')}</th>}
+              {label && <th>{t('yourTip')}</th>}
             </tr>
           </thead>
           <tbody>
@@ -121,7 +122,7 @@ export function TodayPage() {
                       return r ? `${r.homeScore}–${r.awayScore}` : '—'
                     })()}
                   </td>
-                  {playerId && (
+                  {label && (
                     <td>
                       {tip
                         ? `${tip.home}–${tip.away} ${

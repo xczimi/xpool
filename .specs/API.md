@@ -126,10 +126,15 @@ admin has entered results. Idle cost stays at zero.
 
 ## 8. Auth in the contract
 
-Per the deferred-auth decision: the edge resolves a `CurrentPlayer` and places
-it in the GraphQL **context**; resolvers read it from context, never
-re-authenticate. Phase 1 uses a dev stub; the seam is one place to swap later.
-See [`DATA_MODEL.md`](./DATA_MODEL.md) §12.
+The edge verifies a Bearer JWT (multi-issuer: Auth0 + a local RS256 issuer for
+dev/tests), resolves `Identity → Person → Player`, and places a three-state
+`CurrentPlayer` (`Visitor` / `AuthenticatedUnclaimed` / `Player`) in the
+GraphQL context. Resolvers read it from context and never re-authenticate.
+The dev mechanism is a local-issuer JWT — `LOCAL_AUTH_ISSUER` toggles trust;
+a `POST /api/dev/login` endpoint mints tokens. Validation is in-app, layered
+behind the existing `cloudfront_auth` middleware. See
+[`docs/superpowers/specs/2026-05-30-auth-design.md`](../docs/superpowers/specs/2026-05-30-auth-design.md)
+§§2–3.
 
 ## 9. Open / deferred
 

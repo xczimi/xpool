@@ -20,7 +20,7 @@ import { roundLabel, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
 /** Ranked leaderboard, overall + per stage, with pool selector (UC-8). */
 export function ScoreboardPage() {
   const { t } = useI18n()
-  const { playerId } = useAuth()
+  const { label } = useAuth()
   const [poolId, setPoolId] = useState<string | null>(null)
 
   // `pools` requires authentication (API.md §8) — the scoreboard itself is
@@ -28,7 +28,7 @@ export function ScoreboardPage() {
   // Issuing `pools` as a visitor would surface an auth error on a public page.
   const [poolsResult] = useQuery<{ pools: Pool[] }>({
     query: POOLS_QUERY,
-    pause: !playerId,
+    pause: !label,
   })
   const [probe] = useQuery<{
     tournament: Tournament | null

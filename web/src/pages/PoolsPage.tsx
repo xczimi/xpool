@@ -21,12 +21,12 @@ import { Loading, NeedsLogin } from '../components/StatusViews'
  */
 export function PoolsPage() {
   const { t } = useI18n()
-  const { playerId } = useAuth()
+  const { label } = useAuth()
   // `pools` requires authentication — pause it for a visitor so a logged-out
   // render does not fire an auth-error query (mirrors ScoreboardPage).
   const [poolsResult, refetchPools] = useQuery<{ pools: Pool[] }>({
     query: POOLS_QUERY,
-    pause: !playerId,
+    pause: !label,
   })
 
   const [, createPool] = useMutation(CREATE_POOL_MUTATION)
@@ -41,7 +41,7 @@ export function PoolsPage() {
   const [joinCode, setJoinCode] = useState('')
   const [flash, setFlash] = useState<string | null>(null)
 
-  if (!playerId) return <NeedsLogin />
+  if (!label) return <NeedsLogin />
   if (poolsResult.fetching && !poolsResult.data) return <Loading />
 
   const pools = poolsResult.data?.pools ?? []
@@ -121,7 +121,7 @@ export function PoolsPage() {
       ) : (
         <ul className="pool-list">
           {pools.map((pool) => {
-            const isOwner = pool.owner === playerId
+            const isOwner = pool.owner === label
             return (
               <li key={pool.id} className="pool-card">
                 <h3>

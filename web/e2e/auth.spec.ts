@@ -66,3 +66,54 @@ test('visiting /profile as a visitor shows the auth-required state, not a crash'
   await net.assertNoGraphqlErrors()
   net.assertNoPageErrors()
 })
+
+test('an invalid Bearer token gates player-only routes', async ({ page }) => {
+  await page.goto('/')
+  // Plant a bad JWT in localStorage where the urql client reads it.
+  await page.evaluate(() => localStorage.setItem('xpool.jwt', 'not.a.jwt'))
+  await page.reload()
+
+  // Hit a player-only route — the SPA should render the auth-required state,
+  // not a crash or a bare error view.
+  await page.goto('/profile')
+  await expect(page.getByText('Login required')).toBeVisible()
+})
+
+test('a generated invite link claims a new player with referrer set', async ({ page, context }) => {
+  // Inviter (demo-ada) creates a link via the InvitePage.
+  await page.goto('/')
+  await devLogin(page, 'demo-ada')
+  await page.getByRole('link', { name: 'Invite' }).click()
+  await page.getByRole('button', { name: 'Generate link' }).click()
+  const linkBox = page.locator('textarea')
+  await expect(linkBox).toBeVisible()
+  const link = await linkBox.inputValue()
+  expect(link).toMatch(/\/invite\//)
+  const code = link.split('/invite/')[1]
+  expect(code.length).toBeGreaterThan(0)
+
+  // A fresh browser context — no shared localStorage with `page`.
+  const fresh = await context.browser()!.newContext()
+  const newbie = await fresh.newPage()
+
+  // Mint a JWT for an arbitrary unclaimed identity via the extended dev-login.
+  const res = await newbie.request.post('/api/dev/login', {
+    data: { sub: 'auth0|newbie-e2e', email: 'newbie-e2e@example.com' },
+  })
+  const { token } = (await res.json()) as { token: string }
+
+  // Plant the token in the fresh context's localStorage and open the link.
+  await newbie.goto('/')
+  await newbie.evaluate((t) => localStorage.setItem('xpool.jwt', t), token)
+  await newbie.goto(`/invite/${code}`)
+
+  // Fill the claim form (the unclaimed branch of InviteClaimPage).
+  await newbie.getByPlaceholder('Nick').fill('Newbie')
+  await newbie.getByPlaceholder('Full name').fill('New B.')
+  await newbie.getByRole('button', { name: 'Claim' }).click()
+
+  // Lands on /profile.
+  await expect(newbie).toHaveURL(/\/profile$/)
+
+  await fresh.close()
+})

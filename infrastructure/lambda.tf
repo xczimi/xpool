@@ -30,6 +30,20 @@ module "api_lambda" {
     # injects the header on every origin call via the `custom_header` block
     # in cloudfront.tf, so viewers never see or send the secret directly.
     CLOUDFRONT_SECRET = random_password.cloudfront_secret.result
+
+    # Auth seam configuration (spec §2). The API only trusts Auth0 if both
+    # AUTH0_DOMAIN and AUTH0_AUDIENCE are non-empty (`TrustList::from_env`
+    # in crates/api/src/auth/jwt.rs). Set `auth0_domain` per-env in
+    # infrastructure/env/*.tfvars after the Auth0 tenant exists.
+    AUTH0_DOMAIN   = var.auth0_domain
+    AUTH0_AUDIENCE = var.auth0_audience
+
+    # Signing key for invite-code payloads.
+    INVITE_CODE_SECRET = random_password.invite_code_secret.result
+
+    # Origin used by createInvite to build share links — derived from the
+    # CloudFront-fronted domain so links match what the SPA is served at.
+    XPOOL_PUBLIC_ORIGIN = "https://${var.domain_name}"
   }
 
   attach_policy_statements = true

@@ -4,8 +4,8 @@
 use async_graphql::{Request, Variables};
 use chrono::{Duration, Utc};
 use domain::{
-    GroupChildren, GroupGame, LockMode, MatchPrediction, Player, Round, SingleGame, Team, TeamSlot,
-    Tournament,
+    GroupChildren, GroupGame, Identity, LockMode, MatchPrediction, Person, Player, Round,
+    SingleGame, Team, TeamSlot, Tournament,
 };
 use serde_json::Value;
 use std::collections::HashMap;
@@ -235,7 +235,7 @@ pub async fn run_at(
 
     let current = match as_player {
         Some(id) => match repo.get_player(id).await.unwrap() {
-            Some(p) => CurrentPlayer::Authenticated(Box::new(p)),
+            Some(p) => CurrentPlayer::Player(Box::new(p)),
             None => CurrentPlayer::Visitor,
         },
         None => CurrentPlayer::Visitor,
@@ -260,7 +260,7 @@ pub async fn run_with_snapshot(
     let schema = api::gql::build_schema(repo.clone());
     let req = Request::new(query)
         .variables(vars)
-        .data(CurrentPlayer::Authenticated(Box::new(snapshot)))
+        .data(CurrentPlayer::Player(Box::new(snapshot)))
         .data(api::clock::RequestNow(Utc::now()));
     schema.execute(req).await
 }
@@ -268,4 +268,135 @@ pub async fn run_with_snapshot(
 /// Serialise a GraphQL response's `data` to a `serde_json::Value`.
 pub fn data(resp: &async_graphql::Response) -> Value {
     serde_json::to_value(&resp.data).unwrap()
+}
+
+/// Build an axum router wired to a fresh in-memory repo (tiny tournament +
+/// 3 players, games 24 h in the future). Used by HTTP-level tests such as
+/// `tests/seam.rs` that need to drive the full request stack.
+pub async fn test_app() -> (axum::Router, Arc<dyn Repository>) {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let app = api::build_app(repo.clone(), false, None);
+    (app, repo)
+}
+
+/// Like `test_app`, but sets `LOCAL_AUTH_ISSUER=1` before building the router
+/// so the trust-list accepts local-issuer JWTs minted by the helpers below.
+/// Call this instead of `test_app()` from any test that uses `query_as` or
+/// `query_with_bearer`.
+pub async fn test_app_with_local_auth() -> (axum::Router, Arc<dyn Repository>) {
+    // SAFETY: single-threaded test harness; the env mutation is visible to
+    // `TrustList::from_env()` which is called synchronously inside build_app.
+    unsafe {
+        std::env::set_var("LOCAL_AUTH_ISSUER", "1");
+    }
+    test_app().await
+}
+
+/// Mint a valid local-issuer Bearer token for `player_id` and return the
+/// corresponding `Authorization` header name/value pair.
+///
+/// The caller must have built their router via `test_app_with_local_auth()`
+/// (or otherwise set `LOCAL_AUTH_ISSUER` before constructing the router)
+/// so the trust-list accepts the resulting token.
+#[allow(dead_code)]
+pub fn auth_header(player_id: &str) -> (axum::http::HeaderName, axum::http::HeaderValue) {
+    let email = format!("{player_id}@dev.invalid");
+    let token = api::auth::local_issuer::mint_for_test(player_id, &email);
+    (
+        axum::http::header::AUTHORIZATION,
+        format!("Bearer {token}").parse().unwrap(),
+    )
+}
+
+/// Drop-in helper: attach a local-issuer Bearer header for `player_id` to a
+/// request builder. Intended for one-off requests in tests; prefer `query_as`
+/// for full GraphQL round-trips.
+#[allow(dead_code)]
+pub fn with_player(
+    builder: axum::http::request::Builder,
+    player_id: &str,
+) -> axum::http::request::Builder {
+    let (name, value) = auth_header(player_id);
+    builder.header(name, value)
+}
+
+/// POST a GraphQL body authenticated as `player_id`, return the parsed
+/// response JSON. Used by mutation/query tests in Tasks 15-17.
+///
+/// The `app` must have been built via `test_app_with_local_auth()`.
+#[allow(dead_code)]
+pub async fn query_as(
+    app: &axum::Router,
+    player_id: &str,
+    body: &str,
+) -> serde_json::Value {
+    let (name, value) = auth_header(player_id);
+    let req = axum::http::Request::builder()
+        .method("POST")
+        .uri("/api/graphql")
+        .header(axum::http::header::CONTENT_TYPE, "application/json")
+        .header(name, value)
+        .body(axum::body::Body::from(body.to_owned()))
+        .unwrap();
+    let res = tower::ServiceExt::oneshot(app.clone(), req).await.unwrap();
+    let bytes = http_body_util::BodyExt::collect(res.into_body())
+        .await
+        .unwrap()
+        .to_bytes();
+    serde_json::from_slice(&bytes).unwrap()
+}
+
+/// Seed an `Identity` + `Person` row for `player_id` so that a local-issuer
+/// JWT minted with `mint_for_test(player_id, email)` resolves to that player
+/// through the §3 algorithm. The identity is keyed at `("email", email)`.
+///
+/// Call this after `test_app_with_local_auth()` when a test needs an
+/// authenticated HTTP request to land on a specific player.
+#[allow(dead_code)]
+pub async fn seed_identity_for(repo: &Arc<dyn Repository>, player_id: &str, email: &str) {
+    let identity_id = format!("i-{player_id}");
+    repo.put_identity(&Identity {
+        id: identity_id.clone(),
+        provider: "email".to_owned(),
+        provider_id: email.to_owned(),
+        person_id: player_id.to_owned(),
+        verified_email: Some(email.to_owned()),
+    })
+    .await
+    .unwrap();
+    repo.put_person(&Person {
+        id: player_id.to_owned(),
+        identity_ids: vec![identity_id],
+    })
+    .await
+    .unwrap();
+}
+
+/// Same as `query_as`, but with a pre-minted Bearer token. Used when testing
+/// the unclaimed / claim flows for arbitrary subs where `player_id` is not
+/// known ahead of time.
+///
+/// The `app` must have been built via `test_app_with_local_auth()`.
+#[allow(dead_code)]
+pub async fn query_with_bearer(
+    app: &axum::Router,
+    bearer: &str,
+    body: &str,
+) -> serde_json::Value {
+    let req = axum::http::Request::builder()
+        .method("POST")
+        .uri("/api/graphql")
+        .header(axum::http::header::CONTENT_TYPE, "application/json")
+        .header(
+            axum::http::header::AUTHORIZATION,
+            format!("Bearer {bearer}"),
+        )
+        .body(axum::body::Body::from(body.to_owned()))
+        .unwrap();
+    let res = tower::ServiceExt::oneshot(app.clone(), req).await.unwrap();
+    let bytes = http_body_util::BodyExt::collect(res.into_body())
+        .await
+        .unwrap()
+        .to_bytes();
+    serde_json::from_slice(&bytes).unwrap()
 }

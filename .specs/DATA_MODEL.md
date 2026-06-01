@@ -44,7 +44,7 @@ Pool ──▶ owner: Player,  members: [Player]
 
 | Entity | Zone | Represents |
 |---|---|---|
-| **Identity** | global | A login credential (Google sub, email+password, magic-link). N per Person. |
+| **Identity** | global | A login credential (passwordless email, passwordless phone, Google sub). N per Person. |
 | **Person** | global | The actual human. Persists across tournaments. Has 1..N Identities. |
 | **Player** | per-tournament | A Person's participation in one tournament: profile (nick, full name), referrer, predictions. One per `(Person, tournament)`. |
 | **Team** | per-tournament | A national team: name, short code, flag, external id. |
@@ -191,9 +191,8 @@ Decisions that override the existing specs or are non-obvious:
 
 ## 12. Open / deferred
 
-- **Auth mechanism** — deferred (Auth0 vs app-managed). Phase 1 uses a dev stub
-  behind a single auth seam: the edge resolves an `Identity` → `Person` →
-  `(Person, current tournament)` → `Player`.
+- **Auth** — decided. Auth0, fully passwordless. See
+  [`docs/superpowers/specs/2026-05-30-auth-design.md`](../docs/superpowers/specs/2026-05-30-auth-design.md).
 - **Pool membership management** — separate concern, not modelled here.
 - **Minor / not yet grilled**: `Team` fields, score-value bounds/validation.
 - **Motd** (site-wide banner) was **dropped** — see `SCENARIOS.md` ADMIN-08.

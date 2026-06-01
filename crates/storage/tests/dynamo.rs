@@ -460,6 +460,7 @@ async fn dynamo_identity_round_trip() {
         provider: "google".to_owned(),
         provider_id: "dynamo-sub".to_owned(),
         person_id: "person-dynamo".to_owned(),
+        verified_email: None,
     };
     repo.put_identity(&id).await.unwrap();
 

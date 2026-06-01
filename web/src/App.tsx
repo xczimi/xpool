@@ -9,6 +9,7 @@ import { ScoreboardPage } from './pages/ScoreboardPage'
 import { PerfectPage } from './pages/PerfectPage'
 import { PoolsPage } from './pages/PoolsPage'
 import { ProfilePage } from './pages/ProfilePage'
+import { InviteClaimPage } from './pages/InviteClaimPage'
 import { InvitePage } from './pages/InvitePage'
 import { RulesPage } from './pages/RulesPage'
 import { AdminPage } from './pages/AdminPage'
@@ -27,6 +28,7 @@ export function App() {
         <Route path="pools" element={<PoolsPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="invite" element={<InvitePage />} />
+        <Route path="invite/:code" element={<InviteClaimPage />} />
         <Route path="rules" element={<RulesPage />} />
         <Route path="admin/*" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

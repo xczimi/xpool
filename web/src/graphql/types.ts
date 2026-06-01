@@ -78,6 +78,7 @@ export interface StandingsPrediction {
 }
 
 export interface Player {
+  __typename: 'Player'
   id: string
   nick: string
   fullName: string
@@ -87,6 +88,17 @@ export interface Player {
   matchPredictions: MatchPrediction[]
   standingsPredictions: StandingsPrediction[]
 }
+
+/** Authenticated but not yet linked to a Player — invite / claim flow. */
+export interface UnclaimedViewer {
+  __typename: 'UnclaimedViewer'
+  email?: string | null
+  phone?: string | null
+  linkCandidate?: { personId: string; provider: string } | null
+}
+
+/** The result of the `me` query — a Player, an unclaimed viewer, or null for a visitor. */
+export type Me = Player | UnclaimedViewer | null
 
 /** One row of the materialised scoreboard. `scoreboard` returns these directly. */
 export interface ScoreEntry {

@@ -13,7 +13,11 @@ name = "api"
 path = "src/main.rs"
 
 [features]
-default = []
+# Compiled in for `cargo build` / `cargo run` (no feature flags) and the
+# default `cargo test`. Disabled in `--features lambda` production builds.
+# Gates the dev-login endpoint and `LOCAL_AUTH_ISSUER` env-var handling.
+dev_auth = ["dep:dotenvy"]
+default = ["dev_auth"]
 lambda = ["dep:lambda_http", "dep:lambda_runtime"]
 
 [dependencies]
@@ -32,8 +36,14 @@ async-graphql = { version = "7", features = ["chrono"] }
 async-graphql-axum = "7"
 tower-http = { version = "0.6", features = ["cors"] }
 uuid = { version = "1", features = ["v4"] }
+jsonwebtoken = "9"
+base64 = "0.22"
+hmac = "0.12"
+sha2 = "0.10"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 lambda_http = { version = "0.13", optional = true }
 lambda_runtime = { version = "0.13", optional = true }
+dotenvy = { version = "0.15", optional = true }
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }
