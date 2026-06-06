@@ -44,6 +44,14 @@ cd web && npm install && npm run dev
 The SPA proxies `/api` to the server. DynamoDB Local runs in-memory — after a
 container restart, re-run the `import` and `seed` steps.
 
+**One-command session:** `bin/tmux` does the whole bootstrap above and lays it
+out in a tmux session (docker / api / web panes plus a `claude` pane), then
+re-attaches on later runs. To point the api + web servers at a git worktree
+without restarting docker, use `bin/switch <worktree>` (or `bin/switch` for the
+main checkout) — only one worktree's stack runs at a time, since the ports are
+fixed. See
+[`docs/superpowers/specs/2026-05-18-tmux-restarter-design.md`](./docs/superpowers/specs/2026-05-18-tmux-restarter-design.md).
+
 **Dev login:** auth is a stub — the SPA sends an `X-Dev-Player` header. Pick a
 seeded player in the SPA's auth bar. Seeded ids: `result-user` (the admin /
 official results), and `demo-ada`, `demo-alan`, `demo-grace`, `demo-linus`,
