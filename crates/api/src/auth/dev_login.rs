@@ -65,7 +65,15 @@ async fn mint_for_seeded_player(state: &DevLoginState, player_id: &str) -> Respo
         Ok(Some(p)) => p,
         _ => return (StatusCode::NOT_FOUND, "unknown player").into_response(),
     };
-    let email = format!("{}@dev.invalid", player.id);
+    // Mint the token at the same email the player's Identity is seeded under,
+    // so login resolution finds it. `xtask seed` keys the result-user at
+    // `RESULT_USER_EMAIL` (configurable, default `result-user@dev.invalid`) and
+    // every other demo player at `{id}@dev.invalid`; mirror that split here.
+    let email = if player.is_result_user {
+        std::env::var("RESULT_USER_EMAIL").unwrap_or_else(|_| "result-user@dev.invalid".into())
+    } else {
+        format!("{}@dev.invalid", player.id)
+    };
     let token = mint_for_test(&player.id, &email);
     (StatusCode::OK, Json(DevLoginResponse { token })).into_response()
 }

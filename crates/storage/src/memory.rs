@@ -66,6 +66,15 @@ impl Repository for InMemoryRepository {
         Ok(inner.players.values().cloned().collect())
     }
 
+    async fn get_player_by_person(&self, person_id: &str) -> anyhow::Result<Option<Player>> {
+        let inner = self.inner.lock().unwrap();
+        Ok(inner
+            .players
+            .values()
+            .find(|p| p.person_id == person_id)
+            .cloned())
+    }
+
     /// Optimistic concurrency: the repository owns the `version` counter. The
     /// caller passes the `Player` with the version it last read; if a player
     /// with `p.id` already exists and its stored `version` differs from

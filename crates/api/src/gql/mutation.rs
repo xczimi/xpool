@@ -678,7 +678,10 @@ impl MutationRoot {
         if let Some(email) = &unclaimed.verified_email {
             let hits = repo.find_identities_by_verified_email(email).await?;
             if let Some(identity) = hits.into_iter().next() {
-                if let Some(player) = repo.get_player(&identity.person_id).await? {
+                // Look the player up by person id (matches `Player.person_id`,
+                // distinct from `Player.id`) — `get_player` would miss and we'd
+                // wrongly create a duplicate player. Mirrors `auth::resolution`.
+                if let Some(player) = repo.get_player_by_person(&identity.person_id).await? {
                     if let Some(pool_id) = payload.pool.clone() {
                         add_to_pool(repo.as_ref(), &player.id, &pool_id).await?;
                     }
