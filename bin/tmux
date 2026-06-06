@@ -30,22 +30,34 @@ echo "==> xtask seed"
 cargo run -p xtask -- seed
 
 # --- tmux session ----------------------------------------------------------
+# Each server pane gets a stable @role marker so bin/switch can find it by role
+# instead of by index — pane indices renumber when panes are added/closed, and
+# pane titles get rewritten by the fish/tide prompt every command.
+
 # Pane 0 (left): interactive claude session.
 tmux new-session -d -s "$SESSION" -c "$PROJECT"
+tmux set-option -p -t "$SESSION:0.0" @role claude
 tmux send-keys -t "$SESSION:0.0" 'claude' C-m
 
 # Pane 1 (right, top): docker logs.
 tmux split-window -h -t "$SESSION:0.0" -c "$PROJECT"
+tmux set-option -p -t "$SESSION:0.1" @role docker
 tmux send-keys -t "$SESSION:0.1" 'docker compose logs -f' C-m
 
 # Pane 2 (right, middle): API server. Panes don't inherit the script env,
 # so DYNAMO_ENDPOINT is passed inline.
 tmux split-window -v -t "$SESSION:0.1" -c "$PROJECT"
+tmux set-option -p -t "$SESSION:0.2" @role api
 tmux send-keys -t "$SESSION:0.2" "DYNAMO_ENDPOINT=$DYNAMO_ENDPOINT cargo run -p api" C-m
 
 # Pane 3 (right, bottom): web dev server.
 tmux split-window -v -t "$SESSION:0.2" -c "$PROJECT/web"
+tmux set-option -p -t "$SESSION:0.3" @role web
 tmux send-keys -t "$SESSION:0.3" 'npm run dev' C-m
+
+# Show the role on each pane border so the layout is self-describing.
+tmux set-option -w -t "$SESSION:0" pane-border-status top
+tmux set-option -w -t "$SESSION:0" pane-border-format ' #{?@role,#{@role},#{pane_title}} '
 
 # Even out the three right-column panes, then focus claude.
 tmux select-layout -t "$SESSION" main-vertical
