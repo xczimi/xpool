@@ -71,10 +71,17 @@ for _ in $(seq 1 20); do
 done
 
 # --- relaunch pointed at the worktree ----------------------------------------
-# Shared CARGO_TARGET_DIR so worktrees reuse build artifacts; DYNAMO_ENDPOINT
-# inline (panes don't inherit this script's env), matching bin/tmux.
+# Each worktree builds into its OWN target/ — do NOT share CARGO_TARGET_DIR.
+# A shared target lets cargo serve an `api` binary built from a *different*
+# worktree (same package id), so you'd run code that isn't in the worktree you
+# switched to. Correctness beats the saved compile time.
+#
+# DYNAMO_ENDPOINT inline (panes don't inherit this script's env), matching
+# bin/tmux. LOCAL_AUTH_ISSUER=1 mounts the dev-login route: a worktree has no
+# .env in its own dir, so we set it explicitly rather than rely on dotenvy
+# finding the main checkout's .env up the tree.
 echo "==> starting api + web for $WT"
 echo "    docker/DynamoDB untouched — re-run 'xtask import' + 'seed' if this branch changed schema/data"
 tmux send-keys -t "$API_PANE" \
-    "cd $WT && CARGO_TARGET_DIR=$PROJECT/target DYNAMO_ENDPOINT=$DYNAMO_ENDPOINT cargo run -p api" C-m
+    "cd $WT && DYNAMO_ENDPOINT=$DYNAMO_ENDPOINT LOCAL_AUTH_ISSUER=1 cargo run -p api" C-m
 tmux send-keys -t "$WEB_PANE" "cd $WT/web && npm install && npm run dev" C-m
