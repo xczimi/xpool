@@ -76,10 +76,14 @@ It's **single-stack**: the fixed ports (`:3000` api, `:5173` web, `:8000`
 DynamoDB) mean only one worktree's servers run at a time, so a switch stops the
 current ones first. It finds the panes by `@role` (not index — indices renumber;
 not pane titles — the prompt overwrites them) and stops the old stack by **port +
-`C-c`**, so strays on fallback ports die too. Worktrees share the main checkout's
-`target/` (via `CARGO_TARGET_DIR`) so a switch is an incremental rebuild, not a
-cold one. DynamoDB is shared in-memory state — re-run `import` + `seed` only if
-the worktree's branch changed schema or seed data.
+`C-c`**, so strays on fallback ports die too. Each worktree builds into its **own**
+`target/` — `bin/switch` deliberately does *not* share `CARGO_TARGET_DIR`, because
+a shared target lets cargo serve an `api`/`web` binary built from a different
+worktree (same package id), so you'd unknowingly run code that isn't in the
+worktree you switched to. The api launches with `LOCAL_AUTH_ISSUER=1` (a worktree
+has no `.env` in its own dir, so the dev-login route is enabled explicitly).
+DynamoDB is shared in-memory state — re-run `import` + `seed` only if the
+worktree's branch changed schema or seed data.
 
 ## Architecture
 

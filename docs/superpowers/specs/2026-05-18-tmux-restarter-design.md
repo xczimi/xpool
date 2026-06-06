@@ -78,8 +78,22 @@ The stack uses fixed ports (`:3000` api, `:5173` web, `:8000` DynamoDB), so only
 one worktree's servers can run at a time. "Switching" is therefore *stop current,
 start target* — not parallel stacks. The shared in-memory DynamoDB is reused
 across switches; `import` + `seed` only need re-running if the target branch
-changed schema or seed data. Worktrees share the main checkout's `target/` via
-`CARGO_TARGET_DIR`, so a switch is an incremental rebuild rather than a cold one.
+changed schema or seed data.
+
+### Per-worktree `target/` (no shared `CARGO_TARGET_DIR`)
+
+An earlier revision shared the main checkout's `target/` across worktrees to skip
+cold rebuilds. That was **reverted**: with a shared target, cargo treats the
+`api`/`web` package (same name/version) as already built and serves a binary
+compiled from *another* worktree's sources — so `bin/switch <wt>` could silently
+run code that isn't in `<wt>`. This actually happened in practice and masked
+which branch was live. Each worktree now builds into its own `target/`; the
+first build per worktree is a cold compile, accepted in exchange for always
+running the code you switched to.
+
+The api is launched with `LOCAL_AUTH_ISSUER=1` so the dev-login route is mounted:
+`.env` lives only in the main checkout, and although dotenvy searches ancestor
+dirs, relying on that from a worktree is fragile — so the flag is set explicitly.
 
 ### Why `@role`, not pane index or title
 
