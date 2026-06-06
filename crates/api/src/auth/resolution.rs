@@ -41,9 +41,10 @@ pub async fn resolve_player(
 
     if let Ok(Some(identity)) = repo.get_identity(&provider, &provider_id).await {
         if let Ok(Some(_person)) = repo.get_person(&identity.person_id).await {
-            // Person → Player. By the data model's convention, `Player.id`
-            // equals `Person.id` for the current tournament.
-            if let Ok(Some(player)) = repo.get_player(&identity.person_id).await {
+            // Person → Player, matched on `Player.person_id` (which is distinct
+            // from `Player.id`). Looking up by `get_player(person_id)` would
+            // miss, since that is keyed by `Player.id`.
+            if let Ok(Some(player)) = repo.get_player_by_person(&identity.person_id).await {
                 return CurrentPlayer::Player(Box::new(player));
             }
         }

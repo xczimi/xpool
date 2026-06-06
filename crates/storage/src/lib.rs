@@ -30,6 +30,11 @@ pub trait Repository: Send + Sync {
 
     async fn get_player(&self, id: &str) -> anyhow::Result<Option<Player>>;
     async fn list_players(&self) -> anyhow::Result<Vec<Player>>;
+    /// Find the player linked to a `Person` (i.e. whose `person_id` matches).
+    /// `Player.id` and `Player.person_id` are distinct, so login resolution
+    /// must look players up by person id through this method — not `get_player`,
+    /// which is keyed by `Player.id`. Returns `None` if no player is linked.
+    async fn get_player_by_person(&self, person_id: &str) -> anyhow::Result<Option<Player>>;
     /// Optimistic concurrency: pass the `Player` with the `version` it was
     /// last read at. Fails if the stored `version` no longer matches; on
     /// success the repository persists the player at `version + 1`. The
