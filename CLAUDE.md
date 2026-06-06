@@ -56,6 +56,31 @@ time-dependent behaviour; the e2e suite uses a fresh DynamoDB table per run. See
 Seeded dev players: `result-user` (the admin / official results), `demo-ada`,
 `demo-alan`, `demo-grace`, `demo-linus`, `demo-margaret`, `demo-dennis`.
 
+### tmux dev session & worktree switching
+
+`bin/tmux` brings the whole stack up in a tmux session named `xpool` (docker +
+bootstrap import/seed, then panes: `claude` left; `docker` / `api` / `web` right)
+and re-attaches on later runs. Each pane is tagged with a stable `@role` marker
+(`claude`/`docker`/`api`/`web`) shown on its border. See
+`docs/superpowers/specs/2026-05-18-tmux-restarter-design.md`.
+
+`bin/switch <worktree>` repoints the running session's `api` + `web` servers at a
+git worktree without touching docker/DynamoDB:
+
+```sh
+bin/switch scoreboard-design   # → .claude/worktrees/scoreboard-design
+bin/switch                     # back to the main checkout (master)
+```
+
+It's **single-stack**: the fixed ports (`:3000` api, `:5173` web, `:8000`
+DynamoDB) mean only one worktree's servers run at a time, so a switch stops the
+current ones first. It finds the panes by `@role` (not index — indices renumber;
+not pane titles — the prompt overwrites them) and stops the old stack by **port +
+`C-c`**, so strays on fallback ports die too. Worktrees share the main checkout's
+`target/` (via `CARGO_TARGET_DIR`) so a switch is an incremental rebuild, not a
+cold one. DynamoDB is shared in-memory state — re-run `import` + `seed` only if
+the worktree's branch changed schema or seed data.
+
 ## Architecture
 
 A 5-crate Rust workspace (`crates/*`) plus a React SPA (`web/`).

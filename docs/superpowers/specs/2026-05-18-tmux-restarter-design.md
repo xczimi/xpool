@@ -49,8 +49,11 @@ restart — the bootstrap always runs on a fresh session for that reason.
 - `DYNAMO_ENDPOINT=http://localhost:8000` is exported for the bootstrap steps.
   tmux panes do not inherit the script's environment, so the API pane receives
   it inline on its `send-keys` command.
-- Right-column panes are targeted by explicit pane index for deterministic
-  layout; `select-layout` evens out the three right panes.
+- Panes are created at fixed indices for deterministic *initial* layout, and
+  each is tagged with a stable `@role` pane option (`claude`/`docker`/`api`/`web`)
+  — see the worktree-switching addendum below for why role beats index.
+  `select-layout` evens out the three right panes; `pane-border-status` +
+  `pane-border-format` surface the role on each pane's border.
 - The legacy `archive/` GAE app is untouched — this only drives the new stack.
 
 ## Trade-off accepted
@@ -59,3 +62,39 @@ The bootstrap blocks the terminal while `cargo run -p xtask` compiles (slow on a
 cold `target/`). Bootstrapping inside a pane would lose the strict ordering
 guarantee, so blocking is accepted; the output is visible and it is a one-time
 cost per fresh session.
+
+## Addendum — `bin/switch` (worktree switching)
+
+**Date:** 2026-06-06
+**Status:** approved
+
+`bin/switch <worktree>` repoints the running session's `api` + `web` servers at a
+git worktree (`.claude/worktrees/<name>`, or the main checkout with no arg),
+leaving the `docker` pane and DynamoDB untouched.
+
+### Single-stack model
+
+The stack uses fixed ports (`:3000` api, `:5173` web, `:8000` DynamoDB), so only
+one worktree's servers can run at a time. "Switching" is therefore *stop current,
+start target* — not parallel stacks. The shared in-memory DynamoDB is reused
+across switches; `import` + `seed` only need re-running if the target branch
+changed schema or seed data. Worktrees share the main checkout's `target/` via
+`CARGO_TARGET_DIR`, so a switch is an incremental rebuild rather than a cold one.
+
+### Why `@role`, not pane index or title
+
+The original `bin/tmux` targeted panes by index. Indices **renumber** when panes
+are added or closed, so a script that hardcodes `0.2`/`0.3` sends commands to the
+wrong panes once the layout drifts (observed in practice: a second vite spawned
+on `:5174` while the original kept `:5173`). Pane **titles** are no better here —
+the fish/tide prompt rewrites `pane_title` to the last command line on every
+keystroke. A pane-scoped user option (`@role`) is the one marker nothing else
+touches, so `bin/switch` (and `bin/tmux`) target panes by role.
+
+### Robust teardown
+
+`bin/switch` stops the old stack by **port** (`lsof` on `:3000`/`:5173` → `kill`)
+*and* sends `C-c` to the role-tagged panes, then waits for the ports to free
+before relaunching. Port-based teardown kills a server wherever it landed —
+including a stray that fell back to an unexpected port — which index- or
+pane-targeted teardown cannot guarantee.
