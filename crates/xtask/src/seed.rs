@@ -180,6 +180,19 @@ mod tests {
                 repo.get_person(&person_id).await.expect("repo error").is_some(),
                 "missing Person row for {nick}"
             );
+
+            // Full resolution chain: identity.person_id → Player. The resolver
+            // looks the player up by person id (Player.id != Player.person_id),
+            // so this must return the seeded player — not None.
+            let player = repo
+                .get_player_by_person(&identity.person_id)
+                .await
+                .expect("repo error")
+                .unwrap_or_else(|| panic!("person {person_id} resolves to no player for {nick}"));
+            assert_eq!(
+                player.id, player_id,
+                "person {person_id} resolved to the wrong player"
+            );
         }
     }
 
@@ -200,6 +213,15 @@ mod tests {
             identity.verified_email.as_deref(),
             Some("result-user@dev.invalid")
         );
+
+        // The admin must resolve through the full chain too: person → Player.
+        let player = repo
+            .get_player_by_person(&identity.person_id)
+            .await
+            .expect("repo error")
+            .expect("result-user person resolves to no player");
+        assert_eq!(player.id, RESULT_USER_ID);
+        assert!(player.is_result_user);
     }
 
     #[tokio::test]

@@ -331,6 +331,14 @@ impl Repository for DynamoRepository {
         self.query_partition(&pk).await
     }
 
+    async fn get_player_by_person(&self, person_id: &str) -> anyhow::Result<Option<Player>> {
+        // No GSI on person_id; players live in one partition, so query it and
+        // filter. The player set is small (one row per pool participant).
+        let pk = format!("{}#PLAYER", self.t());
+        let players: Vec<Player> = self.query_partition(&pk).await?;
+        Ok(players.into_iter().find(|p| p.person_id == person_id))
+    }
+
     /// Optimistic concurrency via a DynamoDB conditional write.
     ///
     /// The **repository** owns the `version` counter: the caller passes the

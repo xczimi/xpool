@@ -178,7 +178,10 @@ pub async fn seeded_repo_with_knockout(kickoff_offset: Duration) -> Arc<dyn Repo
 fn player(id: &str, is_result: bool) -> Player {
     Player {
         id: id.to_owned(),
-        person_id: format!("person-{id}"),
+        // Test fixtures key Person/Identity at the bare id (see `seed_identity_for`
+        // and the `person_id: ALICE` assertions), so the player's person_id must
+        // match — otherwise login resolution (by `Player.person_id`) can't find it.
+        person_id: id.to_owned(),
         nick: id.to_owned(),
         full_name: id.to_owned(),
         referrer: None,
