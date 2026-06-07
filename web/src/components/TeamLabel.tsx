@@ -9,6 +9,7 @@ export function Flag({ iso, name }: { iso: string; name: string }) {
       className="team-flag"
       src={`/flags/${iso}.png`}
       alt={name}
+      title={name}
       loading="lazy"
       width={20}
       height={15}
