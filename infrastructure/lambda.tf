@@ -41,6 +41,11 @@ module "api_lambda" {
     # Signing key for invite-code payloads.
     INVITE_CODE_SECRET = random_password.invite_code_secret.result
 
+    # Email the result-user/admin Identity is keyed under. The operator logs in
+    # with this address; it must match the seeded identity or the login resolves
+    # to AuthenticatedUnclaimed (and every mutation is rejected).
+    RESULT_USER_EMAIL = var.result_user_email
+
     # Origin used by createInvite to build share links — derived from the
     # CloudFront-fronted domain so links match what the SPA is served at.
     XPOOL_PUBLIC_ORIGIN = "https://${var.domain_name}"
