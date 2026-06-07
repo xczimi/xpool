@@ -64,12 +64,13 @@ and re-attaches on later runs. Each pane is tagged with a stable `@role` marker
 (`claude`/`docker`/`api`/`web`) shown on its border. See
 `docs/superpowers/specs/2026-05-18-tmux-restarter-design.md`.
 
-`bin/switch <worktree>` repoints the running session's `api` + `web` servers at a
-git worktree without touching docker/DynamoDB:
+`bin/tmux <worktree>` repoints the running session's `api` + `web` servers at a
+git worktree without touching docker/DynamoDB (it's the same idempotent command
+that boots the session):
 
 ```sh
-bin/switch scoreboard-design   # → .claude/worktrees/scoreboard-design
-bin/switch                     # back to the main checkout (master)
+bin/tmux scoreboard-design   # → .claude/worktrees/scoreboard-design
+bin/tmux                     # the checkout you're in (main checkout by default)
 ```
 
 It's **single-stack**: the fixed ports (`:3000` api, `:5173` web, `:8000`
@@ -77,13 +78,16 @@ DynamoDB) mean only one worktree's servers run at a time, so a switch stops the
 current ones first. It finds the panes by `@role` (not index — indices renumber;
 not pane titles — the prompt overwrites them) and stops the old stack by **port +
 `C-c`**, so strays on fallback ports die too. Each worktree builds into its **own**
-`target/` — `bin/switch` deliberately does *not* share `CARGO_TARGET_DIR`, because
+`target/` — `bin/tmux` deliberately does *not* share `CARGO_TARGET_DIR`, because
 a shared target lets cargo serve an `api`/`web` binary built from a different
 worktree (same package id), so you'd unknowingly run code that isn't in the
 worktree you switched to. The api launches with `LOCAL_AUTH_ISSUER=1` (a worktree
 has no `.env` in its own dir, so the dev-login route is enabled explicitly).
-DynamoDB is shared in-memory state — re-run `import` + `seed` only if the
-worktree's branch changed schema or seed data.
+Each branch now uses its own `xpool-<branch>` table, seeded on first use, so
+switching branches no longer risks stale data; `bin/tmux --reseed` forces a
+rebuild after an in-place schema change. DynamoDB is shared in-memory state and
+is wiped on container restart — `bin/tmux` re-seeds the active branch's table
+automatically when it finds it empty.
 
 ## Architecture
 

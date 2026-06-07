@@ -65,6 +65,12 @@ cost per fresh session.
 
 ## Addendum — `bin/switch` (worktree switching)
 
+> **Superseded (2026-06-06):** `bin/switch` was folded into `bin/tmux
+> [worktree]`. See
+> `docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md`. The
+> rationale below (single-stack, per-worktree `target/`, `@role` markers, port
+> teardown) still holds and carries over to `bin/tmux`.
+
 **Date:** 2026-06-06
 **Status:** approved
 
