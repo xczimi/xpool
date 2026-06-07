@@ -1,0 +1,12 @@
+# Style intent, declared explicitly. The load-bearing determinism lever is the
+# pinned toolchain (rust-toolchain.toml); this file documents the choices and
+# makes a future toolchain bump that changes a default surface as an intentional
+# diff rather than silent drift.
+#
+# Only STABLE rustfmt options live here — nightly-only keys (imports_granularity,
+# group_imports, …) would print warnings on the pinned stable toolchain. These
+# mirror the current stable defaults.
+max_width = 100
+use_small_heuristics = "Default"
+newline_style = "Unix"
+tab_spaces = 4

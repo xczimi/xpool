@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Local guard: block commits that aren't rustfmt-clean. Activate once per clone:
+#   git config core.hooksPath .githooks
+# (bin/check-fmt does the actual work; a deferred CI job will reuse it.)
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$HERE/../bin/check-fmt"

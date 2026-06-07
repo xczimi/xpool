@@ -1,0 +1,8 @@
+# Pin the exact toolchain so `cargo fmt` (and clippy) produce byte-identical
+# output on every machine and every git worktree — the cure for the rustfmt
+# version drift that made local formatting disagree with committed style.
+# rustup auto-installs this on first cargo invocation.
+# See docs/superpowers/specs/2026-06-07-rustfmt-determinism-design.md.
+[toolchain]
+channel = "1.95.0"
+components = ["rustfmt", "clippy"]
