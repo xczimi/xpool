@@ -41,8 +41,10 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let app = app().await?;
-    let addr = "127.0.0.1:3000";
-    let listener = tokio::net::TcpListener::bind(addr).await?;
+    // Dev and the Playwright e2e stack run the same binary on different ports
+    // (dev :3000, e2e :3001) so they can coexist — see `api::listen`.
+    let addr = api::listen::listen_addr(std::env::var("XPOOL_PORT").ok().as_deref());
+    let listener = tokio::net::TcpListener::bind(&addr).await?;
     tracing::info!("xpool api listening on http://{addr}");
     axum::serve(listener, app).await?;
     Ok(())

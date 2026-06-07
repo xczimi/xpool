@@ -8,6 +8,19 @@ services:
     ports:
       - "8000:8000"
 
+  # Isolated DynamoDB Local for the Playwright e2e stack, on :8001 so an e2e run
+  # can't share a container lifecycle with the dev DynamoDB on :8000 (stopping
+  # one never disturbs the other). Behind the `e2e` profile, so the default
+  # `docker compose up -d` (dev) does NOT start it; web/scripts/e2e-stack.sh
+  # brings it up with `--profile e2e`.
+  dynamodb-e2e:
+    image: amazon/dynamodb-local:latest
+    command: ["-jar", "DynamoDBLocal.jar", "-inMemory", "-sharedDb"]
+    ports:
+      - "8001:8000"
+    profiles:
+      - e2e
+
   mailhog:
     image: mailhog/mailhog:latest
     ports:

@@ -37,6 +37,15 @@ A test must not see state left by another test or another run.
   names, its own players' predictions) and never asserts on global collections
   like "all pools".
 
+  The e2e stack also runs on its **own ports** — API `:3001`, Vite `:5174`, and
+  an isolated DynamoDB Local container on `:8001` (the `e2e` compose profile) —
+  distinct from the dev stack (`:3000` / `:5173` / `:8000`). Playwright sets
+  `reuseExistingServer: false`, and `e2e-stack.sh` / `e2e-teardown.sh` only ever
+  kill processes on the e2e ports. So `npm run e2e` and a running
+  `npm run dev` / `bin/tmux` session **coexist** — the suite never hijacks or
+  tears down your dev servers. (Ports are threaded via `XPOOL_PORT` for the API
+  and `XPOOL_API_PORT` for the Vite proxy; see `web/playwright.config.ts`.)
+
 **Rule:** DynamoDB Local is in-memory and the container is long-lived — it is
 *not* a clean slate. Never rely on an empty database; rely on the isolation
 mechanism for your layer.

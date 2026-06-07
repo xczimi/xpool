@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 #
-# Boots the full xpool stack for the Playwright E2E suite. Delegates infra + seed
-# to bin/local-stack (shared with bin/tmux), then starts the API detached with a
-# PID file so globalTeardown can stop it. A fresh unique table per run isolates
-# runs; bin/local-stack seeds it because a brand-new table is always empty.
+# Boots an ISOLATED xpool stack for the Playwright E2E suite, on its OWN ports
+# (API :3001, DynamoDB :8001) so it never collides with — or tears down — a
+# running dev session (API :3000, DynamoDB :8000, Vite :5173). Vite (:5174) is
+# owned by Playwright's webServer. Delegates infra + seed to bin/local-stack
+# (shared with bin/tmux), then starts the API detached with a PID file so
+# globalTeardown can stop it. A fresh unique table per run isolates runs;
+# bin/local-stack seeds it because a brand-new table is always empty.
 #
 # Run from anywhere — paths resolve relative to the repo root.
 set -euo pipefail
@@ -13,11 +16,21 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_ROOT"
 source "$REPO_ROOT/bin/lib.sh"
 
-API_PORT=3000
-export DYNAMO_ENDPOINT="http://localhost:8000"
+# Dedicated e2e ports — distinct from the dev stack so the two coexist.
+API_PORT=3001
+export XPOOL_PORT="$API_PORT"
+export DYNAMO_ENDPOINT="http://localhost:8001"
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-local}"
 export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY:-local}"
+
+# Bring up the isolated e2e DynamoDB (:8001) — its own container, behind the
+# `e2e` compose profile — plus the shared mailhog. bin/local-stack reads these.
+export XPOOL_COMPOSE_PROFILE=e2e
+export XPOOL_COMPOSE_SERVICES="dynamodb-e2e mailhog"
+
+# Invite links the API builds must point at the e2e web port, not dev's :5173.
+export XPOOL_PUBLIC_ORIGIN="${XPOOL_PUBLIC_ORIGIN:-http://localhost:5174}"
 
 # A fresh table per run; teardown drops it. (DynamoDB Local is in-memory and the
 # container is long-lived, so the table name must be unique.)
@@ -39,7 +52,8 @@ log "API clock (XPOOL_NOW) = $XPOOL_NOW"
 # ── infra + seed via the shared primitive ────────────────────────────────────
 "$REPO_ROOT/bin/local-stack"
 
-# ── stop any stale API on :3000 (Vite is owned by Playwright) ─────────────────
+# ── stop any stale *e2e* API on :3001 only — never touch dev's :3000. Vite is
+#    owned by Playwright. ───────────────────────────────────────────────────────
 kill_port "$API_PORT"
 sleep 1
 stale="$(port_pids "$API_PORT")"

@@ -25,12 +25,23 @@ RESEED=0
 export XPOOL_TABLE
 DYNAMO_ENDPOINT="${DYNAMO_ENDPOINT:-http://localhost:8000}"
 export DYNAMO_ENDPOINT
+# The DynamoDB port to wait on is whatever DYNAMO_ENDPOINT points at (dev :8000,
+# the e2e stack :8001) — strip everything up to the last ':'.
+DYNAMO_PORT="${DYNAMO_ENDPOINT##*:}"
 
-echo "==> docker compose up -d"
-docker compose up -d
+# Which compose services to bring up. The dev path leaves these empty -> all
+# default-profile services (dynamodb + mailhog). The e2e stack sets
+# XPOOL_COMPOSE_PROFILE=e2e + XPOOL_COMPOSE_SERVICES="dynamodb-e2e mailhog" to
+# start its own isolated DynamoDB on :8001 without touching dev's :8000.
+profile_args=()
+[ -n "${XPOOL_COMPOSE_PROFILE:-}" ] && profile_args=(--profile "$XPOOL_COMPOSE_PROFILE")
 
-echo "==> waiting for DynamoDB Local on :8000"
-wait_for_port 8000
+echo "==> docker compose ${profile_args[*]:-} up -d ${XPOOL_COMPOSE_SERVICES:-}"
+# shellcheck disable=SC2086
+docker compose "${profile_args[@]}" up -d ${XPOOL_COMPOSE_SERVICES:-}
+
+echo "==> waiting for DynamoDB Local on :$DYNAMO_PORT"
+wait_for_port "$DYNAMO_PORT"
 
 # The aws CLI is the only consumer that can't read .env, so give it dummy creds
 # inline — DynamoDB Local ignores the values; the SDK only needs them present.
