@@ -8,12 +8,20 @@
 The result user (the official/admin `Player` with `is_result_user = true`, whose
 `MatchPrediction`s *are* the official results) enters results through the **same
 My Tips form players use to enter predictions** — no separate admin Results
-screen. The only special-casing is:
+screen.
+
+The key realisation: **kickoff already implicitly locks an entered result**, the
+same way it locks a prediction (`effective_locked = locked || (now > deadline &&
+complete)`). Because official results are always entered *after* the match, a
+result is effective-locked the moment it is entered — so the scoring/display
+rules become **symmetric** between predictions and results, with **no
+`is_result_user` special case**. The only genuine special-casing is on the
+**write** path:
 
 1. **Time** — the result user is not blocked by a group's deadline (they enter
    results *after* matches conclude, i.e. after the deadline has passed).
-2. **No-lock scoring** — the result user's results award points to players the
-   moment they're entered; they do **not** need to be explicitly locked first.
+2. **Recompute on write** — a save by the result user triggers the wholesale
+   scoreboard/bracket recompute (their predictions *are* the official results).
 
 Scores are calculated **on write** (when a result is entered/updated), not on
 read — this is the existing materialised-scoreboard model
@@ -60,67 +68,92 @@ result user, because:
 
 ## Design
 
-### 1. Scoring (domain) — official results count by presence, not lock
+### 1. Scoring (domain) — results are effective-locked, symmetric with predictions
 
-In `score_leaf_group` (`crates/domain/src/scoring.rs`), relax the **result-side**
-lock guard so the official result user's entries count immediately, while
-non-official baselines still require locked data (preserving the symmetric
-what-if / player-vs-player semantics in `SCORING.md` §1):
+In `score_leaf_group` (`crates/domain/src/scoring.rs`), the **result side** uses
+`effective_locked` exactly as the prediction side already does — kickoff/deadline
+implicitly locks an entered result. **No `is_result_user` branch.**
 
 ```rust
-// Per-match (was: if !result_mp.locked { continue; })
-if !result.is_result_user && !result_mp.locked { continue; }
+// Per-match — was: if !result_mp.locked { continue; }
+let r_locked = effective_locked(result_mp.locked, now, deadline, true);
+if !r_locked { continue; }
 
-// Standings bonus (was: if !result_sp.locked { return raw; })
-if !result.is_result_user && !result_sp.locked { return raw; }
+// Standings bonus — was: if !result_sp.locked { return raw; }
+let r_sp_locked =
+    effective_locked(result_sp.locked, now, deadline, !result_sp.ordering.is_empty());
+if !r_sp_locked { return raw; }
 ```
 
-The **prediction** side is unchanged — players still need `effective_locked`
-(`locked || (now > deadline && complete)`). `result.is_result_user` is available
-on the `result: &Player` argument.
+`effective_locked(locked, now, deadline, complete) = locked || (now > deadline &&
+complete)`. Because results are entered after the match (after the group
+deadline), `now > deadline` holds, so an entered result counts immediately — no
+explicit lock needed. The rule is now identical for both prediction and result.
 
 Spec/test follow-on:
 
-- `SCORING.md:27` — change "a result counts only when locked. Unlocked → 0" to:
-  a result by the **result user** counts by presence; any *other* baseline still
-  requires locking. Predictions are unaffected.
-- `SCENARIOS.md` **SCORE-13** ("Unlocked predictions and results score zero") —
-  split: an unlocked *prediction* still scores zero; an unlocked *result by the
-  result user* now scores.
-- Domain test `score_tournament_unlocked_result_scores_zero` — flip to assert the
-  result user's unlocked result **does** score; keep the unlocked-prediction case.
+- `SCORING.md:26-27` — change "a result counts only when locked. Unlocked → 0"
+  to: a result counts when **effective-locked**, the same rule as a prediction
+  (kickoff/deadline implicitly locks it).
+- `SCENARIOS.md` **SCORE-13** — reframe to the symmetric rule: an unlocked
+  prediction *or* result scores zero **only before the deadline**; after the
+  deadline a complete, entered result counts.
+- Domain test `score_tournament_unlocked_result_scores_zero` — rename/rework so
+  `now` is **before** the deadline (asserts 0), and add a sibling asserting an
+  unlocked result **after** the deadline **scores** (mirrors the existing
+  `score_tournament_auto_locked_after_deadline` for predictions).
 
-### 2. Backend — `submitGroup` result-user exemptions
+### 2. Read-gates (API) — display results once they're in, not once locked
+
+Three resolvers in `crates/api/src/gql/query.rs` currently treat a result as
+official only when its raw `locked` flag is set. With results counting in scoring
+the moment they're entered (post-kickoff), these must match, or an entered result
+would update the scoreboard yet still show as "result pending" with a `—` score.
+Relax each to **presence** (the result user only ever enters a result after
+kickoff, which is exactly the effective-lock condition):
+
+- `tournament` resolver (`query.rs:38-48`) — the official-results set that drives
+  the `resultPending` / "result in" flags: drop `.filter(|p| p.locked)`, use all
+  of the result user's entered match predictions.
+- `results` query (`query.rs:243-256`) — drop `.filter(|p| p.locked)`; return the
+  result user's entered match predictions. Update the doc comment ("locked" → "entered").
+- `perfects` resolver (`query.rs:226-235`) — change `if result.locked &&
+  is_perfect(..)` to `if is_perfect(..)`.
+
+(The `tips` reveal logic at `query.rs:182-193` is about *player* predictions, not
+results — `is_result_user` players are skipped — so it is unchanged.)
+
+### 3. Backend — `submitGroup` result-user write exemption
 
 In `crates/api/src/gql/mutation.rs::submit_group`, when `viewer.is_result_user`:
 
-- **Skip the deadline check** (`mutation.rs:226`) — exemption: *time*.
-- **After a successful persist, auto-fire `recompute(repo, now)`** — calculate
-  on write. Best-effort/non-fatal, matching today's `enter_result` philosophy
-  (a recompute failure is logged, not surfaced as a mutation error; the scoreboard
-  self-heals on the next entry or via the internal `recompute`). Regular players
-  never trigger recompute.
+- **Skip the deadline check** (`mutation.rs:226`) — the result user must save
+  results *after* the deadline. This is the one genuine special case.
+- **After a successful persist, auto-fire `recompute(repo, now)`** — calculate on
+  write. Best-effort/non-fatal, matching today's `enter_result` philosophy (a
+  recompute failure is logged, not surfaced as a mutation error; the scoreboard
+  self-heals on the next entry or the internal `recompute` mutation). Regular
+  players never trigger recompute.
 
-Unchanged: validation, optimistic-concurrency retry, and PRED-03
-lock-completeness (only relevant when the result user chooses to lock — see
-below). The "already-locked prediction cannot change" guard does not block the
-result user in practice because results stay unlocked and remain editable;
-should the result user explicitly lock a result and later need to correct it,
-the guard is also skipped for `is_result_user` (exemption: *correcting mistakes*).
+Unchanged: validation and optimistic-concurrency retry. The result user saves
+with `lock=false` (the normal "Save draft" path), so PRED-03 lock-completeness is
+not triggered and the "already-locked prediction cannot change" guard never fires
+— results stay unlocked and freely re-editable, so *correcting mistakes* needs no
+special code.
 
-### 3. Frontend — identical My Tips form for the result user
+### 4. Frontend — identical My Tips form for the result user
 
 In `web/src/pages/mytips/GroupTipForm.tsx` (and `MyTipsPage.tsx`), when
 `me.isResultUser`:
 
-- `deadlinePassed` no longer forces `readOnly` (`GroupTipForm.tsx:106`) — the
-  form stays editable after kickoff.
-- Locked entries remain editable for the result user (correcting mistakes).
+- `deadlinePassed` no longer forces `readOnly` (`GroupTipForm.tsx:106-111`) — the
+  form stays editable after kickoff, and entries remain editable (re-correction).
 - Everything else is byte-for-byte the same form: score selects, the
-  draw-order/standings control, and the lock button. The lock button stays for
-  parity but is **optional** for the result user — it no longer gates scoring.
+  draw-order/standings control, and the Save/Lock buttons. "Save draft" is all
+  the result user needs — the saved results are effective-locked (post-kickoff)
+  and recompute makes them count and display.
 
-### 4. Remove the redundant admin results path
+### 5. Remove the redundant admin results path
 
 - Delete the `/admin` **Results** tab + route from `web/src/pages/AdminPage.tsx`.
 - Delete `web/src/pages/admin/AdminResults.tsx` and its result-entry i18n
@@ -139,10 +172,22 @@ group stage. The earlier concern that `LockTogether` group-stage groups would
 only score after a whole-group lock is **moot**: locking is no longer a
 prerequisite for a result to count.
 
+## Note: what explicit locking is for
+
+Explicit `locked` exists for one reason (carried over from the legacy app) —
+**a player can lock predictions before the deadline to let rivals see them
+early** (the reveal rule at `query.rs:182-193`:
+a prediction is visible to others when `locked || now >= kickoff || deadline
+passed`). It was never meant as a scoring gate. This design keeps that
+player-side reveal mechanism exactly as-is, and stops *results* from depending on
+it — results are entered post-kickoff and are effective-locked automatically, so
+the result user never needs to press Lock.
+
 ## Non-goals / explicitly unchanged
 
 - Player prediction semantics: deadline gating, `effective_locked` auto-counting
-  after the deadline, and PRED-03 group-lock completeness for players.
+  after the deadline, PRED-03 group-lock completeness, and the early-reveal-on-lock
+  behaviour for players.
 - The server-authoritative clock model (`X-Dev-Now` → `XPOOL_NOW` → real clock).
 - Teams/Players admin screens.
 - The recompute architecture itself (still wholesale, materialised, on write).
@@ -150,13 +195,19 @@ prerequisite for a result to count.
 ## Risks
 
 - **Scoring is a locked contract.** `scoring.rs` / `model.rs` are depended on
-  across crates; the change is small (two guard conditions) but must land with
-  updated `SCORING.md` §1, `SCENARIOS.md` SCORE-13, and domain tests in the same
-  change. The `is_result_user` exemption deliberately preserves what-if/relative
-  scoring (a non-official baseline still needs locked data).
-- **Drafts score immediately.** With no lock prerequisite, a mistyped result hits
-  the scoreboard on save. Accepted: results are entered post-match as facts, and
-  the result user can always re-edit (which re-triggers recompute).
+  across crates; the change is small (result side now mirrors the prediction side
+  via `effective_locked`) but must land with updated `SCORING.md` §1,
+  `SCENARIOS.md` SCORE-13, and domain tests in the same change. The symmetry
+  preserves what-if/relative scoring: every baseline (official or not) counts a
+  result/prediction by the same effective-lock rule.
+- **Read-gates must move with scoring.** The three `query.rs` resolvers in §2 are
+  the ones that make an entered result *visible*; if any is missed, the scoreboard
+  moves but the UI shows "result pending". They are listed explicitly so none is
+  forgotten.
+- **Drafts score immediately after kickoff.** A mistyped result hits the
+  scoreboard on save (it is effective-locked once entered post-kickoff). Accepted:
+  results are entered post-match as facts, and the result user can always re-edit
+  (which re-triggers recompute).
 - **Removing `enterResult`/`unlockResult`** is a public GraphQL surface change;
   confirm no other consumer (web only uses them in the deleted AdminResults).
 
