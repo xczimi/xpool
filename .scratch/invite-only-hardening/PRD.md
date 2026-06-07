@@ -31,6 +31,19 @@ follow invitations, not public self-registration.
 - Should the private pool URL token be per-pool, single-use, or rotating?
 - How are existing/legacy members migrated into the invite model?
 
+## Note (2026-06-07) — bootstrap finding
+
+Two facts established while debugging the dev deployment:
+
+- **The admin identity must be linked to the result-user.** Logging in as
+  `pool@xczimi.com` only resolves to the result-user/admin if an
+  `IDENTITY#email#pool@xczimi.com` row exists (i.e. `RESULT_USER_EMAIL` is set to
+  that email and the table is seeded). Otherwise the viewer is
+  `AuthenticatedUnclaimed` and `CurrentPlayer::require` rejects every mutation.
+- **The result-user cannot own a pool** (POOL-12). So the admin can mint
+  *referral* invites (`createInvite(pool: None)`) and `invite`, but the **first
+  invited human** is who creates the pool — that's the bootstrap path.
+
 ## Related
 
 - Pairs with [[dev-deploy-clock-and-auth]] — the dev deployment still needs a
