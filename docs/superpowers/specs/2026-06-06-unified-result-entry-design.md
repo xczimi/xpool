@@ -10,13 +10,15 @@ The result user (the official/admin `Player` with `is_result_user = true`, whose
 My Tips form players use to enter predictions** — no separate admin Results
 screen.
 
-The key realisation: **kickoff already implicitly locks an entered result**, the
-same way it locks a prediction (`effective_locked = locked || (now > deadline &&
-complete)`). Because official results are always entered *after* the match, a
-result is effective-locked the moment it is entered — so the scoring/display
-rules become **symmetric** between predictions and results, with **no
-`is_result_user` special case**. The only genuine special-casing is on the
-**write** path:
+The key realisation: **the prediction deadline already implicitly locks an
+entered result**, the same way it locks a prediction (`effective_locked = locked
+|| (now > deadline && complete)`). That `deadline` is the **group's deadline —
+the earliest kickoff in the group, not each game's own kickoff** (`Tournament::
+deadline`); it applies uniformly to every game in the group. Because official
+results are always entered *after* the match (hence past that deadline), a result
+is effective-locked the moment it is entered — so the scoring/display rules
+become **symmetric** between predictions and results, with **no `is_result_user`
+special case**. The only genuine special-casing is on the **write** path:
 
 1. **Time** — the result user is not blocked by a group's deadline (they enter
    results *after* matches conclude, i.e. after the deadline has passed).
@@ -71,8 +73,9 @@ result user, because:
 ### 1. Scoring (domain) — results are effective-locked, symmetric with predictions
 
 In `score_leaf_group` (`crates/domain/src/scoring.rs`), the **result side** uses
-`effective_locked` exactly as the prediction side already does — kickoff/deadline
-implicitly locks an entered result. **No `is_result_user` branch.**
+`effective_locked` exactly as the prediction side already does — the group
+deadline (earliest kickoff in the group, not each game's own kickoff) implicitly
+locks an entered result. **No `is_result_user` branch.**
 
 ```rust
 // Per-match — was: if !result_mp.locked { continue; }

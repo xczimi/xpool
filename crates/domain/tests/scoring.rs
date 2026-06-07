@@ -770,7 +770,9 @@ fn score_tournament_auto_locked_after_deadline() {
 fn score_tournament_unlocked_result_before_deadline_scores_zero() {
     let c = default_config();
     let t = make_tournament_single_group("g", Round::GroupStage, "m1", "A", "B");
-    // Game kickoff (= deadline) is 2026-06-01 12:00 (from make_single_game).
+    // Single-game group, so the group deadline = this game's kickoff =
+    // 2026-06-01 12:00 (from make_single_game). In a multi-game group the
+    // deadline would be the group's *earliest* kickoff, not each game's own.
     let now = Utc.with_ymd_and_hms(2026, 5, 1, 0, 0, 0).unwrap(); // before
 
     let pred_player = make_player(
