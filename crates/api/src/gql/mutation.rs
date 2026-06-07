@@ -221,13 +221,15 @@ impl MutationRoot {
         }
 
         // Issue 01 — the group's deadline is final: no edits once it passes.
-        // Issue 27 — the boundary is strict `>`: the deadline instant itself
-        // is still open, matching `effective_locked` and `deadline_passed`.
-        if let Some(deadline) = tournament.deadline(&group_id) {
-            if now(ctx) > deadline {
-                return Err(async_graphql::Error::new(format!(
-                    "group `{group_id}` deadline has passed; predictions are final"
-                )));
+        // Issue 27 — the boundary is strict `>`. The result user is exempt:
+        // official results are entered *after* the match (unified result entry).
+        if !viewer.is_result_user {
+            if let Some(deadline) = tournament.deadline(&group_id) {
+                if now(ctx) > deadline {
+                    return Err(async_graphql::Error::new(format!(
+                        "group `{group_id}` deadline has passed; predictions are final"
+                    )));
+                }
             }
         }
 
@@ -275,7 +277,20 @@ impl MutationRoot {
                 lock,
             )?;
             match repo.put_player(&next).await {
-                Ok(()) => return Ok(Player::from(&next)),
+                Ok(()) => {
+                    // The result user's predictions ARE the official results, so
+                    // a save recomputes the materialised scoreboard + bracket on
+                    // write. Best-effort: a failure is logged, not fatal (the
+                    // `recompute` mutation self-heals) — matching enter_result.
+                    if viewer.is_result_user {
+                        if let Err(e) = recompute(repo.as_ref(), now(ctx)).await {
+                            tracing::error!(
+                                "recompute after result-user submit_group failed: {e}"
+                            );
+                        }
+                    }
+                    return Ok(Player::from(&next));
+                }
                 Err(e) if attempt == 0 => {
                     tracing::warn!("submit_group conflict, retrying: {e}");
                     current = repo

@@ -329,6 +329,64 @@ async fn submit_group_lock_succeeds_with_all_games() {
     assert!(resp.errors.is_empty(), "{:?}", resp.errors);
 }
 
+// ── result user enters results via submitGroup (unified result entry) ────────
+
+#[tokio::test]
+async fn submit_group_as_result_user_allowed_after_deadline_and_recomputes() {
+    // Group A kicked off 2h ago — its deadline has passed for everyone.
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    // Alice predicts M1 = 2-1 (locked) → an official 2-1 is a perfect (4 pts).
+    {
+        let mut alice = repo.get_player(ALICE).await.unwrap().unwrap();
+        alice.match_predictions.push(locked_pred(GAME_1, 2, 1));
+        repo.put_player(&alice).await.unwrap();
+    }
+    // The result user submits the official Group A results as an ordinary
+    // (unlocked) draft — allowed despite the passed deadline.
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [
+            { "gameId": GAME_1, "homeScore": 2, "awayScore": 1 },
+            { "gameId": GAME_2, "homeScore": 0, "awayScore": 0 }
+        ],
+        "lock": false
+    }));
+    let resp = run(&repo, SUBMIT, vars, Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "result user may submit post-deadline: {:?}", resp.errors);
+
+    // The save recomputed the scoreboard on write: Alice scored 4.
+    let board = repo.get_scoreboard().await.unwrap().expect("scoreboard written");
+    let total: i64 = board.entries.get(ALICE).expect("Alice on scoreboard").values().sum();
+    assert_eq!(total, 4, "exact 2-1 official result = 4 points");
+    assert!(!board.entries.contains_key(RESULT_ID), "result user not scored against itself");
+}
+
+#[tokio::test]
+async fn submit_group_as_result_user_can_recorrect_an_unlocked_result() {
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    {
+        let mut alice = repo.get_player(ALICE).await.unwrap().unwrap();
+        alice.match_predictions.push(locked_pred(GAME_1, 3, 0));
+        repo.put_player(&alice).await.unwrap();
+    }
+    let entry = |h, a| {
+        Variables::from_json(json!({
+            "g": GROUP_A,
+            "p": [{ "gameId": GAME_1, "homeScore": h, "awayScore": a }],
+            "lock": false
+        }))
+    };
+    // First (wrong) entry, then a correction — both accepted, no unlock step.
+    assert!(run(&repo, SUBMIT, entry(0, 0), Some(RESULT_ID)).await.errors.is_empty());
+    let resp = run(&repo, SUBMIT, entry(3, 0), Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "correction accepted: {:?}", resp.errors);
+
+    // Scoreboard reflects the corrected 3-0 (Alice predicted 3-0 → perfect = 4).
+    let board = repo.get_scoreboard().await.unwrap().expect("scoreboard written");
+    let total: i64 = board.entries.get(ALICE).unwrap().values().sum();
+    assert_eq!(total, 4);
+}
+
 // ── Issue 15: out-of-range scores are rejected, not clamped ──────────────────
 
 #[tokio::test]
