@@ -5,7 +5,7 @@ import { RESULTS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
 import type { MatchPrediction, Tournament } from '../graphql/types'
 import { ErrorView, Loading } from '../components/StatusViews'
 import { byKickoff, formatKickoff, teamIndex } from '../lib/format'
-import { TeamLabel } from '../components/TeamLabel'
+import { Matchup } from '../components/TeamLabel'
 import { roundLabel } from '../lib/rounds'
 
 /** Full fixture list, grouped by tournament group (UC-12). Public, read-only. */
@@ -81,8 +81,7 @@ export function SchedulePage() {
                     <tr key={m.id}>
                       <td>{formatKickoff(m.kickoff, locale)}</td>
                       <td>
-                        <TeamLabel slot={m.home} teams={teams} /> –{' '}
-                        <TeamLabel slot={m.away} teams={teams} />
+                        <Matchup home={m.home} away={m.away} teams={teams} />
                       </td>
                       <td>{m.venue ?? '—'}</td>
                       <td>{r ? `${r.homeScore}–${r.awayScore}` : '—'}</td>

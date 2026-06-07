@@ -15,7 +15,7 @@ import type {
 } from '../../graphql/types'
 import { ErrorView, Loading } from '../../components/StatusViews'
 import { byKickoff, formatKickoff, teamIndex } from '../../lib/format'
-import { TeamLabel } from '../../components/TeamLabel'
+import { Matchup } from '../../components/TeamLabel'
 
 /** Valid score values, 0–9 (matches GroupTipForm — legacy range). */
 const SCORE_OPTIONS = Array.from({ length: 10 }, (_, i) => i)
@@ -137,12 +137,7 @@ export function AdminResults() {
               <ResultRow
                 key={game.id}
                 gameId={game.id}
-                label={
-                  <>
-                    <TeamLabel slot={game.home} teams={teams} /> –{' '}
-                    <TeamLabel slot={game.away} teams={teams} />
-                  </>
-                }
+                label={<Matchup home={game.home} away={game.away} teams={teams} />}
                 kickoff={formatKickoff(game.kickoff, locale)}
                 initialHome={official?.homeScore ?? null}
                 initialAway={official?.awayScore ?? null}

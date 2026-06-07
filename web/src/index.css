@@ -767,6 +767,24 @@ button.danger:hover:not(:disabled) {
   border: 1px solid var(--bg-card-border);
 }
 
+/* Scoreboard matchup: home hugs the centre dash from the right, away from the
+   left, dash in a fixed centre column so dashes line up down a table column. */
+.matchup {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 6px;
+}
+.matchup-home {
+  justify-self: end;
+}
+.matchup-away {
+  justify-self: start;
+}
+.matchup-sep {
+  text-align: center;
+}
+
 /* Header: keep the two selectors side by side. */
 .header-controls {
   display: flex;

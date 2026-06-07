@@ -12,7 +12,7 @@ import {
   applyDrawOrder,
   computeStandings,
 } from '../../lib/standings'
-import { TeamLabel } from '../../components/TeamLabel'
+import { Matchup } from '../../components/TeamLabel'
 import { StandingsTable, PredictedStandingsEditor } from './StandingsTables'
 
 interface PredictionInput {
@@ -210,8 +210,7 @@ export function GroupTipForm({
             return (
               <tr key={game.id}>
                 <td>
-                  <TeamLabel slot={game.home} teams={teams} /> –{' '}
-                  <TeamLabel slot={game.away} teams={teams} />
+                  <Matchup home={game.home} away={game.away} teams={teams} />
                 </td>
                 <td className="score-cell">
                   <ScoreInput

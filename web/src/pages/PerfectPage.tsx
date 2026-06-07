@@ -5,7 +5,7 @@ import { PERFECTS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
 import type { Perfect, Tournament } from '../graphql/types'
 import { ErrorView, Loading } from '../components/StatusViews'
 import { teamIndex } from '../lib/format'
-import { TeamLabel } from '../components/TeamLabel'
+import { Matchup } from '../components/TeamLabel'
 
 /** Players who scored a maximum (4-point) match prediction (UC-10). Public. */
 export function PerfectPage() {
@@ -25,13 +25,7 @@ export function PerfectPage() {
   const gameLabel = useMemo(() => {
     const map = new Map<string, ReactNode>()
     for (const g of tournament?.games ?? []) {
-      map.set(
-        g.id,
-        <>
-          <TeamLabel slot={g.home} teams={teams} /> –{' '}
-          <TeamLabel slot={g.away} teams={teams} />
-        </>,
-      )
+      map.set(g.id, <Matchup home={g.home} away={g.away} teams={teams} />)
     }
     return map
   }, [tournament, teams])
