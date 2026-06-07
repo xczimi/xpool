@@ -63,6 +63,13 @@ mutation($g: ID!, $p: [MatchPredictionInput!]!, $lock: Boolean!) {
   }
 }"#;
 
+const SUBMIT_WITH_STANDINGS: &str = r#"
+mutation($g: ID!, $p: [MatchPredictionInput!]!, $s: StandingsInput, $lock: Boolean!) {
+  submitGroup(groupId: $g, predictions: $p, standings: $s, lock: $lock) {
+    id
+  }
+}"#;
+
 #[tokio::test]
 async fn submit_group_saves_draft() {
     let repo = seeded_repo(Duration::hours(24)).await;
@@ -387,6 +394,42 @@ async fn submit_group_as_result_user_can_recorrect_an_unlocked_result() {
     assert_eq!(total, 4);
 }
 
+#[tokio::test]
+async fn submit_group_result_user_resolves_drawn_knockout_advancer() {
+    let repo = seeded_repo_with_knockout(Duration::hours(-2)).await;
+
+    // Group A official results: MEX wins M1 3-0, KOR wins M2 1-0 → 1A=MEX, 2A=KOR.
+    let ga = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [
+            { "gameId": GAME_1, "homeScore": 3, "awayScore": 0 },
+            { "gameId": GAME_2, "homeScore": 1, "awayScore": 0 }
+        ],
+        "lock": false
+    }));
+    assert!(run(&repo, SUBMIT, ga, Some(RESULT_ID)).await.errors.is_empty());
+
+    // GAME_KO ends level 1-1; KOR advances — expressed as the standings ordering
+    // [KOR, MEX] for the one-match knockout group (the draw-order UI's output).
+    let ko = Variables::from_json(json!({
+        "g": GROUP_KO,
+        "p": [{ "gameId": GAME_KO, "homeScore": 1, "awayScore": 1 }],
+        "s": { "ordering": ["KOR", "MEX"], "drawOrder": [] },
+        "lock": false
+    }));
+    let resp = run(&repo, SUBMIT_WITH_STANDINGS, ko, Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+
+    // Bracket resolved on write: the downstream R16 home slot is the advancer.
+    let t = repo.get_tournament().await.unwrap().unwrap();
+    let next = t.games.get(GAME_KO_NEXT).unwrap();
+    assert_eq!(
+        next.home.team_id.as_deref(),
+        Some("KOR"),
+        "the drawn knockout advanced KOR, not the home team MEX"
+    );
+}
+
 // ── Issue 15: out-of-range scores are rejected, not clamped ──────────────────
 
 #[tokio::test]
@@ -597,27 +640,19 @@ async fn scoreboard_query_reflects_recompute() {
         alice.match_predictions.push(locked_pred(GAME_1, 1, 0));
         repo.put_player(&alice).await.unwrap();
     }
-    // Admin enters a result that gives Alice the correct outcome only (2 pts).
-    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 3, "a": 0, "lock": true }));
-    run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
+    // Result user enters M1 = 3-0 → Alice (1-0) gets outcome+away-exact = 3 pts.
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [{ "gameId": GAME_1, "homeScore": 3, "awayScore": 0 }],
+        "lock": false
+    }));
+    run(&repo, SUBMIT, vars, Some(RESULT_ID)).await;
 
-    let resp = run(
-        &repo,
-        "{ scoreboard { playerId total } }",
-        Variables::default(),
-        None,
-    )
-    .await;
+    let resp = run(&repo, "{ scoreboard { playerId total } }", Variables::default(), None).await;
     assert!(resp.errors.is_empty(), "{:?}", resp.errors);
     let d = data(&resp);
-    let alice_row = d["scoreboard"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|r| r["playerId"] == "alice")
-        .unwrap()
-        .clone();
-    // 1-0 vs 3-0: home exact? no. away exact (0==0)? yes (+1). outcome (home win) yes (+2). = 3.
+    let alice_row = d["scoreboard"].as_array().unwrap().iter()
+        .find(|r| r["playerId"] == "alice").unwrap().clone();
     assert_eq!(alice_row["total"], 3);
 }
 
