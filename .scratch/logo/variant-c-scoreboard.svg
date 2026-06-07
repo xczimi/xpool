@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="256" height="256" shape-rendering="crispEdges">
+  <!-- Variant C — SCOREBOARD LED.
+       Reference: Wembley scoreboard / ESPN early-years '80s graphics / Ceefax sports.
+       Dark stadium display, amber LED dot-matrix X with status indicator dot.
+       Implied app language: dark UI, amber-on-black numeric displays for scores,
+       monospaced digit font (Silkscreen / DSEG), green/red status dots throughout. -->
+  <defs>
+    <clipPath id="disc-c"><circle cx="24" cy="24" r="22"/></clipPath>
+    <radialGradient id="led" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%"  stop-color="#ffd76a"/>
+      <stop offset="55%" stop-color="#ff8c00"/>
+      <stop offset="100%" stop-color="#a04400"/>
+    </radialGradient>
+    <filter id="led-glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="0.8"/>
+    </filter>
+  </defs>
+
+  <!-- near-black scoreboard disc -->
+  <circle cx="24" cy="24" r="22" fill="#0a0a14"/>
+
+  <!-- faint amber dot-matrix grid (unlit pixels) -->
+  <g clip-path="url(#disc-c)" fill="#2a1a08">
+    <g>
+      <rect x="6"  y="6"  width="1.5" height="1.5"/>
+      <rect x="12" y="6"  width="1.5" height="1.5"/>
+      <rect x="18" y="6"  width="1.5" height="1.5"/>
+      <rect x="24" y="6"  width="1.5" height="1.5"/>
+      <rect x="30" y="6"  width="1.5" height="1.5"/>
+      <rect x="36" y="6"  width="1.5" height="1.5"/>
+      <rect x="42" y="6"  width="1.5" height="1.5"/>
+    </g>
+    <g>
+      <rect x="6"  y="12" width="1.5" height="1.5"/>
+      <rect x="12" y="12" width="1.5" height="1.5"/>
+      <rect x="18" y="12" width="1.5" height="1.5"/>
+      <rect x="24" y="12" width="1.5" height="1.5"/>
+      <rect x="30" y="12" width="1.5" height="1.5"/>
+      <rect x="36" y="12" width="1.5" height="1.5"/>
+      <rect x="42" y="12" width="1.5" height="1.5"/>
+    </g>
+    <g>
+      <rect x="6"  y="18" width="1.5" height="1.5"/>
+      <rect x="12" y="18" width="1.5" height="1.5"/>
+      <rect x="18" y="18" width="1.5" height="1.5"/>
+      <rect x="24" y="18" width="1.5" height="1.5"/>
+      <rect x="30" y="18" width="1.5" height="1.5"/>
+      <rect x="36" y="18" width="1.5" height="1.5"/>
+      <rect x="42" y="18" width="1.5" height="1.5"/>
+    </g>
+    <g>
+      <rect x="6"  y="24" width="1.5" height="1.5"/>
+      <rect x="12" y="24" width="1.5" height="1.5"/>
+      <rect x="18" y="24" width="1.5" height="1.5"/>
+      <rect x="24" y="24" width="1.5" height="1.5"/>
+      <rect x="30" y="24" width="1.5" height="1.5"/>
+      <rect x="36" y="24" width="1.5" height="1.5"/>
+      <rect x="42" y="24" width="1.5" height="1.5"/>
+    </g>
+    <g>
+      <rect x="6"  y="30" width="1.5" height="1.5"/>
+      <rect x="12" y="30" width="1.5" height="1.5"/>
+      <rect x="18" y="30" width="1.5" height="1.5"/>
+      <rect x="24" y="30" width="1.5" height="1.5"/>
+      <rect x="30" y="30" width="1.5" height="1.5"/>
+      <rect x="36" y="30" width="1.5" height="1.5"/>
+      <rect x="42" y="30" width="1.5" height="1.5"/>
+    </g>
+    <g>
+      <rect x="6"  y="36" width="1.5" height="1.5"/>
+      <rect x="12" y="36" width="1.5" height="1.5"/>
+      <rect x="18" y="36" width="1.5" height="1.5"/>
+      <rect x="24" y="36" width="1.5" height="1.5"/>
+      <rect x="30" y="36" width="1.5" height="1.5"/>
+      <rect x="36" y="36" width="1.5" height="1.5"/>
+      <rect x="42" y="36" width="1.5" height="1.5"/>
+    </g>
+    <g>
+      <rect x="6"  y="42" width="1.5" height="1.5"/>
+      <rect x="12" y="42" width="1.5" height="1.5"/>
+      <rect x="18" y="42" width="1.5" height="1.5"/>
+      <rect x="24" y="42" width="1.5" height="1.5"/>
+      <rect x="30" y="42" width="1.5" height="1.5"/>
+      <rect x="36" y="42" width="1.5" height="1.5"/>
+      <rect x="42" y="42" width="1.5" height="1.5"/>
+    </g>
+  </g>
+
+  <!-- faint amber rim (scoreboard bezel) -->
+  <circle cx="24" cy="24" r="22" fill="none" stroke="#a04400" stroke-width="1.2"/>
+
+  <!-- X built from glowing amber LED dots, brightest at the center -->
+  <g fill="url(#led)" filter="url(#led-glow)">
+    <circle cx="13" cy="13" r="2.0"/>
+    <circle cx="17" cy="17" r="2.0"/>
+    <circle cx="21" cy="21" r="2.2"/>
+    <circle cx="24" cy="24" r="2.6"/>
+    <circle cx="27" cy="27" r="2.2"/>
+    <circle cx="31" cy="31" r="2.0"/>
+    <circle cx="35" cy="35" r="2.0"/>
+    <circle cx="35" cy="13" r="2.0"/>
+    <circle cx="31" cy="17" r="2.0"/>
+    <circle cx="27" cy="21" r="2.2"/>
+    <circle cx="21" cy="27" r="2.2"/>
+    <circle cx="17" cy="31" r="2.0"/>
+    <circle cx="13" cy="35" r="2.0"/>
+  </g>
+
+  <!-- green "match live" status indicator at the bottom -->
+  <circle cx="24" cy="40" r="1.4" fill="#33ff66"/>
+</svg>
