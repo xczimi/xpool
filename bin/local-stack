@@ -13,6 +13,11 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$HERE/lib.sh"
 
+# Pin the Compose project so every checkout (main, worktrees, e2e) shares ONE
+# DynamoDB/MailHog container regardless of the cwd basename — otherwise running
+# from a worktree dir spins a second stack that collides on :8000.
+export COMPOSE_PROJECT_NAME=xpool
+
 RESEED=0
 [ "${1:-}" = "--reseed" ] && RESEED=1
 

@@ -58,11 +58,13 @@ Seeded dev players: `result-user` (the admin / official results), `demo-ada`,
 
 ### tmux dev session & worktree switching
 
-`bin/tmux` brings the whole stack up in a tmux session named `xpool` (docker +
-bootstrap import/seed, then panes: `claude` left; `docker` / `api` / `web` right)
-and re-attaches on later runs. Each pane is tagged with a stable `@role` marker
-(`claude`/`docker`/`api`/`web`) shown on its border. See
-`docs/superpowers/specs/2026-05-18-tmux-restarter-design.md`.
+`bin/tmux` is an idempotent, self-healing dev session named `xpool`. It brings
+infra (DynamoDB + MailHog) up and seeds the branch's table via `bin/local-stack`,
+then lays out four panes: `claude` left; `api` / `web` / `shell` right. Re-running
+recreates any pane you closed and restarts a crashed or drifted server without
+touching healthy ones. Each pane is tagged with a stable `@role` marker
+(`claude`/`api`/`web`/`shell`) shown on its border. See
+`docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md`.
 
 `bin/tmux <worktree>` repoints the running session's `api` + `web` servers at a
 git worktree without touching docker/DynamoDB (it's the same idempotent command
@@ -81,8 +83,10 @@ not pane titles — the prompt overwrites them) and stops the old stack by **por
 `target/` — `bin/tmux` deliberately does *not* share `CARGO_TARGET_DIR`, because
 a shared target lets cargo serve an `api`/`web` binary built from a different
 worktree (same package id), so you'd unknowingly run code that isn't in the
-worktree you switched to. The api launches with `LOCAL_AUTH_ISSUER=1` (a worktree
-has no `.env` in its own dir, so the dev-login route is enabled explicitly).
+worktree you switched to. The api reads its config (`LOCAL_AUTH_ISSUER`, secrets, etc.) from the main
+checkout's `.env` via dotenvy's parent-dir walk-up — a worktree under
+`.claude/worktrees/` reaches `$PROJECT/.env`, so the dev-login route works there
+with no per-worktree `.env`; `bin/run-api` overrides only `XPOOL_TABLE`.
 Each branch now uses its own `xpool-<branch>` table, seeded on first use, so
 switching branches no longer risks stale data; `bin/tmux --reseed` forces a
 rebuild after an in-place schema change. DynamoDB is shared in-memory state and

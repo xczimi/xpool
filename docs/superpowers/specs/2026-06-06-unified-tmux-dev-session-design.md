@@ -126,6 +126,7 @@ then exits. Knows nothing about tmux or about which checkout — the caller sets
 ```
 bin/local-stack [--reseed]
   source bin/lib.sh
+  export COMPOSE_PROJECT_NAME=xpool         # one shared container for all checkouts
   docker compose up -d                      # idempotent; no-op if up
   wait_for_port 8000
   if --reseed: xtask drop-table
@@ -296,7 +297,9 @@ Shell tooling — verified by exercising the real scenarios manually:
 2. **Close a pane + rerun** → only the closed pane recreated; servers untouched.
 3. **Crash api + rerun** → dead `:3000` detected, api restarted; web untouched.
 4. **`bin/tmux <worktree>` jump** → api/web repointed/restarted at the worktree
-   against `xpool-<that-branch>`; docker untouched; `@target`/`@branch` updated.
+   against `xpool-<that-branch>`; **the same single DynamoDB container is reused**
+   (Compose project pinned to `xpool`, no second stack on :8000); `@target`/
+   `@branch` updated.
 5. **Checkout a different branch in place + rerun** → `@branch` mismatch →
    api/web restart, api on the new branch's table.
 6. **Docker restart → rerun** → empty table detected, auto-reseed.
