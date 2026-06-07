@@ -1,9 +1,9 @@
 //! The GraphQL mutation root (`API.md` §5).
 //!
 //! `submitGroup` saves/locks a whole group's predictions onto the player item
-//! with optimistic concurrency (retry once on conflict). The `enterResult`
-//! admin mutation requires the result user and triggers the wholesale
-//! post-result recompute.
+//! with optimistic concurrency (retry once on conflict). When the result user
+//! submits, their predictions are the official results, so the save triggers
+//! the wholesale post-result recompute. `recompute` re-runs it on demand.
 
 use crate::auth::invite_code::{decode_invite, encode_invite, InvitePayload, UsePolicy};
 use crate::auth::CurrentPlayer;
@@ -281,7 +281,7 @@ impl MutationRoot {
                     // The result user's predictions ARE the official results, so
                     // a save recomputes the materialised scoreboard + bracket on
                     // write. Best-effort: a failure is logged, not fatal (the
-                    // `recompute` mutation self-heals) — matching enter_result.
+                    // `recompute` mutation self-heals).
                     if viewer.is_result_user {
                         if let Err(e) = recompute(repo.as_ref(), now(ctx)).await {
                             tracing::error!(
@@ -475,147 +475,6 @@ impl MutationRoot {
             ..invitee
         };
         repo.put_player(&updated).await?;
-        Ok(true)
-    }
-
-    /// Admin: enter (or correct) a result, then run the post-result recompute.
-    /// `advancer` is the team id that progresses on a knockout draw.
-    ///
-    /// Issue 02 — a result that is already `locked` cannot be overwritten here;
-    /// correcting one is a deliberate `unlockResult` → `enterResult` sequence
-    /// (ADMIN-06). Issue 18 — the result is always persisted; if the wholesale
-    /// recompute fails the mutation still succeeds with `recomputePending:
-    /// true` rather than erroring, and the `recompute` mutation self-heals.
-    async fn enter_result(
-        &self,
-        ctx: &Context<'_>,
-        game_id: String,
-        home_score: i32,
-        away_score: i32,
-        advancer: Option<String>,
-        lock: bool,
-    ) -> async_graphql::Result<ResultEntered> {
-        let admin = CurrentPlayer::require_admin(ctx)?;
-        let repo = repo(ctx);
-
-        // Re-read the result user for the freshest version.
-        let mut result_user = repo
-            .get_player(&admin.id)
-            .await?
-            .ok_or_else(|| async_graphql::Error::new("result user not found"))?;
-
-        // Issue 02 — refuse to silently rewrite a locked official result.
-        if result_user
-            .match_predictions
-            .iter()
-            .any(|p| p.game_id == game_id && p.locked)
-        {
-            return Err(async_graphql::Error::new(format!(
-                "result for `{game_id}` is locked; call `unlockResult` before re-entering it"
-            )));
-        }
-
-        // Issue 24 — when an `advancer` is supplied, persist it as a
-        // `StandingsPrediction` on the result user for the game's one-match
-        // knockout group. `fwc26::determine_winner_loser` reads `ordering[0]`
-        // as the advancer when a knockout match ends level.
-        let advancer_standings = if let Some(advancer) = &advancer {
-            let tournament = repo
-                .get_tournament()
-                .await?
-                .ok_or_else(|| async_graphql::Error::new("no tournament loaded"))?;
-            let game = tournament
-                .games
-                .get(&game_id)
-                .ok_or_else(|| async_graphql::Error::new(format!("game `{game_id}` not found")))?;
-            let home_team = game.home.team_id.clone().ok_or_else(|| {
-                async_graphql::Error::new(format!(
-                    "game `{game_id}` has no home team yet — cannot record an advancer"
-                ))
-            })?;
-            let away_team = game.away.team_id.clone().ok_or_else(|| {
-                async_graphql::Error::new(format!(
-                    "game `{game_id}` has no away team yet — cannot record an advancer"
-                ))
-            })?;
-            if *advancer != home_team && *advancer != away_team {
-                return Err(async_graphql::Error::new(format!(
-                    "advancer `{advancer}` is not one of `{game_id}`'s teams (`{home_team}` / `{away_team}`)"
-                )));
-            }
-            // `ordering[0]` is the advancer; the other team follows.
-            let other = if *advancer == home_team {
-                away_team
-            } else {
-                home_team
-            };
-            Some(DomainStandingsPrediction {
-                group_id: game.group_id.clone(),
-                ordering: vec![advancer.clone(), other],
-                draw_order: Vec::new(),
-                locked: lock,
-            })
-        } else {
-            None
-        };
-
-        let new_prediction = MatchPrediction {
-            game_id: game_id.clone(),
-            home_score: validate_score("home", home_score)?,
-            away_score: validate_score("away", away_score)?,
-            locked: lock,
-        };
-        result_user
-            .match_predictions
-            .retain(|p| p.game_id != game_id);
-        result_user.match_predictions.push(new_prediction);
-        if let Some(standings) = advancer_standings {
-            result_user
-                .standings_predictions
-                .retain(|s| s.group_id != standings.group_id);
-            result_user.standings_predictions.push(standings);
-        }
-        repo.put_player(&result_user).await?;
-
-        // Wholesale recompute: scoreboard + bracket resolution. The result is
-        // already persisted, so a recompute failure is non-fatal — it is
-        // reported as a pending state for the admin to retry via `recompute`.
-        let recompute_pending = match recompute(repo.as_ref(), now(ctx)).await {
-            Ok(()) => false,
-            Err(e) => {
-                tracing::error!("recompute after enter_result failed: {e}");
-                true
-            }
-        };
-        Ok(ResultEntered { recompute_pending })
-    }
-
-    /// Admin: unlock an official result so it can be re-entered (Issue 02).
-    /// A **bare state flip** — it clears `locked` on the result user's
-    /// prediction and does *not* recompute; the scoreboard is briefly stale
-    /// until the follow-up `enterResult`.
-    async fn unlock_result(
-        &self,
-        ctx: &Context<'_>,
-        game_id: String,
-    ) -> async_graphql::Result<bool> {
-        let admin = CurrentPlayer::require_admin(ctx)?;
-        let repo = repo(ctx);
-
-        let mut result_user = repo
-            .get_player(&admin.id)
-            .await?
-            .ok_or_else(|| async_graphql::Error::new("result user not found"))?;
-
-        let prediction = result_user
-            .match_predictions
-            .iter_mut()
-            .find(|p| p.game_id == game_id)
-            .ok_or_else(|| {
-                async_graphql::Error::new(format!("no official result for `{game_id}`"))
-            })?;
-        prediction.locked = false;
-        repo.put_player(&result_user).await?;
         Ok(true)
     }
 

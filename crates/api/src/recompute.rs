@@ -1,6 +1,6 @@
 //! The post-result hook (`SCORING.md` §8, `DATA_SOURCES.md` §5).
 //!
-//! After `enterResult` mutates the result user's predictions, the whole
+//! After the result user's `submitGroup` mutates their predictions, the whole
 //! derived state is rebuilt wholesale — no per-node cache, no invalidation
 //! cascade:
 //!
