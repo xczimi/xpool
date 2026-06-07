@@ -743,14 +743,14 @@ async fn enter_result_rejects_an_advancer_not_in_the_match() {
 // ── results query ────────────────────────────────────────────────────────────
 
 #[tokio::test]
-async fn results_returns_only_locked_result_user_predictions() {
+async fn results_returns_entered_result_user_predictions() {
     let repo = seeded_repo(Duration::hours(-2)).await;
-    // Result user has one locked and one unlocked prediction.
+    // Result user has one locked and one unlocked entered result.
     {
         let mut result = repo.get_player(RESULT_ID).await.unwrap().unwrap();
         result.match_predictions.push(locked_pred(GAME_1, 2, 1)); // locked
         let mut draft = locked_pred(GAME_2, 0, 0);
-        draft.locked = false; // unlocked
+        draft.locked = false; // unlocked, but still an entered official result
         result.match_predictions.push(draft);
         repo.put_player(&result).await.unwrap();
     }
@@ -764,10 +764,7 @@ async fn results_returns_only_locked_result_user_predictions() {
     assert!(resp.errors.is_empty(), "{:?}", resp.errors);
     let d = data(&resp);
     let results = d["results"].as_array().unwrap();
-    assert_eq!(results.len(), 1, "only the locked prediction is returned");
-    assert_eq!(results[0]["gameId"], GAME_1);
-    assert_eq!(results[0]["homeScore"], 2);
-    assert_eq!(results[0]["locked"], json!(true));
+    assert_eq!(results.len(), 2, "both entered results are returned");
 }
 
 #[tokio::test]
