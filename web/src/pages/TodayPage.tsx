@@ -11,7 +11,8 @@ import type {
 import { ErrorView, Loading } from '../components/StatusViews'
 import { usePolledQuery } from '../lib/usePolledQuery'
 import { pollIntervalMs } from '../lib/polling'
-import { byKickoff, formatKickoff, slotLabel, teamIndex } from '../lib/format'
+import { byKickoff, formatKickoff, teamIndex } from '../lib/format'
+import { Matchup } from '../components/TeamLabel'
 
 /**
  * Today / Fresh — a flat list of matches within ~±2 days of now (UC-11).
@@ -102,7 +103,7 @@ export function TodayPage() {
           <thead>
             <tr>
               <th>{t('kickoff')}</th>
-              <th>{t('match')}</th>
+              <th className="col-match">{t('match')}</th>
               <th>{t('result')}</th>
               {label && <th>{t('yourTip')}</th>}
             </tr>
@@ -114,7 +115,7 @@ export function TodayPage() {
                 <tr key={m.id}>
                   <td>{formatKickoff(m.kickoff, locale)}</td>
                   <td>
-                    {slotLabel(m.home, teams)} – {slotLabel(m.away, teams)}
+                    <Matchup home={m.home} away={m.away} teams={teams} />
                   </td>
                   <td>
                     {(() => {

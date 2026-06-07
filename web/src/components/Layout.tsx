@@ -6,6 +6,7 @@ import { ME_QUERY } from '../graphql/queries'
 import type { Me } from '../graphql/types'
 import { AuthBar } from './AuthBar'
 import { BrandIcon } from './BrandIcon'
+import { DisplayModeSelector } from './DisplayModeSelector'
 import { LanguageSelector } from './LanguageSelector'
 import { NavBar } from './NavBar'
 import { UnclaimedBanner } from './UnclaimedBanner'
@@ -36,7 +37,10 @@ export function Layout() {
             <p className="tagline">{t('tagline')}</p>
           </div>
         </div>
-        <LanguageSelector />
+        <div className="header-controls">
+          <DisplayModeSelector />
+          <LanguageSelector />
+        </div>
       </header>
 
       <AuthBar />

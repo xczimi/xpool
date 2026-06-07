@@ -4,7 +4,8 @@ import { useI18n } from '../i18n/useI18n'
 import { RESULTS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
 import type { MatchPrediction, Tournament } from '../graphql/types'
 import { ErrorView, Loading } from '../components/StatusViews'
-import { byKickoff, formatKickoff, slotLabel, teamIndex } from '../lib/format'
+import { byKickoff, formatKickoff, teamIndex } from '../lib/format'
+import { Matchup } from '../components/TeamLabel'
 import { roundLabel } from '../lib/rounds'
 
 /** Full fixture list, grouped by tournament group (UC-12). Public, read-only. */
@@ -68,7 +69,7 @@ export function SchedulePage() {
               <thead>
                 <tr>
                   <th>{t('kickoff')}</th>
-                  <th>{t('match')}</th>
+                  <th className="col-match">{t('match')}</th>
                   <th>{t('venue')}</th>
                   <th>{t('result')}</th>
                 </tr>
@@ -80,8 +81,7 @@ export function SchedulePage() {
                     <tr key={m.id}>
                       <td>{formatKickoff(m.kickoff, locale)}</td>
                       <td>
-                        {slotLabel(m.home, teams)} –{' '}
-                        {slotLabel(m.away, teams)}
+                        <Matchup home={m.home} away={m.away} teams={teams} />
                       </td>
                       <td>{m.venue ?? '—'}</td>
                       <td>{r ? `${r.homeScore}–${r.awayScore}` : '—'}</td>

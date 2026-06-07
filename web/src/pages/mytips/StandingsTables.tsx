@@ -1,10 +1,7 @@
 import { useI18n } from '../../i18n/useI18n'
 import type { Team } from '../../graphql/types'
 import { type TeamStats, goalDiff } from '../../lib/standings'
-
-function teamName(teamId: string, teams: Map<string, Team>): string {
-  return teams.get(teamId)?.name ?? teamId
-}
+import { TeamLabel } from '../../components/TeamLabel'
 
 /** A read-only standings table. */
 export function StandingsTable({
@@ -33,7 +30,15 @@ export function StandingsTable({
           {rows.map((s, i) => (
             <tr key={s.teamId}>
               <td>{i + 1}</td>
-              <td>{teamName(s.teamId, teams)}</td>
+              <td>
+                <TeamLabel
+                  slot={{
+                    teamId: s.teamId,
+                    description: teams.get(s.teamId)?.name ?? s.teamId,
+                  }}
+                  teams={teams}
+                />
+              </td>
               <td>{s.played}</td>
               <td>{goalDiff(s)}</td>
               <td>{s.points}</td>
@@ -89,7 +94,15 @@ export function PredictedStandingsEditor({
           {rows.map((s, i) => (
             <tr key={s.teamId}>
               <td>{i + 1}</td>
-              <td>{teamName(s.teamId, teams)}</td>
+              <td>
+                <TeamLabel
+                  slot={{
+                    teamId: s.teamId,
+                    description: teams.get(s.teamId)?.name ?? s.teamId,
+                  }}
+                  teams={teams}
+                />
+              </td>
               <td>{s.played}</td>
               <td>{goalDiff(s)}</td>
               <td>{s.points}</td>

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useMutation, useQuery } from 'urql'
 import { useI18n } from '../../i18n/useI18n'
 import {
@@ -14,7 +14,8 @@ import type {
   Tournament,
 } from '../../graphql/types'
 import { ErrorView, Loading } from '../../components/StatusViews'
-import { byKickoff, formatKickoff, slotLabel, teamIndex } from '../../lib/format'
+import { byKickoff, formatKickoff, teamIndex } from '../../lib/format'
+import { Matchup } from '../../components/TeamLabel'
 
 /** Valid score values, 0–9 (matches GroupTipForm — legacy range). */
 const SCORE_OPTIONS = Array.from({ length: 10 }, (_, i) => i)
@@ -124,7 +125,7 @@ export function AdminResults() {
         <thead>
           <tr>
             <th>{t('kickoff')}</th>
-            <th>{t('match')}</th>
+            <th className="col-match">{t('match')}</th>
             <th>{t('result')}</th>
             <th />
           </tr>
@@ -136,10 +137,7 @@ export function AdminResults() {
               <ResultRow
                 key={game.id}
                 gameId={game.id}
-                label={`${slotLabel(game.home, teams)} – ${slotLabel(
-                  game.away,
-                  teams,
-                )}`}
+                label={<Matchup home={game.home} away={game.away} teams={teams} />}
                 kickoff={formatKickoff(game.kickoff, locale)}
                 initialHome={official?.homeScore ?? null}
                 initialAway={official?.awayScore ?? null}
@@ -186,7 +184,7 @@ function ResultRow({
   onUnlock,
 }: {
   gameId: string
-  label: string
+  label: ReactNode
   kickoff: string
   initialHome: number | null
   initialAway: number | null

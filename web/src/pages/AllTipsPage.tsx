@@ -6,7 +6,8 @@ import { TIPS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
 import type { Round, Tip, Tournament } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { RoundNav } from '../components/RoundNav'
-import { byKickoff, slotCode, teamIndex } from '../lib/format'
+import { byKickoff, teamIndex } from '../lib/format'
+import { Matchup } from '../components/TeamLabel'
 import { currentRoundNode, leafGroupsOfRound, roundNodes } from '../lib/rounds'
 
 /**
@@ -125,7 +126,7 @@ export function AllTipsPage() {
                 <th>{t('player')}</th>
                 {games.map((g) => (
                   <th key={g.id}>
-                    {slotCode(g.home, teams)}–{slotCode(g.away, teams)}
+                    <Matchup home={g.home} away={g.away} teams={teams} />
                   </th>
                 ))}
               </tr>

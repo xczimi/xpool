@@ -189,10 +189,17 @@ Decisions that override the existing specs or are non-obvious:
   256-item cache, hardcoded secrets, `NOW` at module load, non-expiring magic
   links, no input validation, Python 2.
 
+> **`Team.flag` holds an ISO-3166-1 alpha-2 country code** (lowercase, e.g.
+> `mx`, `br`; GB subdivisions `gb-eng` / `gb-sct` for England / Scotland), not a
+> flag emoji. The SPA derives the bundled 8-bit flag asset path from it
+> (`/flags/<code>.png`). Placeholder teams with no fixed country keep `flag: null`
+> and degrade to text. See
+> `docs/superpowers/specs/2026-06-06-country-flags-display-mode-design.md`.
+
 ## 12. Open / deferred
 
 - **Auth** — decided. Auth0, fully passwordless. See
   [`docs/superpowers/specs/2026-05-30-auth-design.md`](../docs/superpowers/specs/2026-05-30-auth-design.md).
 - **Pool membership management** — separate concern, not modelled here.
-- **Minor / not yet grilled**: `Team` fields, score-value bounds/validation.
+- **Minor / not yet grilled**: score-value bounds/validation. (`Team.flag` is now clarified in §11.)
 - **Motd** (site-wide banner) was **dropped** — see `SCENARIOS.md` ADMIN-08.

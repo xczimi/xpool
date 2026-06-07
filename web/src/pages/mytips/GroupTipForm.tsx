@@ -7,11 +7,12 @@ import type {
   Player,
   Tournament,
 } from '../../graphql/types'
-import { byKickoff, slotLabel, teamIndex } from '../../lib/format'
+import { byKickoff, teamIndex } from '../../lib/format'
 import {
   applyDrawOrder,
   computeStandings,
 } from '../../lib/standings'
+import { Matchup } from '../../components/TeamLabel'
 import { StandingsTable, PredictedStandingsEditor } from './StandingsTables'
 
 interface PredictionInput {
@@ -197,7 +198,7 @@ export function GroupTipForm({
       <table className="data-table">
         <thead>
           <tr>
-            <th>{t('match')}</th>
+            <th className="col-match">{t('match')}</th>
             <th>{t('prediction')}</th>
             <th>{t('result')}</th>
           </tr>
@@ -209,7 +210,7 @@ export function GroupTipForm({
             return (
               <tr key={game.id}>
                 <td>
-                  {slotLabel(game.home, teams)} – {slotLabel(game.away, teams)}
+                  <Matchup home={game.home} away={game.away} teams={teams} />
                 </td>
                 <td className="score-cell">
                   <ScoreInput
