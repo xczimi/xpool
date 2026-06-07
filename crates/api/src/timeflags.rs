@@ -21,15 +21,15 @@ pub fn deadline_passed(deadline: Option<DateTime<Utc>>, now: DateTime<Utc>) -> b
     deadline.is_some_and(|d| now > d)
 }
 
-/// A match is result-pending: its estimated end has passed and no locked
-/// official result exists yet — this is what drives smart polling.
+/// A match is result-pending: its estimated end has passed and no official
+/// result has been entered yet — this is what drives smart polling.
 pub fn result_pending(
     kickoff: DateTime<Utc>,
     round: Round,
-    has_locked_result: bool,
+    has_result: bool,
     now: DateTime<Utc>,
 ) -> bool {
-    !has_locked_result && now > kickoff + result_buffer(round)
+    !has_result && now > kickoff + result_buffer(round)
 }
 
 /// A match falls within the ±2-day Today window.
@@ -62,7 +62,7 @@ mod tests {
     }
 
     #[test]
-    fn result_pending_false_once_a_result_is_locked() {
+    fn result_pending_false_once_a_result_is_entered() {
         let ko = t("2026-06-20T18:00:00Z");
         assert!(!result_pending(ko, Round::GroupStage, true, t("2026-06-20T23:00:00Z")));
     }

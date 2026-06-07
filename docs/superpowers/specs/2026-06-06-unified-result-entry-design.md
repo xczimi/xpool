@@ -120,6 +120,14 @@ kickoff, which is exactly the effective-lock condition):
 - `perfects` resolver (`query.rs:226-235`) — change `if result.locked &&
   is_perfect(..)` to `if is_perfect(..)`.
 
+Note the read-gates key on **presence** while scoring keys on `effective_locked`
+(presence **and** `now > deadline`). They coincide by assumption — the result
+user only enters a result after kickoff (past the group deadline) — not by an
+enforced lower bound on the write path. If a result were entered *before* the
+group deadline, the UI would show it "in" while the scoreboard scored it 0 until
+the deadline passed; this is operator-error-only and self-corrects, so we accept
+the presence-based gates rather than thread `now`/`deadline` through each resolver.
+
 (The `tips` reveal logic at `query.rs:182-193` is about *player* predictions, not
 results — `is_result_user` players are skipped — so it is unchanged.)
 
