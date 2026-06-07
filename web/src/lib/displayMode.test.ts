@@ -97,6 +97,12 @@ describe('teamLabelParts', () => {
       text: 'Brazil',
     })
   })
+  it('flag-code mode with no flag asset still shows the code', () => {
+    expect(teamLabelParts(braSlot, noFlag, 'flag-code')).toEqual({
+      flag: null,
+      text: 'BRA',
+    })
+  })
   it('unresolved slot shows its placeholder description in every mode', () => {
     const ph = slot({ teamId: null, description: '2A' })
     expect(teamLabelParts(ph, teams, 'flag')).toEqual({ flag: null, text: '2A' })
