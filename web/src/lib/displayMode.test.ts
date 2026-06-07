@@ -108,6 +108,13 @@ describe('teamLabelParts', () => {
     expect(teamLabelParts(ph, teams, 'flag')).toEqual({ flag: null, text: '2A' })
     expect(teamLabelParts(ph, teams, 'name')).toEqual({ flag: null, text: '2A' })
   })
+  it('unresolved slot with empty description falls back to TBD', () => {
+    const empty = slot({ teamId: null, description: '' })
+    expect(teamLabelParts(empty, teams, 'flag')).toEqual({
+      flag: null,
+      text: 'TBD',
+    })
+  })
   it('unknown team id falls back to the id text', () => {
     const unknown = slot({ teamId: 'ZZZ' })
     expect(teamLabelParts(unknown, teams, 'flag-name')).toEqual({

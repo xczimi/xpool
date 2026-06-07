@@ -13,7 +13,7 @@ export type DisplayMode =
 export type ConcreteDisplayMode = Exclude<DisplayMode, 'auto'>
 
 /** Selector options, in display order. */
-export const DISPLAY_MODES: DisplayMode[] = [
+export const DISPLAY_MODES: readonly DisplayMode[] = [
   'auto',
   'flag',
   'code',
@@ -71,8 +71,8 @@ export function teamLabelParts(
 
   // Unresolved slot, or an id we don't know — placeholder/text only.
   if (!team) {
-    const fallback = slot.teamId ?? slot.description ?? 'TBD'
-    return { flag: null, text: fallback || 'TBD' }
+    // First non-empty of: team id, placeholder description, then 'TBD'.
+    return { flag: null, text: slot.teamId || slot.description || 'TBD' }
   }
 
   const wantsFlag = FLAG_MODES.has(mode)
