@@ -2,7 +2,7 @@
 # Launch the dev API for a checkout (foreground). The ONLY env override is
 # XPOOL_TABLE (per-branch). DYNAMO_ENDPOINT, LOCAL_AUTH_ISSUER, AWS_*, and the
 # secrets all come from .env, self-loaded by the api via dotenvy. Default target
-# is the current checkout. Usable by bin/tmux and by hand in the shell pane.
+# is the current checkout. Usable by bin/local-dev and by hand in the shell pane.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$HERE/lib.sh"

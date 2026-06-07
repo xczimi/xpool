@@ -1196,7 +1196,7 @@ cd web && npm run e2e
 ```
 Expected: all specs PASS.
 
-- [ ] **Manual smoke (optional):** `bin/tmux country-flags`, open `:5173`, cycle the **Show** selector through all six modes on `/games`, `/today`, `/alltips`, `/scoreboard`/standings, and `/admin/teams`; confirm flags render as chunky pixel art and the choice sticks across reload.
+- [ ] **Manual smoke (optional):** `bin/local-dev country-flags`, open `:5173`, cycle the **Show** selector through all six modes on `/games`, `/today`, `/alltips`, `/scoreboard`/standings, and `/admin/teams`; confirm flags render as chunky pixel art and the choice sticks across reload.
 
 ---
 

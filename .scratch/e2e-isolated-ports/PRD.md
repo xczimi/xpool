@@ -17,7 +17,7 @@ Today e2e shares the dev stack's fixed ports and even reuses dev's servers:
   `webServer.url: http://localhost:5173`, **`reuseExistingServer: true`** — so
   if your dev Vite server is up, Playwright *hijacks it*.
 - API on `:3000`, DynamoDB on `:8000` — the same ports as `npm run dev` /
-  `bin/tmux` (`:3000` api, `:5173` web, `:8000` DynamoDB).
+  `bin/local-dev` (`:3000` api, `:5173` web, `:8000` DynamoDB).
 - `web/scripts/e2e-stack.sh` "kills stale processes" on boot — so running e2e
   **kills your dev API**, and the suite then mutates shared backend state
   (`fullyParallel: false`, `workers: 1`, because state is shared).
@@ -45,7 +45,7 @@ be able to coexist.
 - Detect a running dev stack and log "running e2e on isolated ports, dev stack
   left untouched" instead of silently fighting over ports.
 - Faster boot: reuse the e2e container across runs when schema is unchanged
-  (the `--reseed`-style escape hatch from `bin/tmux`).
+  (the `--reseed`-style escape hatch from `bin/local-dev`).
 - Revisit whether isolated state per worker could let e2e go parallel
   (`workers > 1`) — currently serial only because state is shared.
 
@@ -55,7 +55,7 @@ be able to coexist.
   on CI / multiple checkouts, but harder to attach a browser to)?
 - Separate DynamoDB Local container vs. just a separate table on the shared
   `:8000` instance?
-- Should `bin/tmux` learn an "e2e" awareness so the two stacks are visibly
+- Should `bin/local-dev` learn an "e2e" awareness so the two stacks are visibly
   distinct?
 
 ## Related

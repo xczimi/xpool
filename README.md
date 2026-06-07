@@ -44,12 +44,12 @@ cd web && npm install && npm run dev
 The SPA proxies `/api` to the server. DynamoDB Local runs in-memory — after a
 container restart, re-run the `import` and `seed` steps.
 
-**One-command session:** `bin/tmux` is an idempotent, self-healing dev session.
+**One-command session:** `bin/local-dev` is an idempotent, self-healing dev session.
 It brings infra + the per-branch DynamoDB table up, lays out a tmux session
 (`claude` / `api` / `web` / `shell` panes), and re-running it recreates any pane
 you closed and restarts a crashed server — without touching healthy ones. To
-point the api + web servers at a git worktree, run `bin/tmux <worktree>` (or
-`bin/tmux` for the checkout you're in) — only one checkout's stack runs at a
+point the api + web servers at a git worktree, run `bin/local-dev <worktree>` (or
+`bin/local-dev` for the checkout you're in) — only one checkout's stack runs at a
 time, since the ports are fixed. See
 [`docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md`](./docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md).
 

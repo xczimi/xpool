@@ -1,4 +1,4 @@
-# Unified `bin/tmux [worktree]` dev session — design
+# Unified `bin/local-dev [worktree]` dev session — design
 
 **Date:** 2026-06-06
 **Status:** approved
@@ -7,14 +7,14 @@
 
 ## Goal
 
-Collapse the two dev-session scripts (`bin/tmux` boot + `bin/switch` repoint)
-into a single, idempotent `bin/tmux [worktree]` that is simple to use and
+Collapse the two dev-session scripts (`bin/local-dev` boot + `bin/switch` repoint)
+into a single, idempotent `bin/local-dev [worktree]` that is simple to use and
 "self-healing": one command brings the world to a correct state — infra up,
 data seeded, panes present, servers running and pointed where you asked —
 whether the problem is a fresh machine, a closed pane, a crashed server, a
 wiped database, or a worktree you want to peek at.
 
-In doing so, factor out the part `bin/tmux` and the e2e bootstrap genuinely
+In doing so, factor out the part `bin/local-dev` and the e2e bootstrap genuinely
 share — "bring the local stack up and seed it" — into one primitive,
 `bin/local-stack`, that both wrap.
 
@@ -34,7 +34,7 @@ The driving constraints (from the design conversation):
 
 Two scripts exist today:
 
-- `bin/tmux` — first-boot bootstrap: `docker compose up -d` → wait → `xtask
+- `bin/local-dev` — first-boot bootstrap: `docker compose up -d` → wait → `xtask
   import` → `xtask seed`, then create 4 panes (`claude` / `docker` / `api` /
   `web`) tagged with stable `@role` markers, launching api/web pointed at the
   main checkout. Re-running early-exits to `attach` — it does **not** restore
@@ -53,7 +53,7 @@ Problems this design fixes:
   where I say").
 - **Triplicated stack logic** — docker-up + wait-for-port + import/seed +
   lsof port helpers are copied across `tmux`, `switch`, and `e2e-stack.sh`.
-- **Drifted launch commands** — `bin/tmux` launches api without
+- **Drifted launch commands** — `bin/local-dev` launches api without
   `LOCAL_AUTH_ISSUER`; `bin/switch` with it. Launch knowledge lives in
   `send-keys` strings.
 - **No pane restoration** — closing the `api`/`web` pane has no clean recovery.
@@ -86,7 +86,7 @@ bin/lib.sh        # sourced PURE helpers: port_pids / kill_port,
 bin/local-stack   # infra + data, headless, idempotent           [NEW core]
 bin/run-api       # dev api launcher (foreground cargo run)       [NEW]
 bin/run-web       # dev web launcher (conditional install + vite) [NEW]
-bin/tmux          # interactive: panes + reconcile + attach; wraps local-stack
+bin/local-dev          # interactive: panes + reconcile + attach; wraps local-stack
 web/scripts/e2e-stack.sh   # wraps local-stack; keeps detached-api + PID
 ```
 
@@ -145,7 +145,7 @@ bin/local-stack [--reseed]
 - `xtask import`/`seed` self-load `.env` via dotenvy for their rich vars
   (`RESULT_USER_EMAIL`, `CURRENT_TOURNAMENT_ID`, …); the caller's `XPOOL_TABLE`
   overrides `.env`'s value (dotenvy does not overwrite an already-set var).
-- Always run (boot *and* reconcile) by `bin/tmux`, so a docker restart that
+- Always run (boot *and* reconcile) by `bin/local-dev`, so a docker restart that
   wiped the in-memory table is healed on the next invocation.
 - e2e's table is unique every run → always missing → always seeded by the same
   self-heal path. e2e needs **no** special "fresh" flag.
@@ -155,10 +155,10 @@ bin/local-stack [--reseed]
 
 ### `bin/run-api` / `bin/run-web` — launch wrappers
 
-Single source of truth for how a server starts; usable by `bin/tmux` (sent to a
+Single source of truth for how a server starts; usable by `bin/local-dev` (sent to a
 pane) and by hand in the `shell` pane. Both default their target to their own
 checkout (`git rev-parse --show-toplevel`, main-checkout fallback), like
-`bin/tmux`.
+`bin/local-dev`.
 
 ```sh
 # bin/run-api [target]
@@ -207,7 +207,7 @@ and leaves both e2e and Auth0-local working unchanged:
 - **e2e is unaffected** — `e2e-stack.sh` keeps pinning its own test-critical
   vars; `local-stack` adds no `.env` sourcing, so nothing about e2e's env
   behaviour changes.
-- **Caveat (minor):** an *out-of-tree* target (the `bin/tmux <existing-dir>`
+- **Caveat (minor):** an *out-of-tree* target (the `bin/local-dev <existing-dir>`
   form, not under `.claude/worktrees`) has no `.env` on its walk-up path and
   needs its own. Standard worktrees never hit this.
 
@@ -215,13 +215,13 @@ and leaves both e2e and Auth0-local working unchanged:
 > selecting a profile) were considered and **deferred** — they're a separable
 > concern that would touch `crates/api`/`crates/xtask`. See the decision log.
 
-### `bin/tmux [worktree] [--reseed]` — the interactive wrapper
+### `bin/local-dev [worktree] [--reseed]` — the interactive wrapper
 
 **One rule for the target (cwd-based):**
 
 - **no arg** → the checkout you run it from: `git -C "$PWD" rev-parse
   --show-toplevel`, main checkout (`$PROJECT`) fallback. Each worktree ships its
-  own `bin/tmux`, so running the one in front of you targets the code in front
+  own `bin/local-dev`, so running the one in front of you targets the code in front
   of you.
 - **bare name** → `$PROJECT/.claude/worktrees/<name>`.
 - **existing directory** → that directory (must contain `web/`).
@@ -286,7 +286,7 @@ docker/wait/seed/lsof logic is gone.
 - **Env: independent.** e2e self-pins its vars; the dev wrappers don't source
   `.env`. Neither perturbs the other.
 
-**Synergy:** after an e2e run, `bin/tmux` self-heals — `:3000` dead → restart
+**Synergy:** after an e2e run, `bin/local-dev` self-heals — `:3000` dead → restart
 the dev api; the branch's table is untouched, so no reseed.
 
 ## Testing
@@ -296,7 +296,7 @@ Shell tooling — verified by exercising the real scenarios manually:
 1. **Fresh boot** (no session, docker down) → bootstrap, 4 panes, attach.
 2. **Close a pane + rerun** → only the closed pane recreated; servers untouched.
 3. **Crash api + rerun** → dead `:3000` detected, api restarted; web untouched.
-4. **`bin/tmux <worktree>` jump** → api/web repointed/restarted at the worktree
+4. **`bin/local-dev <worktree>` jump** → api/web repointed/restarted at the worktree
    against `xpool-<that-branch>`; **the same single DynamoDB container is reused**
    (Compose project pinned to `xpool`, no second stack on :8000); `@target`/
    `@branch` updated.
@@ -304,7 +304,7 @@ Shell tooling — verified by exercising the real scenarios manually:
    api/web restart, api on the new branch's table.
 6. **Docker restart → rerun** → empty table detected, auto-reseed.
 7. **`--reseed`** → drop + import + seed the current branch's table.
-8. **Post-e2e recovery** → `bin/tmux` restarts the dead dev api, no reseed.
+8. **Post-e2e recovery** → `bin/local-dev` restarts the dead dev api, no reseed.
 9. **Run from inside the claude pane** → reconciles without a nested attach.
 10. **e2e still green** → `npm run e2e` boots via the refactored `e2e-stack.sh`.
 
@@ -313,7 +313,7 @@ Shell tooling — verified by exercising the real scenarios manually:
 | #  | Decision |
 |----|----------|
 | 1  | api/web stay **native**; compose is infra-only. |
-| 2  | **One script** `bin/tmux [worktree]`; `bin/switch` deleted. |
+| 2  | **One script** `bin/local-dev [worktree]`; `bin/switch` deleted. |
 | 3  | Bare run = **cwd-based** target (the checkout you run it from). |
 | 4  | Per-pane reconcile table; api/web also **force-restart on dead port**. |
 | 5  | **Conditional** `npm install`; `CARGO_TARGET_DIR` unshared. |

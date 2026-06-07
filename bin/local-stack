@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # xpool local-stack primitive: ensure docker infra is up and $XPOOL_TABLE is
 # seeded, then exit. Headless and idempotent. Knows nothing about tmux or which
-# checkout — the CALLER exports XPOOL_TABLE (bin/tmux derives it per branch;
+# checkout — the CALLER exports XPOOL_TABLE (bin/local-dev derives it per branch;
 # e2e-stack.sh sets a fresh unique table) and runs this from a checkout root
 # (so `docker compose` finds docker-compose.yml and cargo finds the workspace).
 #

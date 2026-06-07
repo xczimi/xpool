@@ -61,7 +61,7 @@ Seeded dev players: `result-user` (the admin / official results), `demo-ada`,
 
 ### tmux dev session & worktree switching
 
-`bin/tmux` is an idempotent, self-healing dev session named `xpool`. It brings
+`bin/local-dev` is an idempotent, self-healing dev session named `xpool`. It brings
 infra (DynamoDB + MailHog) up and seeds the branch's table via `bin/local-stack`,
 then lays out four panes: `claude` left; `api` / `web` / `shell` right. Re-running
 recreates any pane you closed and restarts a crashed or drifted server without
@@ -69,13 +69,13 @@ touching healthy ones. Each pane is tagged with a stable `@role` marker
 (`claude`/`api`/`web`/`shell`) shown on its border. See
 `docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md`.
 
-`bin/tmux <worktree>` repoints the running session's `api` + `web` servers at a
+`bin/local-dev <worktree>` repoints the running session's `api` + `web` servers at a
 git worktree without touching docker/DynamoDB (it's the same idempotent command
 that boots the session):
 
 ```sh
-bin/tmux scoreboard-design   # → .claude/worktrees/scoreboard-design
-bin/tmux                     # the checkout you're in (main checkout by default)
+bin/local-dev scoreboard-design   # → .claude/worktrees/scoreboard-design
+bin/local-dev                     # the checkout you're in (main checkout by default)
 ```
 
 It's **single-stack**: the fixed ports (`:3000` api, `:5173` web, `:8000`
@@ -83,7 +83,7 @@ DynamoDB) mean only one worktree's servers run at a time, so a switch stops the
 current ones first. It finds the panes by `@role` (not index — indices renumber;
 not pane titles — the prompt overwrites them) and stops the old stack by **port +
 `C-c`**, so strays on fallback ports die too. Each worktree builds into its **own**
-`target/` — `bin/tmux` deliberately does *not* share `CARGO_TARGET_DIR`, because
+`target/` — `bin/local-dev` deliberately does *not* share `CARGO_TARGET_DIR`, because
 a shared target lets cargo serve an `api`/`web` binary built from a different
 worktree (same package id), so you'd unknowingly run code that isn't in the
 worktree you switched to. The api reads its config (`LOCAL_AUTH_ISSUER`, secrets, etc.) from the main
@@ -91,9 +91,9 @@ checkout's `.env` via dotenvy's parent-dir walk-up — a worktree under
 `.claude/worktrees/` reaches `$PROJECT/.env`, so the dev-login route works there
 with no per-worktree `.env`; `bin/run-api` overrides only `XPOOL_TABLE`.
 Each branch now uses its own `xpool-<branch>` table, seeded on first use, so
-switching branches no longer risks stale data; `bin/tmux --reseed` forces a
+switching branches no longer risks stale data; `bin/local-dev --reseed` forces a
 rebuild after an in-place schema change. DynamoDB is shared in-memory state and
-is wiped on container restart — `bin/tmux` re-seeds the active branch's table
+is wiped on container restart — `bin/local-dev` re-seeds the active branch's table
 automatically when it finds it empty.
 
 ## Architecture

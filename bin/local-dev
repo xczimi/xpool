@@ -5,9 +5,9 @@
 # api/web at a target checkout. Re-running recreates only what's missing and
 # restarts api/web only when the target/branch changed or the port is dead.
 #
-#   bin/tmux               target = the checkout you run it from
-#   bin/tmux <worktree>    target = .claude/worktrees/<worktree> (or a dir)
-#   bin/tmux [...] --reseed  force drop + import + seed of the target's table
+#   bin/local-dev               target = the checkout you run it from
+#   bin/local-dev <worktree>    target = .claude/worktrees/<worktree> (or a dir)
+#   bin/local-dev [...] --reseed  force drop + import + seed of the target's table
 #
 # See docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md
 set -euo pipefail
@@ -39,7 +39,7 @@ else
   TARGET="$PROJECT/.claude/worktrees/$ARG"
 fi
 [ -d "$TARGET/web" ] || {
-  echo "bin/tmux: not an xpool checkout (no web/): $TARGET" >&2
+  echo "bin/local-dev: not an xpool checkout (no web/): $TARGET" >&2
   git -C "$PROJECT" worktree list >&2
   exit 1
 }
@@ -80,7 +80,7 @@ stop_server() {  # <pane_id> <port>
     [ -z "$(port_pids "$2")" ] && break
     sleep 0.25
   done
-  [ -z "$(port_pids "$2")" ] || echo "bin/tmux: warning: port $2 still in use after stop" >&2
+  [ -z "$(port_pids "$2")" ] || echo "bin/local-dev: warning: port $2 still in use after stop" >&2
 }
 
 ensure_server() {  # <api|web> <port>
@@ -133,5 +133,5 @@ fi
 if [ -z "${TMUX:-}" ]; then
   exec tmux -CC attach -t "$SESSION"
 else
-  echo "bin/tmux: reconciled '$SESSION' (already inside tmux; not attaching)"
+  echo "bin/local-dev: reconciled '$SESSION' (already inside tmux; not attaching)"
 fi

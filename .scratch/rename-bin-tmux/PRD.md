@@ -1,7 +1,24 @@
 # Rename `bin/tmux` to reflect what it actually does
 
-Status: needs-triage
+Status: done (2026-06-07)
 Area: bin / docs
+
+## Resolution (2026-06-07)
+
+Renamed `bin/tmux` → **`bin/local-dev`**. Chosen over `bin/dev` because a
+*deployed* dev stage exists (the remote `dev` environment), so `bin/dev` would
+read ambiguously; `bin/local-dev` also pairs with the existing `bin/local-stack`
+primitive (orchestrator next to infra-primitive). Owner decisions:
+
+- **Name:** `bin/local-dev`.
+- **Hard rename** (no compatibility shim) — solo project, muscle-memory cost is low.
+- **Rewrite everything**: the command token `bin/tmux` was replaced across all
+  live docs *and* the historical `docs/superpowers/` specs & plans. Preserved:
+  the literal `tmux` binary calls and "tmux session/pane" prose (it still uses
+  tmux), and the foreign-repo path `Southsiders/membership-new/bin/tmux`.
+
+The behaviour in [[bin-tmux-targets-invoking-checkout]] (targets the invoking
+checkout, never reverts to master) carries over unchanged.
 
 ## Idea
 

@@ -4,7 +4,7 @@
 # (API :3001, DynamoDB :8001) so it never collides with — or tears down — a
 # running dev session (API :3000, DynamoDB :8000, Vite :5173). Vite (:5174) is
 # owned by Playwright's webServer. Delegates infra + seed to bin/local-stack
-# (shared with bin/tmux), then starts the API detached with a PID file so
+# (shared with bin/local-dev), then starts the API detached with a PID file so
 # globalTeardown can stop it. A fresh unique table per run isolates runs;
 # bin/local-stack seeds it because a brand-new table is always empty.
 #

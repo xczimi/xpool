@@ -5,7 +5,7 @@
 
 ## Goal
 
-A single script, `bin/tmux`, that brings up the full xpool local dev stack in a
+A single script, `bin/local-dev`, that brings up the full xpool local dev stack in a
 tmux session and re-attaches to it on subsequent runs. Modelled on
 `../../Southsiders/membership-new/bin/tmux`, adapted to xpool's ordering
 constraints.
@@ -65,11 +65,11 @@ cost per fresh session.
 
 ## Addendum — `bin/switch` (worktree switching)
 
-> **Superseded (2026-06-06):** `bin/switch` was folded into `bin/tmux
+> **Superseded (2026-06-06):** `bin/switch` was folded into `bin/local-dev
 > [worktree]`. See
 > `docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md`. The
 > rationale below (single-stack, per-worktree `target/`, `@role` markers, port
-> teardown) still holds and carries over to `bin/tmux`.
+> teardown) still holds and carries over to `bin/local-dev`.
 
 **Date:** 2026-06-06
 **Status:** approved
@@ -103,13 +103,13 @@ dirs, relying on that from a worktree is fragile — so the flag is set explicit
 
 ### Why `@role`, not pane index or title
 
-The original `bin/tmux` targeted panes by index. Indices **renumber** when panes
+The original `bin/local-dev` targeted panes by index. Indices **renumber** when panes
 are added or closed, so a script that hardcodes `0.2`/`0.3` sends commands to the
 wrong panes once the layout drifts (observed in practice: a second vite spawned
 on `:5174` while the original kept `:5173`). Pane **titles** are no better here —
 the fish/tide prompt rewrites `pane_title` to the last command line on every
 keystroke. A pane-scoped user option (`@role`) is the one marker nothing else
-touches, so `bin/switch` (and `bin/tmux`) target panes by role.
+touches, so `bin/switch` (and `bin/local-dev`) target panes by role.
 
 ### Robust teardown
 

@@ -2,7 +2,7 @@
 # Shared PURE helpers for the xpool dev-session scripts. Sourcing this file has
 # NO side effects (no env mutation, no docker/tmux/network calls) — it only
 # defines functions. Sourced by bin/local-stack, bin/run-api, bin/run-web,
-# bin/tmux, and web/scripts/e2e-stack.sh.
+# bin/local-dev, and web/scripts/e2e-stack.sh.
 
 # Canonical DynamoDB table for a checkout: xpool-<branch>, with '/' -> '-'.
 # A detached HEAD (no branch name) falls back to xpool-<short-sha>.

@@ -1,10 +1,10 @@
-# Unified `bin/tmux` Dev Session Implementation Plan
+# Unified `bin/local-dev` Dev Session Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Collapse `bin/tmux` + `bin/switch` into one idempotent, self-healing `bin/tmux [worktree]`, backed by a shared `bin/local-stack` primitive that the e2e bootstrap also reuses, with per-branch DynamoDB tables.
+**Goal:** Collapse `bin/local-dev` + `bin/switch` into one idempotent, self-healing `bin/local-dev [worktree]`, backed by a shared `bin/local-stack` primitive that the e2e bootstrap also reuses, with per-branch DynamoDB tables.
 
-**Architecture:** A tiny sourced helper library (`bin/lib.sh`) holds pure functions (`table_for`, port helpers). `bin/local-stack` is a headless "infra up + `$XPOOL_TABLE` seeded" primitive. `bin/run-api`/`bin/run-web` are dev launchers (the single source of truth for how a server starts). `bin/tmux` orchestrates a 4-pane tmux session (`claude`/`api`/`web`/`shell`), calling those pieces and reconciling panes by their `@role`/`@target`/`@branch` markers. `web/scripts/e2e-stack.sh` is refactored to wrap `bin/local-stack`.
+**Architecture:** A tiny sourced helper library (`bin/lib.sh`) holds pure functions (`table_for`, port helpers). `bin/local-stack` is a headless "infra up + `$XPOOL_TABLE` seeded" primitive. `bin/run-api`/`bin/run-web` are dev launchers (the single source of truth for how a server starts). `bin/local-dev` orchestrates a 4-pane tmux session (`claude`/`api`/`web`/`shell`), calling those pieces and reconciling panes by their `@role`/`@target`/`@branch` markers. `web/scripts/e2e-stack.sh` is refactored to wrap `bin/local-stack`.
 
 **Tech Stack:** Bash, tmux (pane user-options `@role`/`@target`/`@branch`), Docker Compose (DynamoDB Local + MailHog), Rust (`cargo run -p api`/`xtask`), Vite/npm, the `aws` CLI (DynamoDB Local item-count check).
 
@@ -16,7 +16,7 @@
 - **The clock/env model:** the API reads config from `.env` via dotenvy itself. **These scripts must not source `.env`.** The only env override they apply is `XPOOL_TABLE` (per branch). The `aws` CLI is the one consumer that can't read `.env`, so it gets dummy creds inline.
 - **Single stack:** fixed ports `:3000` (api), `:5173` (web), `:8000` (DynamoDB). Only one checkout's servers run at a time.
 - **DynamoDB Local is in-memory** — wiped on container restart; the self-healing seed handles that.
-- **Existing scripts to learn from / replace:** `bin/tmux` (current bootstrap), `bin/switch` (current repoint — being deleted), `web/scripts/e2e-stack.sh` (current e2e bootstrap — being refactored). Read all three before starting.
+- **Existing scripts to learn from / replace:** `bin/local-dev` (current bootstrap), `bin/switch` (current repoint — being deleted), `web/scripts/e2e-stack.sh` (current e2e bootstrap — being refactored). Read all three before starting.
 - **`xtask` subcommands:** `import <path>`, `seed`, `drop-table` (clap kebab-case). Both `import` and `seed` call `repo.ensure_table()` first, so a brand-new table is created on first seed.
 - **`set -euo pipefail`** is used by every script. Mind that an unguarded failing command aborts the script — wrap "allowed to fail" commands with `|| true`.
 - **Verification reality:** these are orchestration scripts driving docker/tmux/cargo. Per the spec, the orchestration is verified by **manual scenario runs**, not an automated harness. The one genuinely unit-testable piece is `table_for` (a pure function) — that gets a real test in Task 1.
@@ -30,10 +30,10 @@
 | `bin/local-stack` (new) | Headless: docker up + wait + seed `$XPOOL_TABLE` if empty (or `--reseed`). |
 | `bin/run-api` (new) | Dev API launcher; overrides only `XPOOL_TABLE`. |
 | `bin/run-web` (new) | Dev web launcher; conditional `npm install` + Vite. |
-| `bin/tmux` (rewrite) | Interactive orchestrator: resolve target → local-stack → reconcile 4 panes → attach. |
-| `bin/switch` (delete) | Folded into `bin/tmux <worktree>`. |
+| `bin/local-dev` (rewrite) | Interactive orchestrator: resolve target → local-stack → reconcile 4 panes → attach. |
+| `bin/switch` (delete) | Folded into `bin/local-dev <worktree>`. |
 | `web/scripts/e2e-stack.sh` (modify) | Refactor onto `bin/lib.sh` + `bin/local-stack`. |
-| `README.md`, `CLAUDE.md`, `docs/superpowers/specs/2026-05-18-tmux-restarter-design.md` (modify) | Repoint `bin/switch` references to `bin/tmux <worktree>`. |
+| `README.md`, `CLAUDE.md`, `docs/superpowers/specs/2026-05-18-tmux-restarter-design.md` (modify) | Repoint `bin/switch` references to `bin/local-dev <worktree>`. |
 
 ---
 
@@ -93,7 +93,7 @@ Create `bin/lib.sh`:
 # Shared PURE helpers for the xpool dev-session scripts. Sourcing this file has
 # NO side effects (no env mutation, no docker/tmux/network calls) — it only
 # defines functions. Sourced by bin/local-stack, bin/run-api, bin/run-web,
-# bin/tmux, and web/scripts/e2e-stack.sh.
+# bin/local-dev, and web/scripts/e2e-stack.sh.
 
 # Canonical DynamoDB table for a checkout: xpool-<branch>, with '/' -> '-'.
 # A detached HEAD (no branch name) falls back to xpool-<short-sha>.
@@ -161,7 +161,7 @@ Create `bin/local-stack`:
 #!/usr/bin/env bash
 # xpool local-stack primitive: ensure docker infra is up and $XPOOL_TABLE is
 # seeded, then exit. Headless and idempotent. Knows nothing about tmux or which
-# checkout — the CALLER exports XPOOL_TABLE (bin/tmux derives it per branch;
+# checkout — the CALLER exports XPOOL_TABLE (bin/local-dev derives it per branch;
 # e2e-stack.sh sets a fresh unique table) and runs this from a checkout root
 # (so `docker compose` finds docker-compose.yml and cargo finds the workspace).
 #
@@ -255,7 +255,7 @@ Create `bin/run-api`:
 # Launch the dev API for a checkout (foreground). The ONLY env override is
 # XPOOL_TABLE (per-branch). DYNAMO_ENDPOINT, LOCAL_AUTH_ISSUER, AWS_*, and the
 # secrets all come from .env, self-loaded by the api via dotenvy. Default target
-# is the current checkout. Usable by bin/tmux and by hand in the shell pane.
+# is the current checkout. Usable by bin/local-dev and by hand in the shell pane.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$HERE/lib.sh"
@@ -318,14 +318,14 @@ git commit -m "feat(bin): add run-api / run-web dev launchers"
 
 ---
 
-## Task 4: rewrite `bin/tmux` — interactive orchestrator
+## Task 4: rewrite `bin/local-dev` — interactive orchestrator
 
 **Files:**
-- Modify (full rewrite): `bin/tmux`
+- Modify (full rewrite): `bin/local-dev`
 
-- [ ] **Step 1: Replace `bin/tmux` entirely**
+- [ ] **Step 1: Replace `bin/local-dev` entirely**
 
-Overwrite `bin/tmux` with:
+Overwrite `bin/local-dev` with:
 
 ```bash
 #!/usr/bin/env bash
@@ -335,9 +335,9 @@ Overwrite `bin/tmux` with:
 # api/web at a target checkout. Re-running recreates only what's missing and
 # restarts api/web only when the target/branch changed or the port is dead.
 #
-#   bin/tmux               target = the checkout you run it from
-#   bin/tmux <worktree>    target = .claude/worktrees/<worktree> (or a dir)
-#   bin/tmux [...] --reseed  force drop + import + seed of the target's table
+#   bin/local-dev               target = the checkout you run it from
+#   bin/local-dev <worktree>    target = .claude/worktrees/<worktree> (or a dir)
+#   bin/local-dev [...] --reseed  force drop + import + seed of the target's table
 #
 # See docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md
 set -euo pipefail
@@ -369,7 +369,7 @@ else
   TARGET="$PROJECT/.claude/worktrees/$ARG"
 fi
 [ -d "$TARGET/web" ] || {
-  echo "bin/tmux: not an xpool checkout (no web/): $TARGET" >&2
+  echo "bin/local-dev: not an xpool checkout (no web/): $TARGET" >&2
   git -C "$PROJECT" worktree list >&2
   exit 1
 }
@@ -462,13 +462,13 @@ fi
 if [ -z "${TMUX:-}" ]; then
   exec tmux -CC attach -t "$SESSION"
 else
-  echo "bin/tmux: reconciled '$SESSION' (already inside tmux; not attaching)"
+  echo "bin/local-dev: reconciled '$SESSION' (already inside tmux; not attaching)"
 fi
 ```
 
 - [ ] **Step 2: Verify a fresh boot (scenario 1)**
 
-Make sure no session exists: `tmux kill-session -t xpool 2>/dev/null || true`. Then from the main checkout run `bin/tmux`. (If running inside an existing tmux/claude pane, it will reconcile and print the "not attaching" line instead of attaching — that is correct.)
+Make sure no session exists: `tmux kill-session -t xpool 2>/dev/null || true`. Then from the main checkout run `bin/local-dev`. (If running inside an existing tmux/claude pane, it will reconcile and print the "not attaching" line instead of attaching — that is correct.)
 
 Expected: `local-stack` output (infra + seed of `xpool-<branch>`), a session `xpool` with 4 panes whose borders read `claude` / `api` / `web` / `shell`, api on `:3000`, web on `:5173`. Verify panes:
 
@@ -484,7 +484,7 @@ Close the shell pane, then re-run:
 
 ```bash
 tmux kill-pane -t "$(tmux list-panes -s -t xpool -F '#{@role} #{pane_id}' | awk '$1=="shell"{print $2}')"
-bin/tmux
+bin/local-dev
 tmux list-panes -s -t xpool -F '#{@role}' | sort
 ```
 
@@ -494,7 +494,7 @@ Expected: `shell` reappears; api/web were **not** restarted (no new `local-stack
 
 ```bash
 kill $(lsof -ti tcp:3000 -sTCP:LISTEN) 2>/dev/null || true
-bin/tmux
+bin/local-dev
 for i in $(seq 1 60); do curl -fsS localhost:3000/api/health >/dev/null 2>&1 && break; sleep 1; done
 curl -fsS localhost:3000/api/health && echo " <- api restarted"
 ```
@@ -504,7 +504,7 @@ Expected: api comes back; web pane untouched.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add bin/tmux
+git add bin/local-dev
 git commit -m "feat(bin): rewrite tmux as idempotent self-healing dev session"
 ```
 
@@ -515,7 +515,7 @@ git commit -m "feat(bin): rewrite tmux as idempotent self-healing dev session"
 **Files:**
 - Delete: `bin/switch`
 - Modify: `README.md` (the "One-command session" paragraph)
-- Modify: `CLAUDE.md` (the `bin/tmux` / `bin/switch` section under "tmux dev session & worktree switching")
+- Modify: `CLAUDE.md` (the `bin/local-dev` / `bin/switch` section under "tmux dev session & worktree switching")
 - Modify: `docs/superpowers/specs/2026-05-18-tmux-restarter-design.md` (the `bin/switch` addendum)
 
 - [ ] **Step 1: Delete `bin/switch`**
@@ -529,7 +529,7 @@ git rm bin/switch
 Replace the paragraph that currently reads:
 
 ```
-**One-command session:** `bin/tmux` does the whole bootstrap above and lays it
+**One-command session:** `bin/local-dev` does the whole bootstrap above and lays it
 out in a tmux session (docker / api / web panes plus a `claude` pane), then
 re-attaches on later runs. To point the api + web servers at a git worktree
 without restarting docker, use `bin/switch <worktree>` (or `bin/switch` for the
@@ -541,19 +541,19 @@ fixed. See
 with:
 
 ```
-**One-command session:** `bin/tmux` is an idempotent, self-healing dev session.
+**One-command session:** `bin/local-dev` is an idempotent, self-healing dev session.
 It brings infra + the per-branch DynamoDB table up, lays out a tmux session
 (`claude` / `api` / `web` / `shell` panes), and re-running it recreates any pane
 you closed and restarts a crashed server — without touching healthy ones. To
-point the api + web servers at a git worktree, run `bin/tmux <worktree>` (or
-`bin/tmux` for the checkout you're in) — only one checkout's stack runs at a
+point the api + web servers at a git worktree, run `bin/local-dev <worktree>` (or
+`bin/local-dev` for the checkout you're in) — only one checkout's stack runs at a
 time, since the ports are fixed. See
 [`docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md`](./docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md).
 ```
 
 - [ ] **Step 3: Update `CLAUDE.md`**
 
-In the section "### tmux dev session & worktree switching", replace the description of `bin/switch <worktree>` and its single-stack/`CARGO_TARGET_DIR`/`@role` paragraphs so the entry point is `bin/tmux <worktree>`. Concretely, change the opening of that subsection from:
+In the section "### tmux dev session & worktree switching", replace the description of `bin/switch <worktree>` and its single-stack/`CARGO_TARGET_DIR`/`@role` paragraphs so the entry point is `bin/local-dev <worktree>`. Concretely, change the opening of that subsection from:
 
 ```
 `bin/switch <worktree>` repoints the running session's `api` + `web` servers at a
@@ -568,28 +568,28 @@ bin/switch                     # back to the main checkout (master)
 to:
 
 ```
-`bin/tmux <worktree>` repoints the running session's `api` + `web` servers at a
+`bin/local-dev <worktree>` repoints the running session's `api` + `web` servers at a
 git worktree without touching docker/DynamoDB (it's the same idempotent command
 that boots the session):
 
 ```sh
-bin/tmux scoreboard-design   # → .claude/worktrees/scoreboard-design
-bin/tmux                     # the checkout you're in (main checkout by default)
+bin/local-dev scoreboard-design   # → .claude/worktrees/scoreboard-design
+bin/local-dev                     # the checkout you're in (main checkout by default)
 ```
 ```
 
-Then, in the remaining prose of that subsection, replace every other occurrence of `bin/switch` with `bin/tmux` (the `CARGO_TARGET_DIR`, `@role`, and `LOCAL_AUTH_ISSUER` notes still apply, just under the unified command). Also update the data note to mention the per-branch table: each branch uses its own `xpool-<branch>` table (seeded on first use), so switching branches no longer risks stale data; `--reseed` forces a rebuild after an in-place schema change.
+Then, in the remaining prose of that subsection, replace every other occurrence of `bin/switch` with `bin/local-dev` (the `CARGO_TARGET_DIR`, `@role`, and `LOCAL_AUTH_ISSUER` notes still apply, just under the unified command). Also update the data note to mention the per-branch table: each branch uses its own `xpool-<branch>` table (seeded on first use), so switching branches no longer risks stale data; `--reseed` forces a rebuild after an in-place schema change.
 
 - [ ] **Step 4: Update the 2026-05-18 spec addendum**
 
 At the top of the "## Addendum — `bin/switch` (worktree switching)" section in `docs/superpowers/specs/2026-05-18-tmux-restarter-design.md`, add a superseded banner directly under the heading:
 
 ```
-> **Superseded (2026-06-06):** `bin/switch` was folded into `bin/tmux
+> **Superseded (2026-06-06):** `bin/switch` was folded into `bin/local-dev
 > [worktree]`. See
 > `docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md`. The
 > rationale below (single-stack, per-worktree `target/`, `@role` markers, port
-> teardown) still holds and carries over to `bin/tmux`.
+> teardown) still holds and carries over to `bin/local-dev`.
 ```
 
 Leave the rest of that addendum intact as historical rationale.
@@ -597,13 +597,13 @@ Leave the rest of that addendum intact as historical rationale.
 - [ ] **Step 5: Verify no stale references remain**
 
 Run: `grep -rn "bin/switch" --include="*.md" . | grep -v node_modules | grep -v "Superseded" | grep -v ".claude/worktrees"`
-Expected: no output (every live reference now points to `bin/tmux`; the only `bin/switch` mentions left are the historical ones inside the superseded addendum).
+Expected: no output (every live reference now points to `bin/local-dev`; the only `bin/switch` mentions left are the historical ones inside the superseded addendum).
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add -A
-git commit -m "docs: delete bin/switch; point docs at unified bin/tmux"
+git commit -m "docs: delete bin/switch; point docs at unified bin/local-dev"
 ```
 
 ---
@@ -621,7 +621,7 @@ Overwrite it with the version below. It keeps the e2e-specific behaviour (fresh 
 #!/usr/bin/env bash
 #
 # Boots the full xpool stack for the Playwright E2E suite. Delegates infra + seed
-# to bin/local-stack (shared with bin/tmux), then starts the API detached with a
+# to bin/local-stack (shared with bin/local-dev), then starts the API detached with a
 # PID file so globalTeardown can stop it. A fresh unique table per run isolates
 # runs; bin/local-stack seeds it because a brand-new table is always empty.
 #
@@ -727,12 +727,12 @@ git commit -m "refactor(e2e): build e2e-stack on shared bin/local-stack + lib.sh
 If a worktree exists under `.claude/worktrees/<name>` (create one with `git worktree add .claude/worktrees/smoke -b smoke` if you want to test), run:
 
 ```bash
-bin/tmux smoke
+bin/local-dev smoke
 tmux list-panes -s -t xpool -F '#{@role} #{@target} #{@branch}'
 lsof -ti tcp:3000 -sTCP:LISTEN >/dev/null && echo "api running"
 ```
 
-Expected: `api`/`web` `@target` now point at `.claude/worktrees/smoke`, `@branch` is `smoke`, and the api is serving against table `xpool-smoke` (seeded by local-stack). Docker/DynamoDB container untouched. Then jump back: `bin/tmux` (from the main checkout) repoints to the main checkout's branch/table.
+Expected: `api`/`web` `@target` now point at `.claude/worktrees/smoke`, `@branch` is `smoke`, and the api is serving against table `xpool-smoke` (seeded by local-stack). Docker/DynamoDB container untouched. Then jump back: `bin/local-dev` (from the main checkout) repoints to the main checkout's branch/table.
 
 Clean up if you created the throwaway worktree: `git worktree remove .claude/worktrees/smoke --force; git branch -D smoke`.
 
@@ -754,7 +754,7 @@ Expected: `all passed`, exit 0.
 
 - [ ] **Step 4: Final review of the bin/ surface**
 
-Run: `ls -la bin/ && grep -L 'set -euo pipefail' bin/lib.sh bin/local-stack bin/run-api bin/run-web bin/tmux 2>/dev/null`
+Run: `ls -la bin/ && grep -L 'set -euo pipefail' bin/lib.sh bin/local-stack bin/run-api bin/run-web bin/local-dev 2>/dev/null`
 
 Expected: `bin/switch` is gone; `lib.sh`, `local-stack`, `run-api`, `run-web`, `tmux`, `lib.test.sh` present and executable. The `grep -L` lists files **without** the strict-mode line — `bin/lib.sh` is expected here (it's sourced, not executed standalone, so it intentionally omits `set -e`); the rest should not appear. If any executable script (local-stack/run-api/run-web/tmux) is listed, add `set -euo pipefail`.
 
@@ -771,4 +771,4 @@ git commit -m "chore(bin): final integration pass for unified dev session" --all
 
 - **Spec coverage:** decisions 1–12 in the spec map to tasks here — native app/infra-only (no containerisation work needed; verified by Tasks 2/3 running cargo/npm natively), one script + delete switch (Tasks 4–5), cwd-based target (Task 4 resolve block), per-pane reconcile incl. dead-port restart (Task 4 `ensure_server`), conditional install + unshared `CARGO_TARGET_DIR` (Task 3 `run-web` + each checkout's own `cargo run`), self-healing seed (Task 2), shell pane (Task 4), run-api/run-web wrappers (Task 3), shared local-stack + lib.sh + e2e fold-in (Tasks 1/2/6), per-branch tables (Task 1 `table_for`, used in Tasks 2/3/4), minimal env (no `.env` sourcing anywhere — confirm by `grep -rn 'source .*\.env' bin/` returning nothing), deferred profiles (no work).
 - **Order rationale:** helpers (1) → primitive (2) → launchers (3) → orchestrator (4) → cleanup/docs (5) → e2e (6) → integration (7). Each task is independently committable and leaves the repo working.
-- **If `nc` is unavailable** on the host, `wait_for_port` fails; substitute `curl -s -o /dev/null "http://localhost:$port"` (DynamoDB Local answers any HTTP request) — but the current `bin/tmux` already uses `nc`, so it's present.
+- **If `nc` is unavailable** on the host, `wait_for_port` fails; substitute `curl -s -o /dev/null "http://localhost:$port"` (DynamoDB Local answers any HTTP request) — but the current `bin/local-dev` already uses `nc`, so it's present.
