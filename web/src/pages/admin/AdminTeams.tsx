@@ -3,6 +3,8 @@ import { useI18n } from '../../i18n/useI18n'
 import { TOURNAMENT_QUERY } from '../../graphql/queries'
 import type { Tournament } from '../../graphql/types'
 import { ErrorView, Loading } from '../../components/StatusViews'
+import { teamIndex } from '../../lib/format'
+import { TeamLabel } from '../../components/TeamLabel'
 
 /** Admin team view (UC-15) — read-only listing. */
 export function AdminTeams() {
@@ -14,6 +16,7 @@ export function AdminTeams() {
   if (result.fetching) return <Loading />
   if (result.error) return <ErrorView message={result.error.message} />
   const teams = result.data?.tournament?.teams ?? []
+  const teamMap = teamIndex(teams)
 
   return (
     <div>
@@ -32,8 +35,10 @@ export function AdminTeams() {
             .map((team) => (
               <tr key={team.id}>
                 <td>
-                  {team.flag ? `${team.flag} ` : ''}
-                  {team.name}
+                  <TeamLabel
+                    slot={{ teamId: team.id, description: team.name }}
+                    teams={teamMap}
+                  />
                 </td>
                 <td>{team.shortCode}</td>
                 <td>{team.externalId ?? '—'}</td>
