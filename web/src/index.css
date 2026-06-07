@@ -1,86 +1,752 @@
-:root {
-  --bg: #f4f5f7;
-  --surface: #ffffff;
-  --ink: #1c2533;
-  --muted: #5b6678;
-  --accent: #1f6feb;
-  --accent-ink: #ffffff;
-  --border: #d6dae1;
-  --locked: #b54708;
-  --draft: #2563eb;
-  --flash-bg: #fff7e6;
-  --flash-border: #f0c36d;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-  color: var(--ink);
-}
-* { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); }
-.app { max-width: 1100px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; }
-.app-header { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem; background: var(--surface); border-bottom: 2px solid var(--accent); }
-.brand h1 { margin: 0; font-size: 1.6rem; color: var(--accent); }
-.tagline { margin: 0.15rem 0 0; color: var(--muted); font-size: 0.85rem; }
-.lang-selector { font-size: 0.85rem; color: var(--muted); }
-.auth-bar { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; padding: 0.5rem 1.25rem; background: #eef1f5; border-bottom: 1px solid var(--border); font-size: 0.85rem; }
-.auth-picker { display: flex; gap: 0.4rem; flex-wrap: wrap; }
-.nav-bar { display: flex; flex-wrap: wrap; gap: 0.25rem; padding: 0.5rem 1.25rem; background: var(--surface); border-bottom: 1px solid var(--border); }
-.nav-link { padding: 0.35rem 0.7rem; border-radius: 4px; text-decoration: none; color: var(--ink); font-size: 0.9rem; }
-.nav-link:hover { background: #eef1f5; }
-.nav-link.active { background: var(--accent); color: var(--accent-ink); }
-.flash-bar { margin: 0 0 0.5rem; padding: 0.6rem 1.25rem; background: var(--flash-bg); border: 1px solid var(--flash-border); border-radius: 4px; font-size: 0.9rem; }
-.banner { padding: 0.65rem 1.25rem; background: #fff8e1; border-bottom: 1px solid #f9c846; color: #5a4000; font-size: 0.9rem; }
-.content { flex: 1; padding: 1.25rem; }
-.app-footer { padding: 1rem 1.25rem; color: var(--muted); font-size: 0.8rem; border-top: 1px solid var(--border); text-align: center; }
-.page h2 { margin-top: 0; }
-.home-links { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 1rem; }
-.round-nav { margin: 0.75rem 0; }
-.round-tabs { display: flex; flex-wrap: wrap; gap: 0.3rem; }
-.round-tab { padding: 0.4rem 0.85rem; border: 1px solid var(--border); background: var(--surface); border-radius: 4px; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: var(--ink); }
-.round-tab:hover { background: #eef1f5; }
-.round-tab.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.round-nav .group-subnav { margin: 0.5rem 0 0; }
-.group-subnav { display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.75rem 0; }
-.subnav-item { padding: 0.3rem 0.65rem; border: 1px solid var(--border); background: var(--surface); border-radius: 4px; cursor: pointer; font-size: 0.85rem; text-decoration: none; color: var(--ink); }
-.subnav-item.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.data-table { width: 100%; border-collapse: collapse; margin: 0.75rem 0; background: var(--surface); font-size: 0.9rem; }
-.data-table th, .data-table td { border: 1px solid var(--border); padding: 0.4rem 0.55rem; text-align: left; }
-.data-table th { background: #eef1f5; }
-.data-table.compact th, .data-table.compact td { padding: 0.25rem 0.4rem; font-size: 0.82rem; }
-.grid-scroll { overflow-x: auto; }
-.score-cell { display: flex; align-items: center; gap: 0.3rem; }
-.score-cell select, .score-cell input { width: 3.4rem; }
-button { padding: 0.35rem 0.7rem; border: 1px solid var(--border); background: var(--surface); border-radius: 4px; cursor: pointer; font-size: 0.85rem; }
-button:hover:not(:disabled) { background: #eef1f5; }
-button:disabled { opacity: 0.5; cursor: not-allowed; }
-button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
-.tip-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
-.standings-pair { display: flex; gap: 1.5rem; flex-wrap: wrap; }
-.standings { flex: 1; min-width: 260px; }
-.standings h4 { margin-bottom: 0.3rem; }
-.reorder { display: flex; gap: 0.2rem; }
-.reorder button { padding: 0.1rem 0.35rem; }
-.state-locked { color: var(--locked); font-weight: 600; }
-.state-draft { color: var(--draft); font-weight: 600; }
-.form { display: flex; flex-direction: column; gap: 0.6rem; max-width: 400px; }
-.form label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.85rem; color: var(--muted); }
-.form input, .form textarea { padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; font: inherit; }
-.status { padding: 1rem; color: var(--muted); }
-.status-error { color: var(--locked); }
-.poll-note { color: #137333; font-size: 0.8rem; margin: 0.2rem 0; }
-.round-tag { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
-.hint { font-size: 0.8rem; color: var(--muted); }
-.notice { display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.7rem; margin: 0.6rem 0; border: 1px solid var(--border); border-radius: 4px; background: #fff8e1; font-size: 0.85rem; }
-.notice.error { background: #fdecea; color: var(--locked); }
+/* ============================================================================
+   xPool — Scoreboard LED design system.
+   Reference: stadium scoreboards (Wembley / ESPN early '80s / Ceefax sports).
+   Amber-on-black, Press Start 2P headers, VT323 body, LED status indicators.
+   ============================================================================ */
 
-/* pools */
-.pool-forms { display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-.pool-list { list-style: none; display: flex; flex-direction: column; gap: 1rem; }
-.pool-card { border: 1px solid var(--border); border-radius: 6px; padding: 0.8rem 1rem; }
-.pool-card h3 { margin: 0 0 0.3rem; }
-.owner-tag { font-size: 0.75rem; color: var(--muted); font-weight: normal; }
-.join-code { font-size: 0.85rem; color: var(--muted); margin: 0.2rem 0; }
-.join-code code { background: #eef1f5; padding: 0.1rem 0.35rem; border-radius: 3px; }
-.pool-members { list-style: none; display: flex; flex-wrap: wrap; gap: 0.6rem; margin: 0.4rem 0; }
-.pool-members li { display: flex; align-items: center; gap: 0.3rem; font-size: 0.9rem; }
-.pool-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
-.link-button { border: none; background: none; color: var(--locked); padding: 0; font-size: 0.78rem; text-decoration: underline; }
-button.danger { color: var(--locked); border-color: var(--locked); }
+:root {
+  /* Surfaces */
+  --bg-deep:        #07070d;
+  --bg-card:        #0e0e1a;
+  --bg-input:       #050508;
+  --bg-card-border: #2a1a08;
+
+  /* Amber spectrum (the primary brand colour) */
+  --amber:          #ff8c00;
+  --amber-bright:   #ffd76a;
+  --amber-dim:      #a04400;
+
+  /* LED status indicators */
+  --led-green:      #33ff66;
+  --led-red:        #ff3366;
+  --led-blue:       #21d4fd;
+
+  /* Text */
+  --text-on-dark:   #d8d0b8;
+  --text-dim:       #6a5a3a;
+
+  /* Backwards-compat aliases for any inline-style consumers. Pages reference
+     the design tokens via these names; mapping them at the root keeps any
+     remaining `var(--accent)` callers working without touching components. */
+  --bg:           var(--bg-deep);
+  --surface:      var(--bg-card);
+  --ink:          var(--text-on-dark);
+  --muted:        var(--text-dim);
+  --accent:       var(--amber);
+  --accent-ink:   var(--bg-deep);
+  --border:       var(--bg-card-border);
+  --locked:       var(--led-red);
+  --draft:        var(--led-blue);
+  --flash-bg:     #1a1208;
+  --flash-border: var(--amber-dim);
+
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  color: var(--text-on-dark);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg-deep);
+  /* Subtle CRT scanline overlay — 1px black stripe every 4px at 20% opacity.
+     Reads as "stadium-screen / old broadcast" without obscuring content. */
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.20) 0,
+      rgba(0, 0, 0, 0.20) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+  min-height: 100vh;
+}
+
+/* Body inherits VT323 from :root. Headings step up to the chunky pixel font. */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Press Start 2P', monospace;
+  color: var(--amber);
+  letter-spacing: 1px;
+}
+
+a { color: var(--amber-bright); }
+a:hover { color: var(--amber); }
+
+/* ============================================================================
+   APP CHROME
+   ============================================================================ */
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  background: linear-gradient(180deg, #0e0e1a 0%, #07070d 100%);
+  border-bottom: 2px solid var(--amber-dim);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-icon {
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 22px;
+  color: var(--amber);
+  text-shadow: 0 0 8px rgba(255, 140, 0, 0.45);
+  letter-spacing: 2px;
+}
+
+.tagline {
+  margin: 0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.lang-selector {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ============================================================================
+   AUTH BAR
+   ============================================================================ */
+
+.auth-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 24px;
+  background: #0a0a14;
+  border-bottom: 1px solid var(--bg-card-border);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  color: var(--text-on-dark);
+  letter-spacing: 0.5px;
+}
+
+.auth-bar strong { color: var(--amber-bright); font-weight: normal; }
+.auth-bar select {
+  background: var(--bg-input);
+  border: 1px solid var(--amber-dim);
+  color: var(--amber-bright);
+  padding: 5px 8px;
+  font-family: inherit;
+  font-size: inherit;
+}
+.auth-bar select:focus { outline: none; border-color: var(--amber); }
+
+.auth-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.auth-warn { color: var(--led-red); margin-left: 6px; font-style: normal; }
+
+.dev-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.dev-clock input[type="datetime-local"] {
+  background: var(--bg-input);
+  border: 1px solid var(--amber-dim);
+  color: var(--amber-bright);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 4px 6px;
+}
+
+/* ============================================================================
+   NAVIGATION
+   ============================================================================ */
+
+.nav-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 24px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--bg-card-border);
+}
+
+.nav-link {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  color: var(--text-on-dark);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.08s;
+}
+.nav-link:hover {
+  border-color: var(--amber);
+  color: var(--amber-bright);
+}
+.nav-link.active {
+  border-color: var(--amber);
+  color: var(--amber-bright);
+  background: rgba(255, 140, 0, 0.08);
+}
+
+/* ============================================================================
+   NOTICES, BANNERS, FLASHES
+   ============================================================================ */
+
+.banner {
+  padding: 12px 24px;
+  background: rgba(51, 255, 102, 0.05);
+  border-bottom: 1px solid var(--led-green);
+  color: var(--led-green);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.flash-bar {
+  margin: 0 0 12px;
+  padding: 10px 16px;
+  background: rgba(255, 140, 0, 0.08);
+  border: 1px solid var(--amber-dim);
+  color: var(--amber-bright);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin: 12px 0;
+  background: var(--bg-card);
+  border: 1px solid var(--amber-dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  color: var(--text-on-dark);
+  letter-spacing: 0.5px;
+}
+.notice.error {
+  border-color: var(--led-red);
+  color: var(--led-red);
+}
+
+/* ============================================================================
+   CONTENT AREA & PAGE
+   ============================================================================ */
+
+.content {
+  flex: 1;
+  padding: 24px;
+}
+
+.page h2 {
+  margin-top: 0;
+  margin-bottom: 16px;
+  font-size: 16px;
+  border-bottom: 1px solid var(--amber-dim);
+  padding-bottom: 10px;
+  text-transform: uppercase;
+}
+.page h3 { font-size: 13px; margin-bottom: 10px; text-transform: uppercase; }
+.page h4 { font-size: 11px; margin-bottom: 8px; text-transform: uppercase; }
+
+.app-footer {
+  padding: 16px 24px;
+  margin-top: 32px;
+  background: var(--bg-card);
+  border-top: 2px solid var(--amber-dim);
+  color: var(--text-dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  text-align: center;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.home-links { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+
+/* ============================================================================
+   ROUND NAV / SUBNAV (scoreboard chip tabs)
+   ============================================================================ */
+
+.round-nav { margin: 12px 0; }
+.round-tabs, .group-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0;
+}
+
+.round-tab,
+.subnav-item {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  padding: 8px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--bg-card-border);
+  color: var(--text-on-dark);
+  text-decoration: none;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.08s;
+}
+.round-tab:hover,
+.subnav-item:hover {
+  border-color: var(--amber);
+  color: var(--amber-bright);
+}
+.round-tab.active,
+.subnav-item.active {
+  background: var(--amber);
+  color: var(--bg-deep);
+  border-color: var(--amber);
+  text-shadow: none;
+}
+
+.round-tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: normal;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ============================================================================
+   TABLES (scoreboard data display)
+   ============================================================================ */
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  background: var(--bg-card);
+  border: 2px solid var(--bg-card-border);
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+}
+
+.data-table th,
+.data-table td {
+  border: 1px solid var(--bg-card-border);
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.data-table th {
+  background: rgba(255, 140, 0, 0.05);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--amber);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: normal;
+}
+
+/* Numeric cells (points, scores) get the chunky pixel treatment. */
+.data-table td.num,
+.data-table th.num {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  color: var(--amber-bright);
+  text-align: right;
+}
+
+.data-table tr:hover td { background: rgba(255, 140, 0, 0.04); }
+
+.data-table.compact th,
+.data-table.compact td {
+  padding: 6px 8px;
+  font-size: 15px;
+}
+.data-table.compact th { font-size: 8px; }
+
+.grid-scroll { overflow-x: auto; }
+
+/* ============================================================================
+   SCORE CELLS / INPUTS (the tip-entry mini-display)
+   ============================================================================ */
+
+.score-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  color: var(--amber-bright);
+}
+.score-cell select,
+.score-cell input {
+  width: 44px;
+  background: var(--bg-input);
+  border: 1px solid var(--amber-dim);
+  color: var(--amber-bright);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  padding: 5px 6px;
+  text-align: center;
+}
+.score-cell select:focus,
+.score-cell input:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 6px rgba(255, 140, 0, 0.4);
+}
+
+/* ============================================================================
+   BUTTONS
+   ============================================================================ */
+
+button {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.08s;
+}
+button:hover:not(:disabled) {
+  background: var(--amber);
+  color: var(--bg-deep);
+  box-shadow: 0 0 8px rgba(255, 140, 0, 0.4);
+}
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-color: var(--text-dim);
+  color: var(--text-dim);
+}
+
+button.primary {
+  background: var(--amber);
+  color: var(--bg-deep);
+  border-color: var(--amber);
+}
+button.primary:hover:not(:disabled) {
+  background: var(--amber-bright);
+  border-color: var(--amber-bright);
+  box-shadow: 0 0 10px rgba(255, 215, 106, 0.5);
+}
+
+button.danger {
+  border-color: var(--led-red);
+  color: var(--led-red);
+}
+button.danger:hover:not(:disabled) {
+  background: var(--led-red);
+  color: var(--bg-deep);
+  box-shadow: 0 0 8px rgba(255, 51, 102, 0.4);
+}
+
+.link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--led-red);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  text-decoration: underline;
+  cursor: pointer;
+  text-transform: none;
+}
+.link-button:hover:not(:disabled) {
+  background: none;
+  color: var(--led-red);
+  box-shadow: none;
+}
+
+/* ============================================================================
+   ACTIONS / GROUPS
+   ============================================================================ */
+
+.tip-actions,
+.pool-actions,
+.reorder {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tip-actions { margin-top: 16px; }
+.pool-actions { margin-top: 10px; }
+.reorder button {
+  font-size: 9px;
+  padding: 4px 6px;
+}
+
+.standings-pair {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.standings { flex: 1; min-width: 260px; }
+.standings h4 {
+  margin-bottom: 8px;
+  color: var(--amber);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+/* ============================================================================
+   STATE INDICATORS (the LED dots in textual form)
+   ============================================================================ */
+
+.state-locked {
+  color: var(--led-red);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-shadow: 0 0 4px rgba(255, 51, 102, 0.4);
+}
+.state-draft {
+  color: var(--led-blue);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-shadow: 0 0 4px rgba(33, 212, 253, 0.4);
+}
+
+.status {
+  padding: 16px;
+  color: var(--text-dim);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+}
+.status-error { color: var(--led-red); }
+
+.poll-note {
+  color: var(--led-green);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  margin: 4px 0;
+  letter-spacing: 0.5px;
+}
+
+.hint {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+/* ============================================================================
+   FORMS
+   ============================================================================ */
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 420px;
+}
+.form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.form input,
+.form textarea {
+  padding: 8px 10px;
+  background: var(--bg-input);
+  border: 1px solid var(--amber-dim);
+  color: var(--amber-bright);
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  letter-spacing: 0.5px;
+}
+.form input:focus,
+.form textarea:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 6px rgba(255, 140, 0, 0.4);
+}
+
+.tip-form {
+  margin: 12px 0;
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--bg-card-border);
+}
+
+/* ============================================================================
+   POOLS / CARDS
+   ============================================================================ */
+
+.pool-forms {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+.pool-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+}
+.pool-card {
+  background: var(--bg-card);
+  border: 2px solid var(--bg-card-border);
+  padding: 16px 18px;
+}
+.pool-card h3 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--amber);
+}
+.owner-tag {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: normal;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.join-code {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin: 6px 0;
+  letter-spacing: 0.5px;
+}
+.join-code code {
+  background: var(--bg-input);
+  color: var(--amber-bright);
+  padding: 3px 6px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.pool-members {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 0;
+  margin: 8px 0;
+}
+.pool-members li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'VT323', monospace;
+  font-size: 17px;
+}
+
+.pool-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+.pool-selector select {
+  background: var(--bg-input);
+  border: 1px solid var(--amber-dim);
+  color: var(--amber-bright);
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  padding: 5px 8px;
+}
+
+.schedule-group {
+  margin: 16px 0;
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--bg-card-border);
+}
+
+/* ============================================================================
+   MOBILE (<= 640px)
+   Reclaim padding, shrink the heaviest Press Start 2P glyphs, drop decoration.
+   ============================================================================ */
+
+@media (max-width: 640px) {
+  .app-header { padding: 12px 14px; gap: 10px; }
+  .auth-bar   { padding: 8px 14px; font-size: 13px; }
+  .nav-bar    { padding: 6px 12px; gap: 4px; }
+  .banner     { padding: 10px 14px; font-size: 13px; }
+  .content    { padding: 16px 14px; }
+  .app-footer { padding: 12px 14px; font-size: 12px; letter-spacing: 1px; }
+
+  .brand-icon { width: 40px; height: 40px; }
+  .brand h1   { font-size: 18px; letter-spacing: 1px; }
+  .tagline    { display: none; }
+
+  .nav-link   { font-size: 9px; padding: 8px 10px; letter-spacing: 0.5px; }
+
+  .page h2 { font-size: 13px; }
+  .page h3 { font-size: 11px; }
+  .page h4 { font-size: 10px; }
+
+  .data-table          { font-size: 16px; }
+  .data-table th, .data-table td { padding: 7px 8px; }
+  .data-table th       { font-size: 8px; }
+  .data-table.compact  { font-size: 13px; }
+
+  .round-tab,
+  .subnav-item { font-size: 9px; padding: 6px 9px; }
+
+  button       { font-size: 9px; padding: 7px 10px; }
+  .reorder button { font-size: 8px; padding: 3px 5px; }
+  .link-button { font-size: 11px; }
+
+  .score-cell select,
+  .score-cell input { width: 38px; font-size: 10px; padding: 4px 5px; }
+
+  .form input,
+  .form textarea { font-size: 16px; }
+
+  .pool-card { padding: 12px 14px; }
+  .pool-card h3 { font-size: 10px; }
+}

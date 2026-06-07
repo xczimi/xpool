@@ -5,6 +5,7 @@ import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY } from '../graphql/queries'
 import type { Me } from '../graphql/types'
 import { AuthBar } from './AuthBar'
+import { BrandIcon } from './BrandIcon'
 import { LanguageSelector } from './LanguageSelector'
 import { NavBar } from './NavBar'
 import { UnclaimedBanner } from './UnclaimedBanner'
@@ -29,8 +30,11 @@ export function Layout() {
     <div className="app">
       <header className="app-header">
         <div className="brand">
-          <h1>xPool</h1>
-          <p className="tagline">{t('tagline')}</p>
+          <BrandIcon />
+          <div className="brand-text">
+            <h1>xPool</h1>
+            <p className="tagline">{t('tagline')}</p>
+          </div>
         </div>
         <LanguageSelector />
       </header>
