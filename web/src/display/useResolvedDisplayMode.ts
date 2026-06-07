@@ -5,6 +5,8 @@ import {
 } from '../lib/displayMode'
 import { useDisplayMode } from './useDisplayMode'
 
+// Matches the SPA's mobile breakpoint in index.css (640px) so `auto` flips to
+// flag-only exactly when the layout goes mobile.
 const MOBILE_QUERY = '(max-width: 640px)'
 
 /** Track the mobile media query, updating live on resize/rotate. */
