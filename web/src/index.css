@@ -750,3 +750,26 @@ button.danger:hover:not(:disabled) {
   .pool-card { padding: 12px 14px; }
   .pool-card h3 { font-size: 10px; }
 }
+
+/* 8-bit country flags — tiny PNGs scaled up with nearest-neighbour, so they
+   read as chunky pixel blocks alongside the scoreboard-LED type. */
+.team-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.team-flag {
+  height: 14px;
+  width: auto;
+  image-rendering: pixelated;
+  display: inline-block;
+  vertical-align: middle;
+  border: 1px solid var(--bg-card-border);
+}
+
+/* Header: keep the two selectors side by side. */
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
