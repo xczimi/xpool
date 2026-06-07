@@ -178,36 +178,3 @@ export const DELETE_POOL_MUTATION = `
   }
 `
 
-export const ENTER_RESULT_MUTATION = `
-  mutation EnterResult(
-    $gameId: ID!
-    $homeScore: Int!
-    $awayScore: Int!
-    $advancer: ID
-    $lock: Boolean!
-  ) {
-    enterResult(
-      gameId: $gameId
-      homeScore: $homeScore
-      awayScore: $awayScore
-      advancer: $advancer
-      lock: $lock
-    ) {
-      recomputePending
-    }
-  }
-`
-
-/** Admin-only — flip a locked official result back to editable. */
-export const UNLOCK_RESULT_MUTATION = `
-  mutation UnlockResult($gameId: ID!) {
-    unlockResult(gameId: $gameId)
-  }
-`
-
-/** Admin-only — re-run the idempotent post-result recompute on demand. */
-export const RECOMPUTE_MUTATION = `
-  mutation Recompute {
-    recompute
-  }
-`

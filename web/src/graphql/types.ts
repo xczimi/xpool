@@ -143,12 +143,3 @@ export interface PlayerSummary {
   fullName: string
   isResultUser: boolean
 }
-
-/**
- * Result of the `enterResult` mutation. The locked result is always
- * persisted; `recomputePending` is true when the post-result scoreboard
- * rebuild failed and needs a manual `recompute`.
- */
-export interface ResultEntered {
-  recomputePending: boolean
-}
