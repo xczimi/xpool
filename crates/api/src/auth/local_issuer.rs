@@ -7,9 +7,7 @@
 //! `--features lambda` do not include this module, but defence-in-depth
 //! also requires the runtime trust-list to opt in via env (see jwt.rs).
 
-use jsonwebtoken::{
-    decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation,
-};
+use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 
 pub const ISSUER: &str = "xpool-local";

@@ -23,13 +23,8 @@ fn router(cloudfront_secret: Option<&str>) -> Router {
     api::build_app(repo, false, cloudfront_secret.map(String::from))
 }
 
-async fn status_for(
-    router: Router,
-    secret_header: Option<&str>,
-) -> (StatusCode, String) {
-    let mut req = Request::builder()
-        .method("GET")
-        .uri("/api/health");
+async fn status_for(router: Router, secret_header: Option<&str>) -> (StatusCode, String) {
+    let mut req = Request::builder().method("GET").uri("/api/health");
     if let Some(s) = secret_header {
         req = req.header("X-CloudFront-Secret", s);
     }

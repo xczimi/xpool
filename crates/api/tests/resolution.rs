@@ -55,11 +55,15 @@ async fn resolve_finds_player_via_identity_lookup() {
         provider_id: "alice@example.com".into(),
         person_id: common::ALICE.into(),
         verified_email: Some("alice@example.com".into()),
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
     repo.put_person(&Person {
         id: common::ALICE.into(),
         identity_ids: vec!["i1".into()],
-    }).await.unwrap();
+    })
+    .await
+    .unwrap();
     // The `alice` Player is already seeded by common::test_app, with id == ALICE.
 
     let claims = VerifiedClaims {

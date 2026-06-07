@@ -39,7 +39,9 @@ async fn dev_login_with_sub_and_email_mints_a_token_for_an_arbitrary_identity() 
     let (app, _repo) = common::test_app_with_local_auth().await;
     let req = Request::post("/api/dev/login")
         .header("content-type", "application/json")
-        .body(Body::from(r#"{"sub":"auth0|stranger","email":"stranger@example.com"}"#))
+        .body(Body::from(
+            r#"{"sub":"auth0|stranger","email":"stranger@example.com"}"#,
+        ))
         .unwrap();
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
@@ -64,7 +66,10 @@ async fn dev_login_for_result_user_uses_configured_email_and_resolves() {
 
     let req = Request::post("/api/dev/login")
         .header("content-type", "application/json")
-        .body(Body::from(format!(r#"{{"player":"{}"}}"#, common::RESULT_ID)))
+        .body(Body::from(format!(
+            r#"{{"player":"{}"}}"#,
+            common::RESULT_ID
+        )))
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);

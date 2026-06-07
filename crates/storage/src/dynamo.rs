@@ -75,7 +75,11 @@ impl DynamoRepository {
                 .endpoint_url(endpoint)
                 .region(aws_sdk_dynamodb::config::Region::new("us-east-1"))
                 .credentials_provider(aws_sdk_dynamodb::config::Credentials::new(
-                    "local", "local", None, None, "xpool-local",
+                    "local",
+                    "local",
+                    None,
+                    None,
+                    "xpool-local",
                 ));
         }
 

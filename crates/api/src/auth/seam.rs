@@ -7,8 +7,8 @@
 //! error. An invalid token IS an error (`401`).
 
 use crate::auth::jwt::{verify_token, TrustList, VerifiedClaims};
-use crate::auth::CurrentPlayer;
 use crate::auth::resolution::resolve_player;
+use crate::auth::CurrentPlayer;
 use axum::{
     extract::{Request, State},
     http::{header, HeaderMap, StatusCode},

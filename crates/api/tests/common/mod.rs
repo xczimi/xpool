@@ -126,8 +126,10 @@ pub fn tournament_with_knockout(kickoff_offset: Duration) -> Tournament {
             description: away_desc.to_owned(),
         },
     };
-    t.games
-        .insert(GAME_KO.to_owned(), mk_ko_game(GAME_KO, GROUP_KO, "1A", "2A"));
+    t.games.insert(
+        GAME_KO.to_owned(),
+        mk_ko_game(GAME_KO, GROUP_KO, "1A", "2A"),
+    );
     t.games.insert(
         GAME_KO_NEXT.to_owned(),
         mk_ko_game(GAME_KO_NEXT, GROUP_KO_NEXT, "Winner M73", "Loser M73"),
@@ -148,7 +150,12 @@ pub fn tournament_with_knockout(kickoff_offset: Duration) -> Tournament {
     );
     t.groups.insert(
         GROUP_KO_NEXT.to_owned(),
-        mk_ko_group(GROUP_KO_NEXT, "Round of 16 — Match 1", Round::R16, GAME_KO_NEXT),
+        mk_ko_group(
+            GROUP_KO_NEXT,
+            "Round of 16 — Match 1",
+            Round::R16,
+            GAME_KO_NEXT,
+        ),
     );
 
     // Make the knockout groups children of ROOT so the tree stays connected.
@@ -328,11 +335,7 @@ pub fn with_player(
 ///
 /// The `app` must have been built via `test_app_with_local_auth()`.
 #[allow(dead_code)]
-pub async fn query_as(
-    app: &axum::Router,
-    player_id: &str,
-    body: &str,
-) -> serde_json::Value {
+pub async fn query_as(app: &axum::Router, player_id: &str, body: &str) -> serde_json::Value {
     let (name, value) = auth_header(player_id);
     let req = axum::http::Request::builder()
         .method("POST")
@@ -381,11 +384,7 @@ pub async fn seed_identity_for(repo: &Arc<dyn Repository>, player_id: &str, emai
 ///
 /// The `app` must have been built via `test_app_with_local_auth()`.
 #[allow(dead_code)]
-pub async fn query_with_bearer(
-    app: &axum::Router,
-    bearer: &str,
-    body: &str,
-) -> serde_json::Value {
+pub async fn query_with_bearer(app: &axum::Router, bearer: &str, body: &str) -> serde_json::Value {
     let req = axum::http::Request::builder()
         .method("POST")
         .uri("/api/graphql")

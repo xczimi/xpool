@@ -251,7 +251,9 @@ async fn player_concurrent_writes_second_conflicts() {
     let err = repo.put_player(&writer_b).await;
     assert!(err.is_err(), "expected version-conflict error");
     assert!(
-        err.unwrap_err().to_string().contains("optimistic concurrency"),
+        err.unwrap_err()
+            .to_string()
+            .contains("optimistic concurrency"),
         "expected an optimistic-concurrency conflict"
     );
 

@@ -241,11 +241,8 @@ fn rank_h2h(
     let h2h_stats = compute_stats(teams, &h2h, predictions);
 
     // The three H2H rungs, each a metric over the recomputed H2H table.
-    let h2h_metrics: [fn(&TeamStats) -> i32; 3] = [
-        |s| s.points,
-        |s| s.goal_diff(),
-        |s| s.goals_for,
-    ];
+    let h2h_metrics: [fn(&TeamStats) -> i32; 3] =
+        [|s| s.points, |s| s.goal_diff(), |s| s.goals_for];
 
     rank_h2h_rung(
         teams,
@@ -294,7 +291,13 @@ fn rank_h2h_rung(
                 // Nothing separated on this rung — advance within the same
                 // H2H table to the next rung.
                 rank_h2h_rung(
-                    run, h2h_stats, all_stats, games, predictions, draw_order, metrics,
+                    run,
+                    h2h_stats,
+                    all_stats,
+                    games,
+                    predictions,
+                    draw_order,
+                    metrics,
                     idx + 1,
                 )
             } else {
@@ -326,8 +329,7 @@ fn rank_all_match(
         _ => {
             // Terminal: order by the player's manual draw_order.
             let mut result = teams.to_vec();
-            result
-                .sort_by_key(|t| draw_order.iter().position(|d| d == t).unwrap_or(usize::MAX));
+            result.sort_by_key(|t| draw_order.iter().position(|d| d == t).unwrap_or(usize::MAX));
             return result;
         }
     };

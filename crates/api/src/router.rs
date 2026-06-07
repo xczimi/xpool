@@ -1,9 +1,9 @@
 //! The axum router: GraphQL endpoint, playground, health, and the auth
 //! seam (`docs/superpowers/specs/2026-05-30-auth-design.md` §2).
 
+use crate::auth::jwt::TrustList;
 use crate::auth::seam::{auth_seam, SeamState};
 use crate::auth::CurrentPlayer;
-use crate::auth::jwt::TrustList;
 use crate::gql::XpoolSchema;
 use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
@@ -51,9 +51,15 @@ pub fn build_router(
     cors: bool,
     cloudfront_secret: Option<String>,
 ) -> Router {
-    let state = AppState { schema, repo: repo.clone() };
+    let state = AppState {
+        schema,
+        repo: repo.clone(),
+    };
     let trust = TrustList::from_env();
-    let seam_state = SeamState { trust, repo: repo.clone() };
+    let seam_state = SeamState {
+        trust,
+        repo: repo.clone(),
+    };
 
     // Core routes go behind the auth seam.
     let mut router = Router::new()
@@ -63,10 +69,7 @@ pub fn build_router(
         )
         .route("/api/health", get(health))
         .with_state(state)
-        .layer(axum::middleware::from_fn_with_state(
-            seam_state,
-            auth_seam,
-        ));
+        .layer(axum::middleware::from_fn_with_state(seam_state, auth_seam));
 
     // Dev-login route is mounted AFTER the seam layer so it is NOT wrapped
     // by auth middleware — it is the token-minting endpoint itself.

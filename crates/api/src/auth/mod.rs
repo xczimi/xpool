@@ -5,15 +5,15 @@
 //! `X-Dev-Player` header is gone — local dev mints local-issuer JWTs via
 //! the dev-login endpoint instead (one auth code path).
 
-pub mod local_issuer;
-pub mod jwt;
 pub mod auth0_jwks;
-pub mod seam;
+pub mod jwt;
+pub mod local_issuer;
 pub mod resolution;
+pub mod seam;
 
-pub mod invite_code;
 #[cfg(feature = "dev_auth")]
 pub mod dev_login;
+pub mod invite_code;
 
 // CurrentPlayer moves here in Task 4. Re-exported at the module root for
 // callers that used `crate::auth::CurrentPlayer` previously.
@@ -53,9 +53,7 @@ impl CurrentPlayer {
             CurrentPlayer::AuthenticatedUnclaimed(_) => {
                 Err(async_graphql::Error::new("invitation required"))
             }
-            CurrentPlayer::Visitor => {
-                Err(async_graphql::Error::new("authentication required"))
-            }
+            CurrentPlayer::Visitor => Err(async_graphql::Error::new("authentication required")),
         }
     }
 

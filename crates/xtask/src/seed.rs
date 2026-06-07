@@ -141,8 +141,8 @@ pub async fn seed(repo: &dyn Repository) -> anyhow::Result<()> {
     // Result-user email is configurable so the operator's real verified email
     // can be set in production without touching code.  Defaults to a synthetic
     // address that no one can authenticate with, effectively disabling admin.
-    let result_user_email = std::env::var("RESULT_USER_EMAIL")
-        .unwrap_or_else(|_| "result-user@dev.invalid".into());
+    let result_user_email =
+        std::env::var("RESULT_USER_EMAIL").unwrap_or_else(|_| "result-user@dev.invalid".into());
     seed_with_email(repo, result_user_email).await
 }
 
@@ -177,7 +177,10 @@ mod tests {
             // Person row must exist so the resolver can find the player.
             let person_id = format!("person-{nick}");
             assert!(
-                repo.get_person(&person_id).await.expect("repo error").is_some(),
+                repo.get_person(&person_id)
+                    .await
+                    .expect("repo error")
+                    .is_some(),
                 "missing Person row for {nick}"
             );
 
@@ -237,10 +240,7 @@ mod tests {
             .expect("repo error")
             .expect("result-user identity row missing at overridden email");
         assert_eq!(identity.person_id, "person-result");
-        assert_eq!(
-            identity.verified_email.as_deref(),
-            Some("pool@xczimi.com")
-        );
+        assert_eq!(identity.verified_email.as_deref(), Some("pool@xczimi.com"));
         // Default address must NOT have a row — only the override exists.
         let old_row = repo
             .get_identity("email", "result-user@dev.invalid")

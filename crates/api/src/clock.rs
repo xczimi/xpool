@@ -63,7 +63,11 @@ mod tests {
 
     #[test]
     fn env_used_when_no_header() {
-        let got = resolve_now_from(None, Some("2026-07-01T00:00:00Z"), t("2026-05-17T00:00:00Z"));
+        let got = resolve_now_from(
+            None,
+            Some("2026-07-01T00:00:00Z"),
+            t("2026-05-17T00:00:00Z"),
+        );
         assert_eq!(got, t("2026-07-01T00:00:00Z"));
     }
 
@@ -75,7 +79,11 @@ mod tests {
 
     #[test]
     fn unparseable_header_falls_through_to_env() {
-        let got = resolve_now_from(Some("not-a-date"), Some("2026-07-01T00:00:00Z"), t("2026-05-17T00:00:00Z"));
+        let got = resolve_now_from(
+            Some("not-a-date"),
+            Some("2026-07-01T00:00:00Z"),
+            t("2026-05-17T00:00:00Z"),
+        );
         assert_eq!(got, t("2026-07-01T00:00:00Z"));
     }
 

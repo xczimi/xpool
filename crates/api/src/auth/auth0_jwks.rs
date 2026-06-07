@@ -92,7 +92,9 @@ impl Auth0Verifier {
 
     pub async fn verify(&self, token: &str) -> anyhow::Result<VerifiedClaims> {
         let header = decode_header(token)?;
-        let kid = header.kid.ok_or_else(|| anyhow::anyhow!("token has no kid"))?;
+        let kid = header
+            .kid
+            .ok_or_else(|| anyhow::anyhow!("token has no kid"))?;
         let key = self.key_for_kid(&kid).await?;
 
         let mut validation = Validation::new(Algorithm::RS256);
@@ -158,7 +160,12 @@ impl Auth0Verifier {
             return Some(value.clone());
         }
         let url = format!("https://{}/userinfo", self.domain);
-        match reqwest::Client::new().get(&url).bearer_auth(token).send().await {
+        match reqwest::Client::new()
+            .get(&url)
+            .bearer_auth(token)
+            .send()
+            .await
+        {
             Ok(resp) => resp.json::<serde_json::Value>().await.ok(),
             Err(e) => {
                 tracing::warn!("userinfo fetch failed: {e}");

@@ -47,7 +47,9 @@ async fn find_by_verified_email_returns_all_matches_for_one_person() {
         hits.iter().map(|i| i.person_id.clone()).collect();
     assert_eq!(
         person_ids,
-        ["p1".to_string()].into_iter().collect::<std::collections::HashSet<_>>()
+        ["p1".to_string()]
+            .into_iter()
+            .collect::<std::collections::HashSet<_>>()
     );
 }
 

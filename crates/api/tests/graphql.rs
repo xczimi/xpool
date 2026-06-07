@@ -18,7 +18,11 @@ async fn me_returns_null_for_visitor() {
     let repo = seeded_repo(Duration::hours(24)).await;
     let resp = run(&repo, "{ me { __typename } }", Variables::default(), None).await;
     // me is now nullable — a Visitor gets null, no auth error at the field level.
-    assert!(resp.errors.is_empty(), "visitor me must not error: {:?}", resp.errors);
+    assert!(
+        resp.errors.is_empty(),
+        "visitor me must not error: {:?}",
+        resp.errors
+    );
     assert!(data(&resp)["me"].is_null(), "visitor gets null me");
 }
 
@@ -227,7 +231,10 @@ async fn submit_group_rejected_after_deadline() {
         "lock": false
     }));
     let resp = run(&repo, SUBMIT, vars, Some(ALICE)).await;
-    assert!(!resp.errors.is_empty(), "post-deadline submit must be rejected");
+    assert!(
+        !resp.errors.is_empty(),
+        "post-deadline submit must be rejected"
+    );
     assert!(
         resp.errors[0].message.contains("deadline"),
         "{:?}",
@@ -257,7 +264,11 @@ async fn submit_group_rejected_when_overwriting_a_locked_prediction() {
         !resp.errors.is_empty(),
         "overwriting a locked prediction must be rejected"
     );
-    assert!(resp.errors[0].message.contains("locked"), "{:?}", resp.errors);
+    assert!(
+        resp.errors[0].message.contains("locked"),
+        "{:?}",
+        resp.errors
+    );
     // The locked prediction is untouched.
     let stored = repo.get_player(ALICE).await.unwrap().unwrap();
     let g1 = stored.match_prediction(GAME_1).unwrap();
@@ -270,7 +281,9 @@ async fn submit_group_allowed_at_exactly_the_deadline_instant() {
     // itself is still open, matching `effective_locked` and `deadline_passed`.
     let repo = seeded_repo(Duration::hours(24)).await;
     let tournament = repo.get_tournament().await.unwrap().unwrap();
-    let deadline = tournament.deadline(GROUP_A).expect("group A has a deadline");
+    let deadline = tournament
+        .deadline(GROUP_A)
+        .expect("group A has a deadline");
 
     let vars = Variables::from_json(json!({
         "g": GROUP_A,
@@ -360,13 +373,29 @@ async fn submit_group_as_result_user_allowed_after_deadline_and_recomputes() {
         "lock": false
     }));
     let resp = run(&repo, SUBMIT, vars, Some(RESULT_ID)).await;
-    assert!(resp.errors.is_empty(), "result user may submit post-deadline: {:?}", resp.errors);
+    assert!(
+        resp.errors.is_empty(),
+        "result user may submit post-deadline: {:?}",
+        resp.errors
+    );
 
     // The save recomputed the scoreboard on write: Alice scored 4.
-    let board = repo.get_scoreboard().await.unwrap().expect("scoreboard written");
-    let total: i64 = board.entries.get(ALICE).expect("Alice on scoreboard").values().sum();
+    let board = repo
+        .get_scoreboard()
+        .await
+        .unwrap()
+        .expect("scoreboard written");
+    let total: i64 = board
+        .entries
+        .get(ALICE)
+        .expect("Alice on scoreboard")
+        .values()
+        .sum();
     assert_eq!(total, 4, "exact 2-1 official result = 4 points");
-    assert!(!board.entries.contains_key(RESULT_ID), "result user not scored against itself");
+    assert!(
+        !board.entries.contains_key(RESULT_ID),
+        "result user not scored against itself"
+    );
 }
 
 #[tokio::test]
@@ -385,12 +414,23 @@ async fn submit_group_as_result_user_can_recorrect_an_unlocked_result() {
         }))
     };
     // First (wrong) entry, then a correction — both accepted, no unlock step.
-    assert!(run(&repo, SUBMIT, entry(0, 0), Some(RESULT_ID)).await.errors.is_empty());
+    assert!(run(&repo, SUBMIT, entry(0, 0), Some(RESULT_ID))
+        .await
+        .errors
+        .is_empty());
     let resp = run(&repo, SUBMIT, entry(3, 0), Some(RESULT_ID)).await;
-    assert!(resp.errors.is_empty(), "correction accepted: {:?}", resp.errors);
+    assert!(
+        resp.errors.is_empty(),
+        "correction accepted: {:?}",
+        resp.errors
+    );
 
     // Scoreboard reflects the corrected 3-0 (Alice predicted 3-0 → perfect = 4).
-    let board = repo.get_scoreboard().await.unwrap().expect("scoreboard written");
+    let board = repo
+        .get_scoreboard()
+        .await
+        .unwrap()
+        .expect("scoreboard written");
     let total: i64 = board.entries.get(ALICE).unwrap().values().sum();
     assert_eq!(total, 4);
 }
@@ -408,7 +448,10 @@ async fn submit_group_result_user_resolves_drawn_knockout_advancer() {
         ],
         "lock": false
     }));
-    assert!(run(&repo, SUBMIT, ga, Some(RESULT_ID)).await.errors.is_empty());
+    assert!(run(&repo, SUBMIT, ga, Some(RESULT_ID))
+        .await
+        .errors
+        .is_empty());
 
     // GAME_KO ends level 1-1; KOR advances — expressed as the standings ordering
     // [KOR, MEX] for the one-match knockout group (the draw-order UI's output).
@@ -588,11 +631,22 @@ async fn scoreboard_query_reflects_recompute() {
     }));
     run(&repo, SUBMIT, vars, Some(RESULT_ID)).await;
 
-    let resp = run(&repo, "{ scoreboard { playerId total } }", Variables::default(), None).await;
+    let resp = run(
+        &repo,
+        "{ scoreboard { playerId total } }",
+        Variables::default(),
+        None,
+    )
+    .await;
     assert!(resp.errors.is_empty(), "{:?}", resp.errors);
     let d = data(&resp);
-    let alice_row = d["scoreboard"].as_array().unwrap().iter()
-        .find(|r| r["playerId"] == "alice").unwrap().clone();
+    let alice_row = d["scoreboard"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|r| r["playerId"] == "alice")
+        .unwrap()
+        .clone();
     assert_eq!(alice_row["total"], 3);
 }
 
@@ -612,7 +666,11 @@ async fn recompute_mutation_runs_for_an_admin() {
     assert!(resp.errors.is_empty(), "{:?}", resp.errors);
     assert_eq!(data(&resp)["recompute"], json!(true));
 
-    let board = repo.get_scoreboard().await.unwrap().expect("scoreboard written");
+    let board = repo
+        .get_scoreboard()
+        .await
+        .unwrap()
+        .expect("scoreboard written");
     let total: i64 = board.entries.get(ALICE).unwrap().values().sum();
     assert_eq!(total, 4);
 }
@@ -681,10 +739,7 @@ async fn players_query_returns_all_players_including_result_user() {
     let players = d["players"].as_array().unwrap();
     assert_eq!(players.len(), 3, "result user + Alice + Bob");
 
-    let ids: Vec<&str> = players
-        .iter()
-        .map(|p| p["id"].as_str().unwrap())
-        .collect();
+    let ids: Vec<&str> = players.iter().map(|p| p["id"].as_str().unwrap()).collect();
     assert!(ids.contains(&ALICE), "Alice listed: {ids:?}");
     assert!(ids.contains(&BOB), "Bob listed: {ids:?}");
     assert!(ids.contains(&RESULT_ID), "result user listed: {ids:?}");
@@ -744,7 +799,11 @@ mutation($id: ID!, $name: String!) {
 async fn make_pool(repo: &std::sync::Arc<dyn Repository>, id: &str, actor: &str) -> String {
     let vars = Variables::from_json(json!({ "id": id, "name": "Friends" }));
     let resp = run(repo, CREATE_POOL, vars, Some(actor)).await;
-    assert!(resp.errors.is_empty(), "createPool failed: {:?}", resp.errors);
+    assert!(
+        resp.errors.is_empty(),
+        "createPool failed: {:?}",
+        resp.errors
+    );
     data(&resp)["createPool"]["joinCode"]
         .as_str()
         .expect("joinCode string")
@@ -1012,7 +1071,11 @@ async fn tips_visibility_uses_the_request_clock() {
     )
     .await;
     let bob_after = find_tip(&after, BOB, GAME_1);
-    assert_eq!(bob_after["prediction"]["homeScore"], json!(1), "revealed after kickoff");
+    assert_eq!(
+        bob_after["prediction"]["homeScore"],
+        json!(1),
+        "revealed after kickoff"
+    );
 }
 
 #[tokio::test]
@@ -1032,8 +1095,12 @@ async fn tournament_exposes_time_flags_against_the_request_clock() {
     let early = run_at(&repo, q, Variables::default(), None, Utc::now()).await;
     assert!(early.errors.is_empty(), "{:?}", early.errors);
     let d = data(&early);
-    let group_a = d["tournament"]["groups"].as_array().unwrap()
-        .iter().find(|g| g["id"] == json!(GROUP_A)).unwrap();
+    let group_a = d["tournament"]["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["id"] == json!(GROUP_A))
+        .unwrap();
     assert_eq!(group_a["deadlinePassed"], json!(false));
     let game = &d["tournament"]["games"].as_array().unwrap()[0];
     assert_eq!(game["resultPending"], json!(false));
@@ -1041,10 +1108,21 @@ async fn tournament_exposes_time_flags_against_the_request_clock() {
 
     // Clock = 10 days later -> deadline passed, results pending, games are
     // now well outside the Today window.
-    let late = run_at(&repo, q, Variables::default(), None, Utc::now() + Duration::days(10)).await;
+    let late = run_at(
+        &repo,
+        q,
+        Variables::default(),
+        None,
+        Utc::now() + Duration::days(10),
+    )
+    .await;
     let d = data(&late);
-    let group_a = d["tournament"]["groups"].as_array().unwrap()
-        .iter().find(|g| g["id"] == json!(GROUP_A)).unwrap();
+    let group_a = d["tournament"]["groups"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|g| g["id"] == json!(GROUP_A))
+        .unwrap();
     assert_eq!(group_a["deadlinePassed"], json!(true));
     let game = &d["tournament"]["games"].as_array().unwrap()[0];
     assert_eq!(game["resultPending"], json!(true));
@@ -1082,7 +1160,10 @@ async fn scoreboard_pool_filter_rejects_a_visitor() {
         None,
     )
     .await;
-    assert!(!resp.errors.is_empty(), "visitor must not read a pool's scoreboard");
+    assert!(
+        !resp.errors.is_empty(),
+        "visitor must not read a pool's scoreboard"
+    );
 }
 
 #[tokio::test]
@@ -1102,8 +1183,18 @@ async fn scoreboard_pool_filter_succeeds_for_a_member() {
 #[tokio::test]
 async fn scoreboard_global_stays_public() {
     let repo = seeded_repo(Duration::hours(24)).await;
-    let resp = run(&repo, "{ scoreboard { playerId } }", Variables::default(), None).await;
-    assert!(resp.errors.is_empty(), "global scoreboard is public: {:?}", resp.errors);
+    let resp = run(
+        &repo,
+        "{ scoreboard { playerId } }",
+        Variables::default(),
+        None,
+    )
+    .await;
+    assert!(
+        resp.errors.is_empty(),
+        "global scoreboard is public: {:?}",
+        resp.errors
+    );
 }
 
 // ── Issue 05: invite authorization ───────────────────────────────────────────
@@ -1201,7 +1292,10 @@ async fn update_profile_rejects_whitespace_nick() {
         Some(ALICE),
     )
     .await;
-    assert!(!resp.errors.is_empty(), "whitespace-only nick must be rejected");
+    assert!(
+        !resp.errors.is_empty(),
+        "whitespace-only nick must be rejected"
+    );
 }
 
 #[tokio::test]
@@ -1244,4 +1338,3 @@ fn find_tip(resp: &async_graphql::Response, player_id: &str, game_id: &str) -> s
         .unwrap_or_else(|| panic!("no tip found for player={player_id} game={game_id}"))
         .clone()
 }
-

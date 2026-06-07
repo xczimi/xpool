@@ -9,7 +9,9 @@ use api::auth::local_issuer::mint_for_test;
 async fn local_issuer_only_accepts_local_tokens() {
     let trust = TrustList::from_env_for_test(/* local */ true, /* auth0 */ None);
     let token = mint_for_test("demo-ada", "ada@example.com");
-    let verified = verify_token(&trust, &token).await.expect("local must verify");
+    let verified = verify_token(&trust, &token)
+        .await
+        .expect("local must verify");
     assert_eq!(verified.sub, "demo-ada");
     assert_eq!(verified.verified_email.as_deref(), Some("ada@example.com"));
 }

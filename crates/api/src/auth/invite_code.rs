@@ -34,8 +34,7 @@ pub fn encode_invite(secret: &[u8], payload: &InvitePayload) -> anyhow::Result<S
     let body = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(&json);
     let mut mac = HmacSha256::new_from_slice(secret)?;
     mac.update(body.as_bytes());
-    let sig = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .encode(mac.finalize().into_bytes());
+    let sig = base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(mac.finalize().into_bytes());
     Ok(format!("{body}.{sig}"))
 }
 

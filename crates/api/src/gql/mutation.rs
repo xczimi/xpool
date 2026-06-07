@@ -66,7 +66,9 @@ fn validate_profile_field(
 ) -> async_graphql::Result<String> {
     let trimmed = value.trim();
     if trimmed.is_empty() {
-        return Err(async_graphql::Error::new(format!("{label} must not be empty")));
+        return Err(async_graphql::Error::new(format!(
+            "{label} must not be empty"
+        )));
     }
     if trimmed.chars().count() > max_len {
         return Err(async_graphql::Error::new(format!(
@@ -158,9 +160,7 @@ pub struct ClaimResult {
 /// Derive the `(provider, provider_id)` key for storing an Identity row,
 /// based on the unclaimed session's verified contact — mirrors the
 /// `resolution::identity_key_for` logic but operates on `VerifiedIdentity`.
-fn identity_key_for_unclaimed(
-    u: &crate::auth::VerifiedIdentity,
-) -> Option<(String, String)> {
+fn identity_key_for_unclaimed(u: &crate::auth::VerifiedIdentity) -> Option<(String, String)> {
     let claims = crate::auth::jwt::VerifiedClaims {
         sub: u.sub.clone(),
         verified_email: u.verified_email.clone(),
@@ -284,9 +284,7 @@ impl MutationRoot {
                     // `recompute` mutation self-heals).
                     if viewer.is_result_user {
                         if let Err(e) = recompute(repo.as_ref(), now(ctx)).await {
-                            tracing::error!(
-                                "recompute after result-user submit_group failed: {e}"
-                            );
+                            tracing::error!("recompute after result-user submit_group failed: {e}");
                         }
                     }
                     return Ok(Player::from(&next));
@@ -352,11 +350,7 @@ impl MutationRoot {
     }
 
     /// Join a pool by its join code (POOL-02).
-    async fn join_pool(
-        &self,
-        ctx: &Context<'_>,
-        join_code: String,
-    ) -> async_graphql::Result<Pool> {
+    async fn join_pool(&self, ctx: &Context<'_>, join_code: String) -> async_graphql::Result<Pool> {
         let viewer = CurrentPlayer::require(ctx)?;
         let repo = repo(ctx);
         let pool = repo
@@ -397,11 +391,7 @@ impl MutationRoot {
     }
 
     /// Rotate a pool's join code (POOL-03). Owner-only.
-    async fn rotate_join_code(
-        &self,
-        ctx: &Context<'_>,
-        id: String,
-    ) -> async_graphql::Result<Pool> {
+    async fn rotate_join_code(&self, ctx: &Context<'_>, id: String) -> async_graphql::Result<Pool> {
         let viewer = CurrentPlayer::require(ctx)?;
         let repo = repo(ctx);
         let pool = load_pool(repo, &id).await?;
@@ -417,7 +407,9 @@ impl MutationRoot {
         let repo = repo(ctx);
         let pool = load_pool(repo, &id).await?;
         if pool.owner != viewer.id {
-            return Err(async_graphql::Error::new("only the pool owner may delete it"));
+            return Err(async_graphql::Error::new(
+                "only the pool owner may delete it",
+            ));
         }
         repo.delete_pool(&id).await?;
         Ok(true)
@@ -484,12 +476,10 @@ impl MutationRoot {
     async fn recompute(&self, ctx: &Context<'_>) -> async_graphql::Result<bool> {
         CurrentPlayer::require_admin(ctx)?;
         let repo = repo(ctx);
-        recompute(repo.as_ref(), now(ctx))
-            .await
-            .map_err(|e| {
-                tracing::error!("recompute mutation failed: {e}");
-                async_graphql::Error::new("recompute failed; please retry")
-            })?;
+        recompute(repo.as_ref(), now(ctx)).await.map_err(|e| {
+            tracing::error!("recompute mutation failed: {e}");
+            async_graphql::Error::new("recompute failed; please retry")
+        })?;
         Ok(true)
     }
 
@@ -568,9 +558,7 @@ impl MutationRoot {
 
         // Lazy creation: build Person + Player + Identity from the unclaimed session.
         let (provider, provider_id) = identity_key_for_unclaimed(&unclaimed).ok_or_else(|| {
-            async_graphql::Error::new(
-                "no usable verified contact on the auth session",
-            )
+            async_graphql::Error::new("no usable verified contact on the auth session")
         })?;
         let nick = validate_profile_field("nick", &nick, MAX_NICK_LEN)?;
         let full_name = validate_profile_field("full name", &full_name, MAX_FULL_NAME_LEN)?;
@@ -630,9 +618,10 @@ impl MutationRoot {
 
         // Defense in depth: verify the verified email actually matches a Person
         // via some existing Identity row.
-        let email = unclaimed.verified_email.as_deref().ok_or_else(|| {
-            async_graphql::Error::new("no verified email on the auth session")
-        })?;
+        let email = unclaimed
+            .verified_email
+            .as_deref()
+            .ok_or_else(|| async_graphql::Error::new("no verified email on the auth session"))?;
         let hits = repo.find_identities_by_verified_email(email).await?;
         if !hits.iter().any(|i| i.person_id == person_id) {
             return Err(async_graphql::Error::new(

@@ -57,22 +57,47 @@ mod tests {
     fn result_pending_true_after_buffer_when_no_result() {
         let ko = t("2026-06-20T18:00:00Z");
         // Group buffer = 105 min -> pending at 20:00, not at 19:00.
-        assert!(!result_pending(ko, Round::GroupStage, false, t("2026-06-20T19:00:00Z")));
-        assert!(result_pending(ko, Round::GroupStage, false, t("2026-06-20T20:00:00Z")));
+        assert!(!result_pending(
+            ko,
+            Round::GroupStage,
+            false,
+            t("2026-06-20T19:00:00Z")
+        ));
+        assert!(result_pending(
+            ko,
+            Round::GroupStage,
+            false,
+            t("2026-06-20T20:00:00Z")
+        ));
     }
 
     #[test]
     fn result_pending_false_once_a_result_is_entered() {
         let ko = t("2026-06-20T18:00:00Z");
-        assert!(!result_pending(ko, Round::GroupStage, true, t("2026-06-20T23:00:00Z")));
+        assert!(!result_pending(
+            ko,
+            Round::GroupStage,
+            true,
+            t("2026-06-20T23:00:00Z")
+        ));
     }
 
     #[test]
     fn knockout_uses_the_longer_buffer() {
         let ko = t("2026-07-10T18:00:00Z");
         // 150-min buffer -> not pending at 20:00, pending at 21:00.
-        assert!(!result_pending(ko, Round::QF, false, t("2026-07-10T20:00:00Z")));
-        assert!(result_pending(ko, Round::QF, false, t("2026-07-10T21:00:00Z")));
+        assert!(!result_pending(
+            ko,
+            Round::QF,
+            false,
+            t("2026-07-10T20:00:00Z")
+        ));
+        assert!(result_pending(
+            ko,
+            Round::QF,
+            false,
+            t("2026-07-10T21:00:00Z")
+        ));
     }
 
     #[test]

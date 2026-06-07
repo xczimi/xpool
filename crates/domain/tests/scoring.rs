@@ -384,12 +384,14 @@ fn rank_group_4_team_by_points() {
     // A beats B, C beats D, A beats C, B beats D, A beats D, C beats B
     // A: 3W=9pts; C: 2W1L=6pts; B: 1W2L=3pts; D: 0W3L=0pts
     let group = make_leaf_group("g1", vec!["m1", "m2", "m3", "m4", "m5", "m6"]);
-    let games = [make_single_game("m1", "g1", "A", "B"),
+    let games = [
+        make_single_game("m1", "g1", "A", "B"),
         make_single_game("m2", "g1", "C", "D"),
         make_single_game("m3", "g1", "A", "C"),
         make_single_game("m4", "g1", "B", "D"),
         make_single_game("m5", "g1", "A", "D"),
-        make_single_game("m6", "g1", "C", "B")];
+        make_single_game("m6", "g1", "C", "B"),
+    ];
     let preds = [
         mp("m1", 2, 0, true), // A beats B
         mp("m2", 2, 0, true), // C beats D
@@ -420,9 +422,11 @@ fn rank_group_h2h_tiebreak() {
     // A beats C 1-0; B beats C 1-0; A vs B: A wins 1-0
     // A: 2W=6; B: 1W1L=3; C: 0W2L=0 → A first, B second, C third
     let group = make_leaf_group("g1", vec!["m1", "m2", "m3"]);
-    let games = [make_single_game("m1", "g1", "A", "B"),
+    let games = [
+        make_single_game("m1", "g1", "A", "B"),
         make_single_game("m2", "g1", "A", "C"),
-        make_single_game("m3", "g1", "B", "C")];
+        make_single_game("m3", "g1", "B", "C"),
+    ];
     let preds = [
         mp("m1", 1, 0, true), // A beats B
         mp("m2", 1, 0, true), // A beats C
@@ -446,9 +450,11 @@ fn rank_group_h2h_points_tiebreak() {
     // A: 1W1D=4; B: 1W1D=4 → A and B tied; C: 0W2L=0
     // H2H A vs B: draw → H2H GD: A:0, B:0 → H2H goals: A:1, B:1 → draw_order
     let group = make_leaf_group("g1", vec!["m1", "m2", "m3"]);
-    let games = [make_single_game("m1", "g1", "A", "B"),
+    let games = [
+        make_single_game("m1", "g1", "A", "B"),
         make_single_game("m2", "g1", "A", "C"),
-        make_single_game("m3", "g1", "B", "C")];
+        make_single_game("m3", "g1", "B", "C"),
+    ];
     let preds = [
         mp("m1", 1, 1, true), // A draws B
         mp("m2", 2, 0, true), // A beats C
@@ -478,9 +484,11 @@ fn rank_group_all_gd_tiebreak() {
     // m3: B(home) 2 - C(away) 0 → B's GD: +2
     // A total GD: +3; B total GD: +2 → A ranks higher
     let group = make_leaf_group("g1", vec!["m1", "m2", "m3"]);
-    let games = [make_single_game("m1", "g1", "A", "B"),
+    let games = [
+        make_single_game("m1", "g1", "A", "B"),
         make_single_game("m2", "g1", "A", "C"),
-        make_single_game("m3", "g1", "B", "C")];
+        make_single_game("m3", "g1", "B", "C"),
+    ];
     let preds = [
         mp("m1", 1, 1, true), // A draws B
         mp("m2", 3, 0, true), // A beats C 3-0
@@ -517,9 +525,11 @@ fn rank_group_all_goals_tiebreak() {
     // A: 2D=2; B: 2D=2 → tied; C: 2D=2 → all tied!
     // This is getting complex. Let's just verify draw_order fallback for now.
     let group = make_leaf_group("g1", vec!["m1", "m2", "m3"]);
-    let games = [make_single_game("m1", "g1", "A", "B"),
+    let games = [
+        make_single_game("m1", "g1", "A", "B"),
         make_single_game("m2", "g1", "A", "C"),
-        make_single_game("m3", "g1", "B", "C")];
+        make_single_game("m3", "g1", "B", "C"),
+    ];
     let preds = [
         mp("m1", 0, 0, true), // A draws B
         mp("m2", 1, 0, true), // A beats C 1-0
@@ -567,7 +577,10 @@ fn rank_group_h2h_partially_resolves_subgroup_recomputes_h2h() {
     let game_refs: Vec<&SingleGame> = games.iter().collect();
     let pred_refs: Vec<&MatchPrediction> = preds.iter().collect();
     let result = rank_group(&group, &game_refs, &pred_refs, &[]);
-    assert_eq!(result, vec!["B".to_string(), "C".to_string(), "A".to_string()]);
+    assert_eq!(
+        result,
+        vec!["B".to_string(), "C".to_string(), "A".to_string()]
+    );
 }
 
 // ─── score_tournament ───────────────────────────────────────────────────────

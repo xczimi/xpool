@@ -23,10 +23,11 @@ impl TrustList {
             .ok()
             .filter(|v| !v.is_empty())
             .is_some();
-        let auth0 = match (env::var("AUTH0_DOMAIN").ok(), env::var("AUTH0_AUDIENCE").ok()) {
-            (Some(d), Some(a)) if !d.is_empty() && !a.is_empty() => {
-                Some(Auth0Verifier::new(d, a))
-            }
+        let auth0 = match (
+            env::var("AUTH0_DOMAIN").ok(),
+            env::var("AUTH0_AUDIENCE").ok(),
+        ) {
+            (Some(d), Some(a)) if !d.is_empty() && !a.is_empty() => Some(Auth0Verifier::new(d, a)),
             _ => None,
         };
         Self { local, auth0 }
@@ -70,10 +71,7 @@ impl From<LocalClaims> for VerifiedClaims {
 /// Verify a Bearer token against the trust-list. Dispatches by the JWT's
 /// `iss` claim (which is unverified at this point — but the matching
 /// per-issuer `verify_*` call cryptographically rebinds it).
-pub async fn verify_token(
-    trust: &TrustList,
-    token: &str,
-) -> Result<VerifiedClaims, anyhow::Error> {
+pub async fn verify_token(trust: &TrustList, token: &str) -> Result<VerifiedClaims, anyhow::Error> {
     if trust.is_empty() {
         anyhow::bail!("no token issuers trusted");
     }
@@ -81,8 +79,7 @@ pub async fn verify_token(
     let header_iss = peek_iss(token).unwrap_or_default();
 
     if trust.local && header_iss == local_issuer::ISSUER {
-        let claims = local_issuer::verify_local(token)
-            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        let claims = local_issuer::verify_local(token).map_err(|e| anyhow::anyhow!("{e}"))?;
         return Ok(claims.into());
     }
     if let Some(a) = &trust.auth0 {

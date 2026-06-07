@@ -64,10 +64,8 @@ pub trait Repository: Send + Sync {
     /// Use case: when a user signs in with a new provider, look up any existing
     /// identities that share the same verified e-mail address so the caller can
     /// link them to the same `Person`.
-    async fn find_identities_by_verified_email(
-        &self,
-        email: &str,
-    ) -> anyhow::Result<Vec<Identity>>;
+    async fn find_identities_by_verified_email(&self, email: &str)
+        -> anyhow::Result<Vec<Identity>>;
 
     /// Atomically mark a single-use invite code as claimed. Returns `true`
     /// when this caller successfully claimed it (first time), `false` when

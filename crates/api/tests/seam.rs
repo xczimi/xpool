@@ -21,7 +21,9 @@ async fn bearer_token_resolves_to_player() {
     let req = Request::post("/api/graphql")
         .header("content-type", "application/json")
         .header("authorization", format!("Bearer {token}"))
-        .body(Body::from(r#"{"query":"{ me { __typename ... on Player { id } } }"}"#))
+        .body(Body::from(
+            r#"{"query":"{ me { __typename ... on Player { id } } }"}"#,
+        ))
         .unwrap();
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);

@@ -69,11 +69,7 @@ pub fn leave(pool: &Pool, player_id: &str) -> Result<Pool, PoolError> {
 
 /// Remove a member at the owner's request (POOL-04). Owner-only; the owner
 /// cannot be removed.
-pub fn remove_member(
-    pool: &Pool,
-    requester_id: &str,
-    member_id: &str,
-) -> Result<Pool, PoolError> {
+pub fn remove_member(pool: &Pool, requester_id: &str, member_id: &str) -> Result<Pool, PoolError> {
     if pool.owner != requester_id {
         return Err(PoolError::NotOwner);
     }

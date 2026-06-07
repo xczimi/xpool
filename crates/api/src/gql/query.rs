@@ -9,8 +9,8 @@ use crate::gql::types::*;
 use async_graphql::{Context, Object};
 use domain::scoring::{is_perfect, ScoringConfig};
 use std::collections::HashMap;
-use storage::Repository;
 use std::sync::Arc;
+use storage::Repository;
 
 pub struct QueryRoot;
 
@@ -127,7 +127,9 @@ impl QueryRoot {
     async fn me(&self, ctx: &Context<'_>) -> async_graphql::Result<Option<Viewer>> {
         match ctx.data_unchecked::<CurrentPlayer>() {
             CurrentPlayer::Visitor => Ok(None),
-            CurrentPlayer::Player(p) => Ok(Some(Viewer::Player(Box::new(Player::from(p.as_ref()))))),
+            CurrentPlayer::Player(p) => {
+                Ok(Some(Viewer::Player(Box::new(Player::from(p.as_ref())))))
+            }
             CurrentPlayer::AuthenticatedUnclaimed(u) => {
                 let repo = ctx.data_unchecked::<Arc<dyn Repository>>();
                 let candidate = if let Some(email) = &u.verified_email {

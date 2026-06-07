@@ -29,7 +29,10 @@ fn round_trip_a_pool_join_code() {
     let encoded = encode_invite(SECRET.as_bytes(), &payload).unwrap();
     let decoded = decode_invite(SECRET.as_bytes(), &encoded).unwrap();
     assert_eq!(decoded.pool.as_deref(), Some("pool-xyz"));
-    assert!(matches!(decoded.use_policy, UsePolicy::MultiUseUntilRotated));
+    assert!(matches!(
+        decoded.use_policy,
+        UsePolicy::MultiUseUntilRotated
+    ));
 }
 
 #[test]

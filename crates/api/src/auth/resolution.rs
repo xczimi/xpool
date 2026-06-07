@@ -10,12 +10,14 @@ use storage::Repository;
 /// caller should treat None as "Visitor").
 pub fn identity_key_for(claims: &VerifiedClaims) -> Option<(String, String)> {
     match claims.connection.as_str() {
-        "email" | "dev" => {
-            claims.verified_email.as_ref().map(|e| ("email".to_owned(), e.clone()))
-        }
-        "sms" => {
-            claims.verified_phone.as_ref().map(|p| ("phone".to_owned(), p.clone()))
-        }
+        "email" | "dev" => claims
+            .verified_email
+            .as_ref()
+            .map(|e| ("email".to_owned(), e.clone())),
+        "sms" => claims
+            .verified_phone
+            .as_ref()
+            .map(|p| ("phone".to_owned(), p.clone())),
         "google" => Some(("google".to_owned(), claims.sub.clone())),
         _ => None,
     }
@@ -31,10 +33,7 @@ pub fn identity_key_for(claims: &VerifiedClaims) -> Option<(String, String)> {
 /// 4. Not found, no email match → AuthenticatedUnclaimed (claim/join
 ///    path).
 /// 5. No verified contact at all → Visitor.
-pub async fn resolve_player(
-    repo: &dyn Repository,
-    claims: VerifiedClaims,
-) -> CurrentPlayer {
+pub async fn resolve_player(repo: &dyn Repository, claims: VerifiedClaims) -> CurrentPlayer {
     let Some((provider, provider_id)) = identity_key_for(&claims) else {
         return CurrentPlayer::Visitor;
     };

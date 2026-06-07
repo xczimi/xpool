@@ -622,8 +622,10 @@ fn winner_of_m73(base: &Tournament, result: &Player) -> Option<TeamId> {
             slot_placeholder("2C"),
         ),
     );
-    t.groups
-        .insert("probe".to_string(), knockout_group("probe", vec!["M200".to_string()], Round::R16));
+    t.groups.insert(
+        "probe".to_string(),
+        knockout_group("probe", vec!["M200".to_string()], Round::R16),
+    );
     let resolved = resolve_bracket(&t, result);
     resolved.get("M200").and_then(|(h, _)| h.clone())
 }
