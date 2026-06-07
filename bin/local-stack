@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# xpool local-stack primitive: ensure docker infra is up and $XPOOL_TABLE is
+# seeded, then exit. Headless and idempotent. Knows nothing about tmux or which
+# checkout — the CALLER exports XPOOL_TABLE (bin/tmux derives it per branch;
+# e2e-stack.sh sets a fresh unique table) and runs this from a checkout root
+# (so `docker compose` finds docker-compose.yml and cargo finds the workspace).
+#
+#   bin/local-stack [--reseed]   (--reseed forces drop + import + seed)
+#
+# See docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$HERE/lib.sh"
+
+# Pin the Compose project so every checkout (main, worktrees, e2e) shares ONE
+# DynamoDB/MailHog container regardless of the cwd basename — otherwise running
+# from a worktree dir spins a second stack that collides on :8000.
+export COMPOSE_PROJECT_NAME=xpool
+
+RESEED=0
+[ "${1:-}" = "--reseed" ] && RESEED=1
+
+: "${XPOOL_TABLE:?bin/local-stack: XPOOL_TABLE must be set by the caller}"
+export XPOOL_TABLE
+DYNAMO_ENDPOINT="${DYNAMO_ENDPOINT:-http://localhost:8000}"
+export DYNAMO_ENDPOINT
+
+echo "==> docker compose up -d"
+docker compose up -d
+
+echo "==> waiting for DynamoDB Local on :8000"
+wait_for_port 8000
+
+# The aws CLI is the only consumer that can't read .env, so give it dummy creds
+# inline — DynamoDB Local ignores the values; the SDK only needs them present.
+# A missing table makes `scan` exit non-zero -> empty count -> treated as "seed".
+item_count() {
+  AWS_REGION=us-east-1 AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local \
+    aws dynamodb scan --table-name "$XPOOL_TABLE" --select COUNT \
+      --endpoint-url "$DYNAMO_ENDPOINT" --output text --query Count 2>/dev/null
+}
+
+if [ "$RESEED" = 1 ]; then
+  echo "==> --reseed: dropping $XPOOL_TABLE"
+  cargo run -q -p xtask -- drop-table || true
+fi
+
+count="$(item_count || true)"
+if [ "$RESEED" = 1 ] || [ -z "$count" ] || [ "$count" = 0 ]; then
+  echo "==> seeding $XPOOL_TABLE (import + seed)"
+  cargo run -q -p xtask -- import tournaments/fwc26.json
+  cargo run -q -p xtask -- seed
+else
+  echo "==> data present in $XPOOL_TABLE ($count items); pass --reseed to reset"
+fi

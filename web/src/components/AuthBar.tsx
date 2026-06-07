@@ -1,12 +1,12 @@
-import type { ChangeEvent } from 'react'
 import { useQuery } from 'urql'
 import { useAuth0 } from '@auth0/auth0-react'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY, PLAYERS_QUERY } from '../graphql/queries'
 import type { Me, PlayerSummary } from '../graphql/types'
-import { clearToken, getDevNow, setDevNow, clearDevNow } from '../auth/devAuth'
+import { clearToken } from '../auth/devAuth'
 import { auth0Enabled } from '../auth/auth0Provider'
+import { DevClock } from './DevClock'
 
 export function AuthBar() {
   if (auth0Enabled) return <ProdAuthBar />
@@ -41,38 +41,6 @@ function ProdAuthBar() {
         Log out
       </button>
     </div>
-  )
-}
-
-function DevClock() {
-  const { t } = useI18n()
-  const current = getDevNow()
-  // datetime-local wants 'YYYY-MM-DDTHH:mm'; store/send full RFC3339 (UTC).
-  const value = current ? current.slice(0, 16) : ''
-  // The dev clock input is interpreted as UTC — consistent with the XPOOL_NOW
-  // env var (RFC3339 UTC). Appending ':00Z' avoids the local-time shift that
-  // new Date(localString).toISOString() would introduce on non-UTC machines.
-  const onChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.value) {
-      // datetime-local yields 'YYYY-MM-DDTHH:MM'; ':00Z' makes valid RFC3339 UTC.
-      setDevNow(e.target.value + ':00Z')
-    } else {
-      clearDevNow()
-    }
-    location.reload() // simplest correct cache reset for the new clock
-  }
-  return (
-    <span className="dev-clock">
-      <label>
-        {t('devClock')}
-        <input type="datetime-local" value={value} onChange={onChange} />
-      </label>
-      {current && (
-        <button type="button" onClick={() => { clearDevNow(); location.reload() }}>
-          {t('devClockReset')}
-        </button>
-      )}
-    </span>
   )
 }
 

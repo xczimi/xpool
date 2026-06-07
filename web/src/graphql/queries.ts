@@ -20,6 +20,24 @@ export const TOURNAMENT_QUERY = `
   }
 `
 
+/**
+ * Slim games+teams list for the dev clock's game-relative presets. Dev-only UI
+ * (the `DevAuthBar` path) — never mounts in production, so no prod cost. urql
+ * caches it.
+ */
+export const DEV_CLOCK_GAMES_QUERY = `
+  query DevClockGames {
+    tournament {
+      games {
+        id kickoff
+        home { teamId description }
+        away { teamId description }
+      }
+      teams { id shortCode }
+    }
+  }
+`
+
 export const ME_QUERY = `
   query Me {
     me {

@@ -26,6 +26,13 @@ const en = {
   visitor: 'You are outside.',
   devClock: 'Dev clock',
   devClockReset: 'real time',
+  devClockGame: 'Game',
+  devClockGamePlaceholder: 'pick a game…',
+  devClockWhen: 'When',
+  devClockWhenPlaceholder: 'pick a time…',
+  devClockBefore: '10 min before kickoff',
+  devClockDuring: 'during (60 min in)',
+  devClockAfter: '15 min after full time',
   footer: 'xPool — a friendly soccer prediction pool',
 
   // nav
@@ -190,6 +197,13 @@ const hu: Record<StringKey, string> = {
   visitor: 'Kint vagy.',
   devClock: 'Dev óra',
   devClockReset: 'valós idő',
+  devClockGame: 'Meccs',
+  devClockGamePlaceholder: 'válassz meccset…',
+  devClockWhen: 'Mikor',
+  devClockWhenPlaceholder: 'válassz időt…',
+  devClockBefore: '10 perccel kezdés előtt',
+  devClockDuring: 'közben (60. perc)',
+  devClockAfter: '15 perccel a vége után',
   footer: 'xPool — baráti focitippjáték',
 
   navHome: 'Kezdőlap',

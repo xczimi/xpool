@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Launch the dev web server (Vite) for a checkout. Conditional install only.
+# Vite reads web/.env.* itself (the Auth0 toggle) — not touched here.
+# Default target is the current checkout.
+set -euo pipefail
+target="${1:-$(git rev-parse --show-toplevel)}"
+cd "$target/web"
+[ -d node_modules ] || npm install
+exec npm run dev
