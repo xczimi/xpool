@@ -1,7 +1,26 @@
 # Smarter e2e — isolate it from the local dev stack (own ports)
 
-Status: needs-triage
+Status: done (commit ccf5d6c — `feat(e2e): isolate the e2e stack onto its own ports`)
 Area: web (e2e) / bin
+
+## Resolution
+
+Shipped the core isolation: e2e now runs on its **own ports** — API `:3001`
+(`XPOOL_PORT`), Vite `:5174` (`--port`, proxy via `XPOOL_API_PORT`), and an
+isolated DynamoDB Local container on `:8001` (the `e2e` compose profile).
+Playwright uses `reuseExistingServer: false`; `e2e-stack.sh` / `e2e-teardown.sh`
+only ever kill the e2e ports, never dev's `:3000`. `bin/local-stack` was
+parameterized (compose profile/services + wait-port from `DYNAMO_ENDPOINT`) with
+dev behaviour unchanged. Verified `npm run e2e` (22/22) runs to completion on the
+e2e ports while a live dev stack on `:3000/:5173/:8000` stays up and untouched
+through setup and teardown.
+
+**Open questions — decided:** fixed port range (not dynamic) for browser-attach
+simplicity; **separate** DynamoDB container (data was already isolated by the
+per-run unique table, so the container buys *lifecycle* isolation — dev can
+`docker compose down` without killing an e2e run, and vice versa). `bin/tmux`
+e2e-awareness and parallel workers were **not** pursued (out of scope; the
+"smarter extras" remain available as follow-ups).
 
 ## Idea
 
