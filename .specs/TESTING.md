@@ -42,7 +42,7 @@ A test must not see state left by another test or another run.
   distinct from the dev stack (`:3000` / `:5173` / `:8000`). Playwright sets
   `reuseExistingServer: false`, and `e2e-stack.sh` / `e2e-teardown.sh` only ever
   kill processes on the e2e ports. So `npm run e2e` and a running
-  `npm run dev` / `bin/tmux` session **coexist** — the suite never hijacks or
+  `npm run dev` / `bin/local-dev` session **coexist** — the suite never hijacks or
   tears down your dev servers. (Ports are threaded via `XPOOL_PORT` for the API
   and `XPOOL_API_PORT` for the Vite proxy; see `web/playwright.config.ts`.)
 

@@ -17,7 +17,7 @@ after the parallel `fix-auth0-access-token-email` work merged to master.
 **Activation note:** `core.hooksPath` is per-clone local git config (not tracked). It's set
 in this repo's shared `.git` now (covers the main checkout + all worktrees). A *fresh clone*
 must run `git config core.hooksPath .githooks` once. (Optional follow-up: wire that one-liner
-into `bin/tmux` so dev sessions self-activate it.)
+into `bin/local-dev` so dev sessions self-activate it.)
 
 **Deferred — GitHub Action:** add a CI job (on push/PR) that runs `bin/check-fmt` as a
 server-side backstop to the local guard. The repo has no CI today; filed for later, not built.

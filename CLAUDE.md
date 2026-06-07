@@ -39,7 +39,7 @@ cargo fmt
   (docker, import, seed, API) via `e2e/global-setup.ts`. The `e2e/` specs are
   not type-checked by `tsc -b`. The e2e stack runs on its **own ports** (API
   `:3001`, Vite `:5174`, isolated DynamoDB `:8001` via the `e2e` compose
-  profile), so it **coexists** with a running `npm run dev` / `bin/tmux` session
+  profile), so it **coexists** with a running `npm run dev` / `bin/local-dev` session
   — it never hijacks or tears those down. See `.specs/TESTING.md` §2.
 
 ### Running locally (the full stack)

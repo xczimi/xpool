@@ -4,7 +4,7 @@ import { defineConfig, devices } from '@playwright/test'
  * Playwright E2E config — runs the suite against an ISOLATED live stack on its
  * OWN ports (DynamoDB Local :8001 + the axum API :3001 + a Vite dev server
  * :5174), distinct from the dev stack (:8000 / :3000 / :5173). The two coexist:
- * running e2e never hijacks or tears down a running `npm run dev` / `bin/tmux`
+ * running e2e never hijacks or tears down a running `npm run dev` / `bin/local-dev`
  * session.
  *
  * - `globalSetup` boots the backend stack (docker + xtask + API) on the e2e
