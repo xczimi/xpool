@@ -36,6 +36,15 @@ cd "$PROJECT"
 export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
 export AWS_REGION="${AWS_REGION:-ca-central-1}"
 
+# Resolve the profile into real static credentials NOW, so they are *present*
+# in the environment. xtask loads `.env` via dotenvy, and `.env` ships dummy
+# `AWS_ACCESS_KEY_ID=local` / `AWS_SECRET_ACCESS_KEY=local` (for DynamoDB Local);
+# dotenvy injects those over an absent var, and static keys outrank AWS_PROFILE,
+# so without this the deploy authenticates to real AWS as "local" and fails.
+# Pre-exporting the resolved creds means dotenvy sees them already set and skips.
+eval "$(aws configure export-credentials --profile "$AWS_PROFILE" --format env 2>/dev/null)" \
+    || { echo "could not resolve AWS credentials for profile $AWS_PROFILE" >&2; exit 1; }
+
 # Seeding demo data into prod is never right.
 if [[ "$ENV" == "prod" && "$SEED" == "1" ]]; then
     echo "refusing --seed against prod (demo data must never hit prod)" >&2
@@ -52,12 +61,25 @@ TID="$(sed -n 's/.*current_tournament_id[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\
 TOURNAMENT="tournaments/${TID}.json"
 [[ -f "$TOURNAMENT" ]] || { echo "missing $TOURNAMENT" >&2; exit 1; }
 
+# result_user_email = "pool@xczimi.com"  ->  pool@xczimi.com  (the email the
+# result-user/admin Identity is keyed under). Must match var.result_user_email
+# in the Lambda env, or the operator's login won't resolve to the result-user.
+# Falls back to xtask's own default when the tfvars line is absent.
+RESULT_USER_EMAIL_VAL="$(sed -n 's/.*result_user_email[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$TFVARS")"
+
 export XPOOL_TABLE="xpool-${ENV}"
 export CURRENT_TOURNAMENT_ID="$TID"
-unset DYNAMO_ENDPOINT   # real AWS, not DynamoDB Local
+[[ -n "$RESULT_USER_EMAIL_VAL" ]] && export RESULT_USER_EMAIL="$RESULT_USER_EMAIL_VAL"
+# Force real AWS, NOT DynamoDB Local. Must be EMPTY, not unset: xtask loads
+# `.env` via dotenvy, which re-injects `.env`'s DYNAMO_ENDPOINT=localhost:8000
+# over an *absent* var — so a plain `unset` would silently seed local instead
+# of AWS. An empty value is "present", so dotenvy leaves it alone, and the
+# storage layer treats empty as real AWS.
+export DYNAMO_ENDPOINT=""
 
 [[ "$SEED" == "1" ]] && PLAN="import + seed" || PLAN="import"
 echo "==> env=$ENV  table=$XPOOL_TABLE  tournament=$TOURNAMENT  plan=$PLAN"
+[[ "$SEED" == "1" && -n "${RESULT_USER_EMAIL:-}" ]] && echo "==> result-user email=$RESULT_USER_EMAIL"
 
 if [[ "$DRYRUN" == "1" ]]; then
     echo "==> --dry-run: writing nothing"

@@ -42,3 +42,9 @@ variable "auth0_audience" {
   type        = string
   default     = "xpool-api"
 }
+
+variable "result_user_email" {
+  description = "Email the result-user/admin Identity is keyed under (RESULT_USER_EMAIL). The operator logs in with this address; it must match the seeded identity or the login resolves to AuthenticatedUnclaimed. Defaults to the dev-stub address; override per-env in tfvars."
+  type        = string
+  default     = "result-user@dev.invalid"
+}
