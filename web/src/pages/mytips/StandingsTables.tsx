@@ -32,7 +32,10 @@ export function StandingsTable({
               <td>{i + 1}</td>
               <td>
                 <TeamLabel
-                  slot={{ teamId: s.teamId, description: s.teamId }}
+                  slot={{
+                    teamId: s.teamId,
+                    description: teams.get(s.teamId)?.name ?? s.teamId,
+                  }}
                   teams={teams}
                 />
               </td>
@@ -93,7 +96,10 @@ export function PredictedStandingsEditor({
               <td>{i + 1}</td>
               <td>
                 <TeamLabel
-                  slot={{ teamId: s.teamId, description: s.teamId }}
+                  slot={{
+                    teamId: s.teamId,
+                    description: teams.get(s.teamId)?.name ?? s.teamId,
+                  }}
                   teams={teams}
                 />
               </td>
