@@ -1,0 +1,81 @@
+#!/bin/bash
+# xpool data: (re-)import the tournament into a DEPLOYED environment's table.
+#
+# Usage: bin/deploy-data [dev|prod] [--seed] [--dry-run]   # default: dev
+#
+# The deploy-* siblings ship CODE; this ships DATA. It runs the same xtask
+# `import` the local stack uses (bin/local-stack), but against the real
+# DynamoDB table for the named env (DYNAMO_ENDPOINT unset -> real AWS). Use it
+# when tournaments/<tid>.json changes under an already-seeded table — e.g. new
+# team flags — since an existing table is never auto-re-imported.
+#
+#   import     non-destructive `put_tournament`: refreshes teams/games (and
+#              their flags), leaves players & pools untouched. The default.
+#   --seed     also load demo players + a demo pool (dev only; refused for prod).
+#   --dry-run  print the resolved table/tournament + plan, write nothing.
+#
+# Table name and tournament id are DERIVED so they can't drift from the Lambda:
+#   XPOOL_TABLE           = xpool-<env>          (matches module.dynamodb)
+#   CURRENT_TOURNAMENT_ID = env/<env>.tfvars     (matches the Lambda's env)
+#   tournament file       = tournaments/<tid>.json
+set -euo pipefail
+
+ENV="dev"; SEED=0; DRYRUN=0
+for arg in "$@"; do
+    case "$arg" in
+        dev|prod)      ENV="$arg" ;;
+        --seed)        SEED=1 ;;
+        --dry-run|-n)  DRYRUN=1 ;;
+        *) echo "Usage: $0 [dev|prod] [--seed] [--dry-run]" >&2; exit 2 ;;
+    esac
+done
+
+PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT"
+
+export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
+export AWS_REGION="${AWS_REGION:-ca-central-1}"
+
+# Seeding demo data into prod is never right.
+if [[ "$ENV" == "prod" && "$SEED" == "1" ]]; then
+    echo "refusing --seed against prod (demo data must never hit prod)" >&2
+    exit 1
+fi
+
+TFVARS="infrastructure/env/${ENV}.tfvars"
+[[ -f "$TFVARS" ]] || { echo "missing $TFVARS" >&2; exit 1; }
+
+# current_tournament_id = "fwc26"  ->  fwc26
+TID="$(sed -n 's/.*current_tournament_id[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$TFVARS")"
+[[ -n "$TID" ]] || { echo "could not read current_tournament_id from $TFVARS" >&2; exit 1; }
+
+TOURNAMENT="tournaments/${TID}.json"
+[[ -f "$TOURNAMENT" ]] || { echo "missing $TOURNAMENT" >&2; exit 1; }
+
+export XPOOL_TABLE="xpool-${ENV}"
+export CURRENT_TOURNAMENT_ID="$TID"
+unset DYNAMO_ENDPOINT   # real AWS, not DynamoDB Local
+
+[[ "$SEED" == "1" ]] && PLAN="import + seed" || PLAN="import"
+echo "==> env=$ENV  table=$XPOOL_TABLE  tournament=$TOURNAMENT  plan=$PLAN"
+
+if [[ "$DRYRUN" == "1" ]]; then
+    echo "==> --dry-run: writing nothing"
+    exit 0
+fi
+
+# A prod write has no throwaway table to undo it — require a typed confirm.
+if [[ "$ENV" == "prod" ]]; then
+    read -r -p "About to write to PROD table $XPOOL_TABLE. Type 'prod' to confirm: " reply
+    [[ "$reply" == "prod" ]] || { echo "aborted" >&2; exit 1; }
+fi
+
+echo "==> xtask import $TOURNAMENT"
+cargo run -q -p xtask -- import "$TOURNAMENT"
+
+if [[ "$SEED" == "1" ]]; then
+    echo "==> xtask seed (demo players + pool)"
+    cargo run -q -p xtask -- seed
+fi
+
+echo "==> done"
