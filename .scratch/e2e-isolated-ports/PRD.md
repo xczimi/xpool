@@ -18,7 +18,7 @@ through setup and teardown.
 **Open questions — decided:** fixed port range (not dynamic) for browser-attach
 simplicity; **separate** DynamoDB container (data was already isolated by the
 per-run unique table, so the container buys *lifecycle* isolation — dev can
-`docker compose down` without killing an e2e run, and vice versa). `bin/tmux`
+`docker compose down` without killing an e2e run, and vice versa). `bin/local-dev`
 e2e-awareness and parallel workers were **not** pursued (out of scope; the
 "smarter extras" remain available as follow-ups).
 
