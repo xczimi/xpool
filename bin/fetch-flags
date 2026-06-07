@@ -7,7 +7,7 @@
 # PNGs are committed to the repo so dev and e2e never hit the network.
 set -euo pipefail
 
-root="$(cd "$(dirname "$0")/.." && pwd)"
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 data="$root/tournaments/fwc26.json"
 out="$root/web/public/flags"
 mkdir -p "$out"
