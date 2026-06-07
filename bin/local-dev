@@ -6,7 +6,8 @@
 # restarts api/web only when the target/branch changed or the port is dead.
 #
 #   bin/local-dev               target = the checkout you run it from
-#   bin/local-dev <worktree>    target = .claude/worktrees/<worktree> (or a dir)
+#   bin/local-dev <name>        target = .claude/worktrees/<name>, an existing dir,
+#                               or the worktree checked out on branch <name>
 #   bin/local-dev [...] --reseed  force drop + import + seed of the target's table
 #
 # See docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md
@@ -27,16 +28,36 @@ for a in "$@"; do
   esac
 done
 
+# Resolve a branch name to the path of the worktree that has it checked out.
+# Prints the path (empty if no worktree is on that branch). git enforces that a
+# branch is checked out in at most one worktree, so a match is unambiguous.
+worktree_for_branch() {  # <branch>
+  git -C "$PROJECT" worktree list --porcelain | awk -v b="$1" '
+    /^worktree /  { path = substr($0, 10) }
+    /^branch /    { br = substr($0, 8)
+                    if (br == b || br == "refs/heads/" b) { print path; exit } }
+  '
+}
+
 # --- resolve target ---------------------------------------------------------
-#   (no arg)     -> the checkout you run it from (cwd toplevel; PROJECT fallback)
-#   existing dir -> that directory
-#   bare name    -> $PROJECT/.claude/worktrees/<name>
+#   (no arg)      -> the checkout you run it from (cwd toplevel; PROJECT fallback)
+#   existing dir  -> that directory
+#   worktree dir  -> $PROJECT/.claude/worktrees/<name>
+#   branch name   -> the worktree checked out on <name> (resolver only; no create)
+# Directory wins over branch: branch lookup is a fallback when no dir matches.
 if [ -z "$ARG" ]; then
   TARGET="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PROJECT")"
 elif [ -d "$ARG" ]; then
   TARGET="$(cd "$ARG" && pwd)"
-else
+elif [ -d "$PROJECT/.claude/worktrees/$ARG" ]; then
   TARGET="$PROJECT/.claude/worktrees/$ARG"
+else
+  TARGET="$(worktree_for_branch "$ARG")"
+  [ -n "$TARGET" ] || {
+    echo "bin/local-dev: no worktree dir or branch matching '$ARG'" >&2
+    git -C "$PROJECT" worktree list >&2
+    exit 1
+  }
 fi
 [ -d "$TARGET/web" ] || {
   echo "bin/local-dev: not an xpool checkout (no web/): $TARGET" >&2

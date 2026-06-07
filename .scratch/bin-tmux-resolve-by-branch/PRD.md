@@ -1,7 +1,25 @@
 # `bin/tmux` should resolve a target by branch name too
 
-Status: needs-triage
+Status: done (2026-06-07)
 Area: bin
+
+## Resolution (2026-06-07)
+
+Implemented in `bin/local-dev` (the script was renamed from `bin/tmux` — see
+[[rename-bin-tmux]]). A `worktree_for_branch` helper parses
+`git worktree list --porcelain` and returns the path of the worktree whose
+`branch` line matches `<arg>` (tries both `<arg>` and `refs/heads/<arg>`).
+
+Resolution order: invoking checkout (no arg) → existing dir → `.claude/worktrees/<arg>`
+dir → **branch fallback**. Owner decisions on the open questions:
+
+- **Precedence:** directory wins; branch lookup only runs when no dir matches.
+- **No auto-create:** strictly a resolver — if the branch has no worktree, it
+  fails with the worktree list, never creates one.
+
+A branch is checked out in at most one worktree (git enforces this), so the
+match is unambiguous — no multi-candidate case to handle. Verified against the
+live drift case: branch `worktree-rustfmt-determinism` → dir `rustfmt-determinism`.
 
 ## Idea
 
