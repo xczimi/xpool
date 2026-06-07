@@ -104,12 +104,15 @@ export function GroupTipForm({
   const [flash, setFlash] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  // The deadline has passed → the whole group is read-only (UC-7).
+  // The result user enters official results and is never locked out — not by
+  // the deadline (results arrive after kickoff) nor by a prior lock (they can
+  // always re-correct). For everyone else the deadline freezes the group (UC-7).
+  const isResultUser = me.isResultUser
   const deadlinePassed = group.deadlinePassed
   const groupLocked =
     deadlinePassed ||
     (games.length > 0 && games.every((g) => matches[g.id]?.locked))
-  const readOnly = groupLocked
+  const readOnly = groupLocked && !isResultUser
 
   const setScore = (
     gameId: string,
@@ -206,7 +209,7 @@ export function GroupTipForm({
         <tbody>
           {games.map((game) => {
             const m = matches[game.id]
-            const matchLocked = readOnly || m.locked
+            const matchLocked = readOnly || (m.locked && !isResultUser)
             return (
               <tr key={game.id}>
                 <td>
