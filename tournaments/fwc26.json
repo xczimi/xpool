@@ -5,336 +5,336 @@
       "id": "MEX",
       "name": "Mexico",
       "short_code": "MEX",
-      "flag": null,
+      "flag": "mx",
       "external_id": null
     },
     {
       "id": "RSA",
       "name": "South Africa",
       "short_code": "RSA",
-      "flag": null,
+      "flag": "za",
       "external_id": null
     },
     {
       "id": "KOR",
       "name": "South Korea",
       "short_code": "KOR",
-      "flag": null,
+      "flag": "kr",
       "external_id": null
     },
     {
       "id": "CZE",
       "name": "Czechia",
       "short_code": "CZE",
-      "flag": null,
+      "flag": "cz",
       "external_id": null
     },
     {
       "id": "CAN",
       "name": "Canada",
       "short_code": "CAN",
-      "flag": null,
+      "flag": "ca",
       "external_id": null
     },
     {
       "id": "BIH",
       "name": "Bosnia and Herzegovina",
       "short_code": "BIH",
-      "flag": null,
+      "flag": "ba",
       "external_id": null
     },
     {
       "id": "QAT",
       "name": "Qatar",
       "short_code": "QAT",
-      "flag": null,
+      "flag": "qa",
       "external_id": null
     },
     {
       "id": "SUI",
       "name": "Switzerland",
       "short_code": "SUI",
-      "flag": null,
+      "flag": "ch",
       "external_id": null
     },
     {
       "id": "BRA",
       "name": "Brazil",
       "short_code": "BRA",
-      "flag": null,
+      "flag": "br",
       "external_id": null
     },
     {
       "id": "MAR",
       "name": "Morocco",
       "short_code": "MAR",
-      "flag": null,
+      "flag": "ma",
       "external_id": null
     },
     {
       "id": "HAI",
       "name": "Haiti",
       "short_code": "HAI",
-      "flag": null,
+      "flag": "ht",
       "external_id": null
     },
     {
       "id": "SCO",
       "name": "Scotland",
       "short_code": "SCO",
-      "flag": null,
+      "flag": "gb-sct",
       "external_id": null
     },
     {
       "id": "USA",
       "name": "USA",
       "short_code": "USA",
-      "flag": null,
+      "flag": "us",
       "external_id": null
     },
     {
       "id": "PAR",
       "name": "Paraguay",
       "short_code": "PAR",
-      "flag": null,
+      "flag": "py",
       "external_id": null
     },
     {
       "id": "AUS",
       "name": "Australia",
       "short_code": "AUS",
-      "flag": null,
+      "flag": "au",
       "external_id": null
     },
     {
       "id": "TUR",
       "name": "Turkiye",
       "short_code": "TUR",
-      "flag": null,
+      "flag": "tr",
       "external_id": null
     },
     {
       "id": "GER",
       "name": "Germany",
       "short_code": "GER",
-      "flag": null,
+      "flag": "de",
       "external_id": null
     },
     {
       "id": "CUW",
       "name": "Curacao",
       "short_code": "CUW",
-      "flag": null,
+      "flag": "cw",
       "external_id": null
     },
     {
       "id": "CIV",
       "name": "Ivory Coast",
       "short_code": "CIV",
-      "flag": null,
+      "flag": "ci",
       "external_id": null
     },
     {
       "id": "ECU",
       "name": "Ecuador",
       "short_code": "ECU",
-      "flag": null,
+      "flag": "ec",
       "external_id": null
     },
     {
       "id": "NED",
       "name": "Netherlands",
       "short_code": "NED",
-      "flag": null,
+      "flag": "nl",
       "external_id": null
     },
     {
       "id": "JPN",
       "name": "Japan",
       "short_code": "JPN",
-      "flag": null,
+      "flag": "jp",
       "external_id": null
     },
     {
       "id": "SWE",
       "name": "Sweden",
       "short_code": "SWE",
-      "flag": null,
+      "flag": "se",
       "external_id": null
     },
     {
       "id": "TUN",
       "name": "Tunisia",
       "short_code": "TUN",
-      "flag": null,
+      "flag": "tn",
       "external_id": null
     },
     {
       "id": "ESP",
       "name": "Spain",
       "short_code": "ESP",
-      "flag": null,
+      "flag": "es",
       "external_id": null
     },
     {
       "id": "CPV",
       "name": "Cape Verde",
       "short_code": "CPV",
-      "flag": null,
+      "flag": "cv",
       "external_id": null
     },
     {
       "id": "KSA",
       "name": "Saudi Arabia",
       "short_code": "KSA",
-      "flag": null,
+      "flag": "sa",
       "external_id": null
     },
     {
       "id": "URU",
       "name": "Uruguay",
       "short_code": "URU",
-      "flag": null,
+      "flag": "uy",
       "external_id": null
     },
     {
       "id": "BEL",
       "name": "Belgium",
       "short_code": "BEL",
-      "flag": null,
+      "flag": "be",
       "external_id": null
     },
     {
       "id": "EGY",
       "name": "Egypt",
       "short_code": "EGY",
-      "flag": null,
+      "flag": "eg",
       "external_id": null
     },
     {
       "id": "IRN",
       "name": "Iran",
       "short_code": "IRN",
-      "flag": null,
+      "flag": "ir",
       "external_id": null
     },
     {
       "id": "NZL",
       "name": "New Zealand",
       "short_code": "NZL",
-      "flag": null,
+      "flag": "nz",
       "external_id": null
     },
     {
       "id": "FRA",
       "name": "France",
       "short_code": "FRA",
-      "flag": null,
+      "flag": "fr",
       "external_id": null
     },
     {
       "id": "SEN",
       "name": "Senegal",
       "short_code": "SEN",
-      "flag": null,
+      "flag": "sn",
       "external_id": null
     },
     {
       "id": "IRQ",
       "name": "Iraq",
       "short_code": "IRQ",
-      "flag": null,
+      "flag": "iq",
       "external_id": null
     },
     {
       "id": "NOR",
       "name": "Norway",
       "short_code": "NOR",
-      "flag": null,
+      "flag": "no",
       "external_id": null
     },
     {
       "id": "ARG",
       "name": "Argentina",
       "short_code": "ARG",
-      "flag": null,
+      "flag": "ar",
       "external_id": null
     },
     {
       "id": "ALG",
       "name": "Algeria",
       "short_code": "ALG",
-      "flag": null,
+      "flag": "dz",
       "external_id": null
     },
     {
       "id": "AUT",
       "name": "Austria",
       "short_code": "AUT",
-      "flag": null,
+      "flag": "at",
       "external_id": null
     },
     {
       "id": "JOR",
       "name": "Jordan",
       "short_code": "JOR",
-      "flag": null,
+      "flag": "jo",
       "external_id": null
     },
     {
       "id": "POR",
       "name": "Portugal",
       "short_code": "POR",
-      "flag": null,
+      "flag": "pt",
       "external_id": null
     },
     {
       "id": "COD",
       "name": "DR Congo",
       "short_code": "COD",
-      "flag": null,
+      "flag": "cd",
       "external_id": null
     },
     {
       "id": "UZB",
       "name": "Uzbekistan",
       "short_code": "UZB",
-      "flag": null,
+      "flag": "uz",
       "external_id": null
     },
     {
       "id": "COL",
       "name": "Colombia",
       "short_code": "COL",
-      "flag": null,
+      "flag": "co",
       "external_id": null
     },
     {
       "id": "ENG",
       "name": "England",
       "short_code": "ENG",
-      "flag": null,
+      "flag": "gb-eng",
       "external_id": null
     },
     {
       "id": "CRO",
       "name": "Croatia",
       "short_code": "CRO",
-      "flag": null,
+      "flag": "hr",
       "external_id": null
     },
     {
       "id": "GHA",
       "name": "Ghana",
       "short_code": "GHA",
-      "flag": null,
+      "flag": "gh",
       "external_id": null
     },
     {
       "id": "PAN",
       "name": "Panama",
       "short_code": "PAN",
-      "flag": null,
+      "flag": "pa",
       "external_id": null
     }
   ],

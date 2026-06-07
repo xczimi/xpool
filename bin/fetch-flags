@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Download 8-bit-ready flag PNGs for every country in fwc26.json.
+#
+# Source: flagcdn.com (public-domain flags, based on flagpedia). We fetch the
+# smallest size (20x15) on purpose — the SPA scales them up with
+# `image-rendering: pixelated`, so a tiny source gives the chunky retro look.
+# PNGs are committed to the repo so dev and e2e never hit the network.
+set -euo pipefail
+
+root="$(cd "$(dirname "$0")/.." && pwd)"
+data="$root/tournaments/fwc26.json"
+out="$root/web/public/flags"
+mkdir -p "$out"
+
+mapfile -t isos < <(jq -r '.teams[].flag | select(. != null)' "$data" | sort -u)
+echo "Fetching ${#isos[@]} flags into $out"
+
+for iso in "${isos[@]}"; do
+  dest="$out/$iso.png"
+  if [[ -f "$dest" ]]; then
+    echo "  skip $iso (exists)"
+    continue
+  fi
+  url="https://flagcdn.com/20x15/$iso.png"
+  echo "  get  $iso  <- $url"
+  curl -fsSL "$url" -o "$dest"
+done
+
+echo "Done."
