@@ -198,7 +198,7 @@ export function GroupTipForm({
       <table className="data-table">
         <thead>
           <tr>
-            <th>{t('match')}</th>
+            <th className="col-match">{t('match')}</th>
             <th>{t('prediction')}</th>
             <th>{t('result')}</th>
           </tr>

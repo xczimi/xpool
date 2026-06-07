@@ -69,7 +69,7 @@ export function SchedulePage() {
               <thead>
                 <tr>
                   <th>{t('kickoff')}</th>
-                  <th>{t('match')}</th>
+                  <th className="col-match">{t('match')}</th>
                   <th>{t('venue')}</th>
                   <th>{t('result')}</th>
                 </tr>

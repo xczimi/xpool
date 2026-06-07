@@ -784,6 +784,10 @@ button.danger:hover:not(:disabled) {
 .matchup-sep {
   text-align: center;
 }
+/* Centre the Match column header over the centred matchup content. */
+.data-table th.col-match {
+  text-align: center;
+}
 
 /* Header: keep the two selectors side by side. */
 .header-controls {

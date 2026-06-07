@@ -125,7 +125,7 @@ export function AdminResults() {
         <thead>
           <tr>
             <th>{t('kickoff')}</th>
-            <th>{t('match')}</th>
+            <th className="col-match">{t('match')}</th>
             <th>{t('result')}</th>
             <th />
           </tr>

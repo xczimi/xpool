@@ -52,7 +52,7 @@ export function PerfectPage() {
           <thead>
             <tr>
               <th>{t('player')}</th>
-              <th>{t('match')}</th>
+              <th className="col-match">{t('match')}</th>
             </tr>
           </thead>
           <tbody>
