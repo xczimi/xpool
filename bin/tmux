@@ -1,66 +1,136 @@
-#!/bin/bash
-# xpool dev-session restarter. See docs/superpowers/specs/2026-05-18-tmux-restarter-design.md
+#!/usr/bin/env bash
+# xpool dev session — one idempotent "make my world correct" command.
+# Boots (or heals) a tmux session 'xpool' with 4 panes (claude / api / web /
+# shell), brings infra + the per-branch table up via bin/local-stack, and points
+# api/web at a target checkout. Re-running recreates only what's missing and
+# restarts api/web only when the target/branch changed or the port is dead.
+#
+#   bin/tmux               target = the checkout you run it from
+#   bin/tmux <worktree>    target = .claude/worktrees/<worktree> (or a dir)
+#   bin/tmux [...] --reseed  force drop + import + seed of the target's table
+#
+# See docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md
 set -euo pipefail
 
 SESSION="xpool"
-PROJECT="$HOME/Private/SoccerPool/xpool"
-DYNAMO_ENDPOINT="http://localhost:8000"
-export DYNAMO_ENDPOINT
+BIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT="$(git -C "$BIN" rev-parse --show-toplevel)"
+source "$BIN/lib.sh"
 
-# Re-attach if the session already exists — no data or containers touched.
-if tmux has-session -t "$SESSION" 2>/dev/null; then
-    exec tmux -CC attach -t "$SESSION"
+# --- parse args: an optional worktree name/dir + an optional --reseed --------
+RESEED=""
+ARG=""
+for a in "$@"; do
+  case "$a" in
+    --reseed) RESEED="--reseed" ;;
+    *)        ARG="$a" ;;
+  esac
+done
+
+# --- resolve target ---------------------------------------------------------
+#   (no arg)     -> the checkout you run it from (cwd toplevel; PROJECT fallback)
+#   existing dir -> that directory
+#   bare name    -> $PROJECT/.claude/worktrees/<name>
+if [ -z "$ARG" ]; then
+  TARGET="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PROJECT")"
+elif [ -d "$ARG" ]; then
+  TARGET="$(cd "$ARG" && pwd)"
+else
+  TARGET="$PROJECT/.claude/worktrees/$ARG"
+fi
+[ -d "$TARGET/web" ] || {
+  echo "bin/tmux: not an xpool checkout (no web/): $TARGET" >&2
+  git -C "$PROJECT" worktree list >&2
+  exit 1
+}
+TABLE="$(table_for "$TARGET")"
+BRANCH="$(git -C "$TARGET" rev-parse --abbrev-ref HEAD)"
+
+# --- 1. infra + data (self-healing) -----------------------------------------
+( cd "$TARGET" && XPOOL_TABLE="$TABLE" "$BIN/local-stack" $RESEED )
+
+# --- tmux helpers -----------------------------------------------------------
+pane_by_role() {
+  tmux list-panes -s -t "$SESSION" -F '#{@role}'$'\t''#{pane_id}' 2>/dev/null \
+    | awk -F'\t' -v r="$1" '$1==r {print $2; exit}'
+}
+pane_opt() { tmux display-message -p -t "$1" "#{$2}" 2>/dev/null; }
+
+normalise_layout() {
+  tmux set-option -w -t "$SESSION:0" pane-border-status top
+  tmux set-option -w -t "$SESSION:0" pane-border-format ' #{?@role,#{@role},#{pane_title}} '
+  tmux select-layout -t "$SESSION" main-vertical
+}
+
+# Tag + launch a server pane via its wrapper, recording target/branch.
+launch_server() {  # <pane_id> <api|web>
+  local pane="$1" role="$2"
+  tmux set-option -p -t "$pane" @role "$role"
+  tmux set-option -p -t "$pane" @target "$TARGET"
+  tmux set-option -p -t "$pane" @branch "$BRANCH"
+  tmux send-keys -t "$pane" "$BIN/run-$role '$TARGET'" C-m
+}
+
+# Stop a server pane's process by port + C-c, then wait for the port to free.
+stop_server() {  # <pane_id> <port>
+  kill_port "$2"
+  tmux send-keys -t "$1" C-c
+  local _
+  for _ in $(seq 1 20); do
+    [ -z "$(port_pids "$2")" ] && break
+    sleep 0.25
+  done
+}
+
+ensure_server() {  # <api|web> <port>
+  local role="$1" port="$2" pane tgt br
+  pane="$(pane_by_role "$role")"
+  if [ -z "$pane" ]; then
+    pane="$(tmux split-window -v -P -F '#{pane_id}' -t "$SESSION" -c "$TARGET")"
+    launch_server "$pane" "$role"
+    normalise_layout
+    return
+  fi
+  tgt="$(pane_opt "$pane" @target)"
+  br="$(pane_opt "$pane" @branch)"
+  if [ "$tgt" != "$TARGET" ] || [ "$br" != "$BRANCH" ] || [ -z "$(port_pids "$port")" ]; then
+    stop_server "$pane" "$port"
+    launch_server "$pane" "$role"
+  fi
+}
+
+ensure_simple() {  # <role> <launch-cmd-or-empty>
+  local role="$1" cmd="$2" pane
+  pane="$(pane_by_role "$role")"
+  [ -n "$pane" ] && return
+  pane="$(tmux split-window -v -P -F '#{pane_id}' -t "$SESSION" -c "$TARGET")"
+  tmux set-option -p -t "$pane" @role "$role"
+  [ -n "$cmd" ] && tmux send-keys -t "$pane" "$cmd" C-m
+  normalise_layout
+}
+
+# --- 2. build a fresh session, or reconcile an existing one -----------------
+if ! tmux has-session -t "$SESSION" 2>/dev/null; then
+  tmux new-session -d -s "$SESSION" -c "$TARGET"
+  tmux set-option -p -t "$SESSION:0.0" @role claude
+  tmux send-keys -t "$SESSION:0.0" 'claude' C-m
+  api_pane="$(tmux split-window -h -P -F '#{pane_id}' -t "$SESSION:0.0" -c "$TARGET")"
+  launch_server "$api_pane" api
+  web_pane="$(tmux split-window -v -P -F '#{pane_id}' -t "$api_pane" -c "$TARGET")"
+  launch_server "$web_pane" web
+  shell_pane="$(tmux split-window -v -P -F '#{pane_id}' -t "$web_pane" -c "$TARGET")"
+  tmux set-option -p -t "$shell_pane" @role shell
+  normalise_layout
+else
+  ensure_simple claude 'claude'
+  ensure_server api 3000
+  ensure_server web 5173
+  ensure_simple shell ''
 fi
 
-# --- Bootstrap (fresh session only) ----------------------------------------
-# Runs before any panes are created so ordering is guaranteed:
-# docker up -> DynamoDB ready -> import -> seed.
-cd "$PROJECT"
-
-echo "==> docker compose up -d"
-docker compose up -d
-
-echo "==> waiting for DynamoDB Local on :8000"
-until nc -z localhost 8000 2>/dev/null; do sleep 0.5; done
-
-echo "==> xtask import"
-cargo run -p xtask -- import tournaments/fwc26.json
-
-echo "==> xtask seed"
-cargo run -p xtask -- seed
-
-# --- tmux session ----------------------------------------------------------
-# Each server pane gets a stable @role marker so bin/switch can find it by role
-# instead of by index — pane indices renumber when panes are added/closed, and
-# pane titles get rewritten by the fish/tide prompt every command.
-
-# Pane 0 (left): interactive claude session.
-tmux new-session -d -s "$SESSION" -c "$PROJECT"
-tmux set-option -p -t "$SESSION:0.0" @role claude
-tmux send-keys -t "$SESSION:0.0" 'claude' C-m
-
-# Pane 1 (right, top): docker logs.
-tmux split-window -h -t "$SESSION:0.0" -c "$PROJECT"
-tmux set-option -p -t "$SESSION:0.1" @role docker
-tmux send-keys -t "$SESSION:0.1" 'docker compose logs -f' C-m
-
-# Pane 2 (right, middle): API server. Panes don't inherit the script env,
-# so DYNAMO_ENDPOINT is passed inline.
-tmux split-window -v -t "$SESSION:0.1" -c "$PROJECT"
-tmux set-option -p -t "$SESSION:0.2" @role api
-tmux send-keys -t "$SESSION:0.2" "DYNAMO_ENDPOINT=$DYNAMO_ENDPOINT cargo run -p api" C-m
-
-# Pane 3 (right, bottom): web dev server.
-tmux split-window -v -t "$SESSION:0.2" -c "$PROJECT/web"
-tmux set-option -p -t "$SESSION:0.3" @role web
-tmux send-keys -t "$SESSION:0.3" 'npm run dev' C-m
-
-# Show the role on each pane border so the layout is self-describing.
-tmux set-option -w -t "$SESSION:0" pane-border-status top
-tmux set-option -w -t "$SESSION:0" pane-border-format ' #{?@role,#{@role},#{pane_title}} '
-
-# Even out the three right-column panes, then focus claude.
-tmux select-layout -t "$SESSION" main-vertical
-tmux select-pane -t "$SESSION:0.0"
-
-exec tmux -CC attach -t "$SESSION"
+# --- 3. attach (only from outside tmux) -------------------------------------
+if [ -z "${TMUX:-}" ]; then
+  exec tmux -CC attach -t "$SESSION"
+else
+  echo "bin/tmux: reconciled '$SESSION' (already inside tmux; not attaching)"
+fi
