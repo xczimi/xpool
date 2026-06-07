@@ -1,7 +1,30 @@
 # rustfmt determinism — design
 
-**Status:** ON HOLD (2026-06-07) — paused until the parallel `fix-auth0-access-token-email`
-session finishes, to avoid reformat collisions on shared auth files.
+**Status:** DONE (2026-06-07) — implemented on branch `worktree-rustfmt-determinism`
+after the parallel `fix-auth0-access-token-email` work merged to master.
+
+## What landed
+
+- `rust-toolchain.toml` — pins **Rust 1.95.0** (rustfmt 1.9.0-stable). The load-bearing
+  lever: `cargo fmt` is now byte-identical on every machine/worktree.
+- `rustfmt.toml` — declares the stable style options (warning-free on the pinned toolchain).
+- One-time **fmt sweep** — 31 files reformatted; build clean, full test suite green
+  (Dynamo tests gated off). Isolated in its own commit.
+- **Local guard** — `bin/check-fmt` (reusable) + `.githooks/pre-commit` (calls it).
+  Activated with `git config core.hooksPath .githooks`. Verified: passes on a clean tree,
+  **blocks** a misformatted commit naming the offending file.
+
+**Activation note:** `core.hooksPath` is per-clone local git config (not tracked). It's set
+in this repo's shared `.git` now (covers the main checkout + all worktrees). A *fresh clone*
+must run `git config core.hooksPath .githooks` once. (Optional follow-up: wire that one-liner
+into `bin/tmux` so dev sessions self-activate it.)
+
+**Deferred — GitHub Action:** add a CI job (on push/PR) that runs `bin/check-fmt` as a
+server-side backstop to the local guard. The repo has no CI today; filed for later, not built.
+
+---
+
+## Original analysis (kept for the record)
 
 ## Problem
 
