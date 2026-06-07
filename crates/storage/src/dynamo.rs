@@ -61,7 +61,14 @@ impl DynamoRepository {
 
         let mut loader = aws_config::from_env();
 
-        if let Ok(endpoint) = std::env::var("DYNAMO_ENDPOINT") {
+        // An *empty* endpoint counts as unset (real AWS). This lets a deploy
+        // script force real AWS with `DYNAMO_ENDPOINT=""` — which `dotenvy`
+        // (loaded by xtask/api) will NOT override, whereas a plain `unset`
+        // leaves the var absent and dotenvy re-injects the local `.env` value.
+        let endpoint = std::env::var("DYNAMO_ENDPOINT")
+            .map(|e| e.trim().to_owned())
+            .unwrap_or_default();
+        if !endpoint.is_empty() {
             // Local mode (DynamoDB Local): supply a region and dummy static
             // credentials so the dev does not need any AWS env vars set.
             loader = loader
