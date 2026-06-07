@@ -34,7 +34,7 @@ kill_port() {
 wait_for_port() {
   local port="$1" i
   for i in $(seq 1 60); do
-    nc -z localhost "$port" 2>/dev/null && return 0
+    nc -zw1 localhost "$port" 2>/dev/null && return 0
     sleep 0.5
   done
   echo "lib.sh: timed out waiting for :$port" >&2
