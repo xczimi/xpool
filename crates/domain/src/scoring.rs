@@ -440,8 +440,13 @@ fn score_leaf_group(
         let result_mp = result.match_prediction(&game.id);
 
         if let (Some(pred_mp), Some(result_mp)) = (pred_mp, result_mp) {
-            // Result must be locked (not just effective-locked) per spec §1
-            if !result_mp.locked {
+            // Result must be effective-locked — the SAME rule as a prediction.
+            // The group `deadline` (the earliest kickoff in the group, NOT each
+            // game's own kickoff) implicitly locks an entered result; results are
+            // entered after the match, so they are always past it. No explicit-
+            // lock requirement and no result-user special case (unified entry).
+            let r_locked = effective_locked(result_mp.locked, now, deadline, true);
+            if !r_locked {
                 continue;
             }
             // Prediction must be effective-locked. `complete` is read
@@ -466,8 +471,15 @@ fn score_leaf_group(
         let result_sp = result.standings_prediction(&group.id);
 
         if let (Some(pred_sp), Some(result_sp)) = (pred_sp, result_sp) {
-            // Result standings must be locked
-            if !result_sp.locked {
+            // Result standings must be effective-locked — same rule as the
+            // predicted standings below.
+            let r_sp_locked = effective_locked(
+                result_sp.locked,
+                now,
+                deadline,
+                !result_sp.ordering.is_empty(),
+            );
+            if !r_sp_locked {
                 return raw; // no bonus
             }
             // Predicted standings must be effective-locked

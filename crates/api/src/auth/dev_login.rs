@@ -6,6 +6,7 @@
 //!  - `{ "sub": "<sub>", "email": "<verified email>" }` — mint for an
 //!    arbitrary identity that does NOT yet exist in storage; used by the
 //!    invite-link e2e to authenticate a fresh visitor.
+//!
 //! Either mode requires the `dev_auth` Cargo feature AND
 //! `LOCAL_AUTH_ISSUER` env var (belt and suspenders).
 

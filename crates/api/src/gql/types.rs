@@ -104,7 +104,7 @@ impl Game {
         g: &domain::SingleGame,
         round: domain::Round,
         now: chrono::DateTime<chrono::Utc>,
-        locked_result_game_ids: &std::collections::HashSet<String>,
+        entered_result_game_ids: &std::collections::HashSet<String>,
     ) -> Self {
         Game {
             id: g.id.clone(),
@@ -116,7 +116,7 @@ impl Game {
             result_pending: crate::timeflags::result_pending(
                 g.kickoff,
                 round,
-                locked_result_game_ids.contains(&g.id),
+                entered_result_game_ids.contains(&g.id),
                 now,
             ),
             within_today_window: crate::timeflags::within_today_window(g.kickoff, now),
@@ -182,7 +182,7 @@ impl Tournament {
     pub fn build(
         t: &domain::Tournament,
         now: chrono::DateTime<chrono::Utc>,
-        locked_result_game_ids: &std::collections::HashSet<String>,
+        entered_result_game_ids: &std::collections::HashSet<String>,
     ) -> Self {
         Tournament {
             root: t.root.clone(),
@@ -196,7 +196,7 @@ impl Tournament {
                         .get(&g.group_id)
                         .map(|grp| grp.round)
                         .unwrap_or(domain::Round::GroupStage);
-                    Game::build(g, round, now, locked_result_game_ids)
+                    Game::build(g, round, now, entered_result_game_ids)
                 })
                 .collect(),
             teams: t.teams.values().map(Team::from).collect(),
@@ -334,15 +334,6 @@ pub struct Perfect {
     pub player_id: String,
     pub nick: String,
     pub game_id: String,
-}
-
-/// The outcome of an `enterResult` admin mutation. The result is always
-/// persisted; `recompute_pending` is `true` when the post-result recompute
-/// failed and the materialised scoreboard/bracket are momentarily stale —
-/// the admin must re-run the `recompute` mutation to self-heal (Issue 18).
-#[derive(SimpleObject, Clone, Debug)]
-pub struct ResultEntered {
-    pub recompute_pending: bool,
 }
 
 /// A lightweight player listing — for the dev-login picker and the admin

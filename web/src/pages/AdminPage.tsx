@@ -5,7 +5,6 @@ import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY } from '../graphql/queries'
 import type { Me } from '../graphql/types'
 import { Loading, NeedsAdmin, NeedsLogin } from '../components/StatusViews'
-import { AdminResults } from './admin/AdminResults'
 import { AdminTeams } from './admin/AdminTeams'
 import { AdminPlayers } from './admin/AdminPlayers'
 
@@ -27,13 +26,11 @@ export function AdminPage() {
     <section className="page">
       <h2>{t('adminTitle')}</h2>
       <div className="group-subnav">
-        <AdminTab to="results" label={t('adminResults')} />
         <AdminTab to="teams" label={t('adminTeams')} />
         <AdminTab to="players" label={t('adminPlayers')} />
       </div>
       <Routes>
-        <Route index element={<Navigate to="results" replace />} />
-        <Route path="results" element={<AdminResults />} />
+        <Route index element={<Navigate to="teams" replace />} />
         <Route path="teams" element={<AdminTeams />} />
         <Route path="players" element={<AdminPlayers />} />
       </Routes>

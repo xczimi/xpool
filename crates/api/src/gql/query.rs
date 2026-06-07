@@ -33,20 +33,21 @@ impl QueryRoot {
         let Some(t) = repo.get_tournament().await? else {
             return Ok(None);
         };
-        // Locked official results = the result user's locked match predictions.
+        // Official results = the games the result user has entered a result for.
+        // Entered ⇒ effective-locked (results are entered post-kickoff), so this
+        // drives the `resultPending` flag the same way the scoreboard scores them.
         let players = repo.list_players().await?;
-        let locked: std::collections::HashSet<String> = players
+        let entered_results: std::collections::HashSet<String> = players
             .iter()
             .find(|p| p.is_result_user)
             .map(|r| {
                 r.match_predictions
                     .iter()
-                    .filter(|p| p.locked)
                     .map(|p| p.game_id.clone())
                     .collect()
             })
             .unwrap_or_default();
-        Ok(Some(Tournament::build(&t, now(ctx), &locked)))
+        Ok(Some(Tournament::build(&t, now(ctx), &entered_results)))
     }
 
     /// The request's resolved `now` — the server clock the SPA renders against.
@@ -225,7 +226,7 @@ impl QueryRoot {
             }
             for prediction in &player.match_predictions {
                 if let Some(result) = result_user.match_prediction(&prediction.game_id) {
-                    if result.locked && is_perfect(prediction, result, &config) {
+                    if is_perfect(prediction, result, &config) {
                         perfects.push(Perfect {
                             player_id: player.id.clone(),
                             nick: player.nick.clone(),
@@ -238,7 +239,7 @@ impl QueryRoot {
         Ok(perfects)
     }
 
-    /// The result user's *locked* match predictions — the official scores.
+    /// The result user's *entered* match predictions — the official scores.
     /// Public so any client can overlay official results onto the schedule.
     async fn results(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<MatchPrediction>> {
         let players = repo(ctx).list_players().await?;
@@ -248,7 +249,6 @@ impl QueryRoot {
             .map(|r| {
                 r.match_predictions
                     .iter()
-                    .filter(|p| p.locked)
                     .map(MatchPrediction::from)
                     .collect()
             })

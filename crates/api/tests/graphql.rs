@@ -1,6 +1,7 @@
 //! Integration tests driving the GraphQL schema against an in-memory
 //! repository — no DynamoDB. Covers submitGroup draft/lock, tips visibility,
-//! enterResult → scoreboard recompute, and auth-required queries.
+//! the result user's submitGroup → scoreboard recompute, and auth-required
+//! queries.
 
 mod common;
 
@@ -60,6 +61,13 @@ const SUBMIT: &str = r#"
 mutation($g: ID!, $p: [MatchPredictionInput!]!, $lock: Boolean!) {
   submitGroup(groupId: $g, predictions: $p, lock: $lock) {
     id version matchPredictions { gameId homeScore awayScore locked }
+  }
+}"#;
+
+const SUBMIT_WITH_STANDINGS: &str = r#"
+mutation($g: ID!, $p: [MatchPredictionInput!]!, $s: StandingsInput, $lock: Boolean!) {
+  submitGroup(groupId: $g, predictions: $p, standings: $s, lock: $lock) {
+    id
   }
 }"#;
 
@@ -329,6 +337,100 @@ async fn submit_group_lock_succeeds_with_all_games() {
     assert!(resp.errors.is_empty(), "{:?}", resp.errors);
 }
 
+// ── result user enters results via submitGroup (unified result entry) ────────
+
+#[tokio::test]
+async fn submit_group_as_result_user_allowed_after_deadline_and_recomputes() {
+    // Group A kicked off 2h ago — its deadline has passed for everyone.
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    // Alice predicts M1 = 2-1 (locked) → an official 2-1 is a perfect (4 pts).
+    {
+        let mut alice = repo.get_player(ALICE).await.unwrap().unwrap();
+        alice.match_predictions.push(locked_pred(GAME_1, 2, 1));
+        repo.put_player(&alice).await.unwrap();
+    }
+    // The result user submits the official Group A results as an ordinary
+    // (unlocked) draft — allowed despite the passed deadline.
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [
+            { "gameId": GAME_1, "homeScore": 2, "awayScore": 1 },
+            { "gameId": GAME_2, "homeScore": 0, "awayScore": 0 }
+        ],
+        "lock": false
+    }));
+    let resp = run(&repo, SUBMIT, vars, Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "result user may submit post-deadline: {:?}", resp.errors);
+
+    // The save recomputed the scoreboard on write: Alice scored 4.
+    let board = repo.get_scoreboard().await.unwrap().expect("scoreboard written");
+    let total: i64 = board.entries.get(ALICE).expect("Alice on scoreboard").values().sum();
+    assert_eq!(total, 4, "exact 2-1 official result = 4 points");
+    assert!(!board.entries.contains_key(RESULT_ID), "result user not scored against itself");
+}
+
+#[tokio::test]
+async fn submit_group_as_result_user_can_recorrect_an_unlocked_result() {
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    {
+        let mut alice = repo.get_player(ALICE).await.unwrap().unwrap();
+        alice.match_predictions.push(locked_pred(GAME_1, 3, 0));
+        repo.put_player(&alice).await.unwrap();
+    }
+    let entry = |h, a| {
+        Variables::from_json(json!({
+            "g": GROUP_A,
+            "p": [{ "gameId": GAME_1, "homeScore": h, "awayScore": a }],
+            "lock": false
+        }))
+    };
+    // First (wrong) entry, then a correction — both accepted, no unlock step.
+    assert!(run(&repo, SUBMIT, entry(0, 0), Some(RESULT_ID)).await.errors.is_empty());
+    let resp = run(&repo, SUBMIT, entry(3, 0), Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "correction accepted: {:?}", resp.errors);
+
+    // Scoreboard reflects the corrected 3-0 (Alice predicted 3-0 → perfect = 4).
+    let board = repo.get_scoreboard().await.unwrap().expect("scoreboard written");
+    let total: i64 = board.entries.get(ALICE).unwrap().values().sum();
+    assert_eq!(total, 4);
+}
+
+#[tokio::test]
+async fn submit_group_result_user_resolves_drawn_knockout_advancer() {
+    let repo = seeded_repo_with_knockout(Duration::hours(-2)).await;
+
+    // Group A official results: MEX wins M1 3-0, KOR wins M2 1-0 → 1A=MEX, 2A=KOR.
+    let ga = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [
+            { "gameId": GAME_1, "homeScore": 3, "awayScore": 0 },
+            { "gameId": GAME_2, "homeScore": 1, "awayScore": 0 }
+        ],
+        "lock": false
+    }));
+    assert!(run(&repo, SUBMIT, ga, Some(RESULT_ID)).await.errors.is_empty());
+
+    // GAME_KO ends level 1-1; KOR advances — expressed as the standings ordering
+    // [KOR, MEX] for the one-match knockout group (the draw-order UI's output).
+    let ko = Variables::from_json(json!({
+        "g": GROUP_KO,
+        "p": [{ "gameId": GAME_KO, "homeScore": 1, "awayScore": 1 }],
+        "s": { "ordering": ["KOR", "MEX"], "drawOrder": [] },
+        "lock": false
+    }));
+    let resp = run(&repo, SUBMIT_WITH_STANDINGS, ko, Some(RESULT_ID)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+
+    // Bracket resolved on write: the downstream R16 home slot is the advancer.
+    let t = repo.get_tournament().await.unwrap().unwrap();
+    let next = t.games.get(GAME_KO_NEXT).unwrap();
+    assert_eq!(
+        next.home.team_id.as_deref(),
+        Some("KOR"),
+        "the drawn knockout advanced KOR, not the home team MEX"
+    );
+}
+
 // ── Issue 15: out-of-range scores are rejected, not clamped ──────────────────
 
 #[tokio::test]
@@ -353,14 +455,6 @@ async fn submit_group_rejects_oversized_score() {
     }));
     let resp = run(&repo, SUBMIT, vars, Some(ALICE)).await;
     assert!(!resp.errors.is_empty(), "oversized score must be rejected");
-}
-
-#[tokio::test]
-async fn enter_result_rejects_out_of_range_score() {
-    let repo = seeded_repo(Duration::hours(-2)).await;
-    let vars = Variables::from_json(json!({ "g": GAME_1, "h": -1, "a": 0, "lock": true }));
-    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
-    assert!(!resp.errors.is_empty(), "negative result score must be rejected");
 }
 
 // ── tips: visibility filtering (UC-9 / API.md §6) ────────────────────────────
@@ -473,63 +567,10 @@ async fn tips_always_shows_own_unlocked_prediction() {
     assert_eq!(own["prediction"], json!({ "homeScore": 1, "awayScore": 1 }));
 }
 
-// ── enterResult → scoreboard recompute ───────────────────────────────────────
-
-const ENTER_RESULT: &str = r#"
-mutation($g: ID!, $h: Int!, $a: Int!, $lock: Boolean!) {
-  enterResult(gameId: $g, homeScore: $h, awayScore: $a, lock: $lock) {
-    recomputePending
-  }
-}"#;
-
-const UNLOCK_RESULT: &str = r#"
-mutation($g: ID!) {
-  unlockResult(gameId: $g)
-}"#;
+// ── recompute mutation ───────────────────────────────────────────────────────
 
 const RECOMPUTE: &str = r#"
 mutation { recompute }"#;
-
-#[tokio::test]
-async fn enter_result_requires_admin() {
-    let repo = seeded_repo(Duration::hours(-2)).await;
-    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 2, "a": 1, "lock": true }));
-    let resp = run(&repo, ENTER_RESULT, vars, Some(ALICE)).await;
-    assert!(!resp.errors.is_empty(), "non-admin must be rejected");
-    assert!(resp.errors[0].message.contains("admin"));
-}
-
-#[tokio::test]
-async fn enter_result_recomputes_scoreboard() {
-    // Past kickoff so a deadline-driven effective-lock applies to Alice's
-    // unlocked-but-complete prediction.
-    let repo = seeded_repo(Duration::hours(-2)).await;
-
-    // Alice predicts M1 = 2-1 (locked), so a result of 2-1 = a perfect (4 pts).
-    {
-        let mut alice = repo.get_player(ALICE).await.unwrap().unwrap();
-        alice.match_predictions.push(locked_pred(GAME_1, 2, 1));
-        repo.put_player(&alice).await.unwrap();
-    }
-
-    // Admin enters M1 = 2-1 and locks it.
-    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 2, "a": 1, "lock": true }));
-    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
-    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
-
-    // Scoreboard was materialised: Alice scored 4 in the group stage.
-    let board = repo
-        .get_scoreboard()
-        .await
-        .unwrap()
-        .expect("scoreboard written");
-    let alice_scores = board.entries.get(ALICE).expect("Alice on scoreboard");
-    let total: i64 = alice_scores.values().sum();
-    assert_eq!(total, 4, "exact 2-1 prediction = 4 points");
-
-    // The result user is never scored against itself.
-    assert!(!board.entries.contains_key(RESULT_ID));
-}
 
 #[tokio::test]
 async fn scoreboard_query_reflects_recompute() {
@@ -539,112 +580,20 @@ async fn scoreboard_query_reflects_recompute() {
         alice.match_predictions.push(locked_pred(GAME_1, 1, 0));
         repo.put_player(&alice).await.unwrap();
     }
-    // Admin enters a result that gives Alice the correct outcome only (2 pts).
-    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 3, "a": 0, "lock": true }));
-    run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
+    // Result user enters M1 = 3-0 → Alice (1-0) gets outcome+away-exact = 3 pts.
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [{ "gameId": GAME_1, "homeScore": 3, "awayScore": 0 }],
+        "lock": false
+    }));
+    run(&repo, SUBMIT, vars, Some(RESULT_ID)).await;
 
-    let resp = run(
-        &repo,
-        "{ scoreboard { playerId total } }",
-        Variables::default(),
-        None,
-    )
-    .await;
+    let resp = run(&repo, "{ scoreboard { playerId total } }", Variables::default(), None).await;
     assert!(resp.errors.is_empty(), "{:?}", resp.errors);
     let d = data(&resp);
-    let alice_row = d["scoreboard"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|r| r["playerId"] == "alice")
-        .unwrap()
-        .clone();
-    // 1-0 vs 3-0: home exact? no. away exact (0==0)? yes (+1). outcome (home win) yes (+2). = 3.
+    let alice_row = d["scoreboard"].as_array().unwrap().iter()
+        .find(|r| r["playerId"] == "alice").unwrap().clone();
     assert_eq!(alice_row["total"], 3);
-}
-
-#[tokio::test]
-async fn enter_result_returns_recompute_pending_false_on_success() {
-    let repo = seeded_repo(Duration::hours(-2)).await;
-    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 2, "a": 1, "lock": true }));
-    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
-    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
-    assert_eq!(data(&resp)["enterResult"]["recomputePending"], json!(false));
-}
-
-#[tokio::test]
-async fn enter_result_rejects_a_locked_result() {
-    let repo = seeded_repo(Duration::hours(-2)).await;
-    // First entry locks M1.
-    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 2, "a": 1, "lock": true }));
-    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
-    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
-
-    // A second entry for the same locked game is rejected.
-    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 3, "a": 0, "lock": true }));
-    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
-    assert!(!resp.errors.is_empty(), "overwriting a locked result must fail");
-    assert!(
-        resp.errors[0].message.contains("unlockResult"),
-        "error must point at unlockResult: {}",
-        resp.errors[0].message
-    );
-
-    // The original locked result is untouched.
-    let result = repo.get_player(RESULT_ID).await.unwrap().unwrap();
-    let pred = result
-        .match_predictions
-        .iter()
-        .find(|p| p.game_id == GAME_1)
-        .unwrap();
-    assert_eq!((pred.home_score, pred.away_score), (2, 1));
-}
-
-#[tokio::test]
-async fn enter_result_allows_correcting_an_unlocked_result() {
-    let repo = seeded_repo(Duration::hours(-2)).await;
-    // First entry as a draft (unlocked).
-    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 2, "a": 1, "lock": false }));
-    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
-    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
-    // An unlocked result is freely correctable (ADMIN-06).
-    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 3, "a": 0, "lock": true }));
-    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
-    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
-}
-
-#[tokio::test]
-async fn unlock_result_flips_the_locked_flag() {
-    let repo = seeded_repo(Duration::hours(-2)).await;
-    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 2, "a": 1, "lock": true }));
-    run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
-
-    let vars = Variables::from_json(json!({ "g": GAME_1 }));
-    let resp = run(&repo, UNLOCK_RESULT, vars, Some(RESULT_ID)).await;
-    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
-    assert_eq!(data(&resp)["unlockResult"], json!(true));
-
-    let result = repo.get_player(RESULT_ID).await.unwrap().unwrap();
-    let pred = result
-        .match_predictions
-        .iter()
-        .find(|p| p.game_id == GAME_1)
-        .unwrap();
-    assert!(!pred.locked, "the result must be unlocked");
-
-    // After an unlock, enter_result accepts a correction again.
-    let vars = Variables::from_json(json!({ "g": GAME_1, "h": 3, "a": 0, "lock": true }));
-    let resp = run(&repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
-    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
-}
-
-#[tokio::test]
-async fn unlock_result_requires_admin() {
-    let repo = seeded_repo(Duration::hours(-2)).await;
-    let vars = Variables::from_json(json!({ "g": GAME_1 }));
-    let resp = run(&repo, UNLOCK_RESULT, vars, Some(ALICE)).await;
-    assert!(!resp.errors.is_empty(), "non-admin must be rejected");
-    assert!(resp.errors[0].message.contains("admin"));
 }
 
 #[tokio::test]
@@ -676,81 +625,17 @@ async fn recompute_mutation_requires_admin() {
     assert!(resp.errors[0].message.contains("admin"));
 }
 
-// ── Issue 24: enterResult persists the drawn-knockout advancer ───────────────
-
-const ENTER_RESULT_ADVANCER: &str = r#"
-mutation($g: ID!, $h: Int!, $a: Int!, $adv: String, $lock: Boolean!) {
-  enterResult(gameId: $g, homeScore: $h, awayScore: $a, advancer: $adv, lock: $lock) {
-    recomputePending
-  }
-}"#;
-
-/// Enter the group-A results that resolve `GAME_KO`'s slots: MEX wins
-/// `GAME_1` 3-0, KOR wins `GAME_2` 1-0 → 1A = MEX (home of `GAME_KO`),
-/// 2A = KOR (away of `GAME_KO`).
-async fn enter_group_a_results(repo: &std::sync::Arc<dyn Repository>) {
-    for (game, h, a) in [(GAME_1, 3, 0), (GAME_2, 1, 0)] {
-        let vars = Variables::from_json(json!({ "g": game, "h": h, "a": a, "lock": true }));
-        let resp = run(repo, ENTER_RESULT, vars, Some(RESULT_ID)).await;
-        assert!(resp.errors.is_empty(), "group result {game}: {:?}", resp.errors);
-    }
-}
-
-#[tokio::test]
-async fn enter_result_advancer_resolves_a_drawn_knockout_to_that_team() {
-    let repo = seeded_repo_with_knockout(Duration::hours(-2)).await;
-    enter_group_a_results(&repo).await;
-
-    // GAME_KO ends level 1-1; the away team (KOR) advances on penalties.
-    let vars = Variables::from_json(json!({
-        "g": GAME_KO, "h": 1, "a": 1, "adv": "KOR", "lock": true
-    }));
-    let resp = run(&repo, ENTER_RESULT_ADVANCER, vars, Some(RESULT_ID)).await;
-    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
-
-    // The result user carries a standings prediction for GAME_KO's one-match
-    // group with the advancer first in `ordering`.
-    let result = repo.get_player(RESULT_ID).await.unwrap().unwrap();
-    let sp = result
-        .standings_predictions
-        .iter()
-        .find(|s| s.group_id == GROUP_KO)
-        .expect("advancer standings prediction persisted");
-    assert_eq!(sp.ordering.first().map(String::as_str), Some("KOR"));
-
-    // Bracket resolved: the downstream R16 game's home slot is the advancer.
-    let t = repo.get_tournament().await.unwrap().unwrap();
-    let next = t.games.get(GAME_KO_NEXT).unwrap();
-    assert_eq!(
-        next.home.team_id.as_deref(),
-        Some("KOR"),
-        "the drawn knockout advanced KOR, not the home team MEX"
-    );
-}
-
-#[tokio::test]
-async fn enter_result_rejects_an_advancer_not_in_the_match() {
-    let repo = seeded_repo_with_knockout(Duration::hours(-2)).await;
-    enter_group_a_results(&repo).await;
-    // CZE is not one of GAME_KO's two teams (MEX vs KOR).
-    let vars = Variables::from_json(json!({
-        "g": GAME_KO, "h": 1, "a": 1, "adv": "CZE", "lock": true
-    }));
-    let resp = run(&repo, ENTER_RESULT_ADVANCER, vars, Some(RESULT_ID)).await;
-    assert!(!resp.errors.is_empty(), "an off-match advancer must be rejected");
-}
-
 // ── results query ────────────────────────────────────────────────────────────
 
 #[tokio::test]
-async fn results_returns_only_locked_result_user_predictions() {
+async fn results_returns_entered_result_user_predictions() {
     let repo = seeded_repo(Duration::hours(-2)).await;
-    // Result user has one locked and one unlocked prediction.
+    // Result user has one locked and one unlocked entered result.
     {
         let mut result = repo.get_player(RESULT_ID).await.unwrap().unwrap();
         result.match_predictions.push(locked_pred(GAME_1, 2, 1)); // locked
         let mut draft = locked_pred(GAME_2, 0, 0);
-        draft.locked = false; // unlocked
+        draft.locked = false; // unlocked, but still an entered official result
         result.match_predictions.push(draft);
         repo.put_player(&result).await.unwrap();
     }
@@ -764,10 +649,7 @@ async fn results_returns_only_locked_result_user_predictions() {
     assert!(resp.errors.is_empty(), "{:?}", resp.errors);
     let d = data(&resp);
     let results = d["results"].as_array().unwrap();
-    assert_eq!(results.len(), 1, "only the locked prediction is returned");
-    assert_eq!(results[0]["gameId"], GAME_1);
-    assert_eq!(results[0]["homeScore"], 2);
-    assert_eq!(results[0]["locked"], json!(true));
+    assert_eq!(results.len(), 2, "both entered results are returned");
 }
 
 #[tokio::test]

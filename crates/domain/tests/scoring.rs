@@ -764,19 +764,23 @@ fn score_tournament_auto_locked_after_deadline() {
     assert_eq!(group_score, 5);
 }
 
-/// Result predictions must be locked (not just effective-locked) to count.
+/// Symmetric rule: an unlocked result scores zero *before* the deadline
+/// (kickoff has not happened, so it is not yet effective-locked).
 #[test]
-fn score_tournament_unlocked_result_scores_zero() {
+fn score_tournament_unlocked_result_before_deadline_scores_zero() {
     let c = default_config();
     let t = make_tournament_single_group("g", Round::GroupStage, "m1", "A", "B");
-    let now = Utc::now();
+    // Single-game group, so the group deadline = this game's kickoff =
+    // 2026-06-01 12:00 (from make_single_game). In a multi-game group the
+    // deadline would be the group's *earliest* kickoff, not each game's own.
+    let now = Utc.with_ymd_and_hms(2026, 5, 1, 0, 0, 0).unwrap(); // before
 
     let pred_player = make_player(
         "p1",
         vec![mp("m1", 2, 1, true)],
         vec![make_sp("g", vec!["A", "B"], true)],
     );
-    // result NOT locked
+    // result NOT locked, and now is before the deadline → not effective-locked.
     let result_player = make_player(
         "result",
         vec![mp("m1", 2, 1, false)],
@@ -784,8 +788,32 @@ fn score_tournament_unlocked_result_scores_zero() {
     );
 
     let scores = score_tournament(&t, &pred_player, &result_player, now, &c);
-    let group_score = scores.get(&Round::GroupStage).copied().unwrap_or(0);
-    assert_eq!(group_score, 0);
+    assert_eq!(scores.get(&Round::GroupStage).copied().unwrap_or(0), 0);
+}
+
+/// Symmetric rule: an unlocked result *after* the deadline counts, exactly like
+/// an unlocked-but-complete prediction (`score_tournament_auto_locked_after_deadline`).
+#[test]
+fn score_tournament_unlocked_result_after_deadline_scores() {
+    let c = default_config();
+    let t = make_tournament_single_group("g", Round::GroupStage, "m1", "A", "B");
+    let now = Utc.with_ymd_and_hms(2026, 6, 2, 0, 0, 0).unwrap(); // after deadline
+
+    let pred_player = make_player(
+        "p1",
+        vec![mp("m1", 2, 1, true)],
+        vec![make_sp("g", vec!["A", "B"], true)],
+    );
+    // result NOT explicitly locked, but now > deadline & complete → counts.
+    let result_player = make_player(
+        "result",
+        vec![mp("m1", 2, 1, false)],
+        vec![make_sp("g", vec!["A", "B"], false)],
+    );
+
+    let scores = score_tournament(&t, &pred_player, &result_player, now, &c);
+    // 4 match + 1 standings = 5 (GroupStage ×1).
+    assert_eq!(scores.get(&Round::GroupStage).copied().unwrap_or(0), 5);
 }
 
 /// score_tournament with multiple rounds returns per-round breakdown.

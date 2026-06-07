@@ -543,12 +543,15 @@ Then   it is a "perfect" — defined as "scored the max", so a perfect reached
        via the 4-goal rule counts (`SCORING.md` §7).
 Tests: `is_perfect_true_for_4_points`, `is_perfect_false_for_less_than_4`, `is_perfect_via_four_goal_rule_counts` (domain)
 
-### SCORE-13 — Unlocked predictions and results score zero
+### SCORE-13 — Unlocked predictions and results score zero only before the deadline
 Status: keep · Actor: (engine)
-Given  a prediction or result that is not effective-locked.
+Given  a prediction *or* a result that is not effective-locked — i.e. not
+       explicitly locked **and** before its deadline.
 When   scored.
-Then   it contributes 0.
-Tests: `score_tournament_unlocked_prediction_scores_zero`, `score_tournament_unlocked_result_scores_zero` (domain)
+Then   it contributes 0. After the deadline a complete, entered result (or a
+       complete prediction) is effective-locked and counts — the same
+       symmetric rule applies to both sides.
+Tests: `score_tournament_unlocked_prediction_scores_zero`, `score_tournament_unlocked_result_before_deadline_scores_zero`, `score_tournament_unlocked_result_after_deadline_scores` (domain)
 
 ### SCORE-14 — Scoreboard is materialised and recomputed wholesale
 Status: changed · Actor: (system) · Screen: Scoreboard

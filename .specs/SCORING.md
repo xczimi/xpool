@@ -23,8 +23,11 @@ prediction-set may be the baseline. The official scoreboard uses the result
 user; player-vs-player and "what-if" scoring reuse the same function with a
 different baseline.
 
-A prediction contributes only when **effective-locked** (`DATA_MODEL.md` §7);
-a result counts only when locked. Unlocked → 0.
+A prediction *and* a result contribute only when **effective-locked**
+(`DATA_MODEL.md` §7) — the same rule for both: `locked || (now > deadline &&
+complete)`. Because official results are entered after the match (past the
+deadline), an entered result is effective-locked immediately; explicit
+`locked` is a player-only early-reveal flag, never a scoring gate.
 
 "Effective-locked" is decided **per `MatchPrediction`**, never per group. The
 `complete` term in `effective_locked` is read per-match: a `MatchPrediction`

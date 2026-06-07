@@ -181,17 +181,8 @@ const en = {
 
   // admin
   adminTitle: 'Admin',
-  adminResults: 'Results entry',
   adminTeams: 'Teams',
   adminPlayers: 'Players',
-  enterResult: 'Enter result',
-  unlockResult: 'Unlock',
-  resultUnlocked: 'Result unlocked — you can re-enter it.',
-  recomputePendingNotice:
-    'Result saved — scoreboard refresh pending.',
-  recompute: 'Refresh scoreboard',
-  recomputeDone: 'Scoreboard refreshed.',
-  recomputeFailed: 'Scoreboard refresh failed — please retry.',
   refreshFailed: 'Could not refresh — the screen may be out of date.',
 } as const
 
@@ -344,17 +335,8 @@ const hu: Record<StringKey, string> = {
   rulesTitle: 'Szabályok és pontozás',
 
   adminTitle: 'Admin',
-  adminResults: 'Eredmény rögzítés',
   adminTeams: 'Csapatok',
   adminPlayers: 'Játékosok',
-  enterResult: 'Eredmény rögzítése',
-  unlockResult: 'Feloldás',
-  resultUnlocked: 'Eredmény feloldva — újra rögzítheted.',
-  recomputePendingNotice:
-    'Eredmény mentve — az eredménytábla frissítése függőben.',
-  recompute: 'Eredménytábla frissítése',
-  recomputeDone: 'Eredménytábla frissítve.',
-  recomputeFailed: 'Az eredménytábla frissítése sikertelen — próbáld újra.',
   refreshFailed: 'A frissítés nem sikerült — a képernyő elavult lehet.',
 }
 
