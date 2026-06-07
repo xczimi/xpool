@@ -81,8 +81,8 @@ Problems this design fixes:
 ### `bin/` shape
 
 ```
-bin/lib.sh        # sourced helpers: port_pids / kill_port, wait_for_port,
-                  #   aws_env (region + dummy creds), table_for <dir>
+bin/lib.sh        # sourced PURE helpers: port_pids / kill_port,
+                  #   wait_for_port, table_for <dir> — no env side-effects
 bin/local-stack   # infra + data, headless, idempotent           [NEW core]
 bin/run-api       # dev api launcher (foreground cargo run)       [NEW]
 bin/run-web       # dev web launcher (conditional install + vite) [NEW]
@@ -125,28 +125,32 @@ then exits. Knows nothing about tmux or about which checkout — the caller sets
 
 ```
 bin/local-stack [--reseed]
-  source bin/lib.sh; aws_env
+  source bin/lib.sh
   docker compose up -d                      # idempotent; no-op if up
   wait_for_port 8000
   if --reseed: xtask drop-table
-  count = aws dynamodb scan --table-name "$XPOOL_TABLE" --select COUNT \
-            --endpoint-url http://localhost:8000   # missing table => reseed
+  # dummy creds inline on the one CLI call (DynamoDB Local ignores them, the
+  # SDK only requires them present); missing table => non-zero => reseed
+  count = AWS_REGION=us-east-1 AWS_ACCESS_KEY_ID=local AWS_SECRET_ACCESS_KEY=local \
+          aws dynamodb scan --table-name "$XPOOL_TABLE" --select COUNT \
+            --endpoint-url http://localhost:8000
   if missing/empty/--reseed: xtask import tournaments/fwc26.json; xtask seed
   else: echo "data present in $XPOOL_TABLE; pass --reseed to reset"
 ```
 
-- `aws_env` exports `AWS_REGION` + dummy `AWS_ACCESS_KEY_ID` /
-  `AWS_SECRET_ACCESS_KEY` — DynamoDB Local ignores the values but the SDK
-  requires them present (matches the old `e2e-stack.sh`).
+- The `aws` CLI is the *only* consumer that can't read `.env` (it's not a Rust
+  binary), so it gets dummy creds inline — they're fixed constants for DynamoDB
+  Local, not config. Nothing here sources `.env`.
+- `xtask import`/`seed` self-load `.env` via dotenvy for their rich vars
+  (`RESULT_USER_EMAIL`, `CURRENT_TOURNAMENT_ID`, …); the caller's `XPOOL_TABLE`
+  overrides `.env`'s value (dotenvy does not overwrite an already-set var).
 - Always run (boot *and* reconcile) by `bin/tmux`, so a docker restart that
   wiped the in-memory table is healed on the next invocation.
 - e2e's table is unique every run → always missing → always seeded by the same
   self-heal path. e2e needs **no** special "fresh" flag.
 - `xtask import`/`seed` both call `repo.ensure_table()` first (idempotent
   create-and-wait), so a brand-new `xpool-<branch>` table is created on first
-  seed — no separate create step needed. The exported `XPOOL_TABLE` overrides
-  `.env` (dotenvy does not overwrite an already-set var), so seeding and serving
-  hit the same table.
+  seed — no separate create step needed.
 
 ### `bin/run-api` / `bin/run-web` — launch wrappers
 
@@ -159,8 +163,9 @@ checkout (`git rev-parse --show-toplevel`, main-checkout fallback), like
 # bin/run-api [target]
 source "$(dirname "$0")/lib.sh"
 t="${1:-$(git rev-parse --show-toplevel)}"
-cd "$t" && DYNAMO_ENDPOINT=http://localhost:8000 LOCAL_AUTH_ISSUER=1 \
-  XPOOL_TABLE="$(table_for "$t")" cargo run -p api
+# XPOOL_TABLE is the only override; DYNAMO_ENDPOINT, LOCAL_AUTH_ISSUER, AWS_*,
+# secrets all come from .env, self-loaded by the api via dotenvy.
+cd "$t" && XPOOL_TABLE="$(table_for "$t")" cargo run -p api
 ```
 
 ```sh
@@ -176,6 +181,38 @@ cd "$t/web" && { [ -d node_modules ] || npm install; } && npm run dev
 - **`CARGO_TARGET_DIR` left unshared** — each checkout builds into its own
   `target/`. Sharing it lets cargo serve an `api` binary built from a *different*
   worktree (same package id). Correctness beats the saved compile time.
+
+### Environment & `.env`
+
+**The scripts do not manage `.env`.** This keeps the env story to one sentence
+and leaves both e2e and Auth0-local working unchanged:
+
+- **`api` / `xtask` self-load `.env`** via dotenvy (walk-up from cwd). The main
+  checkout's `.env` supplies every rich var (secrets, emails, `AWS_*`,
+  `AUTH0_*`, `CURRENT_TOURNAMENT_ID`). Standard worktrees live under
+  `$PROJECT/.claude/worktrees/<name>`, so the walk-up reaches `$PROJECT/.env` —
+  they inherit it for free.
+- **The wrappers override exactly one thing: `XPOOL_TABLE`** (per branch).
+  dotenvy's non-overwrite rule means the inline value wins.
+- **The `aws` CLI** (only in `local-stack`) gets dummy creds inline — constants
+  for DynamoDB Local, not config.
+- **Auth0-local is preserved by *not* meddling:** the api trusts Auth0 when
+  `AUTH0_DOMAIN`/`AUTH0_AUDIENCE` are in `.env` (untouched); the SPA uses real
+  Auth0 when `web/.env.local` (`VITE_AUTH0_*`) is present (Vite reads it on
+  `npm run dev`, untouched). A worktree won't have `web/.env.local` → it
+  defaults to the **dev-stub auth path** (the `DevAuthBar`, where the dev clock
+  lives) — the right mode for variant-peeking. To test Auth0 *in* a worktree,
+  copy `web/.env.local` into its `web/`.
+- **e2e is unaffected** — `e2e-stack.sh` keeps pinning its own test-critical
+  vars; `local-stack` adds no `.env` sourcing, so nothing about e2e's env
+  behaviour changes.
+- **Caveat (minor):** an *out-of-tree* target (the `bin/tmux <existing-dir>`
+  form, not under `.claude/worktrees`) has no `.env` on its walk-up path and
+  needs its own. Standard worktrees never hit this.
+
+> Named `.env.<profile>` files (e.g. a checked-in `.env.e2e`, or `XPOOL_ENV`
+> selecting a profile) were considered and **deferred** — they're a separable
+> concern that would touch `crates/api`/`crates/xtask`. See the decision log.
 
 ### `bin/tmux [worktree] [--reseed]` — the interactive wrapper
 
@@ -245,6 +282,8 @@ docker/wait/seed/lsof logic is gone.
 - **`:3000`: collision.** e2e kills whatever is on `:3000` (your dev api), runs
   its own, stops it on teardown — so after an e2e run the dev api is dead.
 - **`:5173`: reused.** Playwright's `webServer` has `reuseExistingServer`.
+- **Env: independent.** e2e self-pins its vars; the dev wrappers don't source
+  `.env`. Neither perturbs the other.
 
 **Synergy:** after an e2e run, `bin/tmux` self-heals — `:3000` dead → restart
 the dev api; the branch's table is untouched, so no reseed.
@@ -280,3 +319,5 @@ Shell tooling — verified by exercising the real scenarios manually:
 | 8  | Launch commands wrapped in **`bin/run-api` / `bin/run-web`**. |
 | 9  | Shared **`bin/local-stack`** core + **`bin/lib.sh`**; e2e folded onto it. |
 | 10 | **Per-branch tables**, uniform `xpool-<branch>` (subsumes reseed-on-switch). |
+| 11 | **Minimal env**: scripts don't touch `.env`; api/xtask self-load it, wrappers override only `XPOOL_TABLE`, `aws` CLI uses inline dummy creds. e2e + Auth0-local unchanged. |
+| 12 | **Deferred**: per-worktree generated `.env` (drift-prone) and named `.env.<profile>` files (separable; touches the Rust crates). |
