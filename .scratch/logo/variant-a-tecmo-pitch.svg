@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="256" height="256" shape-rendering="crispEdges">
+  <!-- Variant A — TECMO PITCH.
+       Reference: Nintendo World Cup '90 / Tecmo World Cup title screens.
+       Chunky pixel X with hard sprite-style black outline, NES-bright pitch.
+       Implied app language: pixel-art widgets, Press Start 2P font, chunky borders. -->
+  <defs>
+    <clipPath id="disc-a"><circle cx="24" cy="24" r="22"/></clipPath>
+  </defs>
+
+  <!-- bright NES-saturated pitch -->
+  <circle cx="24" cy="24" r="22" fill="#2db83a"/>
+
+  <!-- chunky pixel mowed stripes -->
+  <g clip-path="url(#disc-a)" fill="#1a7029">
+    <rect x="0" y="6"  width="48" height="3"/>
+    <rect x="0" y="18" width="48" height="3"/>
+    <rect x="0" y="30" width="48" height="3"/>
+    <rect x="0" y="42" width="48" height="3"/>
+  </g>
+
+  <!-- sprite-style hard black disc outline -->
+  <circle cx="24" cy="24" r="22" fill="none" stroke="#000" stroke-width="3"/>
+
+  <!-- X — black sprite outline + white fill, square caps for blocky read -->
+  <g stroke-linecap="square">
+    <line x1="11" y1="11" x2="37" y2="37" stroke="#000" stroke-width="11"/>
+    <line x1="37" y1="11" x2="11" y2="37" stroke="#000" stroke-width="11"/>
+    <line x1="11" y1="11" x2="37" y2="37" stroke="#fff" stroke-width="7"/>
+    <line x1="37" y1="11" x2="11" y2="37" stroke="#fff" stroke-width="7"/>
+  </g>
+
+  <!-- single magenta accent pixel (the 1-pixel highlight every NES sprite had) -->
+  <rect x="35" y="9" width="3" height="3" fill="#ff2882"/>
+</svg>

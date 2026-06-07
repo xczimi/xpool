@@ -1,0 +1,807 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>xPool — Stadium Scoreboard Mockup (Variant C)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="icon" type="image/svg+xml" href="variant-c-scoreboard.svg">
+<style>
+:root {
+  --bg-deep:        #07070d;
+  --bg-card:        #0e0e1a;
+  --bg-card-border: #2a1a08;
+  --amber:          #ff8c00;
+  --amber-bright:   #ffd76a;
+  --amber-dim:      #a04400;
+  --led-green:      #33ff66;
+  --led-red:        #ff3366;
+  --led-blue:       #21d4fd;
+  --text-on-dark:   #d8d0b8;
+  --text-dim:       #6a5a3a;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-on-dark);
+  font-family: 'VT323', monospace;
+  font-size: 20px;
+  line-height: 1.4;
+  min-height: 100vh;
+  /* Subtle CRT scanline texture across the whole page. */
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0,0,0,0.20) 0,
+      rgba(0,0,0,0.20) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+}
+
+/* ----- HEADER / NAV ----- */
+header.scoreboard-top {
+  background: linear-gradient(180deg, #0e0e1a 0%, #07070d 100%);
+  border-bottom: 2px solid var(--amber-dim);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.brand-icon {
+  width: 48px;
+  height: 48px;
+}
+
+.brand-wordmark {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 22px;
+  color: var(--amber);
+  text-shadow: 0 0 8px rgba(255, 140, 0, 0.5);
+  letter-spacing: 2px;
+  display: block;
+}
+
+.brand-tagline {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: var(--text-dim);
+  display: block;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+nav.scoreboard-nav {
+  display: flex;
+  gap: 8px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  flex-wrap: wrap;
+}
+
+nav.scoreboard-nav a {
+  color: var(--text-on-dark);
+  text-decoration: none;
+  text-transform: uppercase;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  transition: all 0.08s;
+  letter-spacing: 1px;
+}
+
+nav.scoreboard-nav a:hover {
+  border-color: var(--amber);
+  color: var(--amber-bright);
+}
+
+nav.scoreboard-nav a.active {
+  color: var(--amber-bright);
+  border: 1px solid var(--amber);
+  background: rgba(255, 140, 0, 0.08);
+}
+
+/* ----- MAIN ----- */
+main {
+  max-width: 1100px;
+  margin: 32px auto;
+  padding: 0 32px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--amber-dim);
+  padding-bottom: 10px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.section-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  color: var(--amber);
+  letter-spacing: 1px;
+}
+
+.section-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+
+.led-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--led-green);
+  box-shadow: 0 0 6px var(--led-green);
+  animation: pulse 1.6s infinite;
+  display: inline-block;
+}
+
+.led-dot.red    { background: var(--led-red);    box-shadow: 0 0 6px var(--led-red); }
+.led-dot.blue   { background: var(--led-blue);   box-shadow: 0 0 6px var(--led-blue); }
+.led-dot.amber  { background: var(--amber);      box-shadow: 0 0 6px var(--amber); animation: none; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* ----- MATCH CARDS ----- */
+.matches-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+  margin-bottom: 48px;
+}
+
+.match-card {
+  background: var(--bg-card);
+  border: 2px solid var(--bg-card-border);
+  padding: 20px;
+  position: relative;
+  transition: border-color 0.15s;
+}
+
+.match-card.live {
+  border-color: var(--led-green);
+  box-shadow: 0 0 14px rgba(51, 255, 102, 0.15);
+}
+
+.match-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.match-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.match-status .led-dot {
+  width: 6px;
+  height: 6px;
+}
+
+.match-teams {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.team {
+  text-align: center;
+}
+
+.team-code {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 22px;
+  color: var(--text-on-dark);
+  margin-bottom: 6px;
+  letter-spacing: 2px;
+}
+
+.team-name {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.score-display {
+  background: #050508;
+  border: 2px solid var(--amber-dim);
+  padding: 10px 14px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 22px;
+  color: var(--amber-bright);
+  text-shadow: 0 0 10px var(--amber);
+  letter-spacing: 4px;
+  min-width: 80px;
+  text-align: center;
+}
+
+.score-display.pending {
+  color: var(--amber-dim);
+  text-shadow: none;
+}
+
+.match-divider {
+  height: 1px;
+  background: var(--bg-card-border);
+  margin: 14px 0;
+}
+
+.tip-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tip-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.tip-value {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: var(--amber-bright);
+  letter-spacing: 1px;
+}
+
+.tip-value.scored {
+  color: var(--led-green);
+  text-shadow: 0 0 4px rgba(51, 255, 102, 0.4);
+}
+
+.tip-input {
+  background: #050508;
+  border: 1px solid var(--amber-dim);
+  color: var(--amber-bright);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  padding: 6px 8px;
+  width: 36px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.tip-input:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 6px rgba(255, 140, 0, 0.4);
+}
+
+.btn-scoreboard {
+  background: transparent;
+  border: 1px solid var(--amber);
+  color: var(--amber);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  padding: 8px 12px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  transition: all 0.08s;
+}
+
+.btn-scoreboard:hover {
+  background: var(--amber);
+  color: var(--bg-deep);
+  box-shadow: 0 0 10px rgba(255, 140, 0, 0.5);
+}
+
+/* ----- LEADERBOARD ----- */
+.leaderboard {
+  background: var(--bg-card);
+  border: 2px solid var(--bg-card-border);
+  overflow: hidden;
+  margin-bottom: 48px;
+}
+
+.leaderboard-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 100px 100px;
+  align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--bg-card-border);
+  gap: 16px;
+}
+
+.leaderboard-row:last-child { border-bottom: none; }
+
+.leaderboard-row.header {
+  background: rgba(255, 140, 0, 0.05);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--amber);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.leaderboard-row.you {
+  background: rgba(255, 140, 0, 0.08);
+}
+
+.rank {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  color: var(--text-on-dark);
+  text-align: center;
+}
+
+.rank.gold   { color: #ffd700; text-shadow: 0 0 8px rgba(255, 215, 0, 0.6); }
+.rank.silver { color: #c0c0c0; text-shadow: 0 0 6px rgba(192, 192, 192, 0.5); }
+.rank.bronze { color: #cd7f32; text-shadow: 0 0 6px rgba(205, 127, 50, 0.5); }
+
+.player-nick {
+  font-family: 'VT323', monospace;
+  font-size: 22px;
+  color: var(--text-on-dark);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: 1px;
+}
+
+.player-nick .badge {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  background: var(--amber);
+  color: var(--bg-deep);
+  padding: 3px 5px;
+  letter-spacing: 1px;
+}
+
+.points {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 14px;
+  color: var(--amber-bright);
+  text-shadow: 0 0 6px rgba(255, 140, 0, 0.4);
+  text-align: right;
+  letter-spacing: 1px;
+}
+
+.delta {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  text-align: right;
+  letter-spacing: 1px;
+}
+
+.delta.up   { color: var(--led-green); }
+.delta.down { color: var(--led-red); }
+.delta.same { color: var(--text-dim); }
+
+/* ----- INVITE / AUTH PANEL ----- */
+.terminal-panel {
+  background: var(--bg-card);
+  border: 2px solid var(--bg-card-border);
+  padding: 28px;
+  margin-bottom: 48px;
+  position: relative;
+}
+
+.terminal-panel .terminal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--bg-card-border);
+}
+
+.terminal-panel .terminal-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px;
+  color: var(--amber);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.terminal-panel .terminal-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.terminal-controls .led-dot { width: 8px; height: 8px; animation: none; }
+
+.terminal-body {
+  font-family: 'VT323', monospace;
+  font-size: 18px;
+  color: var(--text-on-dark);
+  letter-spacing: 0.5px;
+}
+
+.prompt {
+  color: var(--led-green);
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.terminal-body .cursor {
+  display: inline-block;
+  width: 10px;
+  height: 18px;
+  background: var(--amber);
+  vertical-align: middle;
+  animation: blink 1s infinite;
+}
+
+.invite-link-display {
+  background: #050508;
+  border: 1px solid var(--amber-dim);
+  padding: 14px;
+  margin: 14px 0;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  color: var(--amber-bright);
+  letter-spacing: 1px;
+  word-break: break-all;
+}
+
+/* ----- FOOTER ----- */
+footer.scoreboard-foot {
+  border-top: 2px solid var(--amber-dim);
+  padding: 16px 32px;
+  margin-top: 48px;
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: var(--text-dim);
+  text-align: center;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+footer.scoreboard-foot .blink {
+  animation: blink 1s infinite;
+  color: var(--led-green);
+}
+
+@keyframes blink {
+  0%, 50%    { opacity: 1; }
+  51%, 100%  { opacity: 0.1; }
+}
+
+/* ----- MOBILE (<= 640px) -----
+   Single breakpoint. Three goals:
+   1. Reclaim side padding (32px -> 16px).
+   2. Shrink Press Start 2P glyphs that get punishing at phone widths.
+   3. Drop the leaderboard delta column (the only thing that overflowed). */
+@media (max-width: 640px) {
+  header.scoreboard-top { padding: 12px 16px; gap: 10px; }
+  main                  { padding: 0 16px; margin-top: 24px; }
+  footer.scoreboard-foot { padding: 14px 16px; letter-spacing: 1px; }
+
+  /* Brand: smaller badge, drop the tagline (decorative, eats width when wrapped). */
+  .brand-icon       { width: 40px; height: 40px; }
+  .brand-wordmark   { font-size: 18px; letter-spacing: 1px; }
+  .brand-tagline    { display: none; }
+
+  /* Nav: compact, full-width row so wrap is predictable. */
+  nav.scoreboard-nav   { gap: 4px; font-size: 9px; width: 100%; }
+  nav.scoreboard-nav a { padding: 8px 10px; letter-spacing: 0.5px; }
+
+  /* Section header & status: smaller, status drops to next line via wrap. */
+  .section-title  { font-size: 12px; }
+  .section-status { font-size: 8px; }
+
+  /* Match cards: single column already (minmax 320px), tighter padding. */
+  .matches-grid  { gap: 12px; }
+  .match-card    { padding: 16px; }
+  .team-code     { font-size: 18px; letter-spacing: 1px; }
+  .team-name     { font-size: 14px; }
+  .score-display { font-size: 18px; padding: 8px 10px; min-width: 64px; letter-spacing: 3px; }
+  .tip-label     { font-size: 11px; }
+  .tip-value     { font-size: 10px; }
+  .tip-input     { font-size: 11px; width: 32px; padding: 5px 6px; }
+  .btn-scoreboard { font-size: 8px; padding: 7px 10px; }
+
+  /* Leaderboard: drop the 4th 'vs Last' column. Three columns fit comfortably. */
+  .leaderboard-row {
+    grid-template-columns: 40px 1fr 70px;
+    padding: 12px 14px;
+    gap: 10px;
+  }
+  .leaderboard-row > :nth-child(4) { display: none; }
+  .leaderboard-row.header          { font-size: 8px; }
+  .player-nick                     { font-size: 18px; }
+  .player-nick .badge              { font-size: 7px; padding: 2px 4px; }
+  .points                          { font-size: 12px; }
+  .rank                            { font-size: 14px; }
+
+  /* Terminal panel: less air. Buttons already wrap. */
+  .terminal-panel        { padding: 16px; }
+  .terminal-title        { font-size: 9px; }
+  .terminal-body         { font-size: 16px; }
+  .invite-link-display   { font-size: 11px; padding: 10px; letter-spacing: 0.5px; }
+}
+</style>
+</head>
+<body>
+
+<header class="scoreboard-top">
+  <div class="brand">
+    <!-- Inline Variant C LED-X badge -->
+    <svg class="brand-icon" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+      <defs>
+        <clipPath id="disc-c-hdr"><circle cx="24" cy="24" r="22"/></clipPath>
+        <radialGradient id="led-hdr" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0%"   stop-color="#ffd76a"/>
+          <stop offset="55%"  stop-color="#ff8c00"/>
+          <stop offset="100%" stop-color="#a04400"/>
+        </radialGradient>
+        <filter id="led-glow-hdr" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="0.8"/>
+        </filter>
+      </defs>
+      <circle cx="24" cy="24" r="22" fill="#0a0a14"/>
+      <g clip-path="url(#disc-c-hdr)" fill="#2a1a08">
+        <rect x="6" y="6"   width="1.5" height="1.5"/><rect x="12" y="6"   width="1.5" height="1.5"/><rect x="18" y="6"   width="1.5" height="1.5"/><rect x="24" y="6"   width="1.5" height="1.5"/><rect x="30" y="6"   width="1.5" height="1.5"/><rect x="36" y="6"   width="1.5" height="1.5"/><rect x="42" y="6"   width="1.5" height="1.5"/>
+        <rect x="6" y="12"  width="1.5" height="1.5"/><rect x="12" y="12"  width="1.5" height="1.5"/><rect x="18" y="12"  width="1.5" height="1.5"/><rect x="24" y="12"  width="1.5" height="1.5"/><rect x="30" y="12"  width="1.5" height="1.5"/><rect x="36" y="12"  width="1.5" height="1.5"/><rect x="42" y="12"  width="1.5" height="1.5"/>
+        <rect x="6" y="18"  width="1.5" height="1.5"/><rect x="12" y="18"  width="1.5" height="1.5"/><rect x="18" y="18"  width="1.5" height="1.5"/><rect x="24" y="18"  width="1.5" height="1.5"/><rect x="30" y="18"  width="1.5" height="1.5"/><rect x="36" y="18"  width="1.5" height="1.5"/><rect x="42" y="18"  width="1.5" height="1.5"/>
+        <rect x="6" y="24"  width="1.5" height="1.5"/><rect x="12" y="24"  width="1.5" height="1.5"/><rect x="18" y="24"  width="1.5" height="1.5"/><rect x="24" y="24"  width="1.5" height="1.5"/><rect x="30" y="24"  width="1.5" height="1.5"/><rect x="36" y="24"  width="1.5" height="1.5"/><rect x="42" y="24"  width="1.5" height="1.5"/>
+        <rect x="6" y="30"  width="1.5" height="1.5"/><rect x="12" y="30"  width="1.5" height="1.5"/><rect x="18" y="30"  width="1.5" height="1.5"/><rect x="24" y="30"  width="1.5" height="1.5"/><rect x="30" y="30"  width="1.5" height="1.5"/><rect x="36" y="30"  width="1.5" height="1.5"/><rect x="42" y="30"  width="1.5" height="1.5"/>
+        <rect x="6" y="36"  width="1.5" height="1.5"/><rect x="12" y="36"  width="1.5" height="1.5"/><rect x="18" y="36"  width="1.5" height="1.5"/><rect x="24" y="36"  width="1.5" height="1.5"/><rect x="30" y="36"  width="1.5" height="1.5"/><rect x="36" y="36"  width="1.5" height="1.5"/><rect x="42" y="36"  width="1.5" height="1.5"/>
+        <rect x="6" y="42"  width="1.5" height="1.5"/><rect x="12" y="42"  width="1.5" height="1.5"/><rect x="18" y="42"  width="1.5" height="1.5"/><rect x="24" y="42"  width="1.5" height="1.5"/><rect x="30" y="42"  width="1.5" height="1.5"/><rect x="36" y="42"  width="1.5" height="1.5"/><rect x="42" y="42"  width="1.5" height="1.5"/>
+      </g>
+      <circle cx="24" cy="24" r="22" fill="none" stroke="#a04400" stroke-width="1.2"/>
+      <g fill="url(#led-hdr)" filter="url(#led-glow-hdr)">
+        <circle cx="13" cy="13" r="2.0"/><circle cx="17" cy="17" r="2.0"/><circle cx="21" cy="21" r="2.2"/>
+        <circle cx="24" cy="24" r="2.6"/>
+        <circle cx="27" cy="27" r="2.2"/><circle cx="31" cy="31" r="2.0"/><circle cx="35" cy="35" r="2.0"/>
+        <circle cx="35" cy="13" r="2.0"/><circle cx="31" cy="17" r="2.0"/><circle cx="27" cy="21" r="2.2"/>
+        <circle cx="21" cy="27" r="2.2"/><circle cx="17" cy="31" r="2.0"/><circle cx="13" cy="35" r="2.0"/>
+      </g>
+      <circle cx="24" cy="40" r="1.4" fill="#33ff66"/>
+    </svg>
+    <div>
+      <span class="brand-wordmark">xPOOL</span>
+      <span class="brand-tagline">stadium scoreboard / fwc26</span>
+    </div>
+  </div>
+  <nav class="scoreboard-nav">
+    <a href="#" class="active">Today</a>
+    <a href="#">Games</a>
+    <a href="#">My Tips</a>
+    <a href="#">Scoreboard</a>
+    <a href="#">Invite</a>
+    <a href="#">Profile</a>
+  </nav>
+</header>
+
+<main>
+
+  <!-- Today's matches -->
+  <section>
+    <div class="section-header">
+      <h2 class="section-title">Today's Matches</h2>
+      <div class="section-status">
+        <span class="led-dot"></span>
+        <span>1 LIVE / 1 UPCOMING / 1 FINAL</span>
+      </div>
+    </div>
+    <div class="matches-grid">
+
+      <!-- LIVE -->
+      <div class="match-card live">
+        <div class="match-meta">
+          <span>GROUP B · MATCH 12</span>
+          <span class="match-status"><span class="led-dot"></span>LIVE 67'</span>
+        </div>
+        <div class="match-teams">
+          <div class="team">
+            <div class="team-code">ENG</div>
+            <div class="team-name">England</div>
+          </div>
+          <div class="score-display">2 - 1</div>
+          <div class="team">
+            <div class="team-code">FRA</div>
+            <div class="team-name">France</div>
+          </div>
+        </div>
+        <div class="match-divider"></div>
+        <div class="tip-row">
+          <span class="tip-label">Your Tip</span>
+          <span class="tip-value scored">2 - 1 ★ ON TRACK</span>
+        </div>
+      </div>
+
+      <!-- UPCOMING with tip input -->
+      <div class="match-card">
+        <div class="match-meta">
+          <span>GROUP C · MATCH 15</span>
+          <span class="match-status"><span class="led-dot amber"></span>17:00 GMT</span>
+        </div>
+        <div class="match-teams">
+          <div class="team">
+            <div class="team-code">GER</div>
+            <div class="team-name">Germany</div>
+          </div>
+          <div class="score-display pending">_ - _</div>
+          <div class="team">
+            <div class="team-code">BRA</div>
+            <div class="team-name">Brazil</div>
+          </div>
+        </div>
+        <div class="match-divider"></div>
+        <div class="tip-row">
+          <span class="tip-label">Your Tip</span>
+          <span style="display: flex; align-items: center; gap: 6px">
+            <input class="tip-input" value="1" maxlength="2">
+            <span style="color: var(--amber)">-</span>
+            <input class="tip-input" value="2" maxlength="2">
+            <button class="btn-scoreboard">Submit</button>
+          </span>
+        </div>
+      </div>
+
+      <!-- FINAL -->
+      <div class="match-card">
+        <div class="match-meta">
+          <span>GROUP A · MATCH 11</span>
+          <span class="match-status"><span class="led-dot red"></span>FT</span>
+        </div>
+        <div class="match-teams">
+          <div class="team">
+            <div class="team-code">ESP</div>
+            <div class="team-name">Spain</div>
+          </div>
+          <div class="score-display">3 - 0</div>
+          <div class="team">
+            <div class="team-code">POR</div>
+            <div class="team-name">Portugal</div>
+          </div>
+        </div>
+        <div class="match-divider"></div>
+        <div class="tip-row">
+          <span class="tip-label">Your Tip</span>
+          <span class="tip-value scored">2 - 0 · +3 PTS</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Leaderboard -->
+  <section>
+    <div class="section-header">
+      <h2 class="section-title">Standings</h2>
+      <div class="section-status">
+        <span class="led-dot blue"></span>
+        <span>UPDATED 2 MIN AGO</span>
+      </div>
+    </div>
+    <div class="leaderboard">
+      <div class="leaderboard-row header">
+        <span>Pos</span>
+        <span>Player</span>
+        <span style="text-align: right">Points</span>
+        <span style="text-align: right">vs Last</span>
+      </div>
+      <div class="leaderboard-row">
+        <span class="rank gold">1</span>
+        <span class="player-nick">demo-grace</span>
+        <span class="points">127</span>
+        <span class="delta up">+3 ▲</span>
+      </div>
+      <div class="leaderboard-row">
+        <span class="rank silver">2</span>
+        <span class="player-nick">demo-ada</span>
+        <span class="points">124</span>
+        <span class="delta same">— 0</span>
+      </div>
+      <div class="leaderboard-row you">
+        <span class="rank bronze">3</span>
+        <span class="player-nick">pczimi <span class="badge">YOU</span></span>
+        <span class="points">119</span>
+        <span class="delta up">+5 ▲</span>
+      </div>
+      <div class="leaderboard-row">
+        <span class="rank">4</span>
+        <span class="player-nick">demo-linus</span>
+        <span class="points">112</span>
+        <span class="delta down">-2 ▼</span>
+      </div>
+      <div class="leaderboard-row">
+        <span class="rank">5</span>
+        <span class="player-nick">demo-margaret</span>
+        <span class="points">98</span>
+        <span class="delta same">— 0</span>
+      </div>
+      <div class="leaderboard-row">
+        <span class="rank">6</span>
+        <span class="player-nick">demo-alan</span>
+        <span class="points">87</span>
+        <span class="delta up">+1 ▲</span>
+      </div>
+      <div class="leaderboard-row">
+        <span class="rank">7</span>
+        <span class="player-nick">demo-dennis</span>
+        <span class="points">62</span>
+        <span class="delta down">-3 ▼</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Invite panel — terminal style -->
+  <section>
+    <div class="section-header">
+      <h2 class="section-title">Invite a Friend</h2>
+      <div class="section-status">
+        <span class="led-dot amber"></span>
+        <span>SINGLE USE · 7 DAYS</span>
+      </div>
+    </div>
+
+    <div class="terminal-panel">
+      <div class="terminal-header">
+        <span class="terminal-title">// SCOREBOARD :: INVITE_GEN.exe</span>
+        <div class="terminal-controls">
+          <span class="led-dot red"></span>
+          <span class="led-dot amber"></span>
+          <span class="led-dot"></span>
+        </div>
+      </div>
+      <div class="terminal-body">
+        <div><span class="prompt">$</span>generate_invite_link --pool=fwc26 --user=pczimi</div>
+        <div style="margin-top: 8px; color: var(--text-dim)">> minting HS256-signed code…</div>
+        <div style="color: var(--text-dim)">> single-use marker: armed</div>
+        <div style="color: var(--led-green); margin-top: 6px">✓ link ready</div>
+
+        <div class="invite-link-display">
+          https://pool.xczimi.com/invite/eyJhbGciOiJIUzI1NiJ9.K7s9...4M2x
+        </div>
+
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px">
+          <button class="btn-scoreboard">Copy Link</button>
+          <button class="btn-scoreboard">Send via WhatsApp</button>
+          <button class="btn-scoreboard">Generate Another</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="scoreboard-foot">
+  xPool · FIFA World Cup 2026 · SYSTEM ONLINE <span class="blink">●</span>
+</footer>
+
+</body>
+</html>
