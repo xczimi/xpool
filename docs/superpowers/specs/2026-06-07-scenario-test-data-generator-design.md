@@ -34,7 +34,8 @@ roles: one becomes the result-user, the rest become players.
 | Persistence | Regenerate from a seed + RNG each run; nothing large checked in. |
 | Scenario switching | Re-seed the active `XPOOL_TABLE` (`xtask scenario <id>`), not per-scenario tables. |
 | Date peeking | Seed **full** results; re-materialise the scoreboard as-of the dev clock — one seed, any date. |
-| Re-materialise home | A dev-only API route; the as-of slice is unified into `recompute`. |
+| Re-materialise home | A dev-only GraphQL mutation (`devRematerialize`); the as-of slice is unified into `recompute`. |
+| Picker integration | The SPA dev-clock picker calls `devRematerialize` on every clock change/reset, before reloading. |
 
 ## Architecture
 
@@ -156,18 +157,36 @@ result), so it is **unified into `recompute`** rather than duplicated.
 
 1. `xtask scenario <id>` — seed the full scenario into `XPOOL_TABLE` (results
    present with `locked = false`; player predictions full).
-2. Set the dev clock (`X-Dev-Now` header / `XPOOL_NOW`) to date `T`.
-3. Hit the dev re-materialise route → scoreboard + bracket rebuilt as-of `T`.
+2. Move the dev clock to date `T` — via the SPA dev-clock picker, or by setting
+   `X-Dev-Now` / `XPOOL_NOW` directly.
+3. `devRematerialize` rebuilds scoreboard + bracket as-of `T`. From the picker
+   this is automatic; from a script it's one mutation call.
 4. Sweep `T` to watch the tournament evolve. **One seed, any date — no re-seed.**
+
+### Dev-clock picker hook
+
+`web/src/components/DevClock.tsx` already does `setDevNow(iso)` →
+`location.reload()`, and `client.ts` attaches the stored `X-Dev-Now` to every
+GraphQL request. The hook: after `setDevNow` (and in the reset handler), call the
+`devRematerialize` mutation — which now carries the new `X-Dev-Now`, so the
+server re-materialises as-of the just-picked instant — then `await` it and
+reload. Failures are swallowed (a prod build without the dev mutation still
+reloads cleanly). Result: moving the clock and re-materialising the board are a
+single user action, which is the whole inspection loop.
 
 ## API / CLI surface
 
 - **`xtask scenario <scenario-id>`** — new subcommand alongside `import` / `seed`
   / `drop-table`. Generates and seeds the named scenario (full outcome-sets).
   Idempotent (fixed entity ids), so switching scenarios overwrites cleanly.
-- **Dev-only API route** (e.g. `POST /api/dev/rematerialize`) — calls
-  `recompute` using the request's resolved `now`. Gated to dev builds / the dev
-  stub, consistent with `X-Dev-Now` and `dev_login`.
+- **`devRematerialize` GraphQL mutation** — calls `recompute` using the
+  request's resolved `now`. Gated to the dev stub / dev builds, consistent with
+  `X-Dev-Now` and `dev_login`. Chosen over a REST route so the SPA's existing
+  urql client carries the dev-clock header for free. Returns a trivial payload
+  (e.g. `Boolean`); scripts/curl can call it via the GraphQL endpoint.
+- **SPA dev-clock picker** (`web/src/components/DevClock.tsx`) — calls
+  `devRematerialize` on every clock change and on reset (see "Dev-clock picker
+  hook").
 
 ## Determinism
 
@@ -192,6 +211,11 @@ entropy anywhere in generation.)
   for played games, slicing changes nothing.
 - **Seed integration**: `xtask scenario <id>` populates result-user + ~12 players
   + pool, all dev-loginable (extends the existing `seed.rs` resolution test).
+- **`devRematerialize` mutation**: a dev-clock `now` rebuilds the stored
+  scoreboard; the mutation is gated off when the dev stub is disabled.
+- **E2E (Playwright)**: seed a scenario, move the dev-clock picker across two
+  dates, and assert the scoreboard changes accordingly (the inspection loop is
+  the deliverable, so it gets an end-to-end check, not just unit coverage).
 
 ## Open implementation details (resolved during planning)
 
