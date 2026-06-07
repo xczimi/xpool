@@ -47,7 +47,7 @@ TABLE="$(table_for "$TARGET")"
 BRANCH="$(git -C "$TARGET" rev-parse --abbrev-ref HEAD)"
 
 # --- 1. infra + data (self-healing) -----------------------------------------
-( cd "$TARGET" && XPOOL_TABLE="$TABLE" "$BIN/local-stack" $RESEED )
+( cd "$TARGET" && XPOOL_TABLE="$TABLE" "$BIN/local-stack" ${RESEED:+--reseed} )
 
 # --- tmux helpers -----------------------------------------------------------
 pane_by_role() {
@@ -80,6 +80,7 @@ stop_server() {  # <pane_id> <port>
     [ -z "$(port_pids "$2")" ] && break
     sleep 0.25
   done
+  [ -z "$(port_pids "$2")" ] || echo "bin/tmux: warning: port $2 still in use after stop" >&2
 }
 
 ensure_server() {  # <api|web> <port>
@@ -105,7 +106,7 @@ ensure_simple() {  # <role> <launch-cmd-or-empty>
   [ -n "$pane" ] && return
   pane="$(tmux split-window -v -P -F '#{pane_id}' -t "$SESSION" -c "$TARGET")"
   tmux set-option -p -t "$pane" @role "$role"
-  [ -n "$cmd" ] && tmux send-keys -t "$pane" "$cmd" C-m
+  if [ -n "$cmd" ]; then tmux send-keys -t "$pane" "$cmd" C-m; fi
   normalise_layout
 }
 
