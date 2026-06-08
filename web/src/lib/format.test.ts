@@ -18,18 +18,18 @@ function slot(over: Partial<TeamSlot>): TeamSlot {
 
 describe('teamIndex', () => {
   it('indexes teams by id', () => {
-    const idx = teamIndex([team('t1', 'Alpha', 'ALP'), team('t2', 'Beta', 'BET')])
+    const idx = teamIndex([team('t1', 'Alpha', 'ALP'), team('t2', 'Beta', 'BET')], 'en')
     expect(idx.get('t1')?.name).toBe('Alpha')
     expect(idx.get('t2')?.shortCode).toBe('BET')
   })
 
   it('is empty for no teams', () => {
-    expect(teamIndex([]).size).toBe(0)
+    expect(teamIndex([], 'en').size).toBe(0)
   })
 })
 
 describe('slotLabel', () => {
-  const teams = teamIndex([team('t1', 'Alpha', 'ALP')])
+  const teams = teamIndex([team('t1', 'Alpha', 'ALP')], 'en')
 
   it('returns the team name when the slot has a known team', () => {
     expect(slotLabel(slot({ teamId: 't1' }), teams)).toBe('Alpha')
@@ -51,7 +51,7 @@ describe('slotLabel', () => {
 })
 
 describe('slotCode', () => {
-  const teams = teamIndex([team('t1', 'Alpha', 'ALP')])
+  const teams = teamIndex([team('t1', 'Alpha', 'ALP')], 'en')
 
   it('returns the short code for a known team', () => {
     expect(slotCode(slot({ teamId: 't1' }), teams)).toBe('ALP')
@@ -103,5 +103,29 @@ describe('byKickoff', () => {
         game('b', '2026-06-20T12:00:00Z'),
       ),
     ).toBe(0)
+  })
+})
+
+describe('teamIndex localisation', () => {
+  const teams = [
+    { id: 'CRO', name: 'Croatia', shortCode: 'CRO', flag: null },
+    { id: 'ZZZ', name: 'Atlantis', shortCode: 'ZZZ', flag: null },
+  ] as unknown as import('../graphql/types').Team[]
+
+  it('localises names for hu, falling back for unknown teams', () => {
+    const map = teamIndex(teams, 'hu')
+    expect(map.get('CRO')?.name).toBe('Horvátország')
+    expect(map.get('ZZZ')?.name).toBe('Atlantis')
+  })
+
+  it('keeps English names for en', () => {
+    const map = teamIndex(teams, 'en')
+    expect(map.get('CRO')?.name).toBe('Croatia')
+  })
+
+  it('returns new team objects (does not mutate input)', () => {
+    const map = teamIndex(teams, 'hu')
+    expect(map.get('CRO')).not.toBe(teams[0])
+    expect(teams[0].name).toBe('Croatia')
   })
 })

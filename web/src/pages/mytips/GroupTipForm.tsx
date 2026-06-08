@@ -69,8 +69,8 @@ export function GroupTipForm({
     lock: boolean,
   ) => Promise<OperationResult>
 }) {
-  const { t } = useI18n()
-  const teams = useMemo(() => teamIndex(tournament.teams), [tournament])
+  const { t, locale } = useI18n()
+  const teams = useMemo(() => teamIndex(tournament.teams, locale), [tournament, locale])
 
   const games = useMemo(
     () =>

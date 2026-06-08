@@ -8,7 +8,7 @@ import { TeamLabel } from '../../components/TeamLabel'
 
 /** Admin team view (UC-15) — read-only listing. */
 export function AdminTeams() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [result] = useQuery<{
     tournament: Tournament | null
   }>({ query: TOURNAMENT_QUERY })
@@ -16,7 +16,7 @@ export function AdminTeams() {
   if (result.fetching) return <Loading />
   if (result.error) return <ErrorView message={result.error.message} />
   const teams = result.data?.tournament?.teams ?? []
-  const teamMap = teamIndex(teams)
+  const teamMap = teamIndex(teams, locale)
 
   return (
     <div>

@@ -20,8 +20,8 @@ export function SchedulePage() {
 
   const tournament = result.data?.tournament ?? null
   const teams = useMemo(
-    () => teamIndex(tournament?.teams ?? []),
-    [tournament],
+    () => teamIndex(tournament?.teams ?? [], locale),
+    [tournament, locale],
   )
   const resultsByGame = useMemo(() => {
     const map = new Map<string, MatchPrediction>()

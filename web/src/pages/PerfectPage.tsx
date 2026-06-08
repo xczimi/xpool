@@ -10,7 +10,7 @@ import { PointsBadge } from '../components/PointsBadge'
 
 /** Players who scored a maximum (4-point) match prediction (UC-10). Public. */
 export function PerfectPage() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const [result, reexecute] = useQuery<{ perfects: Perfect[] }>({
     query: PERFECTS_QUERY,
   })
@@ -23,8 +23,8 @@ export function PerfectPage() {
 
   const tournament = tournamentResult.data?.tournament ?? null
   const teams = useMemo(
-    () => teamIndex(tournament?.teams ?? []),
-    [tournament],
+    () => teamIndex(tournament?.teams ?? [], locale),
+    [tournament, locale],
   )
   const gameLabel = useMemo(() => {
     const map = new Map<string, ReactNode>()

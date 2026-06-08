@@ -62,8 +62,8 @@ export function TodayPage() {
 
   const tournament = result.data?.tournament ?? null
   const teams = useMemo(
-    () => teamIndex(tournament?.teams ?? []),
-    [tournament],
+    () => teamIndex(tournament?.teams ?? [], locale),
+    [tournament, locale],
   )
   const tipFor = useMemo(() => {
     const map = new Map<string, { home: number; away: number; locked: boolean }>()

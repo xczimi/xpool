@@ -22,7 +22,7 @@ import { currentRoundNode, leafGroupsOfRound, roundNodes } from '../lib/rounds'
 const tipKey = (playerId: string, gameId: string) => `${playerId}::${gameId}`
 
 export function AllTipsPage() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { label } = useAuth()
   const [selectedRound, setSelectedRound] = useState<Round | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
@@ -72,8 +72,8 @@ export function AllTipsPage() {
   })
 
   const teams = useMemo(
-    () => teamIndex(tournament?.teams ?? []),
-    [tournament?.teams],
+    () => teamIndex(tournament?.teams ?? [], locale),
+    [tournament?.teams, locale],
   )
   const tips = useMemo(
     () => tipsResult.data?.tips ?? [],
