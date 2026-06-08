@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
 import {
   ACCENT_STORAGE_KEY,
   MODE_STORAGE_KEY,
@@ -40,25 +40,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [mode, setModeState] = useState<ThemeMode>(() =>
     readStored(MODE_STORAGE_KEY, coerceThemeMode),
   )
-  // Tracks the OS dark-mode preference; updated only by the matchMedia
-  // change-event listener so there is no synchronous setState in an effect.
-  // We always read mql.matches at render time instead of relying on stale
-  // state, so a mode switch back to 'system' reflects the current OS setting.
-  const [osChangeCount, setOsChangeCount] = useState(0)
-
-  // Subscribe to OS colour-scheme changes while mode=system.
-  useEffect(() => {
-    if (mode !== 'system') return
-    const mql = window.matchMedia(DARK_QUERY)
-    const onChange = () => setOsChangeCount((n) => n + 1)
-    mql.addEventListener('change', onChange)
-    return () => mql.removeEventListener('change', onChange)
-  }, [mode])
-
-  // Read the current OS preference synchronously at render time.
-  // osChangeCount is consumed here so the component re-renders on OS changes.
-  void osChangeCount
-  const prefersDark = getSystemPrefersDark()
+  const prefersDark = useSyncExternalStore(
+    (onStoreChange) => {
+      // Only react to OS changes while following the system preference.
+      if (mode !== 'system') return () => {}
+      const mql = window.matchMedia(DARK_QUERY)
+      mql.addEventListener('change', onStoreChange)
+      return () => mql.removeEventListener('change', onStoreChange)
+    },
+    getSystemPrefersDark,
+    () => false,
+  )
 
   const resolved = resolveTheme(mode, prefersDark)
 
