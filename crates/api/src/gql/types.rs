@@ -320,6 +320,42 @@ pub struct StageScore {
     pub points: i64,
 }
 
+/// How a single prediction earned its points, component by component, so the
+/// UI can show *why* the number is what it is (`SCORING.md` §3).
+#[derive(SimpleObject, Clone, Debug)]
+pub struct PointsBreakdown {
+    /// Home score matched (exactly, or via the 4-goal rule) → `exact_score_point`.
+    pub exact_home: bool,
+    /// Away score matched (exactly, or via the 4-goal rule) → `exact_score_point`.
+    pub exact_away: bool,
+    /// Correct outcome (win / draw / loss) → `outcome_point`.
+    pub outcome: bool,
+    /// Base points before the round multiplier (0–4 under the default config).
+    pub base: i64,
+    /// The round stage multiplier applied.
+    pub multiplier: i64,
+    /// Final points earned (`base × multiplier`).
+    pub points: i64,
+}
+
+impl PointsBreakdown {
+    pub(crate) fn build(
+        parts: domain::scoring::MatchScoreParts,
+        multiplier: i64,
+        c: &domain::scoring::ScoringConfig,
+    ) -> Self {
+        let base = parts.points(c);
+        PointsBreakdown {
+            exact_home: parts.exact_home,
+            exact_away: parts.exact_away,
+            outcome: parts.outcome,
+            base,
+            multiplier,
+            points: base * multiplier,
+        }
+    }
+}
+
 /// One visible tip in the `tips(groupId)` grid.
 #[derive(SimpleObject, Clone, Debug)]
 pub struct Tip {
@@ -336,6 +372,8 @@ pub struct Tip {
     /// Whether the prediction scored a "perfect" (max base points). `false`
     /// until a result is in.
     pub is_perfect: bool,
+    /// Component breakdown of `points` — `None` whenever `points` is.
+    pub breakdown: Option<PointsBreakdown>,
 }
 
 /// One perfect prediction (`perfects`).
@@ -346,6 +384,26 @@ pub struct Perfect {
     pub game_id: String,
     /// Points earned (multiplied by the round stage factor). A perfect always
     /// has a result, so this is always present.
+    pub points: i64,
+    /// Component breakdown of `points`.
+    pub breakdown: PointsBreakdown,
+}
+
+/// One player's standings (group-table) bonus for one group node (`standings`).
+#[derive(SimpleObject, Clone, Debug)]
+pub struct StandingsScore {
+    pub player_id: String,
+    pub nick: String,
+    pub group_id: String,
+    /// Team-pairs ordered correctly vs the official final table.
+    pub pairs_correct: i64,
+    /// Total comparable pairs (the maximum achievable).
+    pub pairs_total: i64,
+    /// Raw bonus before the round multiplier (`pairs_correct × pair_point`).
+    pub bonus: i64,
+    /// The round stage multiplier applied.
+    pub multiplier: i64,
+    /// Final standings points earned (`bonus × multiplier`).
     pub points: i64,
 }
 

@@ -5,6 +5,8 @@ import type {
   GroupGame,
   MatchPrediction,
   Player,
+  PointsBreakdown,
+  StandingsScore,
   Tournament,
 } from '../../graphql/types'
 import { byKickoff, teamIndex } from '../../lib/format'
@@ -46,6 +48,7 @@ export function GroupTipForm({
   me,
   results,
   pointsByGame,
+  standings,
   onSubmit,
 }: {
   tournament: Tournament
@@ -53,8 +56,13 @@ export function GroupTipForm({
   me: Player
   /** The result user's locked match predictions — official scores. */
   results: MatchPrediction[]
-  /** gameId → earned points for the current player (server-computed). */
-  pointsByGame?: Map<string, { points: number | null; isPerfect: boolean }>
+  /** gameId → earned-points breakdown for the current player (server-computed). */
+  pointsByGame?: Map<
+    string,
+    { breakdown: PointsBreakdown | null; isPerfect: boolean }
+  >
+  /** This player's standings bonus for the group, once scoreable. */
+  standings?: StandingsScore | null
   onSubmit: (
     predictions: PredictionInput[],
     standings: StandingsInput | null,
@@ -242,8 +250,11 @@ export function GroupTipForm({
                 <td>
                   {(() => {
                     const pt = pointsByGame?.get(game.id)
-                    return pt?.points != null ? (
-                      <PointsBadge points={pt.points} isPerfect={pt.isPerfect} />
+                    return pt?.breakdown ? (
+                      <PointsBadge
+                        breakdown={pt.breakdown}
+                        isPerfect={pt.isPerfect}
+                      />
                     ) : (
                       '—'
                     )
@@ -270,6 +281,14 @@ export function GroupTipForm({
           teams={teams}
         />
       </div>
+
+      {group.carriesStandings && standings && (
+        <p className="standings-bonus">
+          <strong>{t('standingsBonus')}:</strong>{' '}
+          {standings.pairsCorrect}/{standings.pairsTotal} {t('pairsCorrect')} —{' '}
+          {standings.bonus} × {standings.multiplier} = <strong>{standings.points}</strong>
+        </p>
+      )}
 
       {!readOnly && (
         <div className="tip-actions">

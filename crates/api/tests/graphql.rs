@@ -615,12 +615,21 @@ async fn tips_always_shows_own_unlocked_prediction() {
 const TIPS_PTS: &str = r#"
 query($g: ID!) {
   tips(groupId: $g) {
-    playerId gameId points isPerfect prediction { homeScore awayScore }
+    playerId gameId points isPerfect
+    breakdown { exactHome exactAway outcome base multiplier points }
+    prediction { homeScore awayScore }
   }
 }"#;
 
 const PERFECTS_PTS: &str = r#"
-query { perfects { playerId gameId points } }"#;
+query { perfects { playerId gameId points breakdown { base multiplier points } } }"#;
+
+const STANDINGS: &str = r#"
+query($g: ID!) {
+  standings(groupId: $g) {
+    playerId groupId pairsCorrect pairsTotal bonus multiplier points
+  }
+}"#;
 
 /// Append a match prediction (locked) to a player already in the repo.
 async fn add_pred(repo: &std::sync::Arc<dyn Repository>, id: &str, g: &str, h: u8, a: u8) {
@@ -657,10 +666,26 @@ async fn tips_expose_earned_points_and_perfect_flag() {
     // Group stage multiplier is 1, so points == base score (4).
     assert_eq!(bob["points"], json!(4));
     assert_eq!(bob["isPerfect"], json!(true));
+    // The breakdown shows every component scored.
+    assert_eq!(
+        bob["breakdown"],
+        json!({
+            "exactHome": true, "exactAway": true, "outcome": true,
+            "base": 4, "multiplier": 1, "points": 4
+        })
+    );
 
     let alice = tip_row(&tips, "alice", GAME_1);
     assert_eq!(alice["points"], json!(0));
     assert_eq!(alice["isPerfect"], json!(false));
+    // 0–0 vs 2–1: no component scored.
+    assert_eq!(
+        alice["breakdown"],
+        json!({
+            "exactHome": false, "exactAway": false, "outcome": false,
+            "base": 0, "multiplier": 1, "points": 0
+        })
+    );
 }
 
 #[tokio::test]
@@ -712,6 +737,61 @@ async fn perfects_expose_earned_points() {
         .unwrap()
         .clone();
     assert_eq!(row["points"], json!(4));
+    assert_eq!(row["breakdown"], json!({ "base": 4, "multiplier": 1, "points": 4 }));
+}
+
+#[tokio::test]
+async fn standings_exposes_each_players_group_bonus() {
+    // Deadline passed (games kicked off) so locked standings are scoreable.
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    // Group A doesn't carry standings in the base fixture — turn it on.
+    {
+        let mut t = repo.get_tournament().await.unwrap().unwrap();
+        t.groups.get_mut(GROUP_A).unwrap().carries_standings = true;
+        repo.put_tournament(&t).await.unwrap();
+    }
+    // Result user and Bob predict the same scores → identical group ranking →
+    // every comparable pair correct. M1 MEX>RSA, M2 KOR>CZE (resolved teams).
+    let standings_pred = |gid: &str| domain::StandingsPrediction {
+        group_id: gid.to_owned(),
+        ordering: vec!["KOR".into(), "MEX".into(), "RSA".into(), "CZE".into()],
+        draw_order: vec![],
+        locked: true,
+    };
+    for id in [RESULT_ID, BOB] {
+        let mut p = repo.get_player(id).await.unwrap().unwrap();
+        p.match_predictions.push(locked_pred(GAME_1, 2, 1));
+        p.match_predictions.push(locked_pred(GAME_2, 3, 0));
+        p.standings_predictions.push(standings_pred(GROUP_A));
+        repo.put_player(&p).await.unwrap();
+    }
+
+    let vars = Variables::from_json(json!({ "g": GROUP_A }));
+    let resp = run(&repo, STANDINGS, vars, Some(BOB)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let d = data(&resp);
+    let bob = d["standings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|s| s["playerId"] == "bob" && s["groupId"] == GROUP_A)
+        .unwrap()
+        .clone();
+    // 4 resolved teams → 6 comparable pairs, all correct; group multiplier ×1.
+    assert_eq!(bob["pairsTotal"], json!(6));
+    assert_eq!(bob["pairsCorrect"], json!(6));
+    assert_eq!(bob["bonus"], json!(6));
+    assert_eq!(bob["multiplier"], json!(1));
+    assert_eq!(bob["points"], json!(6));
+    // The result user is never listed as a player.
+    assert!(
+        d["standings"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|s| s["playerId"] != RESULT_ID),
+        "result user must be excluded"
+    );
 }
 
 // ── recompute mutation ───────────────────────────────────────────────────────

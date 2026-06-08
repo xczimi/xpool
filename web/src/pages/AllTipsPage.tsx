@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
-import { TIPS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
-import type { Round, Tip, Tournament } from '../graphql/types'
+import { STANDINGS_QUERY, TIPS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
+import type { Round, StandingsScore, Tip, Tournament } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { RoundNav } from '../components/RoundNav'
 import { byKickoff, teamIndex } from '../lib/format'
 import { Matchup } from '../components/TeamLabel'
 import { PointsBadge } from '../components/PointsBadge'
+import { StandingsBadge } from '../components/StandingsBadge'
 import { currentRoundNode, leafGroupsOfRound, roundNodes } from '../lib/rounds'
 
 /**
@@ -64,6 +65,11 @@ export function AllTipsPage() {
     variables: { groupId: tipsGroupId },
     pause: !tipsGroupId,
   })
+  const [standingsResult] = useQuery<{ standings: StandingsScore[] }>({
+    query: STANDINGS_QUERY,
+    variables: { groupId: tipsGroupId },
+    pause: !tipsGroupId,
+  })
 
   const teams = useMemo(
     () => teamIndex(tournament?.teams ?? []),
@@ -83,6 +89,22 @@ export function AllTipsPage() {
     () => new Map(tips.map((tip) => [tipKey(tip.playerId, tip.gameId), tip])),
     [tips],
   )
+  // playerId -> standings scores (one per scoreable group in the round).
+  const standingsByPlayer = useMemo(() => {
+    const map = new Map<string, StandingsScore[]>()
+    for (const s of standingsResult.data?.standings ?? []) {
+      const list = map.get(s.playerId) ?? []
+      list.push(s)
+      map.set(s.playerId, list)
+    }
+    return map
+  }, [standingsResult.data])
+  const showStandings = (standingsResult.data?.standings?.length ?? 0) > 0
+  // groupId -> display name, for the per-group standings tooltip lines.
+  const groupName = useMemo(() => {
+    const map = new Map((tournament?.groups ?? []).map((g) => [g.id, g.name]))
+    return (id: string) => map.get(id) ?? id
+  }, [tournament?.groups])
 
   if (!label) return <NeedsLogin />
   if (tournamentResult.fetching) return <Loading />
@@ -130,6 +152,7 @@ export function AllTipsPage() {
                     <Matchup home={g.home} away={g.away} teams={teams} compact />
                   </th>
                 ))}
+                {showStandings && <th>{t('standingsCol')}</th>}
               </tr>
             </thead>
             <tbody>
@@ -146,7 +169,7 @@ export function AllTipsPage() {
                               {tip.prediction.homeScore}–{tip.prediction.awayScore}
                             </span>
                             <PointsBadge
-                              points={tip.points}
+                              breakdown={tip.breakdown}
                               isPerfect={tip.isPerfect}
                             />
                           </span>
@@ -158,6 +181,14 @@ export function AllTipsPage() {
                       </td>
                     )
                   })}
+                  {showStandings && (
+                    <td>
+                      <StandingsBadge
+                        scores={standingsByPlayer.get(pid) ?? []}
+                        groupLabel={groupName}
+                      />
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

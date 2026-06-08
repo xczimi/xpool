@@ -94,7 +94,7 @@ export function PerfectPage() {
                   <td>{gameLabel.get(p.gameId) ?? p.gameId}</td>
                   <td>{r ? `${r.homeScore}–${r.awayScore}` : '—'}</td>
                   <td>
-                    <PointsBadge points={p.points} isPerfect />
+                    <PointsBadge breakdown={p.breakdown} isPerfect />
                   </td>
                 </tr>
               )

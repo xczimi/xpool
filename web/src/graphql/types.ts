@@ -124,6 +124,18 @@ export interface Pool {
   joinCode: string
 }
 
+/** How a single prediction earned its points, component by component. */
+export interface PointsBreakdown {
+  exactHome: boolean
+  exactAway: boolean
+  outcome: boolean
+  /** Base points before the round multiplier (0–4). */
+  base: number
+  multiplier: number
+  /** Final points (base × multiplier). */
+  points: number
+}
+
 export interface Tip {
   playerId: string
   nick: string
@@ -134,6 +146,8 @@ export interface Tip {
   points: number | null
   /** Whether the prediction scored a perfect (max base points). */
   isPerfect: boolean
+  /** Component breakdown of `points` — null whenever `points` is. */
+  breakdown: PointsBreakdown | null
 }
 
 export interface Perfect {
@@ -141,6 +155,21 @@ export interface Perfect {
   nick: string
   gameId: string
   /** Round-multiplied points earned (a perfect always has a result). */
+  points: number
+  breakdown: PointsBreakdown
+}
+
+/** One player's standings (group-table) bonus for one group. */
+export interface StandingsScore {
+  playerId: string
+  nick: string
+  groupId: string
+  pairsCorrect: number
+  pairsTotal: number
+  /** Raw bonus before the round multiplier. */
+  bonus: number
+  multiplier: number
+  /** Final standings points (bonus × multiplier). */
   points: number
 }
 

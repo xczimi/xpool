@@ -48,11 +48,20 @@ test('Perfect Predictions shows each perfect tip its earned points', async ({
   // The balanced scenario has perfects, so the new Points column is populated.
   const badge = page.locator('.points-badge').first()
   await expect(badge).toBeVisible()
-  // Every row on this page is a perfect, so the badge carries the star + a
-  // positive points value.
+  // Every row on this page is a perfect: star + a positive points value, and
+  // all three component marks scored (transparency — how it was earned).
   await expect(badge).toContainText('★')
-  const value = Number((await badge.innerText()).replace(/[^\d]/g, ''))
+  const value = Number(
+    (await badge.locator('.pts-value').innerText()).replace(/[^\d]/g, ''),
+  )
   expect(value).toBeGreaterThan(0)
+  await expect(badge.locator('.pts-marks .pts-mark.on')).toHaveCount(3)
+
+  // Focusing the badge reveals the labelled breakdown tooltip (base × mult).
+  await badge.focus()
+  const tip = badge.locator('.pts-tip')
+  await expect(tip).toBeVisible()
+  await expect(tip).toContainText('×')
 
   await expectNoErrorView(page)
   await net.assertNoGraphqlErrors()
@@ -73,8 +82,39 @@ test('All Tips shows earned points once a match is played', async ({ page }) => 
   await expect(page.locator('main.content')).toContainText('All Tips')
 
   // Once all deadlines pass the page falls back to the Group Stage round; its
-  // matches are played, so visible tips carry an earned-points badge.
+  // matches are played, so visible tips carry an earned-points badge with the
+  // three component marks visible inline.
+  const badge = page.locator('.points-badge').first()
+  await expect(badge).toBeVisible()
+  await expect(badge.locator('.pts-marks')).toBeVisible()
+
+  // The per-player Standings column appears (every group carries standings),
+  // proving the standings bonus is no longer hidden.
+  await expect(page.getByRole('columnheader', { name: 'Standings' })).toBeVisible()
+
+  await expectNoErrorView(page)
+  await net.assertNoGraphqlErrors()
+  net.assertNoPageErrors()
+})
+
+test('My Tips shows the standings bonus and per-match breakdown', async ({
+  page,
+}) => {
+  const net = watchNetwork(page)
+  await page.addInitScript(
+    (v) => localStorage.setItem('xpool.devNow', v),
+    AFTER_TOURNAMENT,
+  )
+  await page.goto('/')
+  await devLogin(page, 'demo-ada')
+  await page.goto('/mytips')
+  await expect(page.locator('main.content')).toContainText('My Tips')
+
+  // The group is fully played → a points breakdown badge per match and the
+  // standings-bonus line under the standings tables.
   await expect(page.locator('.points-badge').first()).toBeVisible()
+  await expect(page.locator('.standings-bonus').first()).toBeVisible()
+  await expect(page.locator('.standings-bonus').first()).toContainText('=')
 
   await expectNoErrorView(page)
   await net.assertNoGraphqlErrors()

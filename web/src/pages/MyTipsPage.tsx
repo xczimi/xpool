@@ -5,6 +5,7 @@ import { useI18n } from '../i18n/useI18n'
 import {
   ME_QUERY,
   RESULTS_QUERY,
+  STANDINGS_QUERY,
   SUBMIT_GROUP_MUTATION,
   TIPS_QUERY,
   TOURNAMENT_QUERY,
@@ -13,7 +14,9 @@ import type {
   GroupGame,
   MatchPrediction,
   Me,
+  PointsBreakdown,
   Round,
+  StandingsScore,
   Tip,
   Tournament,
 } from '../graphql/types'
@@ -82,25 +85,42 @@ export function MyTipsPage() {
   const activeGroupId = selectedGroupId ?? roundLeaves[0]?.id ?? null
   const tipsGroupId = isGroupStage ? activeGroupId : (activeRoundNode?.id ?? null)
 
-  // The server computes per-(player, game) earned points on the tip grid; we
-  // reuse it (same source as All Tips) rather than re-deriving scoring on the
-  // client. Keep only the current player's tips → gameId → points.
+  // The server computes per-(player, game) earned points + breakdown on the tip
+  // grid, and the per-group standings bonus on the standings query; we reuse
+  // both (same source as All Tips) rather than re-deriving scoring on the
+  // client. Keep only the current player's rows.
+  const myId = meRaw?.__typename === 'Player' ? meRaw.id : null
   const [tipsResult] = useQuery<{ tips: Tip[] }>({
     query: TIPS_QUERY,
     variables: { groupId: tipsGroupId },
     pause: !tipsGroupId,
   })
+  const [standingsResult] = useQuery<{ standings: StandingsScore[] }>({
+    query: STANDINGS_QUERY,
+    variables: { groupId: tipsGroupId },
+    pause: !tipsGroupId,
+  })
   const pointsByGame = useMemo(() => {
-    const map = new Map<string, { points: number | null; isPerfect: boolean }>()
-    const myId = meRaw?.__typename === 'Player' ? meRaw.id : null
+    const map = new Map<
+      string,
+      { breakdown: PointsBreakdown | null; isPerfect: boolean }
+    >()
     if (!myId) return map
     for (const tip of tipsResult.data?.tips ?? []) {
       if (tip.playerId === myId) {
-        map.set(tip.gameId, { points: tip.points, isPerfect: tip.isPerfect })
+        map.set(tip.gameId, { breakdown: tip.breakdown, isPerfect: tip.isPerfect })
       }
     }
     return map
-  }, [tipsResult.data, meRaw])
+  }, [tipsResult.data, myId])
+  const standingsByGroup = useMemo(() => {
+    const map = new Map<string, StandingsScore>()
+    if (!myId) return map
+    for (const s of standingsResult.data?.standings ?? []) {
+      if (s.playerId === myId) map.set(s.groupId, s)
+    }
+    return map
+  }, [standingsResult.data, myId])
 
   if (!label) return <NeedsLogin />
   if (tournamentResult.fetching || meResult.fetching) return <Loading />
@@ -153,6 +173,7 @@ export function MyTipsPage() {
               me={me}
               results={results}
               pointsByGame={pointsByGame}
+              standings={standingsByGroup.get(group.id) ?? null}
               onSubmit={async (predictions, standings, lock) => {
                 const res = await submitGroup({
                   groupId: group.id,
