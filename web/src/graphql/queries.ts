@@ -12,7 +12,7 @@ export const TOURNAMENT_QUERY = `
         id kickoff venue groupId
         home { teamId description }
         away { teamId description }
-        resultPending withinTodayWindow
+        resultPending withinTodayWindow isToday
       }
       teams { id name shortCode flag externalId }
     }

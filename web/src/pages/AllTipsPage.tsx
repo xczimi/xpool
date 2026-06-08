@@ -126,7 +126,7 @@ export function AllTipsPage() {
                 <th>{t('player')}</th>
                 {games.map((g) => (
                   <th key={g.id}>
-                    <Matchup home={g.home} away={g.away} teams={teams} />
+                    <Matchup home={g.home} away={g.away} teams={teams} compact />
                   </th>
                 ))}
               </tr>

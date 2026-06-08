@@ -437,6 +437,12 @@ a:hover { color: var(--amber); }
 
 .data-table tr:hover td { background: rgba(255, 140, 0, 0.04); }
 
+/* Matches kicking off today (the Today screen spans ±2 days; these are the
+   ones that are actually today). A left accent bar + tint draws the eye. */
+.data-table tr.is-today td { background: rgba(255, 140, 0, 0.10); }
+.data-table tr.is-today td:first-child { border-left: 3px solid var(--amber); }
+.data-table tr.is-today:hover td { background: rgba(255, 140, 0, 0.16); }
+
 .data-table.compact th,
 .data-table.compact td {
   padding: 6px 8px;

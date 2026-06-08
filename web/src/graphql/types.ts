@@ -38,6 +38,8 @@ export interface SingleGame {
   away: TeamSlot
   resultPending: boolean
   withinTodayWindow: boolean
+  /** Kicks off on the current (server) calendar day. */
+  isToday: boolean
 }
 
 export interface GroupGame {

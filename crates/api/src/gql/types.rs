@@ -97,6 +97,7 @@ pub struct Game {
     pub away: TeamSlot,
     pub result_pending: bool,
     pub within_today_window: bool,
+    pub is_today: bool,
 }
 
 impl Game {
@@ -120,6 +121,7 @@ impl Game {
                 now,
             ),
             within_today_window: crate::timeflags::within_today_window(g.kickoff, now),
+            is_today: crate::timeflags::is_today(g.kickoff, now),
         }
     }
 }
