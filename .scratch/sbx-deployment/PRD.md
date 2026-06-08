@@ -1,6 +1,6 @@
 # Sandbox (`sbx`) deployment — no-Auth0 + dev-clock playground
 
-Status: needs-triage
+Status: shelved (2026-06-07) — parked, not active; revisit later
 Area: deployment / api / web
 
 ## Idea
