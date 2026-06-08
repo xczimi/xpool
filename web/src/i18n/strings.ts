@@ -99,6 +99,17 @@ const en = {
   notLoggedInBody: 'This screen is for players only. Pick a dev player above.',
   notAdminBody: 'This screen is for admins only.',
 
+  // invite-only funnel + dead-end (invite-only-hardening)
+  frontDoorLead: 'Got an invite? Open the link a friend sent you to join.',
+  frontDoorMembers: 'Members: log in',
+  inviteOnlyTitle: 'You need an invite',
+  inviteOnlyBody:
+    'xPool is a small, friendly, invite-only pool. To play, open the invite link a friend who already plays sent you — that link signs you in and adds you to their pool.',
+  inviteOnlyHaveLink: 'Have an invite link?',
+  inviteOnlyPastePlaceholder: 'Paste your invite link or code',
+  inviteOnlyOpen: 'Open',
+  inviteOnlyBadLink: "That doesn't look like an invite link or code.",
+
   // home
   homeWelcome: 'Hi there!',
   homeIntro:
@@ -294,6 +305,17 @@ const hu: Record<StringKey, string> = {
   notLoggedInTitle: 'Belépés szükséges',
   notLoggedInBody: 'Ez az oldal csak játékosoknak. Válassz fent egy dev játékost.',
   notAdminBody: 'Ez az oldal csak adminoknak.',
+
+  // meghívásos tölcsér + zsákutca (invite-only-hardening)
+  frontDoorLead: 'Van meghívód? Nyisd meg a linket, amit egy barátod küldött, hogy csatlakozz.',
+  frontDoorMembers: 'Tagoknak: belépés',
+  inviteOnlyTitle: 'Meghívó szükséges',
+  inviteOnlyBody:
+    'A xPool egy kicsi, baráti, csak meghívással elérhető tippverseny. A játékhoz nyisd meg a meghívó linket, amit egy már játszó barátod küldött — a link beléptet és hozzáad a tippcsapatához.',
+  inviteOnlyHaveLink: 'Van meghívó linked?',
+  inviteOnlyPastePlaceholder: 'Illeszd be a meghívó linket vagy kódot',
+  inviteOnlyOpen: 'Megnyitás',
+  inviteOnlyBadLink: 'Ez nem tűnik meghívó linknek vagy kódnak.',
 
   homeWelcome: 'Szevasztok!',
   homeIntro:

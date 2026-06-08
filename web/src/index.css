@@ -812,6 +812,37 @@ button.danger:hover:not(:disabled) {
   background: var(--bg-input);
   letter-spacing: 0.5px;
 }
+
+/* invite-only dead-end (NeedsInvite) + front-door funnel */
+.needs-invite { max-width: 40rem; }
+.needs-invite h2 { color: var(--amber-bright); margin: 0 0 8px; }
+.needs-invite p { color: var(--text-dim); margin: 0 0 12px; line-height: 1.5; }
+.needs-invite-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  margin: 12px 0;
+}
+.needs-invite-link label {
+  flex: 1 1 18rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.needs-invite-link input {
+  width: 100%;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  color: var(--amber-bright);
+  background: var(--bg-input);
+  letter-spacing: 0.5px;
+}
+.needs-invite-link .auth-warn { flex-basis: 100%; margin-left: 0; }
+
+.front-door-lead { color: var(--amber-bright); }
 .pool-members {
   list-style: none;
   display: flex;

@@ -118,3 +118,53 @@ test('an invite link establishes a new player with referrer set', async ({ page,
 
   await fresh.close()
 })
+
+test('an authenticated-but-uninvited viewer hits the invite dead-end; public pages stay open', async ({
+  context,
+}) => {
+  // A fresh context so we control localStorage from a clean slate.
+  const fresh = await context.browser()!.newContext()
+  const page = await fresh.newPage()
+  const net = watchNetwork(page)
+
+  // Mint a JWT for an identity that has NOT claimed an invite — the API
+  // resolves it to an UnclaimedViewer (authenticated, not yet a Player).
+  const res = await page.request.post('/api/dev/login', {
+    data: { sub: 'auth0|uninvited-e2e', email: 'uninvited-e2e@example.com' },
+  })
+  const { token } = (await res.json()) as { token: string }
+
+  await page.goto('/')
+  // Plant the bearer (urql sends it) AND the dev-session label. The label is a
+  // client-side boolean gate ("a session exists") that unpauses Layout's `me`
+  // query; its value is irrelevant — the API resolves the viewer from the JWT.
+  await page.evaluate((t) => {
+    localStorage.setItem('xpool.jwt', t)
+    localStorage.setItem('xpool.devPlayer', 'auth0|uninvited-e2e')
+  }, token)
+
+  // A player-only route shows the invite dead-end in the content area, not the
+  // page and not an error view.
+  await page.goto('/mytips')
+  await expect(
+    page.getByRole('heading', { name: 'You need an invite' }),
+  ).toBeVisible()
+
+  // Player-only nav stays hidden — an unclaimed viewer is not a Player.
+  await expect(page.getByRole('link', { name: 'My Tips' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Profile' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Invite', exact: true })).toHaveCount(0)
+
+  // Public pages remain reachable — no dead-end on Home or Rules.
+  await page.goto('/rules')
+  await expect(
+    page.getByRole('heading', { name: 'You need an invite' }),
+  ).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Rules' })).toBeVisible()
+
+  await expectNoErrorView(page)
+  await net.assertNoGraphqlErrors()
+  net.assertNoPageErrors()
+
+  await fresh.close()
+})

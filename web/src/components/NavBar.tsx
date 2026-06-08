@@ -1,37 +1,42 @@
 import { NavLink } from 'react-router-dom'
-import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import type { StringKey } from '../i18n/strings'
+import { accessFor } from '../auth/routeAccess'
 
 interface NavItem {
   to: string
   label: StringKey
-  access: 'public' | 'player' | 'admin'
 }
 
 const ITEMS: NavItem[] = [
-  { to: '/', label: 'navHome', access: 'public' },
-  { to: '/today', label: 'navToday', access: 'public' },
-  { to: '/games', label: 'navGames', access: 'public' },
-  { to: '/mytips', label: 'navMyTips', access: 'player' },
-  { to: '/alltips', label: 'navAllTips', access: 'player' },
-  { to: '/scoreboard', label: 'navScoreboard', access: 'public' },
-  { to: '/perfect', label: 'navPerfect', access: 'public' },
-  { to: '/pools', label: 'navPools', access: 'player' },
-  { to: '/profile', label: 'navProfile', access: 'player' },
-  { to: '/invite', label: 'navInvite', access: 'player' },
-  { to: '/rules', label: 'navRules', access: 'public' },
-  { to: '/admin', label: 'navAdmin', access: 'admin' },
+  { to: '/', label: 'navHome' },
+  { to: '/today', label: 'navToday' },
+  { to: '/games', label: 'navGames' },
+  { to: '/mytips', label: 'navMyTips' },
+  { to: '/alltips', label: 'navAllTips' },
+  { to: '/scoreboard', label: 'navScoreboard' },
+  { to: '/perfect', label: 'navPerfect' },
+  { to: '/pools', label: 'navPools' },
+  { to: '/profile', label: 'navProfile' },
+  { to: '/invite', label: 'navInvite' },
+  { to: '/rules', label: 'navRules' },
+  { to: '/admin', label: 'navAdmin' },
 ]
 
-export function NavBar({ isAdmin }: { isAdmin: boolean }) {
-  const { label } = useAuth()
+/**
+ * `isPlayer` is true only for a real linked Player — NOT merely "a session
+ * exists". An authenticated-but-unclaimed viewer is not a player, so the
+ * player-only links stay hidden and they see the invite dead-end instead.
+ * Access per route comes from the shared `accessFor` map (single source with
+ * `Layout`'s dead-end gating).
+ */
+export function NavBar({ isPlayer, isAdmin }: { isPlayer: boolean; isAdmin: boolean }) {
   const { t } = useI18n()
-  const isPlayer = Boolean(label)
 
   const visible = ITEMS.filter((item) => {
-    if (item.access === 'player') return isPlayer
-    if (item.access === 'admin') return isAdmin
+    const access = accessFor(item.to)
+    if (access === 'player') return isPlayer
+    if (access === 'admin') return isAdmin
     return true
   })
 

@@ -15,11 +15,18 @@ export function AuthBar() {
 
 /**
  * Production auth bar. Uses Auth0 redirect flow.
- * i18n: strings are hardcoded English for now; localisation deferred to a
- * later UI-polish phase (the plan puts prod-mode string polish out of scope).
+ *
+ * Invite-only front door (invite-only-hardening): a signed-out visitor sees an
+ * invite-oriented lead ("Got an invite? Open your link") as the primary
+ * message; "Members: log in" is present but secondary. Login passes
+ * `screen_hint: 'login'` so a returning member lands on the login screen, not a
+ * signup-flavoured one — open self-signup is discouraged (membership follows
+ * invitations). Self-signup is not hard-blocked here; that is a documented
+ * Auth0-Action fallback (see `.scratch/invite-only-hardening/PRD.md`).
  */
 function ProdAuthBar() {
   const { isAuthenticated, loginWithRedirect, logout, user } = useAuth0()
+  const { t } = useI18n()
   // Prefer the xPool nick (canonical display name everywhere) over the Auth0
   // profile name; fall back to the Auth0 e-mail only while the viewer is
   // authenticated but not yet a Player (no nick to show).
@@ -32,8 +39,15 @@ function ProdAuthBar() {
   if (!isAuthenticated) {
     return (
       <div className="auth-bar">
-        <span>You are outside.</span>{' '}
-        <button onClick={() => void loginWithRedirect()}>Log in</button>
+        <span className="front-door-lead">{t('frontDoorLead')}</span>{' '}
+        <button
+          className="front-door-login"
+          onClick={() =>
+            void loginWithRedirect({ authorizationParams: { screen_hint: 'login' } })
+          }
+        >
+          {t('frontDoorMembers')}
+        </button>
       </div>
     )
   }

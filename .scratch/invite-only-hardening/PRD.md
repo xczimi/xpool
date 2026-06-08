@@ -1,8 +1,32 @@
 # Invite-only hardening — stop random Auth0 signups
 
-Status: planned — next work, builds on the **shipped** invite model
-([[pools-invites-explainer]], 2026-06-08)
+Status: in progress (branch `invite-only-hardening`, 2026-06-08) — soft funnel
+built; Auth0 tenant settings + hard-gate fallback documented (not built).
+Builds on the **shipped** invite model ([[pools-invites-explainer]]).
 Area: web (funnel UI) + Auth0 tenant config (+ docs)
+
+## Implementation (2026-06-08)
+
+Soft-funnel UI shipped on the branch:
+
+- **Front door** — `ProdAuthBar` (Auth0 mode) shows an invite-oriented lead
+  (`frontDoorLead`); "Members: log in" (`frontDoorMembers`) is secondary and
+  passes `screen_hint: 'login'`. Localised EN + HU.
+- **Dead-end** — new `NeedsInvite` content view (explainer + paste-your-link
+  input → routes to the public `/invite/:code` claim page + log out). Replaces
+  the old `UnclaimedBanner` (deleted). Shown by `Layout` when an
+  `AuthenticatedUnclaimed` viewer (no link candidate) hits a non-public route.
+- **Route gating** — shared `auth/routeAccess.ts` (`accessFor`) is the single
+  source for `NavBar` (player/admin links hidden for a non-Player) and `Layout`
+  (dead-end vs page). `/invite/:code` stays **public** — the way out.
+- **Tests** — `inviteCode.test.ts` (unit, link/code extraction) + an
+  `auth.spec.ts` e2e asserting the dead-end + public-page reachability via a
+  planted unclaimed JWT.
+- **Docs** — Auth0 session lifetimes (90d absolute / 30d idle, rotation on) and
+  the hard-gate Auth0-Action fallback recorded in `.specs/DEPLOYMENT.md §9`.
+
+Not built (documented fallbacks): the hard `/authorize` invite-code gate; Auth0
+tenant session settings are dashboard config, not code.
 
 ## Decided design (2026-06-07, grilled with the maintainer)
 

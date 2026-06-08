@@ -121,3 +121,27 @@ All three environments cost **~$0 at rest** — the founding constraint:
 
 Deliberately avoided — anything that bills while idle: API Gateway, NAT
 Gateway, ALB, RDS, Aurora Serverless v2, provisioned DynamoDB.
+
+## 9. Auth0 — invite-only posture & sessions
+
+The pool is **invite-only by soft funnel**, not a hard gate (usability over
+extreme security — see `.scratch/invite-only-hardening/`). The exposure of open
+Auth0 signup is identity-quota only: DynamoDB is already safe (lazy `Player`
+creation — an uninvited login writes zero rows; only `claimInvite` writes), and
+the realistic threat to an obscure hobby URL is confused humans, not bots.
+
+- **Front door (SPA).** A signed-out visitor sees an invite-oriented lead;
+  "Members: log in" is secondary and passes `screen_hint: 'login'` so returning
+  members land on login, not a signup screen. An authenticated viewer who is
+  not yet a Player (and has no link candidate) gets the "you need an invite"
+  dead-end in the content area; public pages stay reachable.
+- **Sessions (Auth0 tenant config).** Refresh Token **Absolute Lifetime =
+  90 days**, **Inactivity/Idle = 30 days**, rotation **on**. The SPA already
+  uses rotating refresh tokens in localStorage (`auth0Provider.tsx`). These are
+  tenant-level settings, applied in the Auth0 dashboard (not in OpenTofu).
+- **Hard gate (documented fallback — NOT built).** If junk signups actually
+  materialise: thread the invite code through the Auth0 `/authorize` request and
+  validate it in an Auth0 Action that denies login/registration without a code
+  that **exists (unrevoked/unexpired) in the invite table**. A random code that
+  isn't stored is unforgeable, so no signature is needed (the HMAC token was
+  retired). Pull this only on demonstrated abuse.

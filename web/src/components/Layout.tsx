@@ -1,24 +1,32 @@
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY } from '../graphql/queries'
 import type { Me } from '../graphql/types'
+import { accessFor } from '../auth/routeAccess'
 import { AuthBar } from './AuthBar'
 import { BrandIcon } from './BrandIcon'
 import { DisplayModeSelector } from './DisplayModeSelector'
 import { LanguageSelector } from './LanguageSelector'
 import { ThemeSelector } from './ThemeSelector'
 import { NavBar } from './NavBar'
-import { UnclaimedBanner } from './UnclaimedBanner'
+import { NeedsInvite } from './NeedsInvite'
 
 /**
  * Persistent chrome (REWRITE_USE_CASES §4): header (tagline + language),
  * auth bar, horizontal nav, content area, footer.
+ *
+ * Invite-only dead-end: an authenticated viewer who is not yet a Player and has
+ * no link candidate sees the `NeedsInvite` explainer in place of any player- or
+ * admin-only page. Public pages stay reachable (incl. the `/invite/:code` claim
+ * page, the way out) — see `accessFor`. A viewer WITH a link candidate is mid
+ * link/claim flow (handled on the invite page), so they are not dead-ended.
  */
 export function Layout() {
   const { label } = useAuth()
   const { t } = useI18n()
+  const location = useLocation()
 
   const [meResult] = useQuery<{ me: Me }>({
     query: ME_QUERY,
@@ -27,6 +35,14 @@ export function Layout() {
 
   const meRaw = meResult.data?.me ?? null
   const me = meRaw?.__typename === 'Player' ? meRaw : null
+  const isUnclaimed =
+    meRaw?.__typename === 'UnclaimedViewer' && !meRaw.linkCandidate
+  // Optimistic player-nav signal: show player links as soon as a session
+  // exists, hiding them only once the viewer is *confirmed* unclaimed. This
+  // keeps nav synchronous for a real player (no flash-of-hidden-nav while the
+  // `me` query is in flight) and still hides it at the invite dead-end.
+  const showPlayerNav = Boolean(label) && !isUnclaimed
+  const deadEnd = isUnclaimed && accessFor(location.pathname) !== 'public'
 
   return (
     <div className="app">
@@ -46,11 +62,10 @@ export function Layout() {
       </header>
 
       <AuthBar />
-      <NavBar isAdmin={Boolean(me?.isResultUser)} />
-      <UnclaimedBanner />
+      <NavBar isPlayer={showPlayerNav} isAdmin={Boolean(me?.isResultUser)} />
 
       <main className="content">
-        <Outlet />
+        {deadEnd ? <NeedsInvite /> : <Outlet />}
       </main>
 
       <footer className="app-footer">{t('footer')}</footer>
