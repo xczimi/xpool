@@ -86,6 +86,18 @@ Two facts established while debugging the dev deployment:
   poolless referral-only invite (`createInvite(pool: None)`) and the legacy
   `invite(inviteeId)` are **gone** (every invite is pool-bound).
 
+## Update (2026-06-08) — result-user bootstraps pools in-app (supersedes above)
+
+The "seeding-only" bootstrap above was a dead end on the deployed env: the only
+login-reachable account there is the result-user (Auth0 at `pool@xczimi.com`),
+and the seeded founders use unreachable `@dev.invalid` emails — so nobody could
+create a pool or invite anyone. **POOL-12 is now revised** (SCENARIOS.md): the
+result-user *may* create a pool as a **transient bootstrap owner** (owns but is
+never a member), invite the first players (who become founders via the recorded
+`invited_by` referrer), then **hand the pool over** to one of them
+(`transferOwnership`, POOL-13) and detach. `may_create_pool` now allows the
+result-user; `createPool` gives a result-user-owned pool an empty member list.
+
 ## Related
 
 - Pairs with [[dev-deploy-clock-and-auth]] — the dev deployment still needs a

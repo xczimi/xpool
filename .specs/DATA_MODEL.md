@@ -127,11 +127,13 @@ the pool's members. The "everyone" scoreboard is the implicit root pool.
 Predictions, results, and the scoring engine are untouched by pools.
 
 Membership is **explicit lists** (no rule-based pools). Pool **creation is
-restricted** — only an admin (a Player whose `referrer` is the result-user, the
-referral-graph root) may create a pool, and owns it; the result-user never can
-(POOL-12). `prefix` is a cosmetic, unique-per-pool label that fronts the pool's
-invite links (e.g. `SOUTH7K`); a bare prefix resolves to the owner's invite (the
-"pool link").
+restricted** — an admin (a Player whose `referrer` is the result-user, the
+referral-graph root) may create a pool and owns it as a member. The result-user
+may also create a pool, but only as a **transient bootstrap owner**: it owns
+without being a member (POOL-12) and hands the pool over to a real member once
+one joins (`transferOwnership`, POOL-13). `prefix` is a cosmetic, unique-per-pool
+label that fronts the pool's invite links (e.g. `SOUTH7K`); a bare prefix
+resolves to the owner's invite (the "pool link").
 
 **Invites are the single membership mechanism** (`Invite` rows, §9): one stored,
 reusable, high-entropy code per member per pool, `{code, pool_id, invited_by,

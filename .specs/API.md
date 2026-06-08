@@ -83,7 +83,7 @@ client-side. Most screens are a render of one or two cached queries.
 | Mutation | Effect |
 |---|---|
 | `submitGroup(groupId, predictions[], lock)` | save/lock a whole group's predictions in one call |
-| `createPool`, `updatePool`, `leavePool`, `removeMember`, `deletePool` | pools (creation restricted to admins — POOL-01) |
+| `createPool`, `updatePool`, `leavePool`, `removeMember`, `transferOwnership`, `deletePool` | pools (creation restricted to admins + the result-user — POOL-01; hand-over — POOL-13) |
 | `createInvite(pool)`, `revokeInvite(code)` | mint/reuse or revoke a member's reusable pool invite |
 | `join(code)` | an identified player accepts an invite (lenient resolution) |
 | `claimInvite(code, nick, fullName)` | a not-yet-a-Player accepts an invite — establishes identity + joins |

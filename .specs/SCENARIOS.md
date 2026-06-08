@@ -62,7 +62,9 @@ Settled in the grilling session that produced this document:
 - **Two "admin" notions.** The **result-user** owns the official results (a
   `Player` like any other, with an `Identity`; tournament setup is `xtask`).
   Separately, **pool-creation admins** are players the result-user referred
-  directly (the referral-graph root) — only they may create pools (POOL-01/-12).
+  directly (the referral-graph root). Both they and the result-user itself may
+  create pools (POOL-01); the result-user does so only as a transient bootstrap
+  owner that hands the pool over and detaches (POOL-12/-13).
 - **Pools** are scoreboard-scoping only, members-only visibility, joined by
   accepting a member's invite.
 - **Dropped**: MOTD banner, Facebook login, the legacy `LocalUserGroup`
@@ -583,14 +585,16 @@ is global and computed once; a pool just ranks that score among its members.
 **Entirely new** — absent from the original use cases.
 
 ### POOL-01 — Admin creates a pool (restricted creation)
-Status: changed · Actor: Admin (Player) · Screen: Pools
+Status: changed · Actor: Admin (Player) or result-user · Screen: Pools
 Given  a logged-in **admin** — a player whose `referrer` is the result-user (the
-       referral-graph root; `may_create_pool`). A normal member cannot create
-       pools.
+       referral-graph root; `may_create_pool`) — or the **result-user itself**.
+       A normal member cannot create pools.
 When   they create a named pool.
-Then   a `Pool` is created with them as **owner and member**; a unique `prefix`
-       is generated and the owner's invite row (the pool link) is minted.
-Tests: `create_pool_sets_owner_membership_and_a_prefix`, `create_pool_rejected_for_a_non_admin` (api) · `pool_round_trip`, `dynamo_pool_round_trip` (storage) · web/e2e/pools.spec.ts
+Then   a `Pool` is created with them as **owner**; a unique `prefix` is generated
+       and the owner's invite row (the pool link) is minted. A normal admin is
+       also added as a **member**; the result-user is **owner-only** (never a
+       member — POOL-12) and hands the pool over once a real player joins (POOL-13).
+Tests: `create_pool_sets_owner_membership_and_a_prefix`, `create_pool_rejected_for_a_non_admin`, `create_pool_by_the_result_user_has_no_members` (api) · `pool_round_trip`, `dynamo_pool_round_trip` (storage) · web/e2e/pools.spec.ts
 
 ### POOL-02 — Join a pool by accepting an invite
 Status: changed · Actor: Player · Screen: Pools
@@ -662,8 +666,7 @@ Tests: `pool_delete_removes_only_the_named_pool`, `pool_delete_is_a_noop_for_an_
 Status: new · Actor: Pool owner · Screen: Pools
 Given  a pool owner is always a member.
 When   they try to leave.
-Then   they cannot — they must delete the pool. There is **no ownership
-       transfer**.
+Then   they cannot — they must delete the pool or **hand it over** (POOL-13).
 Tests: `leave_rejects_the_owner` (domain) · `leave_pool_rejects_the_owner` (api)
 
 ### POOL-11 — A player belongs to many pools
@@ -674,14 +677,27 @@ Then   all are listed; no cap is enforced. The `pools` query returns the
        player's pools.
 Tests: `pool_list_multiple` (storage) · `pools_query_returns_only_the_callers_pools` (api)
 
-### POOL-12 — The result-user is never a pool owner or member
-Status: new · Actor: (system) · Screen: Pools
+### POOL-12 — The result-user is never a pool member
+Status: changed · Actor: (system) · Screen: Pools
 Given  the result-user `Player` — the **root of the referral graph**.
 When   pools are created or membership is computed.
-Then   the result-user can never own or belong to a pool — consistent with its
-       exclusion from all player listings. It is the root that makes others
-       admins (its direct referees), but is never an admin itself.
-Tests: `join_rejects_the_result_user` (domain) · `the_result_user_may_never_create_a_pool`, `may_create_pool_when_referred_by_the_result_user` (domain) · `create_pool_rejected_for_the_result_user` (api)
+Then   the result-user can never **belong** to a pool — consistent with its
+       exclusion from all player listings, standings, and scoring. It may,
+       however, be a pool's **transient bootstrap owner** (POOL-13): it creates a
+       pool with an empty member list, invites the first players, then hands the
+       pool over and detaches. (Revised from the original "never owner or member":
+       the deployed app's only login-reachable account is the result-user, so it
+       must be able to seed the first pool and founders.)
+Tests: `join_rejects_the_result_user`, `the_result_user_may_create_a_pool` (domain) · `create_pool_by_the_result_user_has_no_members` (api)
+
+### POOL-13 — Ownership hand-over (and result-user bootstrap exit)
+Status: new · Actor: Pool owner (incl. result-user) · Screen: Pools
+Given  a pool and one of its members.
+When   the owner transfers ownership to that member (`transferOwnership`).
+Then   the member becomes the new owner; the former owner stays a member, **unless**
+       it is the result-user (never a member), which is left with no link to the
+       pool. Owner-only; the target must already be a member.
+Tests: `transfer_ownership_moves_owner_to_a_member`, `transfer_ownership_rejects_a_non_owner_requester`, `transfer_ownership_rejects_a_non_member_target`, `transfer_ownership_from_the_result_user_detaches_it` (domain) · `transfer_ownership_hands_a_pool_to_a_member`, `transfer_ownership_rejected_for_a_non_owner`, `transfer_ownership_rejected_to_a_non_member`, `result_user_bootstraps_a_pool_then_hands_it_over_and_detaches` (api) · web/e2e/pools.spec.ts
 
 ---
 
