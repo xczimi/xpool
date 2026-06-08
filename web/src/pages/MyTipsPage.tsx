@@ -105,25 +105,40 @@ export function MyTipsPage() {
         onSelectGroup={setSelectedGroupId}
       />
       {shownGroups.length > 0 ? (
-        shownGroups.map((group) => (
-          <GroupTipForm
-            key={group.id}
-            tournament={tournament}
-            group={group}
-            me={me}
-            results={results}
-            onSubmit={async (predictions, standings, lock) => {
-              const res = await submitGroup({
-                groupId: group.id,
-                predictions,
-                standings,
-                lock,
-              })
-              await refetchMe({ requestPolicy: 'network-only' })
-              return res
-            }}
-          />
-        ))
+        shownGroups.map((group) => {
+          // Remount the form when this group's locked state flips, so a
+          // successful Lock re-seeds the form from the refetched `me` (the
+          // server is the source of truth). GroupTipForm seeds its match state
+          // via useState (init runs once); without a key change the locked
+          // flags from the refetch never resynced and the group kept rendering
+          // "Draft" with the Lock button live — inviting a second, rejected
+          // submit. The signature is per-group, so only the locked group
+          // remounts (other groups keep their in-progress drafts).
+          const groupLocked =
+            group.childGameIds.length > 0 &&
+            group.childGameIds.every(
+              (id) => me.matchPredictions.find((p) => p.gameId === id)?.locked,
+            )
+          return (
+            <GroupTipForm
+              key={`${group.id}:${groupLocked ? 'locked' : 'draft'}`}
+              tournament={tournament}
+              group={group}
+              me={me}
+              results={results}
+              onSubmit={async (predictions, standings, lock) => {
+                const res = await submitGroup({
+                  groupId: group.id,
+                  predictions,
+                  standings,
+                  lock,
+                })
+                await refetchMe({ requestPolicy: 'network-only' })
+                return res
+              }}
+            />
+          )
+        })
       ) : (
         <p>{t('selectGroup')}</p>
       )}
