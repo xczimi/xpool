@@ -196,7 +196,7 @@ fn advancer(hs: u8, as_: u8, home: &str, away: &str, ranking: &Ranking) -> (Team
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scenario::policy::AlwaysHome;
+    use crate::scenario::policy::{AlwaysDraw, AlwaysHome, Chalk};
     use chrono::{TimeZone, Utc};
     use domain::{GroupGame, LockMode, Team, TeamSlot};
     use std::collections::HashMap as Map;
@@ -270,5 +270,59 @@ mod tests {
             .find(|s| s.group_id == "A")
             .expect("group A standings");
         assert_eq!(sp.ordering.first().map(String::as_str), Some("HOME"));
+    }
+
+    fn real_tournament() -> Tournament {
+        let path =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tournaments/fwc26.json");
+        crate::load_tournament(&path).expect("load fwc26")
+    }
+
+    fn real_ranking() -> Ranking {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../tournaments/fwc26-rankings.json");
+        Ranking::load(&path).expect("load rankings")
+    }
+
+    #[test]
+    fn full_tournament_resolves_every_game_including_the_final() {
+        let t = real_tournament();
+        let r = real_ranking();
+        let out = generate(&t, &r, &mut Chalk);
+
+        // Every game in the tournament gets a prediction and resolved teams.
+        assert_eq!(out.match_predictions.len(), t.games.len());
+        assert_eq!(out.resolved_teams.len(), t.games.len());
+
+        // No knockout game left with a placeholder (all teams concrete).
+        for (gid, (home, away)) in &out.resolved_teams {
+            assert!(!home.is_empty(), "game {gid} home unresolved");
+            assert!(!away.is_empty(), "game {gid} away unresolved");
+        }
+    }
+
+    #[test]
+    fn coherence_round_trip_matches_resolve_bracket() {
+        let t = real_tournament();
+        let r = real_ranking();
+        // AlwaysDraw stresses the advancer path (every knockout is a 1-1 draw).
+        let out = generate(&t, &r, &mut AlwaysDraw);
+
+        // Assign the outcome as the result-user and re-resolve the bracket.
+        let result = interim_player(&out.match_predictions, &out.standings_predictions);
+        let bracket = fwc26::resolve_bracket(&t, &result);
+
+        // For every knockout game, resolve_bracket must reproduce exactly the
+        // teams the engine used.
+        for (gid, game) in &t.games {
+            let round = t.groups.get(&game.group_id).map(|g| g.round);
+            if round == Some(Round::GroupStage) {
+                continue;
+            }
+            let (eh, ea) = out.resolved_teams.get(gid).expect("engine teams");
+            let (rh, ra) = bracket.get(gid).cloned().unwrap_or((None, None));
+            assert_eq!(rh.as_ref(), Some(eh), "home mismatch on {gid}");
+            assert_eq!(ra.as_ref(), Some(ea), "away mismatch on {gid}");
+        }
     }
 }
