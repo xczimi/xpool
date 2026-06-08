@@ -737,7 +737,10 @@ async fn perfects_expose_earned_points() {
         .unwrap()
         .clone();
     assert_eq!(row["points"], json!(4));
-    assert_eq!(row["breakdown"], json!({ "base": 4, "multiplier": 1, "points": 4 }));
+    assert_eq!(
+        row["breakdown"],
+        json!({ "base": 4, "multiplier": 1, "points": 4 })
+    );
 }
 
 #[tokio::test]
@@ -999,7 +1002,11 @@ async fn make_pool(repo: &std::sync::Arc<dyn Repository>, id: &str, actor: &str)
         Some(actor),
     )
     .await;
-    assert!(resp.errors.is_empty(), "createInvite failed: {:?}", resp.errors);
+    assert!(
+        resp.errors.is_empty(),
+        "createInvite failed: {:?}",
+        resp.errors
+    );
     data(&resp)["createInvite"]["code"]
         .as_str()
         .expect("invite code string")
@@ -1022,11 +1029,20 @@ async fn create_pool_sets_owner_membership_and_a_prefix() {
 }
 
 #[tokio::test]
-async fn create_pool_rejected_for_the_result_user() {
+async fn create_pool_by_the_result_user_has_no_members() {
+    // POOL-12 revised: the result user bootstraps a pool as a transient owner,
+    // but is never a member (it must stay out of standings/scoring).
     let repo = seeded_repo(Duration::hours(24)).await;
     let vars = Variables::from_json(json!({ "id": "p1", "name": "Friends" }));
     let resp = run(&repo, CREATE_POOL, vars, Some(RESULT_ID)).await;
-    assert!(!resp.errors.is_empty(), "result user must be rejected");
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let pool = &data(&resp)["createPool"];
+    assert_eq!(pool["owner"], json!(RESULT_ID));
+    assert_eq!(
+        pool["members"],
+        json!([]),
+        "result user owns but is not a member"
+    );
 }
 
 #[tokio::test]
@@ -1160,6 +1176,116 @@ async fn remove_member_rejected_for_a_non_owner() {
     )
     .await;
     assert!(!resp.errors.is_empty(), "non-owner cannot remove members");
+}
+
+const TRANSFER: &str = r#"mutation($p: ID!, $o: ID!) { transferOwnership(poolId: $p, newOwner: $o) { owner members } }"#;
+const POOLS: &str = r#"{ pools { id owner members } }"#;
+
+#[tokio::test]
+async fn transfer_ownership_hands_a_pool_to_a_member() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let code = make_pool(&repo, "p1", ALICE).await;
+    run(
+        &repo,
+        JOIN,
+        Variables::from_json(json!({ "code": code })),
+        Some(BOB),
+    )
+    .await;
+    let resp = run(
+        &repo,
+        TRANSFER,
+        Variables::from_json(json!({ "p": "p1", "o": BOB })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    assert_eq!(data(&resp)["transferOwnership"]["owner"], json!(BOB));
+    // The former owner stays in the pool as a plain member.
+    assert_eq!(
+        data(&resp)["transferOwnership"]["members"],
+        json!([ALICE, BOB])
+    );
+}
+
+#[tokio::test]
+async fn transfer_ownership_rejected_for_a_non_owner() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let code = make_pool(&repo, "p1", ALICE).await;
+    run(
+        &repo,
+        JOIN,
+        Variables::from_json(json!({ "code": code })),
+        Some(BOB),
+    )
+    .await;
+    let resp = run(
+        &repo,
+        TRANSFER,
+        Variables::from_json(json!({ "p": "p1", "o": BOB })),
+        Some(BOB),
+    )
+    .await;
+    assert!(!resp.errors.is_empty(), "only the owner may hand over");
+}
+
+#[tokio::test]
+async fn transfer_ownership_rejected_to_a_non_member() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    make_pool(&repo, "p1", ALICE).await;
+    let resp = run(
+        &repo,
+        TRANSFER,
+        Variables::from_json(json!({ "p": "p1", "o": BOB })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(!resp.errors.is_empty(), "cannot hand over to a non-member");
+}
+
+#[tokio::test]
+async fn result_user_bootstraps_a_pool_then_hands_it_over_and_detaches() {
+    // The deployed-dev bootstrap path: the result user creates the pool, invites
+    // a player, then hands the pool over — ending with no link to it (POOL-12).
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let code = make_pool(&repo, "p1", RESULT_ID).await;
+    // BOB joins via the result-user's invite → becomes a member AND a founder
+    // (referrer = result-user), so he can himself create pools later.
+    run(
+        &repo,
+        JOIN,
+        Variables::from_json(json!({ "code": code })),
+        Some(BOB),
+    )
+    .await;
+    let bob = repo.get_player(BOB).await.unwrap().unwrap();
+    assert_eq!(
+        bob.referrer.as_deref(),
+        Some(RESULT_ID),
+        "invitee becomes a founder"
+    );
+
+    // Hand over to BOB.
+    let resp = run(
+        &repo,
+        TRANSFER,
+        Variables::from_json(json!({ "p": "p1", "o": BOB })),
+        Some(RESULT_ID),
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    assert_eq!(data(&resp)["transferOwnership"]["owner"], json!(BOB));
+    assert_eq!(data(&resp)["transferOwnership"]["members"], json!([BOB]));
+
+    // The result user no longer sees the pool (not owner, not member); BOB does.
+    let ru_pools = run(&repo, POOLS, Variables::default(), Some(RESULT_ID)).await;
+    assert_eq!(
+        data(&ru_pools)["pools"],
+        json!([]),
+        "result user is detached"
+    );
+    let bob_pools = run(&repo, POOLS, Variables::default(), Some(BOB)).await;
+    assert_eq!(data(&bob_pools)["pools"][0]["owner"], json!(BOB));
 }
 
 #[tokio::test]

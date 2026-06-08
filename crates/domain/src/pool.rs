@@ -92,13 +92,35 @@ pub fn rename(pool: &Pool, requester_id: &str, name: String) -> Result<Pool, Poo
 
 /// Whether `player` is permitted to create pools (restricted creation).
 ///
-/// Pool-creation is gated on the referral graph: the result user is its root,
-/// and only players it referred (directly) are "admins" who may create pools.
-/// The result user itself can never create a pool (POOL-12). Everyone joining a
-/// pool via a normal member's invite has a normal-player referrer, so they
-/// cannot create pools — "restricted creation, open inviting" as a data rule.
+/// Pool-creation is gated on the referral graph: the result user is its root.
+/// The result user may create pools as a **transient bootstrap owner** (it owns
+/// but never joins — POOL-12 revised), and the players it referred directly are
+/// "admins" who may also create pools. Everyone joining a pool via a normal
+/// member's invite has a normal-player referrer, so they cannot create pools —
+/// "restricted creation, open inviting" as a data rule.
 pub fn may_create_pool(player: &Player, result_user_id: &str) -> bool {
-    !player.is_result_user && player.referrer.as_deref() == Some(result_user_id)
+    player.is_result_user || player.referrer.as_deref() == Some(result_user_id)
+}
+
+/// Hand a pool over to one of its members (ownership transfer). Owner-only; the
+/// new owner must already be a member. When the result user — a transient
+/// bootstrap owner that is never itself a member — hands over, it is left with
+/// no link to the pool (POOL-12).
+pub fn transfer_ownership(
+    pool: &Pool,
+    requester_id: &str,
+    new_owner_id: &str,
+) -> Result<Pool, PoolError> {
+    if pool.owner != requester_id {
+        return Err(PoolError::NotOwner);
+    }
+    if !pool.members.iter().any(|m| m == new_owner_id) {
+        return Err(PoolError::NotAMember);
+    }
+    Ok(Pool {
+        owner: new_owner_id.to_owned(),
+        ..pool.clone()
+    })
 }
 
 fn without_member(pool: &Pool, player_id: &str) -> Pool {

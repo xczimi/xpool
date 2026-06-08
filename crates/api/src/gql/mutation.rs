@@ -105,8 +105,8 @@ async fn mint_invite(
 
 /// The full shareable URL for a nested `PREFIX-SUFFIX` invite code.
 fn invite_link(prefix: &str, code: &str) -> String {
-    let origin = std::env::var("XPOOL_PUBLIC_ORIGIN")
-        .unwrap_or_else(|_| "http://localhost:5173".to_owned());
+    let origin =
+        std::env::var("XPOOL_PUBLIC_ORIGIN").unwrap_or_else(|_| "http://localhost:5173".to_owned());
     format!("{origin}/invite/{prefix}-{code}")
 }
 
@@ -129,7 +129,11 @@ async fn resolve_invite(
                 .ok_or_else(|| async_graphql::Error::new("no invite matches that code"))?;
             // Advisory: warn if the typed prefix disagrees with the pool's, but
             // resolve by the (authoritative) suffix regardless.
-            if let Some(pool) = repo.list_pools().await?.into_iter().find(|p| p.id == inv.pool_id)
+            if let Some(pool) = repo
+                .list_pools()
+                .await?
+                .into_iter()
+                .find(|p| p.id == inv.pool_id)
             {
                 if !prefix.eq_ignore_ascii_case(&pool.prefix) {
                     tracing::warn!(
@@ -464,9 +468,11 @@ impl MutationRoot {
     }
 
     /// Create a pool owned by the current player (POOL-01). Restricted
-    /// creation: only a player referred directly by the result-user (an "admin"
-    /// — the referral-graph root) may create pools; the result user never can
-    /// (POOL-12). The owner's invite row (the pool link) is minted on creation.
+    /// creation: the result-user (the referral-graph root) and the admins it
+    /// referred directly may create pools (`may_create_pool`). The result user
+    /// owns as a transient bootstrapper but is never a member (POOL-12); it hands
+    /// the pool over once a real player has joined. The owner's invite row (the
+    /// pool link) is minted on creation.
     async fn create_pool(
         &self,
         ctx: &Context<'_>,
@@ -493,7 +499,14 @@ impl MutationRoot {
             id,
             name: name.clone(),
             owner: viewer.id.clone(),
-            members: vec![viewer.id.clone()],
+            // The result user owns the pool it bootstraps but is never a member
+            // (POOL-12) — it must stay out of standings/scoring. A normal admin
+            // owner joins their own pool as usual.
+            members: if viewer.is_result_user {
+                vec![]
+            } else {
+                vec![viewer.id.clone()]
+            },
             prefix: unique_prefix(&pools, &name),
         };
         repo.put_pool(&pool).await?;
@@ -554,6 +567,25 @@ impl MutationRoot {
         let pool = load_pool(repo, &pool_id).await?;
         let updated =
             domain::pool::remove_member(&pool, &viewer.id, &member_id).map_err(pool_err)?;
+        repo.put_pool(&updated).await?;
+        Ok(Pool::from(&updated))
+    }
+
+    /// Hand a pool over to one of its members (ownership transfer). Owner-only;
+    /// the new owner must already be a member. This is the bootstrap exit for the
+    /// result user, which owns a pool transiently then detaches by handing it to
+    /// a real member (POOL-12).
+    async fn transfer_ownership(
+        &self,
+        ctx: &Context<'_>,
+        pool_id: String,
+        new_owner: String,
+    ) -> async_graphql::Result<Pool> {
+        let viewer = CurrentPlayer::require(ctx)?;
+        let repo = repo(ctx);
+        let pool = load_pool(repo, &pool_id).await?;
+        let updated =
+            domain::pool::transfer_ownership(&pool, &viewer.id, &new_owner).map_err(pool_err)?;
         repo.put_pool(&updated).await?;
         Ok(Pool::from(&updated))
     }
@@ -825,7 +857,9 @@ impl MutationRoot {
         let repo = repo(ctx);
         let invite = resolve_invite(repo.as_ref(), &code, now(ctx)).await?;
         if invite.invited_by != me.id {
-            return Err(async_graphql::Error::new("that invite is not yours to revoke"));
+            return Err(async_graphql::Error::new(
+                "that invite is not yours to revoke",
+            ));
         }
         repo.revoke_invite(&invite.code).await?;
         Ok(true)

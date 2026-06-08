@@ -141,8 +141,45 @@ fn may_not_create_pool_without_a_referrer() {
 }
 
 #[test]
-fn the_result_user_may_never_create_a_pool() {
-    // Even if (hypothetically) self-referred, the result user is excluded.
-    let ru = player_with_referrer("result-user", Some("result-user"), true);
-    assert!(!pool::may_create_pool(&ru, "result-user"));
+fn the_result_user_may_create_a_pool() {
+    // The result user is the referral-graph root and bootstraps pools as a
+    // transient owner (POOL-12 revised): it may create, but never join, a pool.
+    let ru = player("result-user", true);
+    assert!(pool::may_create_pool(&ru, "result-user"));
+}
+
+// ── transfer_ownership (hand-over to a member) ────────────────────────────────
+
+#[test]
+fn transfer_ownership_moves_owner_to_a_member() {
+    let p = pool("alice", &["alice", "bob"]);
+    let updated = pool::transfer_ownership(&p, "alice", "bob").unwrap();
+    assert_eq!(updated.owner, "bob");
+    // Both remain members — the former owner stays in the pool as a player.
+    assert_eq!(updated.members, vec!["alice", "bob"]);
+}
+
+#[test]
+fn transfer_ownership_rejects_a_non_owner_requester() {
+    let p = pool("alice", &["alice", "bob"]);
+    let err = pool::transfer_ownership(&p, "bob", "bob").unwrap_err();
+    assert_eq!(err, PoolError::NotOwner);
+}
+
+#[test]
+fn transfer_ownership_rejects_a_non_member_target() {
+    let p = pool("alice", &["alice", "bob"]);
+    let err = pool::transfer_ownership(&p, "alice", "carol").unwrap_err();
+    assert_eq!(err, PoolError::NotAMember);
+}
+
+#[test]
+fn transfer_ownership_from_the_result_user_detaches_it() {
+    // The result user owns a pool it bootstrapped but is NOT a member (POOL-12).
+    // Handing over to a member leaves the result user with no link to the pool.
+    let p = pool("result-user", &["bob"]);
+    let updated = pool::transfer_ownership(&p, "result-user", "bob").unwrap();
+    assert_eq!(updated.owner, "bob");
+    assert_eq!(updated.members, vec!["bob"]);
+    assert!(!updated.members.iter().any(|m| m == "result-user"));
 }
