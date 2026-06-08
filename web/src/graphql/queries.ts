@@ -178,3 +178,10 @@ export const DELETE_POOL_MUTATION = `
   }
 `
 
+/** Dev-only: rebuild the scoreboard + bracket as-of the current dev clock. */
+export const REMATERIALIZE_MUTATION = `
+  mutation DevRematerialize {
+    devRematerialize
+  }
+`
+
