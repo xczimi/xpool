@@ -33,9 +33,8 @@
   --text-on-dark:   #d8d0b8;
   --text-dim:       #6a5a3a;
 
-  /* Backwards-compat aliases for any inline-style consumers. Pages reference
-     the design tokens via these names; mapping them at the root keeps any
-     remaining `var(--accent)` callers working without touching components. */
+  /* Legacy semantic aliases — shorter names used by older component code.
+     Keep these in sync with the primitives above; do not add new callers. */
   --bg:           var(--bg-deep);
   --surface:      var(--bg-card);
   --ink:          var(--text-on-dark);
@@ -67,7 +66,6 @@
   --bg-card-border: #d8c4a0;
   --bg-bar:         #ece6d4;
   --text-on-dark:   #1c1813;
-  --text-dim:       #6a5a3a;
   --flash-bg:       #fdf3dc;
   --flash-border:   var(--accent-dim);
 }
@@ -82,6 +80,13 @@
       transparent 1px,
       transparent 4px
     );
+}
+
+/* Mono's bright is white — unreadable on light surfaces; darken it there. */
+:root[data-theme='light'][data-accent='mono'] {
+  --accent: #4a4a55;
+  --accent-bright: #1c1c24;
+  --accent-dim: #8a8a99;
 }
 
 * { box-sizing: border-box; }
