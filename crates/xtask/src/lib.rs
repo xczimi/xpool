@@ -4,6 +4,7 @@
 //! without the CLI shell.
 
 pub mod dto;
+pub mod scenario;
 pub mod seed;
 pub mod validate;
 
