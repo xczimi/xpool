@@ -20,7 +20,13 @@ const DEMO_PLAYERS: [(&str, &str, &str); 6] = [
     ("demo-dennis", "dennis", "Dennis Ritchie"),
 ];
 
-fn fresh_player(id: &str, person_id: &str, nick: &str, full_name: &str, is_result: bool) -> Player {
+pub(crate) fn fresh_player(
+    id: &str,
+    person_id: &str,
+    nick: &str,
+    full_name: &str,
+    is_result: bool,
+) -> Player {
     Player {
         id: id.to_owned(),
         person_id: person_id.to_owned(),
@@ -36,7 +42,10 @@ fn fresh_player(id: &str, person_id: &str, nick: &str, full_name: &str, is_resul
 
 /// Put a player idempotently — preserves the stored `version` so the
 /// optimistic-concurrency guard does not reject the re-seed.
-async fn put_player_idempotent(repo: &dyn Repository, mut player: Player) -> anyhow::Result<()> {
+pub(crate) async fn put_player_idempotent(
+    repo: &dyn Repository,
+    mut player: Player,
+) -> anyhow::Result<()> {
     if let Some(existing) = repo.get_player(&player.id).await? {
         player.version = existing.version;
     }
