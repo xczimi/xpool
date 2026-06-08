@@ -1,5 +1,6 @@
 //! xpool domain crate — pure entities and the scoring engine. No I/O.
 
+pub mod invite;
 pub mod model;
 pub mod pool;
 pub mod scoring;

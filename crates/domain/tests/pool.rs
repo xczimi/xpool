@@ -128,3 +128,37 @@ fn set_join_code_rejects_a_non_owner() {
     let err = pool::set_join_code(&p, "bob", "NEWCODE9".to_owned()).unwrap_err();
     assert_eq!(err, PoolError::NotOwner);
 }
+
+// ── may_create_pool (restricted creation: referrer == result-user) ────────────
+
+fn player_with_referrer(id: &str, referrer: Option<&str>, is_result_user: bool) -> Player {
+    Player {
+        referrer: referrer.map(|r| r.to_owned()),
+        ..player(id, is_result_user)
+    }
+}
+
+#[test]
+fn may_create_pool_when_referred_by_the_result_user() {
+    let admin = player_with_referrer("ada", Some("result-user"), false);
+    assert!(pool::may_create_pool(&admin, "result-user"));
+}
+
+#[test]
+fn may_not_create_pool_when_referred_by_a_normal_player() {
+    let member = player_with_referrer("bob", Some("ada"), false);
+    assert!(!pool::may_create_pool(&member, "result-user"));
+}
+
+#[test]
+fn may_not_create_pool_without_a_referrer() {
+    let orphan = player_with_referrer("eve", None, false);
+    assert!(!pool::may_create_pool(&orphan, "result-user"));
+}
+
+#[test]
+fn the_result_user_may_never_create_a_pool() {
+    // Even if (hypothetically) self-referred, the result user is excluded.
+    let ru = player_with_referrer("result-user", Some("result-user"), true);
+    assert!(!pool::may_create_pool(&ru, "result-user"));
+}
