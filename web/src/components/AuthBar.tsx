@@ -20,6 +20,15 @@ export function AuthBar() {
  */
 function ProdAuthBar() {
   const { isAuthenticated, loginWithRedirect, logout, user } = useAuth0()
+  // Prefer the xPool nick (canonical display name everywhere) over the Auth0
+  // profile name; fall back to the Auth0 e-mail only while the viewer is
+  // authenticated but not yet a Player (no nick to show).
+  const [meResult] = useQuery<{ me: Me }>({
+    query: ME_QUERY,
+    pause: !isAuthenticated,
+  })
+  const meRaw = meResult.data?.me
+  const me = meRaw?.__typename === 'Player' ? meRaw : null
   if (!isAuthenticated) {
     return (
       <div className="auth-bar">
@@ -30,7 +39,7 @@ function ProdAuthBar() {
   }
   return (
     <div className="auth-bar">
-      <span>Logged in as {user?.name ?? user?.email ?? 'player'}</span>{' '}
+      <span>Logged in as {me?.nick ?? user?.email ?? 'player'}</span>{' '}
       <button onClick={() => {
         // Belt-and-suspenders: drop the localStorage JWT before the Auth0
         // redirect, in case TokenBridge's effect-driven cleanup races with

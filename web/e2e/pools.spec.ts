@@ -119,7 +119,14 @@ test('a player joins a pool via the inviter’s link', async ({ page }) => {
   await page.goto('/pools')
   await page.getByPlaceholder('paste a link or type a code').fill(link)
   await page.getByRole('button', { name: 'Join', exact: true }).click()
-  await expect(page.locator('.pool-card', { hasText: name })).toBeVisible()
+  const joined = page.locator('.pool-card', { hasText: name })
+  await expect(joined).toBeVisible()
+
+  // The member list shows nicks (ada, linus), NOT raw player ids (demo-ada…).
+  const members = joined.locator('.pool-members')
+  await expect(members).toContainText('ada')
+  await expect(members).toContainText('linus')
+  await expect(members).not.toContainText('demo-')
 
   await expectNoErrorView(page)
   await net.assertNoGraphqlErrors()

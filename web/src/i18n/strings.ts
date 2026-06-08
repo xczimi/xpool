@@ -84,6 +84,7 @@ const en = {
   points: 'Points',
   rank: 'Rank',
   player: 'Player',
+  unknownPlayer: '(unknown)',
   total: 'Total',
   // points breakdown / standings transparency
   exactHome: 'Exact home score',
@@ -279,6 +280,7 @@ const hu: Record<StringKey, string> = {
   points: 'Pont',
   rank: 'Helyezés',
   player: 'Játékos',
+  unknownPlayer: '(ismeretlen)',
   total: 'Összesen',
   // pontozás részletei / tabella átláthatóság
   exactHome: 'Pontos hazai eredmény',

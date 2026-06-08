@@ -17,6 +17,7 @@ import {
 } from '../graphql/queries'
 import type { Me, Pool } from '../graphql/types'
 import { Loading, NeedsLogin } from '../components/StatusViews'
+import { useDisplayName } from '../hooks/useDisplayName'
 
 /**
  * Custom pools (SCENARIOS.md §5) — scoreboard-scoping groups. A member shares a
@@ -37,6 +38,8 @@ export function PoolsPage() {
   const [meResult] = useQuery<{ me: Me }>({ query: ME_QUERY, pause: !label })
   const me = meResult.data?.me
   const myId = me?.__typename === 'Player' ? me.id : null
+  // Pool members/owner are bare player ids; resolve them to nicks for display.
+  const displayName = useDisplayName()
 
   const [, createPool] = useMutation(CREATE_POOL_MUTATION)
   const [, join] = useMutation(JOIN_MUTATION)
@@ -178,7 +181,11 @@ export function PoolsPage() {
                 <ul className="pool-members">
                   {pool.members.map((m) => (
                     <li key={m}>
-                      {m === pool.owner ? <strong>{m}</strong> : m}
+                      {m === pool.owner ? (
+                        <strong>{displayName(m)}</strong>
+                      ) : (
+                        displayName(m)
+                      )}
                       {isOwner && m !== pool.owner && (
                         <button
                           type="button"
@@ -233,7 +240,7 @@ export function PoolsPage() {
                             .filter((m) => m !== pool.owner)
                             .map((m) => (
                               <option key={m} value={m}>
-                                {m}
+                                {displayName(m)}
                               </option>
                             ))}
                         </select>
