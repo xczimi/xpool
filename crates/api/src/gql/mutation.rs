@@ -27,6 +27,18 @@ fn now(ctx: &Context<'_>) -> chrono::DateTime<chrono::Utc> {
     ctx.data_unchecked::<crate::clock::RequestNow>().0
 }
 
+/// Whether the dev stub is enabled, given the resolved `LOCAL_AUTH_ISSUER`
+/// value. Pure — testable without touching the process environment.
+fn dev_stub_enabled_from(local_auth_issuer: Option<&str>) -> bool {
+    local_auth_issuer.is_some_and(|v| !v.is_empty())
+}
+
+/// Whether the dev stub is enabled (same gate as the dev-login route / clock
+/// override — the `LOCAL_AUTH_ISSUER` env var, absent in production).
+fn dev_stub_enabled() -> bool {
+    dev_stub_enabled_from(std::env::var("LOCAL_AUTH_ISSUER").ok().as_deref())
+}
+
 /// A fresh opaque pool join code — 8 uppercase hex characters.
 fn generate_join_code() -> String {
     uuid::Uuid::new_v4()
@@ -483,6 +495,22 @@ impl MutationRoot {
         Ok(true)
     }
 
+    /// Dev-only: re-materialise the scoreboard + bracket as-of the request
+    /// clock (`X-Dev-Now`). Unlike the admin `recompute`, this is gated on the
+    /// dev stub rather than admin, so the dev-clock picker can call it as any
+    /// logged-in dev player. Returns an error when the stub is disabled.
+    async fn dev_rematerialize(&self, ctx: &Context<'_>) -> async_graphql::Result<bool> {
+        if !dev_stub_enabled() {
+            return Err(async_graphql::Error::new("dev rematerialize is disabled"));
+        }
+        let repo = repo(ctx);
+        recompute(repo.as_ref(), now(ctx)).await.map_err(|e| {
+            tracing::error!("dev_rematerialize failed: {e}");
+            async_graphql::Error::new("rematerialize failed; please retry")
+        })?;
+        Ok(true)
+    }
+
     /// Claim an invite code: resolve the viewer's identity, create a new
     /// Person+Player+Identity if needed (lazy creation), or take the AUTH-12
     /// shortcut if the verified email already maps to an existing Person.
@@ -686,5 +714,18 @@ impl MutationRoot {
             .unwrap_or_else(|_| "http://localhost:5173".to_owned());
         let link = format!("{origin}/invite/{code}");
         Ok(InviteLink { code, link })
+    }
+}
+
+#[cfg(test)]
+mod dev_rematerialize_tests {
+    use super::*;
+
+    #[test]
+    fn dev_gate_keys_off_local_auth_issuer() {
+        // Pure gate — no process-env mutation, safe under parallel tests.
+        assert!(!dev_stub_enabled_from(None));
+        assert!(!dev_stub_enabled_from(Some("")));
+        assert!(dev_stub_enabled_from(Some("local-dev")));
     }
 }

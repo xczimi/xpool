@@ -7,13 +7,14 @@ use domain::Round;
 /// ±2-day half-window for the "Today / Fresh" screen (UC-11).
 const TODAY_WINDOW: Duration = Duration::days(2);
 
-/// Buffer after kickoff before a result is expected: a 90-minute match needs
-/// ~1h45; a knockout match may run to extra time / penalties (`API.md` §7).
-pub fn result_buffer(round: Round) -> Duration {
-    match round {
-        Round::GroupStage => Duration::minutes(105),
-        _ => Duration::minutes(150),
-    }
+/// Buffer after kickoff before a result is expected: regulation plus stoppage
+/// (~1h45). We deliberately treat a match as "resulted" at the end of 90' and do
+/// NOT wait out extra time / penalties — that in-between state is not modelled,
+/// and a longer knockout buffer would otherwise delay a genuinely-entered
+/// knockout result from materialising the bracket (`API.md` §7). The `round` is
+/// kept in the signature so a per-round buffer can return later if needed.
+pub fn result_buffer(_round: Round) -> Duration {
+    Duration::minutes(105)
 }
 
 /// A group's deadline has passed.
@@ -83,20 +84,21 @@ mod tests {
     }
 
     #[test]
-    fn knockout_uses_the_longer_buffer() {
+    fn knockout_uses_the_same_regulation_buffer() {
         let ko = t("2026-07-10T18:00:00Z");
-        // 150-min buffer -> not pending at 20:00, pending at 21:00.
+        // 105-min buffer for every round (extra time / penalties not modelled):
+        // not pending at +60m (19:00), pending at +120m (20:00).
         assert!(!result_pending(
             ko,
             Round::QF,
             false,
-            t("2026-07-10T20:00:00Z")
+            t("2026-07-10T19:00:00Z")
         ));
         assert!(result_pending(
             ko,
             Round::QF,
             false,
-            t("2026-07-10T21:00:00Z")
+            t("2026-07-10T20:00:00Z")
         ));
     }
 

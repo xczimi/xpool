@@ -3875,6 +3875,7 @@ dependencies = [
  "domain",
  "dotenvy",
  "fwc26",
+ "rand",
  "serde",
  "serde_json",
  "storage",

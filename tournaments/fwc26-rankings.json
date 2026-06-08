@@ -1,0 +1,10 @@
+{
+  "ARG": 96, "FRA": 95, "ESP": 94, "ENG": 93, "BRA": 92, "POR": 91,
+  "NED": 90, "BEL": 89, "GER": 88, "CRO": 86, "URU": 85, "COL": 84,
+  "MAR": 83, "USA": 80, "MEX": 79, "SUI": 78, "JPN": 77, "SEN": 76,
+  "IRN": 74, "KOR": 73, "ECU": 72, "AUS": 70, "AUT": 69, "NOR": 68,
+  "SCO": 66, "TUR": 65, "UZB": 63, "EGY": 62, "CIV": 61, "PAR": 60,
+  "COD": 58, "GHA": 57, "CPV": 55, "PAN": 54, "NZL": 53, "JOR": 52,
+  "IRQ": 51, "KSA": 50, "ALG": 49, "TUN": 48, "QAT": 46, "CAN": 45,
+  "RSA": 44, "CZE": 43, "SWE": 42, "HAI": 41, "CUW": 40, "BIH": 39
+}

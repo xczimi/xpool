@@ -33,6 +33,11 @@ enum Command {
     Seed,
     /// Drop the DynamoDB table named by XPOOL_TABLE (e2e teardown).
     DropTable,
+    /// Seed a generated scenario (full results + ~12 players' predictions).
+    Scenario {
+        /// Scenario id: `chalk`, `balanced`, or `chaos`.
+        id: String,
+    },
 }
 
 #[tokio::main]
@@ -64,6 +69,16 @@ async fn main() -> anyhow::Result<()> {
         Command::DropTable => {
             repo.delete_table().await?;
             println!("dropped table {}", repo.table);
+        }
+        Command::Scenario { id } => {
+            repo.ensure_table().await?;
+            let rankings = PathBuf::from(xtask::scenario::DEFAULT_RANKINGS_PATH);
+            xtask::scenario::seed_scenario(&repo, &id, &rankings).await?;
+            println!(
+                "seeded scenario `{id}`: official results + 6 demo + 5 whacky players. \
+                 Move the dev clock and call the `devRematerialize` mutation to build the \
+                 scoreboard as-of that time."
+            );
         }
     }
 
