@@ -30,8 +30,8 @@ export function AdminTeams() {
           </tr>
         </thead>
         <tbody>
-          {[...teams]
-            .sort((a, b) => a.name.localeCompare(b.name))
+          {[...teamMap.values()]
+            .sort((a, b) => a.name.localeCompare(b.name, locale))
             .map((team) => (
               <tr key={team.id}>
                 <td>
