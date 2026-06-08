@@ -3,8 +3,9 @@ import { devLogin, expectNoErrorView, watchNetwork } from './helpers'
 
 /**
  * Custom pools (SCENARIOS.md §5) end to end: a member sees their pool, a
- * player creates one, and a second player joins it with the join code —
- * exercising the createPool / joinPool / pools GraphQL surface on the wire.
+ * player creates one, and a second player joins it via the inviter's reusable
+ * link — exercising the createPool / createInvite / join / pools GraphQL
+ * surface on the wire.
  *
  * The e2e DynamoDB persists across runs, so each test uses a unique pool name
  * and scopes every locator to that named card rather than to `.pool-card`.
@@ -47,26 +48,27 @@ test('create a pool and it appears in the list as owner', async ({ page }) => {
   net.assertNoPageErrors()
 })
 
-test('a player joins a pool with its join code', async ({ page }) => {
+test('a player joins a pool via the inviter’s link', async ({ page }) => {
   const net = watchNetwork(page)
   const name = `Linus Invite ${Date.now()}`
   await page.goto('/')
 
-  // demo-ada creates a fresh pool; read its generated join code from the card.
+  // demo-ada creates a fresh pool, then shares her invite and reads the link.
   await devLogin(page, 'demo-ada')
   await page.goto('/pools')
   await page.getByPlaceholder('e.g. Office League').fill(name)
   await page.getByRole('button', { name: 'Create pool' }).click()
   const card = page.locator('.pool-card', { hasText: name })
   await expect(card).toBeVisible()
-  const code = (await card.locator('.join-code code').textContent())?.trim()
-  expect(code).toBeTruthy()
+  await card.getByRole('button', { name: 'Share invite' }).click()
+  const link = await card.locator('.invite-link input').inputValue()
+  expect(link).toContain('/invite/')
 
-  // demo-linus joins it with that code and then sees the pool.
+  // demo-linus pastes the full link into the join box and then sees the pool.
   await devLogin(page, 'demo-linus')
   await page.goto('/pools')
-  await page.getByPlaceholder('paste a join code').fill(code!)
-  await page.getByRole('button', { name: 'Join pool' }).click()
+  await page.getByPlaceholder('paste a link or type a code').fill(link)
+  await page.getByRole('button', { name: 'Join', exact: true }).click()
   await expect(page.locator('.pool-card', { hasText: name })).toBeVisible()
 
   await expectNoErrorView(page)

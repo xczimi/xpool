@@ -98,10 +98,10 @@ async fn seed_with_email(repo: &dyn Repository, result_user_email: String) -> an
     // `dev_login` — which mints JWTs with `email = "{id}@dev.invalid"` — routes
     // through `identity_key_for("dev" connection) → ("email", email)` and finds
     // this row, resolving to the Player rather than AuthenticatedUnclaimed.
-    // The referral graph: the first demo player is "invited by" the result-user
-    // (the graph root), making them an admin who may create pools. Everyone else
-    // is invited by that admin — normal members who can share invites but not
-    // create pools (`may_create_pool`).
+    // The referral graph: every demo player is a "founder" invited directly by
+    // the result-user (the graph root), so each is an admin who may create pools
+    // (`may_create_pool`). The pool members they later invite are normal players
+    // whose referrer points at the inviting member, not the result-user.
     let admin_id = DEMO_PLAYERS[0].0;
     for (player_id, nick, full_name) in DEMO_PLAYERS {
         let person_id = format!("person-{nick}");
@@ -123,13 +123,8 @@ async fn seed_with_email(repo: &dyn Repository, result_user_email: String) -> an
         };
         repo.put_person(&person).await?;
 
-        let referrer = if player_id == admin_id {
-            RESULT_USER_ID
-        } else {
-            admin_id
-        };
         let mut player = fresh_player(player_id, &person_id, nick, full_name, false);
-        player.referrer = Some(referrer.to_owned());
+        player.referrer = Some(RESULT_USER_ID.to_owned());
         put_player_idempotent(repo, player).await?;
     }
 

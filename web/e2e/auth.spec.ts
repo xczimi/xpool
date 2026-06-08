@@ -79,13 +79,14 @@ test('an invalid Bearer token gates player-only routes', async ({ page }) => {
   await expect(page.getByText('Login required')).toBeVisible()
 })
 
-test('a generated invite link claims a new player with referrer set', async ({ page, context }) => {
-  // Inviter (demo-ada) creates a link via the InvitePage.
+test('an invite link establishes a new player with referrer set', async ({ page, context }) => {
+  // Inviter (demo-ada) shares her invite into a pool via the InvitePage. She is
+  // a member of the seeded Demo Pool, so the pool selector is pre-populated.
   await page.goto('/')
   await devLogin(page, 'demo-ada')
   await page.getByRole('link', { name: 'Invite' }).click()
-  await page.getByRole('button', { name: 'Generate link' }).click()
-  const linkBox = page.locator('textarea')
+  await page.getByRole('button', { name: 'Share invite' }).click()
+  const linkBox = page.locator('.invite-link textarea')
   await expect(linkBox).toBeVisible()
   const link = await linkBox.inputValue()
   expect(link).toMatch(/\/invite\//)
@@ -107,10 +108,10 @@ test('a generated invite link claims a new player with referrer set', async ({ p
   await newbie.evaluate((t) => localStorage.setItem('xpool.jwt', t), token)
   await newbie.goto(`/invite/${code}`)
 
-  // Fill the claim form (the unclaimed branch of InviteClaimPage).
+  // Fill the form (the not-yet-a-Player branch of InviteClaimPage).
   await newbie.getByPlaceholder('Nick').fill('Newbie')
   await newbie.getByPlaceholder('Full name').fill('New B.')
-  await newbie.getByRole('button', { name: 'Claim' }).click()
+  await newbie.getByRole('button', { name: 'Join' }).click()
 
   // Lands on /profile.
   await expect(newbie).toHaveURL(/\/profile$/)
