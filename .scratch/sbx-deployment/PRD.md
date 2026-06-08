@@ -57,9 +57,10 @@ code-comment itself flags. Introducing `DEV_AFFORDANCES` to turn the clock seam
 
 ## Open questions (env model not yet decided)
 
-- **Adopt three envs (this PRD) vs. bolt affordances onto `dev` behind a flag?**
-  Three envs keeps `dev` a true prod mirror; one-env-with-flag is fewer moving
-  parts but blurs dev's role. **Undecided** — owner is still weighing it.
+- ~~**Adopt three envs (this PRD) vs. bolt affordances onto `dev` behind a
+  flag?**~~ **Decided (2026-06-07): three envs.** Owner chose the separate
+  sandbox so `dev` stays a true prod mirror; the one-env-with-flag alternative
+  ([[dev-deploy-clock-and-auth]]) is marked wontfix.
 - One flag (`DEV_AFFORDANCES`) for both clock + dev-login, or separate toggles?
 - Does sbx get its own Auth0-free login UI, or just the existing dev auth bar?
 - Cost/upkeep of a third domain + cert + lambda + table — acceptable?

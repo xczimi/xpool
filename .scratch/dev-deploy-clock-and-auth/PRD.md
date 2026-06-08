@@ -1,7 +1,12 @@
 # Dev clock + dev/demo auth on the dev deployment
 
-Status: needs-triage
+Status: wontfix — superseded by [[sbx-deployment]]
 Area: api / deployment (+ web)
+
+> **Decision (2026-06-07):** Owner prefers the separate-sandbox approach in
+> [[sbx-deployment]] over bolting dev affordances onto `dev`. `dev` stays a
+> faithful Auth0/prod mirror; the dev-clock + no-Auth0 playground lives on a
+> dedicated `sbx` env instead. This PRD is retained as the rejected alternative.
 
 ## Idea
 
