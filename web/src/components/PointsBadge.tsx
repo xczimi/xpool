@@ -57,6 +57,10 @@ export function PointsBadge({
       tabIndex={0}
       aria-label={ariaParts.join('; ') || String(value)}
     >
+      <span className="pts-value">
+        {isPerfect && <span aria-hidden="true">★</span>}
+        {value}
+      </span>
       {rows.length > 0 && (
         <span className="pts-marks" aria-hidden="true">
           {rows.map(([on, label], i) => (
@@ -64,10 +68,6 @@ export function PointsBadge({
           ))}
         </span>
       )}
-      <span className="pts-value">
-        {isPerfect && <span aria-hidden="true">★</span>}
-        {value}
-      </span>
       {breakdown && (
         <span className="pts-tip" role="tooltip">
           {rows.map(([on, label, pts], i) => (

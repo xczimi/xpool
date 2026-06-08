@@ -229,17 +229,26 @@ export function GroupTipForm({
                   <Matchup home={game.home} away={game.away} teams={teams} />
                 </td>
                 <td className="score-cell">
-                  <ScoreInput
-                    value={m.homeScore}
-                    disabled={matchLocked}
-                    onChange={(v) => setScore(game.id, 'homeScore', v)}
-                  />
-                  <span>:</span>
-                  <ScoreInput
-                    value={m.awayScore}
-                    disabled={matchLocked}
-                    onChange={(v) => setScore(game.id, 'awayScore', v)}
-                  />
+                  {matchLocked ? (
+                    // A locked prediction is settled — show it as plain text, not
+                    // dead form controls.
+                    <span className="score-locked">
+                      {m.homeScore === '' ? '–' : m.homeScore} :{' '}
+                      {m.awayScore === '' ? '–' : m.awayScore}
+                    </span>
+                  ) : (
+                    <>
+                      <ScoreInput
+                        value={m.homeScore}
+                        onChange={(v) => setScore(game.id, 'homeScore', v)}
+                      />
+                      <span>:</span>
+                      <ScoreInput
+                        value={m.awayScore}
+                        onChange={(v) => setScore(game.id, 'awayScore', v)}
+                      />
+                    </>
+                  )}
                 </td>
                 <td>
                   {(() => {
@@ -316,19 +325,13 @@ export function GroupTipForm({
 
 function ScoreInput({
   value,
-  disabled,
   onChange,
 }: {
   value: string
-  disabled: boolean
   onChange: (v: string) => void
 }) {
   return (
-    <select
-      value={value}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-    >
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">–</option>
       {SCORE_OPTIONS.map((n) => (
         <option key={n} value={n}>

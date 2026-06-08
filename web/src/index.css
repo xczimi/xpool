@@ -484,13 +484,16 @@ a:hover { color: var(--amber); }
   color: var(--amber-bright);
 }
 
+/* The points value leads and is the prominent element; the component marks
+   trail, smaller and dimmer, as an at-a-glance hint of how it was earned. */
+.pts-value { font-size: 12px; color: var(--amber-bright); }
+.points-badge.is-perfect .pts-value { color: var(--amber-bright); }
+
 /* The three component marks (exact-home / exact-away / outcome): a scored one
-   is bright, an unscored one is dimmed — so the make-up of every score is
-   visible at a glance, before the tooltip. */
-.pts-marks { display: inline-flex; gap: 1px; }
+   is bright, an unscored one is dimmed. Full detail lives in the tooltip. */
+.pts-marks { display: inline-flex; gap: 1px; font-size: 7px; }
 .pts-mark { opacity: 0.3; }
 .pts-mark.on { opacity: 1; color: var(--amber-bright); }
-.pts-value { font-weight: normal; }
 .pts-empty { opacity: 0.5; }
 
 /* The breakdown tooltip — hidden until the badge is hovered or focused
@@ -564,6 +567,9 @@ a:hover { color: var(--amber); }
   border-color: var(--amber);
   box-shadow: 0 0 6px rgba(255, 140, 0, 0.4);
 }
+/* A locked prediction is settled — render the score as plain text rather than
+   dead, disabled form controls. */
+.score-locked { letter-spacing: 1px; }
 
 /* ============================================================================
    BUTTONS

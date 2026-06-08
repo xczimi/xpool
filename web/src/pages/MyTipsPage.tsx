@@ -93,12 +93,12 @@ export function MyTipsPage() {
   const [tipsResult] = useQuery<{ tips: Tip[] }>({
     query: TIPS_QUERY,
     variables: { groupId: tipsGroupId },
-    pause: !tipsGroupId,
+    pause: !label || !tipsGroupId,
   })
   const [standingsResult] = useQuery<{ standings: StandingsScore[] }>({
     query: STANDINGS_QUERY,
     variables: { groupId: tipsGroupId },
-    pause: !tipsGroupId,
+    pause: !label || !tipsGroupId,
   })
   const pointsByGame = useMemo(() => {
     const map = new Map<
