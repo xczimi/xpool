@@ -9,6 +9,13 @@
 //! 2. `fwc26::resolve_bracket` → write resolved team slots back onto the
 //!    tournament's knockout games.
 //!
+//! Both run against an **as-of `now` projection** of the result user
+//! (`slice_result_as_of`): only matches played by `now` (and standings for
+//! fully-played groups) count, so the scoreboard + bracket materialise
+//! correctly for the request clock. For normal incremental entry this is a
+//! no-op (a result is entered after its match is played); it is load-bearing
+//! when a full-tournament scenario seed is inspected at an earlier dev clock.
+//!
 //! Both are pure-function calls; this module is glue only.
 
 use chrono::{DateTime, Utc};
