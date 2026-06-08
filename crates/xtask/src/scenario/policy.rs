@@ -114,13 +114,13 @@ impl Realistic {
 
 impl ScorelinePolicy for Realistic {
     fn score(&mut self, ctx: &GameContext) -> (u8, u8) {
-        let home_is_strong = ctx.home_strength >= ctx.away_strength;
+        let home_is_strong = ctx.home_strength >= ctx.away_strength; // equal strength → home-advantage tiebreak
         let upset = self.rng.random::<f64>() < self.upset_prob;
         // Winner = the strong side unless this is an upset.
         let home_wins = home_is_strong ^ upset;
 
         let winner_goals: u8 = self.rng.random_range(1..=3);
-        let loser_goals: u8 = self.rng.random_range(0..winner_goals);
+        let loser_goals: u8 = self.rng.random_range(0..winner_goals); // exclusive end guarantees loser < winner (never a draw)
 
         if home_wins {
             (winner_goals, loser_goals)
