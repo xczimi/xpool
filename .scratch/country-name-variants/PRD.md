@@ -1,6 +1,11 @@
 # Country name variants (a team has more than one "full name")
 
-Status: needs-triage
+Status: done (2026-06-08) — shipped as web-only localised display names
+(`web/src/i18n/teamNames.ts` + `teamDisplayName`, resolved at the `teamIndex`
+boundary). Scope narrowed to the localised-exonym axis only (HU country names);
+the official/historical-name and register axes were dropped as YAGNI. See
+`docs/superpowers/specs/2026-06-07-localised-team-names-design.md` and
+`docs/superpowers/plans/2026-06-07-localised-team-names.md`.
 Area: domain (`Team`) + web display + i18n
 
 ## Idea
