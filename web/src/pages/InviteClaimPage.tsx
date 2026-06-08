@@ -17,6 +17,10 @@ const CLAIM = `mutation Claim($code: String!, $nick: String!, $fullName: String!
   claimInvite(code: $code, nick: $nick, fullName: $fullName) { player { id nick } }
 }`
 
+const JOIN = `mutation Join($code: String!) {
+  join(code: $code) { id name }
+}`
+
 const LINK = `mutation Link($personId: String!) {
   confirmLink(personId: $personId) { player { id } }
 }`
@@ -33,6 +37,7 @@ export function InviteClaimPage() {
   const { code } = useParams<{ code: string }>()
   const [meResult] = useQuery({ query: ME })
   const [claimResult, runClaim] = useMutation(CLAIM)
+  const [joinResult, runJoin] = useMutation(JOIN)
   const [linkResult, runLink] = useMutation(LINK)
   const [nick, setNick] = useState('')
   const [fullName, setFullName] = useState('')
@@ -52,11 +57,31 @@ export function InviteClaimPage() {
     )
   }
 
+  // Already signed in — just accept the invite (join the pool).
   if (viewer.__typename === 'Player') {
+    const joinedName = joinResult.data?.join?.name as string | undefined
     return (
       <main className="content">
-        <h2>Welcome back</h2>
-        <p>You're already in xPool.</p>
+        <h2>Join this pool</h2>
+        {joinedName ? (
+          <>
+            <p>You're in {joinedName}.</p>
+            <a href="/scoreboard">Go to the scoreboard</a>
+          </>
+        ) : (
+          <>
+            <p>Accept this invite to join the pool.</p>
+            {joinResult.error && (
+              <p className="flash-bar">Error: {joinResult.error.message}</p>
+            )}
+            <button
+              disabled={joinResult.fetching}
+              onClick={() => void runJoin({ code })}
+            >
+              Join
+            </button>
+          </>
+        )}
       </main>
     )
   }
@@ -89,10 +114,10 @@ export function InviteClaimPage() {
     )
   }
 
-  // Unclaimed viewer without a link candidate — standard claim flow
+  // Unclaimed viewer without a link candidate — establish identity + join.
   return (
     <main className="content">
-      <h2>Claim your invite</h2>
+      <h2>Accept your invite</h2>
       <p>Set your display name.</p>
       {claimResult.error && (
         <p className="flash-bar">Error: {claimResult.error.message}</p>
@@ -114,7 +139,7 @@ export function InviteClaimPage() {
           if (!res.error) window.location.href = '/profile'
         }}
       >
-        Claim
+        Join
       </button>
     </main>
   )

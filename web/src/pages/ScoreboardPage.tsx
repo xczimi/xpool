@@ -21,7 +21,10 @@ import { roundLabel, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
 export function ScoreboardPage() {
   const { t } = useI18n()
   const { label } = useAuth()
-  const [poolId, setPoolId] = useState<string | null>(null)
+  // `undefined` = the user has not chosen yet → default to their first pool
+  // (the pool board is the default view); `null` = the explicit "everyone"
+  // global board; a string = a specific pool.
+  const [poolId, setPoolId] = useState<string | null | undefined>(undefined)
 
   // `pools` requires authentication (API.md §8) — the scoreboard itself is
   // public, so the pool selector is only populated for a logged-in player.
@@ -30,6 +33,10 @@ export function ScoreboardPage() {
     query: POOLS_QUERY,
     pause: !label,
   })
+  const pools = poolsResult.data?.pools ?? []
+  // Default to the first pool the player belongs to; global stays reachable.
+  const effectivePool = poolId === undefined ? (pools[0]?.id ?? null) : poolId
+
   const [probe] = useQuery<{
     tournament: Tournament | null
   }>({ query: TOURNAMENT_QUERY })
@@ -39,10 +46,9 @@ export function ScoreboardPage() {
   )
   const [result, reexecute] = usePolledQuery<{
     scoreboard: ScoreEntry[]
-  }>({ query: SCOREBOARD_QUERY, variables: { pool: poolId } }, interval)
+  }>({ query: SCOREBOARD_QUERY, variables: { pool: effectivePool } }, interval)
 
   const scoreboard = result.data?.scoreboard ?? null
-  const pools = poolsResult.data?.pools ?? []
 
   if (result.fetching && !scoreboard) return <Loading />
   if (result.error)
@@ -64,7 +70,7 @@ export function ScoreboardPage() {
       <label className="pool-selector">
         {t('pool')}:{' '}
         <select
-          value={poolId ?? ''}
+          value={effectivePool ?? ''}
           onChange={(e) => setPoolId(e.target.value || null)}
         >
           <option value="">{t('everyone')}</option>

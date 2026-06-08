@@ -119,7 +119,8 @@ export interface Pool {
   name: string
   owner: string
   members: string[]
-  joinCode: string
+  /** Cosmetic invite-link prefix; a bare prefix resolves to the owner invite. */
+  prefix: string
 }
 
 export interface Tip {

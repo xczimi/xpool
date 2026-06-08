@@ -3,21 +3,23 @@ import { useMutation, useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import {
+  CREATE_INVITE_MUTATION,
   CREATE_POOL_MUTATION,
   DELETE_POOL_MUTATION,
-  JOIN_POOL_MUTATION,
+  JOIN_MUTATION,
   LEAVE_POOL_MUTATION,
   POOLS_QUERY,
   REMOVE_MEMBER_MUTATION,
-  ROTATE_JOIN_CODE_MUTATION,
+  REVOKE_INVITE_MUTATION,
   UPDATE_POOL_MUTATION,
 } from '../graphql/queries'
 import type { Pool } from '../graphql/types'
 import { Loading, NeedsLogin } from '../components/StatusViews'
 
 /**
- * Custom pools (SCENARIOS.md §5) — scoreboard-scoping groups joined by an
- * opaque join code. A player sees only the pools they own or belong to.
+ * Custom pools (SCENARIOS.md §5) — scoreboard-scoping groups. A member shares a
+ * reusable invite (code/link); a player joins by pasting it. A player sees only
+ * the pools they own or belong to.
  */
 export function PoolsPage() {
   const { t } = useI18n()
@@ -30,16 +32,19 @@ export function PoolsPage() {
   })
 
   const [, createPool] = useMutation(CREATE_POOL_MUTATION)
-  const [, joinPool] = useMutation(JOIN_POOL_MUTATION)
+  const [, join] = useMutation(JOIN_MUTATION)
   const [, leavePool] = useMutation(LEAVE_POOL_MUTATION)
   const [, removeMember] = useMutation(REMOVE_MEMBER_MUTATION)
-  const [, rotateCode] = useMutation(ROTATE_JOIN_CODE_MUTATION)
+  const [, createInvite] = useMutation(CREATE_INVITE_MUTATION)
+  const [, revokeInvite] = useMutation(REVOKE_INVITE_MUTATION)
   const [, deletePool] = useMutation(DELETE_POOL_MUTATION)
   const [, updatePool] = useMutation(UPDATE_POOL_MUTATION)
 
   const [newName, setNewName] = useState('')
   const [joinCode, setJoinCode] = useState('')
   const [flash, setFlash] = useState<string | null>(null)
+  // The current member's invite link per pool, revealed by "Share invite".
+  const [invites, setInvites] = useState<Record<string, { code: string; link: string }>>({})
 
   if (!label) return <NeedsLogin />
   if (poolsResult.fetching && !poolsResult.data) return <Loading />
@@ -74,8 +79,34 @@ export function PoolsPage() {
     e.preventDefault()
     const code = joinCode.trim()
     if (!code) return
-    act(joinPool({ joinCode: code }), 'poolJoined')
+    act(join({ code }), 'poolJoined')
     setJoinCode('')
+  }
+
+  /** Mint/reveal the current member's invite link for a pool. */
+  const onShareInvite = async (poolId: string) => {
+    setFlash(null)
+    const res = await createInvite({ pool: poolId })
+    if (res.error) {
+      setFlash(`${t('errorPrefix')}: ${res.error.message}`)
+      return
+    }
+    const link = res.data?.createInvite?.link as string | undefined
+    const code = res.data?.createInvite?.code as string | undefined
+    if (link && code) {
+      setInvites((prev) => ({ ...prev, [poolId]: { code, link } }))
+      setFlash(t('inviteShared'))
+    }
+  }
+
+  /** Revoke the revealed invite for a pool, then hide it. */
+  const onRevokeInvite = async (poolId: string, code: string) => {
+    await act(revokeInvite({ code }), 'inviteRevoked')
+    setInvites((prev) => {
+      const next = { ...prev }
+      delete next[poolId]
+      return next
+    })
   }
 
   return (
@@ -102,16 +133,16 @@ export function PoolsPage() {
 
         <form className="form" onSubmit={onJoin}>
           <label>
-            {t('joinCodeLabel')}
+            {t('inviteCodeLabel')}
             <input
               required
-              placeholder={t('joinCodePlaceholder')}
+              placeholder={t('inviteCodePlaceholder')}
               value={joinCode}
               onChange={(e) => setJoinCode(e.target.value)}
             />
           </label>
           <button type="submit" className="primary" disabled={!joinCode.trim()}>
-            {t('joinPool')}
+            {t('joinAction')}
           </button>
         </form>
       </div>
@@ -128,9 +159,6 @@ export function PoolsPage() {
                   {pool.name}
                   {isOwner && <span className="owner-tag"> · {t('ownerTag')}</span>}
                 </h3>
-                <p className="join-code">
-                  {t('joinCodeLabel')}: <code>{pool.joinCode}</code>
-                </p>
                 <ul className="pool-members">
                   {pool.members.map((m) => (
                     <li key={m}>
@@ -153,6 +181,9 @@ export function PoolsPage() {
                   ))}
                 </ul>
                 <div className="pool-actions">
+                  <button type="button" onClick={() => void onShareInvite(pool.id)}>
+                    {t('shareInvite')}
+                  </button>
                   {isOwner ? (
                     <>
                       <button
@@ -168,14 +199,6 @@ export function PoolsPage() {
                         }}
                       >
                         {t('renamePool')}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          act(rotateCode({ id: pool.id }), 'codeRotated')
-                        }
-                      >
-                        {t('rotateCode')}
                       </button>
                       <button
                         type="button"
@@ -199,6 +222,36 @@ export function PoolsPage() {
                     </button>
                   )}
                 </div>
+                {invites[pool.id] && (
+                  <div className="invite-link">
+                    <label>
+                      {t('inviteLinkLabel')}
+                      <input
+                        readOnly
+                        value={invites[pool.id].link}
+                        onFocus={(e) => e.currentTarget.select()}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(invites[pool.id].link)
+                        setFlash(t('linkCopied'))
+                      }}
+                    >
+                      {t('copyLink')}
+                    </button>
+                    <button
+                      type="button"
+                      className="link-button"
+                      onClick={() =>
+                        void onRevokeInvite(pool.id, invites[pool.id].code)
+                      }
+                    >
+                      {t('revokeInvite')}
+                    </button>
+                  </div>
+                )}
               </li>
             )
           })}

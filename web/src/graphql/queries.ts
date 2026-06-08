@@ -74,7 +74,7 @@ export const SCOREBOARD_QUERY = `
 
 export const POOLS_QUERY = `
   query Pools {
-    pools { id name owner members joinCode }
+    pools { id name owner members prefix }
   }
 `
 
@@ -128,13 +128,7 @@ export const UPDATE_PROFILE_MUTATION = `
   }
 `
 
-export const INVITE_MUTATION = `
-  mutation Invite($inviteeId: ID!) {
-    invite(inviteeId: $inviteeId)
-  }
-`
-
-const POOL_FIELDS = 'id name owner members joinCode'
+const POOL_FIELDS = 'id name owner members prefix'
 
 export const CREATE_POOL_MUTATION = `
   mutation CreatePool($id: ID!, $name: String!) {
@@ -148,9 +142,10 @@ export const UPDATE_POOL_MUTATION = `
   }
 `
 
-export const JOIN_POOL_MUTATION = `
-  mutation JoinPool($joinCode: String!) {
-    joinPool(joinCode: $joinCode) { ${POOL_FIELDS} }
+/** Accept an invite (lenient: full link, bare suffix, or bare prefix). */
+export const JOIN_MUTATION = `
+  mutation Join($code: String!) {
+    join(code: $code) { ${POOL_FIELDS} }
   }
 `
 
@@ -166,9 +161,17 @@ export const REMOVE_MEMBER_MUTATION = `
   }
 `
 
-export const ROTATE_JOIN_CODE_MUTATION = `
-  mutation RotateJoinCode($id: ID!) {
-    rotateJoinCode(id: $id) { ${POOL_FIELDS} }
+/** Mint or reuse the current member's invite into a pool. */
+export const CREATE_INVITE_MUTATION = `
+  mutation CreateInvite($pool: ID!) {
+    createInvite(pool: $pool) { code link }
+  }
+`
+
+/** Revoke one of your invites (rotation = revoke + re-mint). */
+export const REVOKE_INVITE_MUTATION = `
+  mutation RevokeInvite($code: String!) {
+    revokeInvite(code: $code)
   }
 `
 
