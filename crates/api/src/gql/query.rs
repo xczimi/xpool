@@ -7,7 +7,7 @@
 use crate::auth::CurrentPlayer;
 use crate::gql::types::*;
 use async_graphql::{Context, Object};
-use domain::scoring::{is_perfect, ScoringConfig};
+use domain::scoring::{is_perfect, score_match, ScoringConfig};
 use std::collections::HashMap;
 use std::sync::Arc;
 use storage::Repository;
@@ -180,6 +180,19 @@ impl QueryRoot {
         let deadline = tournament.deadline(&group_id);
         let now = now(ctx);
 
+        // Official results = the result user's predictions. Used to score each
+        // visible tip via the pure domain scoring functions (no domain logic
+        // here — just the lookup + call). Absent until the result is entered.
+        let config = ScoringConfig::default();
+        let result_user = players.iter().find(|p| p.is_result_user);
+        let round_of = |game: &domain::SingleGame| {
+            tournament
+                .groups
+                .get(&game.group_id)
+                .map(|g| g.round)
+                .unwrap_or(domain::Round::GroupStage)
+        };
+
         let mut tips = Vec::new();
         for player in &players {
             if player.is_result_user {
@@ -195,6 +208,17 @@ impl QueryRoot {
                         // the match itself kicked off.
                         p.locked || now >= game.kickoff || deadline.is_some_and(|d| now > d)
                     });
+                // Score a visible prediction once the game has a result. By the
+                // time a result exists the match has kicked off, so a scored
+                // tip is always already visible — no hidden info is revealed.
+                let result = result_user.and_then(|r| r.match_prediction(&game.id));
+                let (points, is_perfect_tip) = match (visible.then_some(()), prediction, result) {
+                    (Some(()), Some(pred), Some(res)) => (
+                        Some(score_match(pred, res, &config) * config.multiplier(round_of(game))),
+                        is_perfect(pred, res, &config),
+                    ),
+                    _ => (None, false),
+                };
                 tips.push(Tip {
                     player_id: player.id.clone(),
                     nick: player.nick.clone(),
@@ -204,6 +228,8 @@ impl QueryRoot {
                     } else {
                         None
                     },
+                    points,
+                    is_perfect: is_perfect_tip,
                 });
             }
         }
@@ -215,6 +241,16 @@ impl QueryRoot {
         let repo = repo(ctx);
         let players = repo.list_players().await?;
         let config = ScoringConfig::default();
+
+        // The tournament gives each game's round, for the points multiplier.
+        let tournament = repo.get_tournament().await?;
+        let round_of = |game_id: &str| {
+            tournament
+                .as_ref()
+                .and_then(|t| t.games.get(game_id).and_then(|g| t.groups.get(&g.group_id)))
+                .map(|grp| grp.round)
+                .unwrap_or(domain::Round::GroupStage)
+        };
 
         let result_user = match players.iter().find(|p| p.is_result_user) {
             Some(r) => r,
@@ -229,10 +265,13 @@ impl QueryRoot {
             for prediction in &player.match_predictions {
                 if let Some(result) = result_user.match_prediction(&prediction.game_id) {
                     if is_perfect(prediction, result, &config) {
+                        let points = score_match(prediction, result, &config)
+                            * config.multiplier(round_of(&prediction.game_id));
                         perfects.push(Perfect {
                             player_id: player.id.clone(),
                             nick: player.nick.clone(),
                             game_id: prediction.game_id.clone(),
+                            points,
                         });
                     }
                 }

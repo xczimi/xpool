@@ -13,6 +13,7 @@ import {
   computeStandings,
 } from '../../lib/standings'
 import { Matchup } from '../../components/TeamLabel'
+import { PointsBadge } from '../../components/PointsBadge'
 import { StandingsTable, PredictedStandingsEditor } from './StandingsTables'
 
 interface PredictionInput {
@@ -44,6 +45,7 @@ export function GroupTipForm({
   group,
   me,
   results,
+  pointsByGame,
   onSubmit,
 }: {
   tournament: Tournament
@@ -51,6 +53,8 @@ export function GroupTipForm({
   me: Player
   /** The result user's locked match predictions — official scores. */
   results: MatchPrediction[]
+  /** gameId → earned points for the current player (server-computed). */
+  pointsByGame?: Map<string, { points: number | null; isPerfect: boolean }>
   onSubmit: (
     predictions: PredictionInput[],
     standings: StandingsInput | null,
@@ -204,6 +208,7 @@ export function GroupTipForm({
             <th className="col-match">{t('match')}</th>
             <th>{t('prediction')}</th>
             <th>{t('result')}</th>
+            <th>{t('points')}</th>
           </tr>
         </thead>
         <tbody>
@@ -232,6 +237,16 @@ export function GroupTipForm({
                   {(() => {
                     const r = resultsByGame.get(game.id)
                     return r ? `${r.homeScore}–${r.awayScore}` : '—'
+                  })()}
+                </td>
+                <td>
+                  {(() => {
+                    const pt = pointsByGame?.get(game.id)
+                    return pt?.points != null ? (
+                      <PointsBadge points={pt.points} isPerfect={pt.isPerfect} />
+                    ) : (
+                      '—'
+                    )
                   })()}
                 </td>
               </tr>

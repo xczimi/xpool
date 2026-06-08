@@ -8,6 +8,7 @@ import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { RoundNav } from '../components/RoundNav'
 import { byKickoff, teamIndex } from '../lib/format'
 import { Matchup } from '../components/TeamLabel'
+import { PointsBadge } from '../components/PointsBadge'
 import { currentRoundNode, leafGroupsOfRound, roundNodes } from '../lib/rounds'
 
 /**
@@ -139,11 +140,21 @@ export function AllTipsPage() {
                     const tip = tipMap.get(tipKey(pid, g.id))
                     return (
                       <td key={g.id}>
-                        {tip?.prediction
-                          ? `${tip.prediction.homeScore}–${tip.prediction.awayScore}`
-                          : tip
-                            ? t('hiddenTip')
-                            : '—'}
+                        {tip?.prediction ? (
+                          <span className="tip-cell">
+                            <span>
+                              {tip.prediction.homeScore}–{tip.prediction.awayScore}
+                            </span>
+                            <PointsBadge
+                              points={tip.points}
+                              isPerfect={tip.isPerfect}
+                            />
+                          </span>
+                        ) : tip ? (
+                          t('hiddenTip')
+                        ) : (
+                          '—'
+                        )}
                       </td>
                     )
                   })}

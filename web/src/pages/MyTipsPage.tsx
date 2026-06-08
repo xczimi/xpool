@@ -6,6 +6,7 @@ import {
   ME_QUERY,
   RESULTS_QUERY,
   SUBMIT_GROUP_MUTATION,
+  TIPS_QUERY,
   TOURNAMENT_QUERY,
 } from '../graphql/queries'
 import type {
@@ -13,6 +14,7 @@ import type {
   MatchPrediction,
   Me,
   Round,
+  Tip,
   Tournament,
 } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
@@ -67,6 +69,39 @@ export function MyTipsPage() {
     }
   }, [activeRound])
 
+  // Round/group selection — derived above the early returns so the tips query
+  // (for per-game earned points) can key off it without a conditional hook.
+  // Group Stage drills into one selected leaf group; knockout rounds show every
+  // one-match group stacked. The `tips` query takes the round node id for
+  // knockout (its resolver walks the subtree) or the leaf group id otherwise.
+  const activeRoundNode = rounds.find((r) => r.round === activeRound) ?? null
+  const roundLeaves = activeRoundNode
+    ? leafGroupsOfRound(activeRoundNode, tournament?.groups ?? [])
+    : []
+  const isGroupStage = activeRound === 'GROUP_STAGE'
+  const activeGroupId = selectedGroupId ?? roundLeaves[0]?.id ?? null
+  const tipsGroupId = isGroupStage ? activeGroupId : (activeRoundNode?.id ?? null)
+
+  // The server computes per-(player, game) earned points on the tip grid; we
+  // reuse it (same source as All Tips) rather than re-deriving scoring on the
+  // client. Keep only the current player's tips → gameId → points.
+  const [tipsResult] = useQuery<{ tips: Tip[] }>({
+    query: TIPS_QUERY,
+    variables: { groupId: tipsGroupId },
+    pause: !tipsGroupId,
+  })
+  const pointsByGame = useMemo(() => {
+    const map = new Map<string, { points: number | null; isPerfect: boolean }>()
+    const myId = meRaw?.__typename === 'Player' ? meRaw.id : null
+    if (!myId) return map
+    for (const tip of tipsResult.data?.tips ?? []) {
+      if (tip.playerId === myId) {
+        map.set(tip.gameId, { points: tip.points, isPerfect: tip.isPerfect })
+      }
+    }
+    return map
+  }, [tipsResult.data, meRaw])
+
   if (!label) return <NeedsLogin />
   if (tournamentResult.fetching || meResult.fetching) return <Loading />
   if (tournamentResult.error)
@@ -78,15 +113,6 @@ export function MyTipsPage() {
     )
   if (!tournament || !me) return <ErrorView />
 
-  const activeRoundNode = rounds.find((r) => r.round === activeRound) ?? null
-  const roundLeaves = activeRoundNode
-    ? leafGroupsOfRound(activeRoundNode, tournament.groups)
-    : []
-
-  // Group Stage drills into one selected group; knockout rounds show every
-  // one-match group stacked.
-  const isGroupStage = activeRound === 'GROUP_STAGE'
-  const activeGroupId = selectedGroupId ?? roundLeaves[0]?.id ?? null
   const shownGroups: GroupGame[] = isGroupStage
     ? roundLeaves.filter((g) => g.id === activeGroupId)
     : roundLeaves
@@ -126,6 +152,7 @@ export function MyTipsPage() {
               group={group}
               me={me}
               results={results}
+              pointsByGame={pointsByGame}
               onSubmit={async (predictions, standings, lock) => {
                 const res = await submitGroup({
                   groupId: group.id,

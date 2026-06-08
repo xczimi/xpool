@@ -83,13 +83,14 @@ export const TIPS_QUERY = `
     tips(groupId: $groupId) {
       playerId nick gameId
       prediction { gameId homeScore awayScore locked }
+      points isPerfect
     }
   }
 `
 
 export const PERFECTS_QUERY = `
   query Perfects {
-    perfects { playerId nick gameId }
+    perfects { playerId nick gameId points }
   }
 `
 

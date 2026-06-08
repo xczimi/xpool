@@ -6,6 +6,7 @@ import type { MatchPrediction, Perfect, Tournament } from '../graphql/types'
 import { ErrorView, Loading } from '../components/StatusViews'
 import { teamIndex } from '../lib/format'
 import { Matchup } from '../components/TeamLabel'
+import { PointsBadge } from '../components/PointsBadge'
 
 /** Players who scored a maximum (4-point) match prediction (UC-10). Public. */
 export function PerfectPage() {
@@ -81,6 +82,7 @@ export function PerfectPage() {
               <th>{t('player')}</th>
               <th className="col-match">{t('match')}</th>
               <th>{t('result')}</th>
+              <th>{t('points')}</th>
             </tr>
           </thead>
           <tbody>
@@ -91,6 +93,9 @@ export function PerfectPage() {
                   <td>{p.nick}</td>
                   <td>{gameLabel.get(p.gameId) ?? p.gameId}</td>
                   <td>{r ? `${r.homeScore}–${r.awayScore}` : '—'}</td>
+                  <td>
+                    <PointsBadge points={p.points} isPerfect />
+                  </td>
                 </tr>
               )
             })}

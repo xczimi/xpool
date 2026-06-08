@@ -328,6 +328,14 @@ pub struct Tip {
     pub game_id: String,
     /// `None` when the player's prediction is still hidden from others.
     pub prediction: Option<MatchPrediction>,
+    /// Points this prediction earned against the official result, already
+    /// multiplied by the round stage factor so per-game points sum to the
+    /// scoreboard stage total. `None` until the game has an official result
+    /// (or while the prediction is still hidden).
+    pub points: Option<i64>,
+    /// Whether the prediction scored a "perfect" (max base points). `false`
+    /// until a result is in.
+    pub is_perfect: bool,
 }
 
 /// One perfect prediction (`perfects`).
@@ -336,6 +344,9 @@ pub struct Perfect {
     pub player_id: String,
     pub nick: String,
     pub game_id: String,
+    /// Points earned (multiplied by the round stage factor). A perfect always
+    /// has a result, so this is always present.
+    pub points: i64,
 }
 
 /// A lightweight player listing — for the dev-login picker and the admin

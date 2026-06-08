@@ -610,6 +610,110 @@ async fn tips_always_shows_own_unlocked_prediction() {
     assert_eq!(own["prediction"], json!({ "homeScore": 1, "awayScore": 1 }));
 }
 
+// ── tips & perfects: earned points (prediction-points-on-tips) ───────────────
+
+const TIPS_PTS: &str = r#"
+query($g: ID!) {
+  tips(groupId: $g) {
+    playerId gameId points isPerfect prediction { homeScore awayScore }
+  }
+}"#;
+
+const PERFECTS_PTS: &str = r#"
+query { perfects { playerId gameId points } }"#;
+
+/// Append a match prediction (locked) to a player already in the repo.
+async fn add_pred(repo: &std::sync::Arc<dyn Repository>, id: &str, g: &str, h: u8, a: u8) {
+    let mut p = repo.get_player(id).await.unwrap().unwrap();
+    p.match_predictions.push(locked_pred(g, h, a));
+    repo.put_player(&p).await.unwrap();
+}
+
+/// Pull one tip row out of a `tips` response by (player, game).
+fn tip_row(tips: &serde_json::Value, pid: &str, gid: &str) -> serde_json::Value {
+    tips["tips"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["playerId"] == pid && t["gameId"] == gid)
+        .unwrap()
+        .clone()
+}
+
+#[tokio::test]
+async fn tips_expose_earned_points_and_perfect_flag() {
+    // Games kicked off 2 h ago, so every prediction is visible.
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    add_pred(&repo, RESULT_ID, GAME_1, 2, 1).await; // official result 2–1
+    add_pred(&repo, BOB, GAME_1, 2, 1).await; // exact → base 4 (perfect)
+    add_pred(&repo, ALICE, GAME_1, 0, 0).await; // wrong outcome → 0
+
+    let vars = Variables::from_json(json!({ "g": GROUP_A }));
+    let resp = run(&repo, TIPS_PTS, vars, Some(ALICE)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let tips = data(&resp);
+
+    let bob = tip_row(&tips, "bob", GAME_1);
+    // Group stage multiplier is 1, so points == base score (4).
+    assert_eq!(bob["points"], json!(4));
+    assert_eq!(bob["isPerfect"], json!(true));
+
+    let alice = tip_row(&tips, "alice", GAME_1);
+    assert_eq!(alice["points"], json!(0));
+    assert_eq!(alice["isPerfect"], json!(false));
+}
+
+#[tokio::test]
+async fn tips_points_are_round_multiplied() {
+    // GROUP_KO is an R32 group (multiplier 2); the game kicked off already.
+    let repo = seeded_repo_with_knockout(Duration::hours(-2)).await;
+    add_pred(&repo, RESULT_ID, GAME_KO, 1, 0).await; // official 1–0
+    add_pred(&repo, BOB, GAME_KO, 1, 0).await; // exact → base 4
+
+    let vars = Variables::from_json(json!({ "g": GROUP_KO }));
+    let resp = run(&repo, TIPS_PTS, vars, Some(BOB)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let tips = data(&resp);
+
+    let bob = tip_row(&tips, "bob", GAME_KO);
+    // base 4 × R32 multiplier 2 = 8.
+    assert_eq!(bob["points"], json!(8));
+    assert_eq!(bob["isPerfect"], json!(true));
+}
+
+#[tokio::test]
+async fn tips_points_are_null_until_a_result_is_entered() {
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    add_pred(&repo, BOB, GAME_1, 2, 1).await; // no official result yet
+
+    let vars = Variables::from_json(json!({ "g": GROUP_A }));
+    let resp = run(&repo, TIPS_PTS, vars, Some(BOB)).await;
+    let tips = data(&resp);
+
+    let bob = tip_row(&tips, "bob", GAME_1);
+    assert_eq!(bob["points"], json!(null));
+    assert_eq!(bob["isPerfect"], json!(false));
+}
+
+#[tokio::test]
+async fn perfects_expose_earned_points() {
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    add_pred(&repo, RESULT_ID, GAME_1, 2, 1).await;
+    add_pred(&repo, BOB, GAME_1, 2, 1).await; // perfect
+
+    let resp = run(&repo, PERFECTS_PTS, Variables::default(), None).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let d = data(&resp);
+    let row = d["perfects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|p| p["playerId"] == "bob" && p["gameId"] == GAME_1)
+        .unwrap()
+        .clone();
+    assert_eq!(row["points"], json!(4));
+}
+
 // ── recompute mutation ───────────────────────────────────────────────────────
 
 const RECOMPUTE: &str = r#"

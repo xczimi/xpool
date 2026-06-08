@@ -452,6 +452,32 @@ a:hover { color: var(--amber); }
 
 .grid-scroll { overflow-x: auto; }
 
+/* A tip cell that pairs the predicted score with its earned-points badge
+   (All Tips grid). The badge wraps under the score in tight columns. */
+.tip-cell {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Earned points beside a tip — round-multiplied. A perfect gets the bright
+   amber + star treatment so maximum predictions pop out of the grid. */
+.points-badge {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: rgba(255, 140, 0, 0.10);
+  color: var(--amber);
+  white-space: nowrap;
+}
+.points-badge.is-perfect {
+  background: rgba(255, 140, 0, 0.22);
+  color: var(--amber-bright);
+}
+
 /* ============================================================================
    SCORE CELLS / INPUTS (the tip-entry mini-display)
    ============================================================================ */

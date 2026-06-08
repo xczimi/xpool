@@ -130,12 +130,18 @@ export interface Tip {
   gameId: string
   /** Null when the prediction is still hidden from others (UC-9 visibility). */
   prediction: MatchPrediction | null
+  /** Round-multiplied points earned; null until the game has an official result. */
+  points: number | null
+  /** Whether the prediction scored a perfect (max base points). */
+  isPerfect: boolean
 }
 
 export interface Perfect {
   playerId: string
   nick: string
   gameId: string
+  /** Round-multiplied points earned (a perfect always has a result). */
+  points: number
 }
 
 /** Lightweight player listing — dev-login picker, admin player list. */
