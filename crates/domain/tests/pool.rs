@@ -24,7 +24,7 @@ fn pool(owner: &str, members: &[&str]) -> Pool {
         name: "Friends".to_owned(),
         owner: owner.to_owned(),
         members: members.iter().map(|m| m.to_string()).collect(),
-        join_code: "CODE1234".to_owned(),
+        prefix: "FRIENDS".to_owned(),
     }
 }
 
@@ -110,22 +110,6 @@ fn rename_changes_the_name_for_the_owner() {
 fn rename_rejects_a_non_owner() {
     let p = pool("alice", &["alice", "bob"]);
     let err = pool::rename(&p, "bob", "Hijacked".to_owned()).unwrap_err();
-    assert_eq!(err, PoolError::NotOwner);
-}
-
-// ── set_join_code (POOL-03) ───────────────────────────────────────────────────
-
-#[test]
-fn set_join_code_replaces_the_code_for_the_owner() {
-    let p = pool("alice", &["alice"]);
-    let rotated = pool::set_join_code(&p, "alice", "NEWCODE9".to_owned()).unwrap();
-    assert_eq!(rotated.join_code, "NEWCODE9");
-}
-
-#[test]
-fn set_join_code_rejects_a_non_owner() {
-    let p = pool("alice", &["alice", "bob"]);
-    let err = pool::set_join_code(&p, "bob", "NEWCODE9".to_owned()).unwrap_err();
     assert_eq!(err, PoolError::NotOwner);
 }
 

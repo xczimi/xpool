@@ -13,7 +13,6 @@ pub mod seam;
 
 #[cfg(feature = "dev_auth")]
 pub mod dev_login;
-pub mod invite_code;
 
 // CurrentPlayer moves here in Task 4. Re-exported at the module root for
 // callers that used `crate::auth::CurrentPlayer` previously.

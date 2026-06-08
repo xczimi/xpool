@@ -7,7 +7,7 @@ use crate::{Repository, Scoreboard};
 use async_trait::async_trait;
 use domain::{Identity, Invite, Person, Player, PlayerId, Pool, Tournament};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     sync::{Arc, Mutex},
 };
 
@@ -23,9 +23,6 @@ struct Inner {
     /// Keyed `"<provider>#<provider_id>"` → `Identity`.
     identities: HashMap<String, Identity>,
     persons: HashMap<String, Person>,
-    /// Claimed single-use invite codes. A code present here has already been
-    /// consumed and must not be accepted again.
-    claimed_invite_codes: HashSet<String>,
 }
 
 /// Mutex-wrapped in-memory store. Cheap to clone (all clones share the inner
@@ -225,14 +222,5 @@ impl Repository for InMemoryRepository {
             .filter(|i| i.verified_email.as_deref() == Some(email))
             .cloned()
             .collect())
-    }
-
-    // ── Invite code usage ──────────────────────────────────────────────────
-
-    /// Atomically check-and-insert the code. Returns `true` on first claim,
-    /// `false` if already present (claimed by a prior or concurrent caller).
-    async fn claim_invite_code(&self, code: &str) -> anyhow::Result<bool> {
-        let mut inner = self.inner.lock().unwrap();
-        Ok(inner.claimed_invite_codes.insert(code.to_owned()))
     }
 }

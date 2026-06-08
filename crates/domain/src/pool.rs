@@ -2,7 +2,7 @@
 //!
 //! A `Pool` is scoreboard-scoping only. These functions are pure, I/O-free
 //! transformations: each takes a `Pool` and returns a new one (or a
-//! `PoolError`), never mutating in place. Join-code *generation* and
+//! `PoolError`), never mutating in place. Invite minting/resolution and
 //! persistence belong to the application layer; this module only enforces the
 //! membership rules.
 
@@ -86,22 +86,6 @@ pub fn rename(pool: &Pool, requester_id: &str, name: String) -> Result<Pool, Poo
     }
     Ok(Pool {
         name,
-        ..pool.clone()
-    })
-}
-
-/// Replace the join code (POOL-03). Owner-only. The caller supplies the new
-/// (randomly generated) code.
-pub fn set_join_code(
-    pool: &Pool,
-    requester_id: &str,
-    join_code: String,
-) -> Result<Pool, PoolError> {
-    if pool.owner != requester_id {
-        return Err(PoolError::NotOwner);
-    }
-    Ok(Pool {
-        join_code,
         ..pool.clone()
     })
 }

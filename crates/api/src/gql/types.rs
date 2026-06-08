@@ -285,9 +285,10 @@ pub struct Pool {
     pub name: String,
     pub owner: String,
     pub members: Vec<String>,
-    /// The code that admits a player to this pool. Visible to members only —
-    /// the `pools` query already returns a pool solely to its owner/members.
-    pub join_code: String,
+    /// The pool's cosmetic invite-link prefix (e.g. `SOUTH7K`). A bare prefix
+    /// resolves to the owner's invite (the pool link). The high-entropy key is
+    /// the invite `code` returned by `createInvite`, not this.
+    pub prefix: String,
 }
 
 impl From<&domain::Pool> for Pool {
@@ -297,7 +298,7 @@ impl From<&domain::Pool> for Pool {
             name: p.name.clone(),
             owner: p.owner.clone(),
             members: p.members.clone(),
-            join_code: p.join_code.clone(),
+            prefix: p.prefix.clone(),
         }
     }
 }

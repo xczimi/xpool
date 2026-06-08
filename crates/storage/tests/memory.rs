@@ -91,7 +91,7 @@ fn make_pool(id: &str) -> Pool {
         name: format!("Pool {id}"),
         owner: "player-1".to_owned(),
         members: vec!["player-1".to_owned(), "player-2".to_owned()],
-        join_code: format!("CODE-{id}"),
+        prefix: format!("PFX{id}"),
     }
 }
 
@@ -349,7 +349,7 @@ async fn pool_overwrite() {
         name: "New Name".to_owned(),
         owner: "player-1".to_owned(),
         members: vec![],
-        join_code: "CODE-p".to_owned(),
+        prefix: "PFXP".to_owned(),
     };
     repo.put_pool(&updated).await.unwrap();
 

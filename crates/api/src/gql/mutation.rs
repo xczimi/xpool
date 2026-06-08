@@ -5,14 +5,14 @@
 //! submits, their predictions are the official results, so the save triggers
 //! the wholesale post-result recompute. `recompute` re-runs it on demand.
 
-use crate::auth::invite_code::{decode_invite, encode_invite, InvitePayload, UsePolicy};
 use crate::auth::CurrentPlayer;
 use crate::gql::inputs::{validate_score, MatchPredictionInput, StandingsInput};
 use crate::gql::types::*;
 use crate::recompute::recompute;
 use async_graphql::{Context, Object, SimpleObject};
+use domain::invite::{normalize_suffix, parse_code, slugify, CodeInput};
 use domain::{
-    MatchPrediction, Player as DomainPlayer, Pool as DomainPool,
+    Invite, MatchPrediction, Player as DomainPlayer, Pool as DomainPool,
     StandingsPrediction as DomainStandingsPrediction,
 };
 use std::sync::Arc;
@@ -39,15 +39,164 @@ fn dev_stub_enabled() -> bool {
     dev_stub_enabled_from(std::env::var("LOCAL_AUTH_ISSUER").ok().as_deref())
 }
 
-/// A fresh opaque pool join code — 8 uppercase hex characters.
-fn generate_join_code() -> String {
-    uuid::Uuid::new_v4()
-        .simple()
-        .to_string()
-        .chars()
-        .take(8)
-        .collect::<String>()
-        .to_uppercase()
+/// A fresh high-entropy invite suffix — 10 Crockford-base32 chars (~50 bits).
+/// Entropy comes from a v4 UUID's random bytes (no extra `rand` dependency).
+fn generate_invite_code() -> String {
+    let bytes = *uuid::Uuid::new_v4().as_bytes();
+    domain::invite::encode_suffix(&bytes[..domain::invite::SUFFIX_LEN])
+}
+
+/// The id of the result-user player (the referral-graph root), or empty string
+/// if none is configured. Used to gate pool creation (`may_create_pool`).
+async fn result_user_id(repo: &dyn Repository) -> async_graphql::Result<String> {
+    Ok(repo
+        .list_players()
+        .await?
+        .into_iter()
+        .find(|p| p.is_result_user)
+        .map(|p| p.id)
+        .unwrap_or_default())
+}
+
+/// A unique-per-pool cosmetic prefix label from the pool name: a 5-char slug
+/// plus a 2-char disambiguator, regenerated until it collides with no existing
+/// pool prefix (case-insensitive). Falls back to a pure code if the name has no
+/// alphanumerics.
+fn unique_prefix(existing: &[DomainPool], name: &str) -> String {
+    let base = {
+        let s = slugify(name, 5);
+        if s.is_empty() {
+            "POOL".to_owned()
+        } else {
+            s
+        }
+    };
+    loop {
+        let bytes = *uuid::Uuid::new_v4().as_bytes();
+        let disambiguator = domain::invite::encode_suffix(&bytes[..2]);
+        let candidate = format!("{base}{disambiguator}");
+        if !existing
+            .iter()
+            .any(|p| p.prefix.eq_ignore_ascii_case(&candidate))
+        {
+            return candidate;
+        }
+    }
+}
+
+/// Mint and persist a fresh reusable invite row for `invited_by` into `pool_id`.
+async fn mint_invite(
+    repo: &dyn Repository,
+    pool_id: &str,
+    invited_by: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> async_graphql::Result<Invite> {
+    let invite = Invite {
+        code: generate_invite_code(),
+        pool_id: pool_id.to_owned(),
+        invited_by: invited_by.to_owned(),
+        created_at: now,
+        expires_at: None,
+        revoked: false,
+    };
+    repo.put_invite(&invite).await?;
+    Ok(invite)
+}
+
+/// The full shareable URL for a nested `PREFIX-SUFFIX` invite code.
+fn invite_link(prefix: &str, code: &str) -> String {
+    let origin = std::env::var("XPOOL_PUBLIC_ORIGIN")
+        .unwrap_or_else(|_| "http://localhost:5173".to_owned());
+    format!("{origin}/invite/{prefix}-{code}")
+}
+
+/// Resolve a typed/pasted invite code to its stored row (lenient: full
+/// `PREFIX-SUFFIX`, bare suffix, or bare prefix → the pool's owner invite). The
+/// suffix is authoritative; a mismatched prefix is advisory (warn, resolve by
+/// suffix). Rejects revoked or expired invites against `now`.
+async fn resolve_invite(
+    repo: &dyn Repository,
+    raw: &str,
+    now: chrono::DateTime<chrono::Utc>,
+) -> async_graphql::Result<Invite> {
+    let parsed = parse_code(raw).ok_or_else(|| async_graphql::Error::new("empty invite code"))?;
+    let invite = match parsed {
+        CodeInput::PrefixAndSuffix { prefix, suffix } => {
+            let code = normalize_suffix(&suffix);
+            let inv = repo
+                .get_invite(&code)
+                .await?
+                .ok_or_else(|| async_graphql::Error::new("no invite matches that code"))?;
+            // Advisory: warn if the typed prefix disagrees with the pool's, but
+            // resolve by the (authoritative) suffix regardless.
+            if let Some(pool) = repo.list_pools().await?.into_iter().find(|p| p.id == inv.pool_id)
+            {
+                if !prefix.eq_ignore_ascii_case(&pool.prefix) {
+                    tracing::warn!(
+                        "invite prefix `{prefix}` != pool prefix `{}`; resolving by suffix",
+                        pool.prefix
+                    );
+                }
+            }
+            inv
+        }
+        CodeInput::Bare(token) => {
+            // A bare token is either a suffix (the key) or a pool prefix.
+            let code = normalize_suffix(&token);
+            if let Some(inv) = repo.get_invite(&code).await? {
+                inv
+            } else {
+                let pool = repo
+                    .list_pools()
+                    .await?
+                    .into_iter()
+                    .find(|p| p.prefix.eq_ignore_ascii_case(&token))
+                    .ok_or_else(|| {
+                        async_graphql::Error::new("no invite or pool matches that code")
+                    })?;
+                repo.list_invites_by_pool(&pool.id)
+                    .await?
+                    .into_iter()
+                    .find(|i| i.invited_by == pool.owner && !i.revoked)
+                    .ok_or_else(|| {
+                        async_graphql::Error::new("that pool has no active owner invite")
+                    })?
+            }
+        }
+    };
+    if invite.revoked {
+        return Err(async_graphql::Error::new("this invite has been revoked"));
+    }
+    if let Some(expires_at) = invite.expires_at {
+        if expires_at < now {
+            return Err(async_graphql::Error::new("this invite has expired"));
+        }
+    }
+    Ok(invite)
+}
+
+/// Set `player_id`'s `referrer` to `invited_by` when it is currently unset and
+/// the two differ (no self-referral). Re-reads for a fresh version. Idempotent.
+async fn set_referrer_if_unset(
+    repo: &dyn Repository,
+    player_id: &str,
+    invited_by: &str,
+) -> async_graphql::Result<()> {
+    if player_id == invited_by {
+        return Ok(());
+    }
+    let player = repo
+        .get_player(player_id)
+        .await?
+        .ok_or_else(|| async_graphql::Error::new("player not found"))?;
+    if player.referrer.is_none() {
+        let updated = DomainPlayer {
+            referrer: Some(invited_by.to_owned()),
+            ..player
+        };
+        repo.put_player(&updated).await?;
+    }
+    Ok(())
 }
 
 /// Load a pool by id, or a GraphQL "not found" error.
@@ -314,8 +463,10 @@ impl MutationRoot {
         unreachable!("loop returns on both attempts")
     }
 
-    /// Create a pool owned by the current player (POOL-01). The result user
-    /// cannot own a pool (POOL-12).
+    /// Create a pool owned by the current player (POOL-01). Restricted
+    /// creation: only a player referred directly by the result-user (an "admin"
+    /// — the referral-graph root) may create pools; the result user never can
+    /// (POOL-12). The owner's invite row (the pool link) is minted on creation.
     async fn create_pool(
         &self,
         ctx: &Context<'_>,
@@ -323,26 +474,31 @@ impl MutationRoot {
         name: String,
     ) -> async_graphql::Result<Pool> {
         let viewer = CurrentPlayer::require(ctx)?;
-        if viewer.is_result_user {
+        let repo = repo(ctx);
+        let ruid = result_user_id(repo.as_ref()).await?;
+        if !domain::pool::may_create_pool(viewer, &ruid) {
             return Err(async_graphql::Error::new(
-                "the result user cannot own a pool",
+                "you are not allowed to create pools",
             ));
         }
         // Issue 16 — reject a client-supplied id that is already taken so a
         // caller cannot clobber another player's pool.
-        if repo(ctx).list_pools().await?.iter().any(|p| p.id == id) {
+        let pools = repo.list_pools().await?;
+        if pools.iter().any(|p| p.id == id) {
             return Err(async_graphql::Error::new(format!(
                 "a pool with id `{id}` already exists"
             )));
         }
         let pool = DomainPool {
             id,
-            name,
+            name: name.clone(),
             owner: viewer.id.clone(),
             members: vec![viewer.id.clone()],
-            join_code: generate_join_code(),
+            prefix: unique_prefix(&pools, &name),
         };
-        repo(ctx).put_pool(&pool).await?;
+        repo.put_pool(&pool).await?;
+        // Mint the owner's invite — the pool link (bare prefix resolves to it).
+        mint_invite(repo.as_ref(), &pool.id, &viewer.id, now(ctx)).await?;
         Ok(Pool::from(&pool))
     }
 
@@ -361,18 +517,18 @@ impl MutationRoot {
         Ok(Pool::from(&updated))
     }
 
-    /// Join a pool by its join code (POOL-02).
-    async fn join_pool(&self, ctx: &Context<'_>, join_code: String) -> async_graphql::Result<Pool> {
+    /// Join a pool by accepting an invite code (POOL-02). For an
+    /// already-identified player: resolve the code (lenient — full link, bare
+    /// suffix, or bare prefix), add to the pool, and record `invited_by` as the
+    /// player's `referrer` if it is not already set.
+    async fn join(&self, ctx: &Context<'_>, code: String) -> async_graphql::Result<Pool> {
         let viewer = CurrentPlayer::require(ctx)?;
         let repo = repo(ctx);
-        let pool = repo
-            .list_pools()
-            .await?
-            .into_iter()
-            .find(|p| p.join_code == join_code)
-            .ok_or_else(|| async_graphql::Error::new("no pool with that join code"))?;
+        let invite = resolve_invite(repo.as_ref(), &code, now(ctx)).await?;
+        let pool = load_pool(repo, &invite.pool_id).await?;
         let updated = domain::pool::join(&pool, viewer).map_err(pool_err)?;
         repo.put_pool(&updated).await?;
+        set_referrer_if_unset(repo.as_ref(), &viewer.id, &invite.invited_by).await?;
         Ok(Pool::from(&updated))
     }
 
@@ -398,17 +554,6 @@ impl MutationRoot {
         let pool = load_pool(repo, &pool_id).await?;
         let updated =
             domain::pool::remove_member(&pool, &viewer.id, &member_id).map_err(pool_err)?;
-        repo.put_pool(&updated).await?;
-        Ok(Pool::from(&updated))
-    }
-
-    /// Rotate a pool's join code (POOL-03). Owner-only.
-    async fn rotate_join_code(&self, ctx: &Context<'_>, id: String) -> async_graphql::Result<Pool> {
-        let viewer = CurrentPlayer::require(ctx)?;
-        let repo = repo(ctx);
-        let pool = load_pool(repo, &id).await?;
-        let updated = domain::pool::set_join_code(&pool, &viewer.id, generate_join_code())
-            .map_err(pool_err)?;
         repo.put_pool(&updated).await?;
         Ok(Pool::from(&updated))
     }
@@ -454,34 +599,6 @@ impl MutationRoot {
         Ok(Player::from(&player))
     }
 
-    /// Record a referral invitation: the invitee's `referrer` is set to the
-    /// current player. The invitee must already exist (dev stub).
-    ///
-    /// Issue 05 — a player cannot invite themselves, and an invitee can only
-    /// be referred once (a set `referrer` is never overwritten).
-    async fn invite(&self, ctx: &Context<'_>, invitee_id: String) -> async_graphql::Result<bool> {
-        let viewer = CurrentPlayer::require(ctx)?;
-        let repo = repo(ctx);
-        if invitee_id == viewer.id {
-            return Err(async_graphql::Error::new("you cannot invite yourself"));
-        }
-        let invitee = repo
-            .get_player(&invitee_id)
-            .await?
-            .ok_or_else(|| async_graphql::Error::new("invitee not found"))?;
-        if invitee.referrer.is_some() {
-            return Err(async_graphql::Error::new(
-                "this player has already been referred",
-            ));
-        }
-        let updated = DomainPlayer {
-            referrer: Some(viewer.id.clone()),
-            ..invitee
-        };
-        repo.put_player(&updated).await?;
-        Ok(true)
-    }
-
     /// Admin: re-run the wholesale post-result recompute on demand (Issue 18).
     /// Idempotent — fully repairs a scoreboard/bracket left stale by an earlier
     /// failed recompute.
@@ -511,14 +628,16 @@ impl MutationRoot {
         Ok(true)
     }
 
-    /// Claim an invite code: resolve the viewer's identity, create a new
-    /// Person+Player+Identity if needed (lazy creation), or take the AUTH-12
-    /// shortcut if the verified email already maps to an existing Person.
+    /// Accept an invite when the viewer is **not yet a Player** — the front
+    /// door to identity. Resolves the code via the stored invite table, then
+    /// establishes the player (the dev stand-in for Auth0 signup: lazy
+    /// Person+Player+Identity creation, or AUTH-12 reuse if the verified email
+    /// already maps to an existing Person), records `invited_by` as the
+    /// player's `referrer`, and joins the invite's pool.
     ///
-    /// When the viewer is already a `Player`, no duplication occurs — the
-    /// supplied `nick`/`full_name` are silently ignored and the existing player
-    /// is returned. If the invite carries a pool id, the player is added to
-    /// that pool (idempotent).
+    /// An already-resolved `Player` is handled too (AUTH-12 shortcut: just join
+    /// the pool, set referrer if unset, return) — but the simpler [`join`]
+    /// mutation is preferred for that case.
     async fn claim_invite(
         &self,
         ctx: &Context<'_>,
@@ -527,31 +646,15 @@ impl MutationRoot {
         full_name: String,
     ) -> async_graphql::Result<ClaimResult> {
         let viewer = ctx.data_unchecked::<crate::auth::CurrentPlayer>();
-        let secret = std::env::var("INVITE_CODE_SECRET")
-            .map_err(|_| async_graphql::Error::new("INVITE_CODE_SECRET not configured"))?;
-        let payload = decode_invite(secret.as_bytes(), &code)
-            .map_err(|e| async_graphql::Error::new(format!("invalid invite: {e}")))?;
         let repo = repo(ctx);
+        let invite = resolve_invite(repo.as_ref(), &code, now(ctx)).await?;
+        let pool_id = invite.pool_id.clone();
+        let invited_by = invite.invited_by.clone();
 
-        // SingleUse enforcement: atomically mark the code as claimed before any
-        // other writes. This runs even when the viewer is already a Player (AUTH-12
-        // shortcut), so a single-use code cannot be replayed. Multi-use codes skip
-        // this check entirely.
-        if payload.use_policy == UsePolicy::SingleUse {
-            let claimed = repo
-                .claim_invite_code(&code)
-                .await
-                .map_err(|e| async_graphql::Error::new(e.to_string()))?;
-            if !claimed {
-                return Err(async_graphql::Error::new("invite already claimed"));
-            }
-        }
-
-        // Already a resolved Player → AUTH-12: optionally join pool, return as-is.
+        // Already a resolved Player → AUTH-12: join the pool, set referrer, return.
         if let crate::auth::CurrentPlayer::Player(p) = viewer {
-            if let Some(pool_id) = payload.pool.clone() {
-                add_to_pool(repo.as_ref(), &p.id, &pool_id).await?;
-            }
+            add_to_pool(repo.as_ref(), &p.id, &pool_id).await?;
+            set_referrer_if_unset(repo.as_ref(), &p.id, &invited_by).await?;
             return Ok(ClaimResult {
                 player: PlayerSummary::from(p.as_ref()),
             });
@@ -574,9 +677,8 @@ impl MutationRoot {
                 // distinct from `Player.id`) — `get_player` would miss and we'd
                 // wrongly create a duplicate player. Mirrors `auth::resolution`.
                 if let Some(player) = repo.get_player_by_person(&identity.person_id).await? {
-                    if let Some(pool_id) = payload.pool.clone() {
-                        add_to_pool(repo.as_ref(), &player.id, &pool_id).await?;
-                    }
+                    add_to_pool(repo.as_ref(), &player.id, &pool_id).await?;
+                    set_referrer_if_unset(repo.as_ref(), &player.id, &invited_by).await?;
                     return Ok(ClaimResult {
                         player: PlayerSummary::from(&player),
                     });
@@ -607,7 +709,7 @@ impl MutationRoot {
             person_id: person_id.clone(),
             nick: nick.clone(),
             full_name,
-            referrer: Some(payload.referrer.clone()),
+            referrer: Some(invited_by.clone()),
             is_result_user: false,
             version: 0,
             match_predictions: Vec::new(),
@@ -616,9 +718,7 @@ impl MutationRoot {
         repo.put_identity(&identity).await?;
         repo.put_person(&person).await?;
         repo.put_player(&player).await?;
-        if let Some(pool_id) = payload.pool {
-            add_to_pool(repo.as_ref(), &player.id, &pool_id).await?;
-        }
+        add_to_pool(repo.as_ref(), &player.id, &pool_id).await?;
         Ok(ClaimResult {
             player: PlayerSummary::from(&player),
         })
@@ -684,36 +784,51 @@ impl MutationRoot {
         })
     }
 
-    /// Generate a referral or pool-join invite link (spec §5).
-    ///
-    /// When `pool` is `None` a single-use referral code is generated; when a
-    /// pool id is supplied a multi-use pool-join code is generated instead.
-    /// The returned `link` is the full URL the inviter shares; `code` is the
-    /// raw opaque token for programmatic use / testing.
+    /// Share your invite into a pool you belong to. Every invite is pool-bound;
+    /// the code is reusable (one per member per pool), so a second call returns
+    /// your existing active invite rather than minting a duplicate. The returned
+    /// `code` is the nested `PREFIX-SUFFIX` form and `link` is the full URL.
     async fn create_invite(
         &self,
         ctx: &Context<'_>,
-        pool: Option<String>,
+        pool: String,
     ) -> async_graphql::Result<InviteLink> {
         let me = CurrentPlayer::require(ctx)?;
-        let secret = std::env::var("INVITE_CODE_SECRET")
-            .map_err(|_| async_graphql::Error::new("INVITE_CODE_SECRET not configured"))?;
-        let use_policy = match &pool {
-            Some(_) => UsePolicy::MultiUseUntilRotated,
-            None => UsePolicy::SingleUse,
+        let repo = repo(ctx);
+        let pool = load_pool(repo, &pool).await?;
+        if pool.owner != me.id && !pool.members.iter().any(|m| m == &me.id) {
+            return Err(async_graphql::Error::new(
+                "join the pool before sharing an invite to it",
+            ));
+        }
+        // Reusable per-member: reuse an existing active invite if present.
+        let existing = repo
+            .list_invites_by_invited_by(&me.id)
+            .await?
+            .into_iter()
+            .find(|i| i.pool_id == pool.id && !i.revoked);
+        let invite = match existing {
+            Some(i) => i,
+            None => mint_invite(repo.as_ref(), &pool.id, &me.id, now(ctx)).await?,
         };
-        let payload = InvitePayload {
-            referrer: me.id.clone(),
-            pool,
-            expires_at: chrono::Utc::now() + chrono::Duration::days(30),
-            use_policy,
-        };
-        let code = encode_invite(secret.as_bytes(), &payload)
-            .map_err(|e| async_graphql::Error::new(format!("encode failed: {e}")))?;
-        let origin = std::env::var("XPOOL_PUBLIC_ORIGIN")
-            .unwrap_or_else(|_| "http://localhost:5173".to_owned());
-        let link = format!("{origin}/invite/{code}");
-        Ok(InviteLink { code, link })
+        Ok(InviteLink {
+            code: format!("{}-{}", pool.prefix, invite.code),
+            link: invite_link(&pool.prefix, &invite.code),
+        })
+    }
+
+    /// Revoke one of your invites (the reusable-code off-switch — POOL-03's
+    /// rotation is revoke + re-mint via [`create_invite`]). Resolves the code
+    /// and revokes it only if it is yours.
+    async fn revoke_invite(&self, ctx: &Context<'_>, code: String) -> async_graphql::Result<bool> {
+        let me = CurrentPlayer::require(ctx)?;
+        let repo = repo(ctx);
+        let invite = resolve_invite(repo.as_ref(), &code, now(ctx)).await?;
+        if invite.invited_by != me.id {
+            return Err(async_graphql::Error::new("that invite is not yours to revoke"));
+        }
+        repo.revoke_invite(&invite.code).await?;
+        Ok(true)
     }
 }
 

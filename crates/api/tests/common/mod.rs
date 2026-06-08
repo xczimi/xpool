@@ -191,7 +191,10 @@ fn player(id: &str, is_result: bool) -> Player {
         person_id: id.to_owned(),
         nick: id.to_owned(),
         full_name: id.to_owned(),
-        referrer: None,
+        // ALICE is referred by the result-user → an "admin" who may create pools
+        // (`may_create_pool`). BOB has no referrer, so he's a plain joiner whose
+        // referrer gets set when he accepts an invite.
+        referrer: (id == ALICE).then(|| RESULT_ID.to_owned()),
         is_result_user: is_result,
         version: 0,
         match_predictions: Vec::new(),

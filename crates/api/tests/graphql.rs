@@ -792,10 +792,14 @@ async fn tournament_group_carries_subtree_deadline() {
 
 const CREATE_POOL: &str = r#"
 mutation($id: ID!, $name: String!) {
-  createPool(id: $id, name: $name) { id name owner members joinCode }
+  createPool(id: $id, name: $name) { id name owner members prefix }
 }"#;
 
-/// Create a pool as `actor` and return its join code.
+const CREATE_INVITE: &str = r#"mutation($p: ID!) { createInvite(pool: $p) { code } }"#;
+const JOIN: &str = r#"mutation($code: String!) { join(code: $code) { members } }"#;
+
+/// Create a pool as `actor` (an admin), then mint and return the owner's nested
+/// invite code so other players can `join` with it.
 async fn make_pool(repo: &std::sync::Arc<dyn Repository>, id: &str, actor: &str) -> String {
     let vars = Variables::from_json(json!({ "id": id, "name": "Friends" }));
     let resp = run(repo, CREATE_POOL, vars, Some(actor)).await;
@@ -804,14 +808,22 @@ async fn make_pool(repo: &std::sync::Arc<dyn Repository>, id: &str, actor: &str)
         "createPool failed: {:?}",
         resp.errors
     );
-    data(&resp)["createPool"]["joinCode"]
+    let resp = run(
+        repo,
+        CREATE_INVITE,
+        Variables::from_json(json!({ "p": id })),
+        Some(actor),
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "createInvite failed: {:?}", resp.errors);
+    data(&resp)["createInvite"]["code"]
         .as_str()
-        .expect("joinCode string")
+        .expect("invite code string")
         .to_owned()
 }
 
 #[tokio::test]
-async fn create_pool_sets_owner_membership_and_a_join_code() {
+async fn create_pool_sets_owner_membership_and_a_prefix() {
     let repo = seeded_repo(Duration::hours(24)).await;
     let vars = Variables::from_json(json!({ "id": "p1", "name": "Friends" }));
     let resp = run(&repo, CREATE_POOL, vars, Some(ALICE)).await;
@@ -820,8 +832,8 @@ async fn create_pool_sets_owner_membership_and_a_join_code() {
     assert_eq!(pool["owner"], json!(ALICE));
     assert_eq!(pool["members"], json!([ALICE]));
     assert!(
-        !pool["joinCode"].as_str().unwrap().is_empty(),
-        "a join code is generated"
+        !pool["prefix"].as_str().unwrap().is_empty(),
+        "a prefix is generated"
     );
 }
 
@@ -834,32 +846,56 @@ async fn create_pool_rejected_for_the_result_user() {
 }
 
 #[tokio::test]
-async fn join_pool_adds_the_caller_via_the_join_code() {
+async fn create_pool_rejected_for_a_non_admin() {
+    // BOB has no referrer → not an admin → may_create_pool is false.
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let vars = Variables::from_json(json!({ "id": "p1", "name": "Friends" }));
+    let resp = run(&repo, CREATE_POOL, vars, Some(BOB)).await;
+    assert!(!resp.errors.is_empty(), "non-admin must be rejected");
+}
+
+#[tokio::test]
+async fn join_adds_the_caller_and_records_invited_by() {
     let repo = seeded_repo(Duration::hours(24)).await;
     let code = make_pool(&repo, "p1", ALICE).await;
     let vars = Variables::from_json(json!({ "code": code }));
+    let resp = run(&repo, JOIN, vars, Some(BOB)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    assert_eq!(data(&resp)["join"]["members"], json!([ALICE, BOB]));
+    // BOB had no referrer; accepting ALICE's invite records her as his referrer.
+    let bob = repo.get_player(BOB).await.unwrap().unwrap();
+    assert_eq!(bob.referrer.as_deref(), Some(ALICE));
+}
+
+#[tokio::test]
+async fn join_resolves_a_bare_prefix_to_the_owner_invite() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    make_pool(&repo, "p1", ALICE).await;
+    let prefix = repo
+        .list_pools()
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|p| p.id == "p1")
+        .unwrap()
+        .prefix;
+    // A bare prefix (the "pool link") resolves to the owner's invite.
     let resp = run(
         &repo,
-        r#"mutation($code: String!) { joinPool(joinCode: $code) { members } }"#,
-        vars,
+        JOIN,
+        Variables::from_json(json!({ "code": prefix })),
         Some(BOB),
     )
     .await;
     assert!(resp.errors.is_empty(), "{:?}", resp.errors);
-    assert_eq!(data(&resp)["joinPool"]["members"], json!([ALICE, BOB]));
+    assert_eq!(data(&resp)["join"]["members"], json!([ALICE, BOB]));
 }
 
 #[tokio::test]
-async fn join_pool_rejects_an_unknown_code() {
+async fn join_rejects_an_unknown_code() {
     let repo = seeded_repo(Duration::hours(24)).await;
     let vars = Variables::from_json(json!({ "code": "NOSUCHCODE" }));
-    let resp = run(
-        &repo,
-        r#"mutation($code: String!) { joinPool(joinCode: $code) { id } }"#,
-        vars,
-        Some(BOB),
-    )
-    .await;
+    let resp = run(&repo, JOIN, vars, Some(BOB)).await;
     assert!(!resp.errors.is_empty(), "unknown code must be rejected");
 }
 
@@ -869,7 +905,7 @@ async fn leave_pool_removes_the_caller() {
     let code = make_pool(&repo, "p1", ALICE).await;
     run(
         &repo,
-        r#"mutation($code: String!) { joinPool(joinCode: $code) { id } }"#,
+        JOIN,
         Variables::from_json(json!({ "code": code })),
         Some(BOB),
     )
@@ -905,7 +941,7 @@ async fn remove_member_lets_the_owner_drop_a_member() {
     let code = make_pool(&repo, "p1", ALICE).await;
     run(
         &repo,
-        r#"mutation($code: String!) { joinPool(joinCode: $code) { id } }"#,
+        JOIN,
         Variables::from_json(json!({ "code": code })),
         Some(BOB),
     )
@@ -927,7 +963,7 @@ async fn remove_member_rejected_for_a_non_owner() {
     let code = make_pool(&repo, "p1", ALICE).await;
     run(
         &repo,
-        r#"mutation($code: String!) { joinPool(joinCode: $code) { id } }"#,
+        JOIN,
         Variables::from_json(json!({ "code": code })),
         Some(BOB),
     )
@@ -943,37 +979,41 @@ async fn remove_member_rejected_for_a_non_owner() {
 }
 
 #[tokio::test]
-async fn rotate_join_code_changes_the_code_for_the_owner() {
+async fn revoke_invite_blocks_further_joins() {
     let repo = seeded_repo(Duration::hours(24)).await;
     let code = make_pool(&repo, "p1", ALICE).await;
+    // ALICE revokes her own invite.
     let resp = run(
         &repo,
-        r#"mutation($id: ID!) { rotateJoinCode(id: $id) { joinCode } }"#,
-        Variables::from_json(json!({ "id": "p1" })),
+        r#"mutation($code: String!) { revokeInvite(code: $code) }"#,
+        Variables::from_json(json!({ "code": code })),
         Some(ALICE),
     )
     .await;
     assert!(resp.errors.is_empty(), "{:?}", resp.errors);
-    let new_code = data(&resp)["rotateJoinCode"]["joinCode"]
-        .as_str()
-        .unwrap()
-        .to_owned();
-    assert_ne!(new_code, code, "the code must change");
-    assert!(!new_code.is_empty());
-}
-
-#[tokio::test]
-async fn rotate_join_code_rejected_for_a_non_owner() {
-    let repo = seeded_repo(Duration::hours(24)).await;
-    make_pool(&repo, "p1", ALICE).await;
+    // A subsequent join with the revoked code is refused.
     let resp = run(
         &repo,
-        r#"mutation($id: ID!) { rotateJoinCode(id: $id) { id } }"#,
-        Variables::from_json(json!({ "id": "p1" })),
+        JOIN,
+        Variables::from_json(json!({ "code": code })),
         Some(BOB),
     )
     .await;
-    assert!(!resp.errors.is_empty(), "non-owner cannot rotate the code");
+    assert!(!resp.errors.is_empty(), "revoked invite must not admit");
+}
+
+#[tokio::test]
+async fn revoke_invite_rejected_for_a_non_owner_of_the_code() {
+    let repo = seeded_repo(Duration::hours(24)).await;
+    let code = make_pool(&repo, "p1", ALICE).await;
+    let resp = run(
+        &repo,
+        r#"mutation($code: String!) { revokeInvite(code: $code) }"#,
+        Variables::from_json(json!({ "code": code })),
+        Some(BOB),
+    )
+    .await;
+    assert!(!resp.errors.is_empty(), "only the inviter may revoke");
 }
 
 #[tokio::test]
@@ -1026,7 +1066,17 @@ async fn update_pool_renames_for_the_owner() {
 async fn pools_query_returns_only_the_callers_pools() {
     let repo = seeded_repo(Duration::hours(24)).await;
     make_pool(&repo, "alice-pool", ALICE).await;
-    make_pool(&repo, "bob-pool", BOB).await;
+    // BOB owns a separate pool (inserted directly — creation gating is covered
+    // by its own tests; here we only exercise the `pools` query filter).
+    repo.put_pool(&domain::Pool {
+        id: "bob-pool".to_owned(),
+        name: "Bob's".to_owned(),
+        owner: BOB.to_owned(),
+        members: vec![BOB.to_owned()],
+        prefix: "BOBX".to_owned(),
+    })
+    .await
+    .unwrap();
     let resp = run(&repo, "{ pools { id } }", Variables::default(), Some(ALICE)).await;
     assert!(resp.errors.is_empty(), "{:?}", resp.errors);
     let d = data(&resp);
@@ -1197,61 +1247,15 @@ async fn scoreboard_global_stays_public() {
     );
 }
 
-// ── Issue 05: invite authorization ───────────────────────────────────────────
-
-const INVITE: &str = r#"mutation($id: ID!) { invite(inviteeId: $id) }"#;
-
-#[tokio::test]
-async fn invite_rejects_self_target() {
-    let repo = seeded_repo(Duration::hours(24)).await;
-    let resp = run(
-        &repo,
-        INVITE,
-        Variables::from_json(json!({ "id": ALICE })),
-        Some(ALICE),
-    )
-    .await;
-    assert!(!resp.errors.is_empty(), "self-invite must be rejected");
-}
-
-#[tokio::test]
-async fn invite_rejects_an_already_referred_player() {
-    let repo = seeded_repo(Duration::hours(24)).await;
-    // Alice invites Bob — succeeds.
-    let first = run(
-        &repo,
-        INVITE,
-        Variables::from_json(json!({ "id": BOB })),
-        Some(ALICE),
-    )
-    .await;
-    assert!(first.errors.is_empty(), "first invite: {:?}", first.errors);
-    // The result user tries to re-invite Bob — rejected.
-    let second = run(
-        &repo,
-        INVITE,
-        Variables::from_json(json!({ "id": BOB })),
-        Some(RESULT_ID),
-    )
-    .await;
-    assert!(
-        !second.errors.is_empty(),
-        "re-inviting an already-referred player must be rejected"
-    );
-    // Bob's original referrer is intact.
-    let bob = repo.get_player(BOB).await.unwrap().unwrap();
-    assert_eq!(bob.referrer.as_deref(), Some(ALICE));
-}
-
 // ── Issue 16: create_pool id collision ───────────────────────────────────────
 
 #[tokio::test]
 async fn create_pool_rejects_a_duplicate_id() {
     let repo = seeded_repo(Duration::hours(24)).await;
     make_pool(&repo, "p1", ALICE).await;
-    // Bob tries to create a pool with the same id.
+    // The same admin tries to create another pool with the same id.
     let vars = Variables::from_json(json!({ "id": "p1", "name": "Hijack" }));
-    let resp = run(&repo, CREATE_POOL, vars, Some(BOB)).await;
+    let resp = run(&repo, CREATE_POOL, vars, Some(ALICE)).await;
     assert!(
         !resp.errors.is_empty(),
         "creating a pool with an existing id must be rejected"

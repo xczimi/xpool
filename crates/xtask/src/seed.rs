@@ -4,7 +4,7 @@
 //! than duplicates. Creates a result-user player, ~6 demo players (each with a
 //! Person + Identity), and one demo Pool.
 
-use domain::{Identity, Person, Player, Pool};
+use domain::{Identity, Invite, Person, Player, Pool};
 use storage::Repository;
 
 /// The fixed id of the result-user player (`is_result_user = true`).
@@ -98,6 +98,11 @@ async fn seed_with_email(repo: &dyn Repository, result_user_email: String) -> an
     // `dev_login` — which mints JWTs with `email = "{id}@dev.invalid"` — routes
     // through `identity_key_for("dev" connection) → ("email", email)` and finds
     // this row, resolving to the Player rather than AuthenticatedUnclaimed.
+    // The referral graph: the first demo player is "invited by" the result-user
+    // (the graph root), making them an admin who may create pools. Everyone else
+    // is invited by that admin — normal members who can share invites but not
+    // create pools (`may_create_pool`).
+    let admin_id = DEMO_PLAYERS[0].0;
     for (player_id, nick, full_name) in DEMO_PLAYERS {
         let person_id = format!("person-{nick}");
         let identity_id = format!("identity-{nick}");
@@ -118,26 +123,41 @@ async fn seed_with_email(repo: &dyn Repository, result_user_email: String) -> an
         };
         repo.put_person(&person).await?;
 
-        put_player_idempotent(
-            repo,
-            fresh_player(player_id, &person_id, nick, full_name, false),
-        )
-        .await?;
+        let referrer = if player_id == admin_id {
+            RESULT_USER_ID
+        } else {
+            admin_id
+        };
+        let mut player = fresh_player(player_id, &person_id, nick, full_name, false);
+        player.referrer = Some(referrer.to_owned());
+        put_player_idempotent(repo, player).await?;
     }
 
-    // One demo pool owned by the first demo player, with all demo players.
-    // The join code is fixed so end-to-end tests can rely on it.
+    // One demo pool owned by the admin (first demo player), with all demo
+    // players. The prefix and the owner's invite code are fixed so end-to-end
+    // tests and manual dev can rely on the link `DEMO-DEMP7K42AB`.
     let pool = Pool {
         id: "pool-demo".to_owned(),
         name: "Demo Pool".to_owned(),
-        owner: DEMO_PLAYERS[0].0.to_owned(),
+        owner: admin_id.to_owned(),
         members: DEMO_PLAYERS
             .iter()
             .map(|(id, _, _)| id.to_string())
             .collect(),
-        join_code: "DEMOPOOL".to_owned(),
+        prefix: "DEMO".to_owned(),
     };
     repo.put_pool(&pool).await?;
+
+    // The owner's invite row — the pool link (a bare `DEMO` prefix resolves here).
+    let owner_invite = Invite {
+        code: "DEMP7K42AB".to_owned(),
+        pool_id: pool.id.clone(),
+        invited_by: admin_id.to_owned(),
+        created_at: chrono::Utc::now(),
+        expires_at: None,
+        revoked: false,
+    };
+    repo.put_invite(&owner_invite).await?;
 
     Ok(())
 }

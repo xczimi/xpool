@@ -266,7 +266,7 @@ async fn dynamo_list_players_is_namespace_isolated() {
             name: "A Pool".to_owned(),
             owner: "a-only".to_owned(),
             members: vec!["a-only".to_owned()],
-            join_code: format!("ISOCODE{pid}"),
+            prefix: format!("ISO{pid}"),
         })
         .await
         .unwrap();
@@ -432,7 +432,7 @@ async fn dynamo_pool_round_trip() {
         name: "Dynamo Pool".to_owned(),
         owner: "player-x".to_owned(),
         members: vec!["player-x".to_owned()],
-        join_code: "DYNCODE1".to_owned(),
+        prefix: "DYNCODE1".to_owned(),
     };
     repo.put_pool(&pool).await.unwrap();
 

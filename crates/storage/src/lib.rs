@@ -84,13 +84,4 @@ pub trait Repository: Send + Sync {
     /// link them to the same `Person`.
     async fn find_identities_by_verified_email(&self, email: &str)
         -> anyhow::Result<Vec<Identity>>;
-
-    /// Atomically mark a single-use invite code as claimed. Returns `true`
-    /// when this caller successfully claimed it (first time), `false` when
-    /// it was already claimed (any prior or concurrent claim).
-    ///
-    /// The "claimed codes" set is a global key zone — invite codes are
-    /// global (no tournament prefix). Codes for multi-use invites should
-    /// NEVER be passed here; this is the SingleUse enforcement point.
-    async fn claim_invite_code(&self, code: &str) -> anyhow::Result<bool>;
 }
