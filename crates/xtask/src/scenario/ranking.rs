@@ -3,11 +3,13 @@
 
 use anyhow::{bail, Context};
 use domain::Tournament;
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::path::Path;
 
 /// Per-team strength. Higher = stronger. Drives upset probability and "chalk".
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(transparent)]
 pub struct Ranking {
     strengths: HashMap<String, u32>,
 }
@@ -17,9 +19,8 @@ impl Ranking {
     pub fn load(path: &Path) -> anyhow::Result<Ranking> {
         let raw = std::fs::read_to_string(path)
             .with_context(|| format!("reading rankings file `{}`", path.display()))?;
-        let strengths: HashMap<String, u32> = serde_json::from_str(&raw)
-            .with_context(|| format!("parsing rankings JSON `{}`", path.display()))?;
-        Ok(Ranking { strengths })
+        serde_json::from_str(&raw)
+            .with_context(|| format!("parsing rankings JSON `{}`", path.display()))
     }
 
     /// Strength for a team; 0 if absent (callers should `validate` first).
