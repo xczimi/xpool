@@ -175,6 +175,13 @@ export const REMOVE_MEMBER_MUTATION = `
   }
 `
 
+/** Hand a pool over to one of its members (owner-only). */
+export const TRANSFER_OWNERSHIP_MUTATION = `
+  mutation TransferOwnership($poolId: ID!, $newOwner: ID!) {
+    transferOwnership(poolId: $poolId, newOwner: $newOwner) { ${POOL_FIELDS} }
+  }
+`
+
 /** Mint or reuse the current member's invite into a pool. */
 export const CREATE_INVITE_MUTATION = `
   mutation CreateInvite($pool: ID!) {

@@ -8,12 +8,14 @@ import {
   DELETE_POOL_MUTATION,
   JOIN_MUTATION,
   LEAVE_POOL_MUTATION,
+  ME_QUERY,
   POOLS_QUERY,
   REMOVE_MEMBER_MUTATION,
   REVOKE_INVITE_MUTATION,
+  TRANSFER_OWNERSHIP_MUTATION,
   UPDATE_POOL_MUTATION,
 } from '../graphql/queries'
-import type { Pool } from '../graphql/types'
+import type { Me, Pool } from '../graphql/types'
 import { Loading, NeedsLogin } from '../components/StatusViews'
 
 /**
@@ -30,6 +32,11 @@ export function PoolsPage() {
     query: POOLS_QUERY,
     pause: !label,
   })
+  // Ownership is a player-id relation, so compare against the resolved player
+  // id — NOT `label`, which is the e-mail under Auth0 and would never match.
+  const [meResult] = useQuery<{ me: Me }>({ query: ME_QUERY, pause: !label })
+  const me = meResult.data?.me
+  const myId = me?.__typename === 'Player' ? me.id : null
 
   const [, createPool] = useMutation(CREATE_POOL_MUTATION)
   const [, join] = useMutation(JOIN_MUTATION)
@@ -39,6 +46,7 @@ export function PoolsPage() {
   const [, revokeInvite] = useMutation(REVOKE_INVITE_MUTATION)
   const [, deletePool] = useMutation(DELETE_POOL_MUTATION)
   const [, updatePool] = useMutation(UPDATE_POOL_MUTATION)
+  const [, transferOwnership] = useMutation(TRANSFER_OWNERSHIP_MUTATION)
 
   const [newName, setNewName] = useState('')
   const [joinCode, setJoinCode] = useState('')
@@ -81,6 +89,14 @@ export function PoolsPage() {
     if (!code) return
     act(join({ code }), 'poolJoined')
     setJoinCode('')
+  }
+
+  /** Hand a pool over to one of its members (owner-only). */
+  const onTransfer = (poolId: string, newOwner: string) => {
+    if (!newOwner) return
+    if (window.confirm(t('handOverTo'))) {
+      act(transferOwnership({ poolId, newOwner }), 'ownershipTransferred')
+    }
   }
 
   /** Mint/reveal the current member's invite link for a pool. */
@@ -152,7 +168,7 @@ export function PoolsPage() {
       ) : (
         <ul className="pool-list">
           {pools.map((pool) => {
-            const isOwner = pool.owner === label
+            const isOwner = pool.owner === myId
             return (
               <li key={pool.id} className="pool-card">
                 <h3>
@@ -200,6 +216,28 @@ export function PoolsPage() {
                       >
                         {t('renamePool')}
                       </button>
+                      {pool.members.some((m) => m !== pool.owner) && (
+                        <select
+                          className="handover-select"
+                          aria-label={t('handOverTo')}
+                          value=""
+                          onChange={(e) => {
+                            onTransfer(pool.id, e.target.value)
+                            e.target.value = ''
+                          }}
+                        >
+                          <option value="" disabled>
+                            {t('transferOwnership')}…
+                          </option>
+                          {pool.members
+                            .filter((m) => m !== pool.owner)
+                            .map((m) => (
+                              <option key={m} value={m}>
+                                {m}
+                              </option>
+                            ))}
+                        </select>
+                      )}
                       <button
                         type="button"
                         className="danger"

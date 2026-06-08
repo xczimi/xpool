@@ -183,6 +183,9 @@ const en = {
   inviteRevoked: 'Invite revoked.',
   memberRemoved: 'Member removed.',
   poolRenamed: 'Pool renamed.',
+  transferOwnership: 'Hand over',
+  handOverTo: 'Hand over ownership to…',
+  ownershipTransferred: 'Ownership handed over.',
 
   // profile
   profileTitle: 'Profile',
@@ -366,6 +369,9 @@ const hu: Record<StringKey, string> = {
   inviteRevoked: 'Meghívó visszavonva.',
   memberRemoved: 'Tag eltávolítva.',
   poolRenamed: 'Liga átnevezve.',
+  transferOwnership: 'Átadás',
+  handOverTo: 'Tulajdon átadása…',
+  ownershipTransferred: 'Tulajdon átadva.',
 
   profileTitle: 'Adatok',
   nick: 'Becenév',
