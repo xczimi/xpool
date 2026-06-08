@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# xpool scenario explorer — seed a generated scenario into its OWN DynamoDB Local
+# table and point the running 'xpool' tmux session's api pane at it, so you can
+# explore it with the SPA's DevClock. One table per scenario (xpool-scn-<id>);
+# all coexist in the in-memory DynamoDB Local until the container restarts, so
+# switching scenarios is just an api restart — no reseed.
+#
+#   bin/local-scenario <chalk|balanced|chaos>     seed (if needed) + serve it
+#   bin/local-scenario <id> --reseed              force drop + reimport + reseed
+#   bin/local-scenario --list                     list the scenario ids
+#
+# The web pane is untouched (Vite proxies /api -> :3000). Requires an 'xpool'
+# session (run bin/local-dev first). Switch back to your per-branch table with
+# bin/local-dev — it sees the pane's @branch drift and reclaims the api pane.
+#
+# A scenario's result-user carries the official outcome; the 6 demo players +
+# 5 whacky archetypes carry generated predictions. Move the DevClock to a game +
+# phase to re-materialise the scoreboard as-of that instant.
+set -euo pipefail
+
+SESSION="xpool"
+BIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT="$(git -C "$BIN" rev-parse --show-toplevel)"
+source "$BIN/lib.sh"
+
+# Keep in sync with crates/xtask/src/scenario/scenarios.rs::scenarios().
+SCENARIOS=(chalk balanced chaos)
+
+# --- args -------------------------------------------------------------------
+ID=""
+RESEED=""
+for a in "$@"; do
+  case "$a" in
+    --reseed)   RESEED="--reseed" ;;
+    --list|-l)  printf '%s\n' "${SCENARIOS[@]}"; exit 0 ;;
+    -h|--help)  grep '^#' "$0" | sed '1d;s/^# \{0,1\}//'; exit 0 ;;
+    -*)         echo "bin/local-scenario: unknown flag '$a'" >&2; exit 2 ;;
+    *)          ID="$a" ;;
+  esac
+done
+
+[ -n "$ID" ] || {
+  echo "usage: bin/local-scenario <chalk|balanced|chaos> [--reseed]" >&2
+  exit 2
+}
+case " ${SCENARIOS[*]} " in
+  *" $ID "*) ;;
+  *) echo "bin/local-scenario: unknown scenario '$ID'; valid: ${SCENARIOS[*]}" >&2; exit 2 ;;
+esac
+
+TABLE="xpool-scn-$ID"
+TARGET="$(git rev-parse --show-toplevel 2>/dev/null || echo "$PROJECT")"
+export DYNAMO_ENDPOINT="${DYNAMO_ENDPOINT:-http://localhost:8000}"
+
+# --- 1. infra + table: docker up, ensure tournament imported, then overlay ---
+# local-stack brings docker up, waits for DynamoDB, and (when the table is empty
+# or --reseed) imports the tournament + base seed. The scenario overlay below is
+# idempotent and re-applies the official outcome + predictors on every run.
+( cd "$TARGET" && XPOOL_TABLE="$TABLE" "$BIN/local-stack" ${RESEED:+--reseed} )
+echo "==> seeding scenario '$ID' into $TABLE"
+( cd "$TARGET" && XPOOL_TABLE="$TABLE" cargo run -q -p xtask -- scenario "$ID" )
+
+# --- 2. point the running api pane at the scenario table ---------------------
+tmux has-session -t "$SESSION" 2>/dev/null || {
+  echo "bin/local-scenario: no '$SESSION' tmux session — run bin/local-dev first," >&2
+  echo "  then re-run. ($TABLE is seeded and ready.)" >&2
+  exit 1
+}
+
+pane_by_role() {
+  tmux list-panes -s -t "$SESSION" -F '#{@role}'$'\t''#{pane_id}' 2>/dev/null \
+    | awk -F'\t' -v r="$1" '$1==r {print $2; exit}'
+}
+pane_opt() { tmux display-message -p -t "$1" "#{$2}" 2>/dev/null; }
+
+api_pane="$(pane_by_role api)"
+[ -n "$api_pane" ] || {
+  echo "bin/local-scenario: no api pane in '$SESSION'; run bin/local-dev" >&2
+  exit 1
+}
+
+if [ "$(pane_opt "$api_pane" @scenario)" = "$ID" ] && [ -n "$(port_pids 3000)" ]; then
+  echo "==> api already serving scenario '$ID' on :3000 (reseeded in place)"
+else
+  echo "==> repointing api pane -> $TABLE"
+  kill_port 3000
+  tmux send-keys -t "$api_pane" C-c
+  for _ in $(seq 1 20); do
+    [ -z "$(port_pids 3000)" ] && break
+    sleep 0.25
+  done
+  # @branch is set to a non-branch marker so a later `bin/local-dev` sees drift
+  # and reclaims this pane back onto the per-branch table. @scenario drives this
+  # script's own idempotence check above.
+  tmux set-option -p -t "$api_pane" @role api
+  tmux set-option -p -t "$api_pane" @target "$TARGET"
+  tmux set-option -p -t "$api_pane" @branch "scn-$ID"
+  tmux set-option -p -t "$api_pane" @scenario "$ID"
+  tmux send-keys -t "$api_pane" \
+    "clear; tmux clear-history -t '$api_pane'; XPOOL_TABLE='$TABLE' $BIN/run-api '$TARGET'" C-m
+fi
+
+[ -n "$(port_pids 5173)" ] || echo "bin/local-scenario: note — web (:5173) isn't up; run bin/local-dev" >&2
+
+cat <<EOF
+
+scenario '$ID' ready — http://localhost:5173  (api table: $TABLE)
+  • Explore: use the DevClock at the top of the SPA — pick a game + phase to
+    time-travel; the scoreboard re-materialises as-of that instant.
+  • Switch scenario:  bin/local-scenario <other-id>
+  • Back to your branch table:  bin/local-dev
+EOF
