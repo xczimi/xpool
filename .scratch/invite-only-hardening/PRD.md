@@ -1,9 +1,45 @@
 # Invite-only hardening — stop random Auth0 signups
 
-Status: needs-triage
-Area: api / auth (+ web)
+Status: in-progress (branch `pools-invites`)
+Area: web (funnel UI) + Auth0 tenant config (+ docs)
 
-## Idea
+## Decided design (2026-06-07, grilled with the maintainer)
+
+**Soft-funnel only — usability over extreme security.** No hard Auth0 gate is
+built; it's documented as a fallback. Rationale: Dynamo is already safe (lazy
+`Player` creation — an uninvited login writes zero rows; only `claim_invite`
+writes), so the only exposure is Auth0 identity quota, and the realistic threat
+to an obscure hobby URL is confused humans, not bots. Free tier ≈ 25k MAU.
+
+- **Front door (funnel-shaped).** For a code-less visitor the primary CTA is
+  invite-oriented ("Got an invite? Open your link"); **"Members: log in"** is
+  present but secondary. `loginWithRedirect` gets `screen_hint: 'login'` so
+  returning members land on login, not a signup-flavoured screen.
+  Replaces today's bare "You are outside / Log in" prod auth bar
+  (`web/src/components/AuthBar.tsx` `ProdAuthBar`).
+- **Dead-end (dedicated view).** `AuthenticatedUnclaimed` (no `linkCandidate`)
+  renders a single "You need an invite" explainer card (short pools/invites
+  explanation + "I have a link" action + log out) in the content area instead of
+  the erroring page; player nav hidden; **Home/Rules stay public**. Upgrades
+  today's thin `UnclaimedBanner`.
+- **Bookmarkable pool/invite.** `invite/:code` route already exists; a
+  pool-scoped link is the same signed code with `pool` set
+  (multi-use-until-rotated already supported). Landing-experience detail folds
+  into the explainer/simplification proposal ([[pools-invites-explainer]]).
+- **Sessions ("don't log in too often") — Auth0 tenant config, documented:**
+  Refresh Token **Absolute Lifetime = 90 days**, **Inactivity/Idle = 30 days**,
+  rotation on. SPA already uses rotating refresh tokens.
+- **i18n:** new funnel + dead-end copy in **EN + HU now**; leave the old
+  prod-auth-bar English deferral alone (out of scope).
+- **Hard gate (documented fallback, NOT built):** thread the invite code through
+  the Auth0 `/authorize` request and validate its HMAC signature in an Auth0
+  Action that denies login/registration without a valid code. Pull this only if
+  junk signups actually materialise.
+
+**Sequencing:** built on top of the (possibly simplified) design from
+[[pools-invites-explainer]] — understand/simplify first, then this funnel.
+
+## Idea (original)
 
 Tighten the site to genuinely invitation-only so that strangers who stumble on
 the URL can't fill up Auth0 with random accounts. Possibly add a private,

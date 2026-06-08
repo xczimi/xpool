@@ -1,39 +1,46 @@
-# Explain pools & invites to users
+# Pools & invites — design explainer + simplification (for the maintainer)
 
-Status: needs-triage
-Area: web / content
+Status: in-progress (branch `pools-invites`)
+Area: docs / design understanding → simplification of crates/api auth + invite/pool
 
-## Idea
+## Reframe (2026-06-07)
 
-Add clearer explanatory content about how **pools** and **invites** work — what
-a pool is, how you join one, how inviting others works, and what's
-private/shared.
+This was originally filed as *end-user* explanatory copy. Corrected intent: it's
+**for the maintainer** — understand how the current pools / invites / auth system
+is actually designed and implemented, then **simplify** it. Not website text.
 
-## Motivation
+(User-facing explanatory copy still happens, but as part of
+[[invite-only-hardening]]'s funnel surfaces — front door + dead-end card — not
+here.)
 
-Pools and invites are core concepts but easy to misunderstand: Is there one big
-pool or many? How do I get someone in? Who can see my tips? The
-`PoolsPage` / `InvitePage` / `InviteClaimPage` exist, but the *mental model*
-isn't spelled out anywhere. Friendly explanation reduces "how does this work?"
-friction and support questions.
+## Deliverable
 
-## Sketch
+1. **Visual explainer** (self-contained HTML) mapping the current design:
+   - the signed HMAC invite code (`crates/api/src/auth/invite_code.rs`) —
+     payload, `UsePolicy` (SingleUse vs MultiUseUntilRotated), expiry, signature
+   - the three-state `CurrentPlayer` (`Visitor` / `AuthenticatedUnclaimed` /
+     `Player`) and the §3 login-resolution algorithm (`auth/resolution.rs`)
+   - the claim / link-second-identity / pool-join flows (`gql/mutation.rs`)
+   - where **Auth0 vs app vs Dynamo** each sit (Auth0 mints identities; the app
+     resolves + lazily creates Person/Player on claim; Dynamo only written on
+     claim/link)
+2. **Simplification proposal** — concrete opportunities that look over-built for
+   a hobby pool, each with a tradeoff. No code changed until approved.
 
-- Short explainer copy on `PoolsPage` (what a pool is, joining, membership) and
-  on `InvitePage` / `InviteClaimPage` (how an invite is created, sent, claimed,
-  and what the recipient gets).
-- Cover the privacy angle in plain words: who can see whose predictions, when
-  (e.g. after deadline), and pool membership visibility.
-- All i18n'd (EN + HU) in `web/src/i18n/strings.ts`.
+## Then
 
-## Open questions
+Once understood + approved → **do the agreed simplifications** on this branch,
+then [[invite-only-hardening]] builds its funnel on the simplified design.
 
-- Does this belong inline on each page, in the Rules page, or a small "Help"
-  section?
-- How much overlaps with [[rules-content]] vs. stays page-local?
+## Known design facts (already traced)
 
-## Related
-
-- [[invite-only-hardening]] — the invite mechanics being explained here are the
-  same ones that PRD tightens; keep the messaging consistent.
-- [[rules-content]] / [[page-one-liner-intros]] — sibling content work.
+- **Dynamo is already safe** from uninvited signups — lazy `Player` creation
+  means an uninvited login writes zero rows; only `claim_invite` / link write.
+- **Bookmarkable invite links already exist** — `invite/:code` →
+  `InviteClaimPage`. A pool-scoped link is the same code with `pool` set.
+- **CLAUDE.md is stale on auth** — it still says "Auth is a dev stub …
+  `X-Dev-Player` header; no real auth yet (deferred)", but a full multi-issuer
+  Auth0 + local-issuer seam is implemented (`crates/api/src/auth/`). Flag for
+  correction.
+- Source design spec: `docs/superpowers/specs/2026-05-30-auth-design.md` (§3
+  resolution, §5 invite/claim/join, §6 identity linking).
