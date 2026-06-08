@@ -84,12 +84,17 @@ normalise_layout() {
 }
 
 # Tag + launch a server pane via its wrapper, recording target/branch.
+# Clear the pane (screen + scrollback) first so a worktree switch or restart
+# never leaves the previous target's output above the new server's logs.
 launch_server() {  # <pane_id> <api|web>
   local pane="$1" role="$2"
   tmux set-option -p -t "$pane" @role "$role"
   tmux set-option -p -t "$pane" @target "$TARGET"
   tmux set-option -p -t "$pane" @branch "$BRANCH"
-  tmux send-keys -t "$pane" "$BIN/run-$role '$TARGET'" C-m
+  # Clear screen, wipe scrollback, then launch — chained in one shell line so
+  # clear-history runs *after* clear (clearing the screen can push the old
+  # visible output into history, which clear-history then drops).
+  tmux send-keys -t "$pane" "clear; tmux clear-history -t '$pane'; $BIN/run-$role '$TARGET'" C-m
 }
 
 # Stop a server pane's process by port + C-c, then wait for the port to free.
