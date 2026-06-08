@@ -111,8 +111,31 @@ contained i18n-only flavour we can adopt anytime — not now.
   **unique-per-pool** label (name slug + short disambiguator) so bare-prefix reliably
   maps to that pool's owner invite.
 
+## Phase 3 clarification — invite is the front door to identity (2026-06-07)
+
+The invite link is intrinsically the entry point to identity: clicking
+`SOUTH7K-AD9X` pushes a logged-out visitor to log in / create an Auth0 user
+(**establish identity**), then the invite **completes** (join pool, record
+`invited_by`). An already-logged-in user skips straight to the simple join.
+
+So identity-establishment is **not** ripped out of the invite flow — only the
+real Auth0 mechanism is deferred. Today's lazy Player-creation is the **dev
+stand-in** for "Auth0 just signed you up"; Auth0 later replaces that stand-in.
+Identity *code* is fair game to restructure; only the *design doc* is
+invite/pool-scoped.
+
+Resulting Phase 3 shape (two entry points off the one stored table):
+- **`join(code)`** — already-logged-in `Player` → resolve code (lenient) → add
+  to pool, set `referrer = invited_by` if unset. The simple case.
+- **`claim_invite(code, nick, fullName)`** — signed-in-but-no-Player-yet
+  (`AuthenticatedUnclaimed`) → establish the Player (dev stand-in for Auth0
+  signup), set `referrer = invited_by`, join. Re-pointed at the table; no HMAC.
+- The HMAC token, `INVITE_CODE_SECRET`, single-use marker, `invite(invitee_id)`,
+  `join_pool`, `rotate_join_code` are all retired; resolution is the stored row.
+
 ## Out of scope here
 
-- Identity / sign-in / Auth0 (assume established).
+- The **real Auth0 sign-in/signup mechanism** (the dev lazy-create stand-in
+  stays until Auth0 lands).
 - The hard Auth0 signup gate (documented fallback in [[invite-only-hardening]]).
 - Renaming `Pool` → `Circle` in code/specs.
