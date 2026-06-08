@@ -56,13 +56,15 @@ Settled in the grilling session that produced this document:
   email+password.** `Identity → Person → Player`; the **Person layer owns
   identity-linking** (explicit confirmation, never silent). See
   [`docs/superpowers/specs/2026-05-30-auth-design.md`](../docs/superpowers/specs/2026-05-30-auth-design.md).
-- **Invite-only**: no open self-signup. Two entry paths — a direct referral, or
-  self-join with a custom-pool join code.
-- **No admin role, no web admin features.** "Admin" = whoever can authenticate
-  as the **result-user** (a `Player` like any other, with an `Identity`).
-  Tournament setup is `xtask`.
-- **Pools** are scoreboard-scoping only, members-only visibility, joined via a
-  shareable join code.
+- **Invite-only**: no open self-signup. A single entry mechanism — a reusable,
+  pool-bound invite (one stored code per member per pool); accepting it is the
+  front door to identity.
+- **Two "admin" notions.** The **result-user** owns the official results (a
+  `Player` like any other, with an `Identity`; tournament setup is `xtask`).
+  Separately, **pool-creation admins** are players the result-user referred
+  directly (the referral-graph root) — only they may create pools (POOL-01/-12).
+- **Pools** are scoreboard-scoping only, members-only visibility, joined by
+  accepting a member's invite.
 - **Dropped**: MOTD banner, Facebook login, the legacy `LocalUserGroup`
   password gate, the bespoke `authcode` magic-link token.
 
@@ -190,22 +192,20 @@ Tests: —
 Note:  New scenario forced by the invite-only + Auth0 combination — Auth0 makes
        authenticating trivial, but authentication ≠ participation.
 
-### AUTH-07 — Player invites a friend (shareable invite link)
-Status: changed · Actor: Player · Screen: Invite
-Given  a logged-in player opens Invite.
-When   they generate an invite link (optionally also entering an email for
-       the app to send via SES).
-Then   a copyable `https://<origin>/invite/<code>` link is shown — the
-       signed `code` carries `{ referrer = inviter, expiry, use-policy }`.
-       The inviter pastes it into any chat. **No pending `Person`/`Player`
-       is created at invite time** — lazy creation happens at claim
-       (AUTH-09).
-Tests: `create_invite_returns_a_signed_link` (api)
-Note:  changed — the legacy generated an authcode token AND an emailed
-       invitation; the rewrite emits a copyable signed link as the
-       primary artifact, with the email as an optional convenience.
-       AUTH-07 and AUTH-11 collapse into one mechanism — the invitee
-       always supplies their own profile.
+### AUTH-07 — Member shares their invite into a pool (shareable link)
+Status: changed · Actor: Pool member · Screen: Invite / Pools
+Given  a logged-in member of a pool opens Invite (every invite is pool-bound).
+When   they share their invite (`createInvite(pool)`).
+Then   a copyable `https://<origin>/invite/<PREFIX-SUFFIX>` link is shown. The
+       code is a **stored, reusable** row `{pool_id, invited_by = me}` in the
+       invite table — not a signed token; a random code that simply isn't in the
+       table is unforgeable. Reusable per member per pool (re-sharing returns the
+       same code). **No pending `Person`/`Player` is created at invite time** —
+       identity is established at accept (AUTH-09).
+Tests: `create_invite_returns_a_nested_link`, `create_invite_is_reused_not_duplicated` (api)
+Note:  changed — retired the signed-HMAC token + `use-policy` and the separate
+       pool join code; one stored, reusable invite table now. AUTH-07 and AUTH-11
+       are one mechanism — the invitee always supplies their own profile.
 
 ### AUTH-08 — Invitee whose email already belongs to a Person becomes a known player
 Status: changed · Actor: Visitor → Player · Screen: Login → Invite claim
@@ -213,26 +213,28 @@ Given  an invite link, opened by someone whose verified email already
        belongs to an existing `Person`.
 When   they authenticate (Auth0 passwordless or Google) and submit
        `claimInvite`.
-Then   no new `Player` is created — the existing `Player` is returned,
-       and the pool (if the code carried one) is joined. The legacy
-       invite-time "this email is already in the system" rejection
-       becomes a claim-time outcome.
+Then   no new `Player` is created — the existing `Player` is returned, the
+       invite's pool is joined, and `invited_by` is recorded as `referrer` if
+       unset. The legacy invite-time "this email is already in the system"
+       rejection becomes an accept-time outcome.
 Tests: `claim_invite_for_existing_person_does_not_duplicate` (api)
 
-### AUTH-09 — Invited friend claims via a passwordless login
-Status: changed · Actor: Invited person · Screen: Login → Invite claim → Profile
-Given  a valid invite code (no pre-existing pending `Person`/`Player`).
+### AUTH-09 — Invited friend accepts via a passwordless login
+Status: changed · Actor: Invited person · Screen: Login → Invite accept → Profile
+Given  a valid invite code (no pre-existing `Person`/`Player`). The invite link
+       is the front door to identity.
 When   the invitee authenticates passwordless with their own verified
        email/phone and submits `claimInvite` with the code + their nick
        + full name.
-Then   a `Person` + `Player` + `Identity` are **created at claim time**;
-       `referrer` is copied from the invite code's payload; the pool is
-       joined if the code carried one; the user lands on Profile.
-Tests: `claim_invite_creates_player_with_referrer` (api)
+Then   a `Person` + `Player` + `Identity` are **created at accept time** (the dev
+       stand-in for Auth0 signup); `referrer` is copied from the invite row's
+       `invited_by`; the invite's pool is joined; the user lands on Profile.
+Tests: `claim_invite_creates_player_with_invited_by_referrer` (api)
 Note:  changed — the legacy used a long-lived `authcode` token + an
        eagerly-created pending row. The rewrite has no pending row
        (lazy) and no app-stored credential — Auth0's verified
-       email/phone is the security boundary.
+       email/phone is the security boundary. An already-signed-in player uses
+       the simpler `join(code)` instead (POOL-02).
 
 ### AUTH-10 — No pending players to hide
 Status: changed · Actor: (system) · Screen: Scoreboard / All Tips
@@ -246,26 +248,26 @@ Note:  changed — replaced the legacy `active` boolean + activation-on-first-pr
        mechanism (`archive/control.py:412`) with lazy creation at claim time
        (AUTH-09).
 
-### AUTH-11 — Self-join with a pool join code (uses the same invite mechanism)
-Status: changed · Actor: Visitor → Player · Screen: Invite claim
-Given  a pool join code (POOL-02) — same shape as a referral invite code,
-       but with `pool` set.
-When   the visitor opens the join link, authenticates passwordless, and
-       submits `claimInvite` with their own nick + full name.
-Then   a `Player` is created via the same lazy path as AUTH-09;
-       `referrer` = the pool's owner; the pool is joined.
-Tests: —
-Note:  changed — folded into AUTH-07's unified mechanism. The asymmetry
-       between "direct referral" and "self-join" disappears; both
-       paths use the same claimInvite flow.
+### AUTH-11 — A reusable invite admits more than one new player
+Status: changed · Actor: Visitor → Player · Screen: Invite accept
+Given  one member's reusable invite into a pool (every invite is pool-bound).
+When   two different visitors each open the link, authenticate passwordless, and
+       submit `claimInvite` with their own nick + full name.
+Then   each is created via the same lazy path as AUTH-09; `referrer` = the
+       invite's `invited_by`; both join the pool. The code is **reusable** — the
+       second accept is not rejected (there is no single-use marker).
+Tests: `reusable_invite_accepts_a_second_distinct_claimer` (api)
+Note:  changed — folded into AUTH-07's unified mechanism. The asymmetry between
+       "direct referral" and "self-join" disappears; codes are reusable per
+       member per pool (Q6), so one link onboards a whole friend group.
 
-### AUTH-12 — Existing person joins a pool by code
+### AUTH-12 — Existing person joins a pool by accepting an invite
 Status: new · Actor: Player · Screen: Join
 Given  the authenticating email already belongs to a `Person`/`Player`.
-When   they use a pool join code.
-Then   **no new `Player`** is created — they are added to the pool's members
-       only.
-Tests: —
+When   they accept an invite code.
+Then   **no new `Player`** is created — they are added to the pool's members and
+       `invited_by` is recorded as `referrer` if unset.
+Tests: `claim_invite_for_existing_person_does_not_duplicate` (api)
 
 ### AUTH-13 — Linking a second identity requires explicit confirmation
 Status: changed · Actor: Player · Screen: Profile
@@ -312,9 +314,9 @@ Tests: —
 Status: dropped · Actor: — · Screen: —
 Legacy `LocalUserGroup` (`archive/model.py:111`) was a named user-group with a
 `root` user and a plaintext **password** — the precursor to Pools. **Dropped.**
-Superseded by `Pool` with an opaque, rotatable join code (POOL-02): a join code
-is single-purpose and not conflated with an auth credential, and nothing is
-stored in plaintext.
+Superseded by `Pool` with reusable stored invites (POOL-02/-03): an invite is
+single-purpose and not conflated with an auth credential, and nothing is stored
+in plaintext.
 Tests: —
 
 ### AUTH-18 — Login via passwordless SMS
@@ -580,29 +582,36 @@ A `Pool` is **scoreboard-scoping only** (`DATA_MODEL.md` §8) — a Player's sco
 is global and computed once; a pool just ranks that score among its members.
 **Entirely new** — absent from the original use cases.
 
-### POOL-01 — Player creates a pool
-Status: new · Actor: Player · Screen: Pools
-Given  a logged-in player.
+### POOL-01 — Admin creates a pool (restricted creation)
+Status: changed · Actor: Admin (Player) · Screen: Pools
+Given  a logged-in **admin** — a player whose `referrer` is the result-user (the
+       referral-graph root; `may_create_pool`). A normal member cannot create
+       pools.
 When   they create a named pool.
-Then   a `Pool` is created with them as **owner and member**; a join code is
-       generated.
-Tests: `create_pool_sets_owner_membership_and_a_join_code` (api) · `pool_round_trip`, `dynamo_pool_round_trip` (storage) · web/e2e/pools.spec.ts
+Then   a `Pool` is created with them as **owner and member**; a unique `prefix`
+       is generated and the owner's invite row (the pool link) is minted.
+Tests: `create_pool_sets_owner_membership_and_a_prefix`, `create_pool_rejected_for_a_non_admin` (api) · `pool_round_trip`, `dynamo_pool_round_trip` (storage) · web/e2e/pools.spec.ts
 
-### POOL-02 — Join a pool with a join code
-Status: new · Actor: Player · Screen: Pools
-Given  a player holds a valid join code.
+### POOL-02 — Join a pool by accepting an invite
+Status: changed · Actor: Player · Screen: Pools
+Given  a player holds a valid invite code (full `PREFIX-SUFFIX` link, bare
+       suffix, or a bare pool prefix → the owner's invite).
 When   they join.
-Then   they are added to the pool's members.
-Tests: `join_adds_a_new_member`, `join_is_idempotent_for_an_existing_member` (domain) · `join_pool_adds_the_caller_via_the_join_code`, `join_pool_rejects_an_unknown_code` (api) · web/e2e/pools.spec.ts
-Note:  The code also bootstraps brand-new players — see AUTH-11/AUTH-12.
+Then   they are added to the pool's members and `invited_by` is recorded as their
+       `referrer` (if unset). Resolution is lenient; a revoked/expired code is
+       refused.
+Tests: `join_adds_a_new_member`, `join_is_idempotent_for_an_existing_member` (domain) · `join_adds_the_caller_and_records_invited_by`, `join_resolves_a_bare_prefix_to_the_owner_invite`, `join_rejects_an_unknown_code` (api) · web/e2e/pools.spec.ts
+Note:  The same code also bootstraps brand-new players — see AUTH-09/AUTH-11/AUTH-12.
 
-### POOL-03 — Owner rotates the join code
-Status: new · Actor: Pool owner · Screen: Pools
-Given  a pool owner.
-When   they rotate the join code.
-Then   a new code is issued; the old code no longer admits anyone. Existing
-       members are unaffected.
-Tests: `set_join_code_replaces_the_code_for_the_owner`, `set_join_code_rejects_a_non_owner` (domain) · `rotate_join_code_changes_the_code_for_the_owner`, `rotate_join_code_rejected_for_a_non_owner` (api)
+### POOL-03 — Member shares / revokes their invite
+Status: changed · Actor: Pool member · Screen: Pools
+Given  a member of a pool.
+When   they share their invite (`createInvite`) — reusable per member per pool,
+       so re-sharing returns the same code — or revoke it (`revokeInvite`).
+Then   a stored invite row is minted/returned (nested `PREFIX-SUFFIX` link), or
+       flagged revoked. A revoked code no longer admits anyone; existing members
+       are unaffected. Rotation = revoke + re-mint. Only the inviter may revoke.
+Tests: `create_invite_is_reused_not_duplicated`, `create_invite_returns_a_nested_link` (api) · `revoke_invite_blocks_further_joins`, `revoke_invite_rejected_for_a_non_owner_of_the_code` (api) · `put_then_get_round_trips_an_invite`, `revoke_invite_marks_it_revoked` (storage)
 
 ### POOL-04 — Owner removes a member
 Status: new · Actor: Pool owner · Screen: Pools
@@ -667,11 +676,12 @@ Tests: `pool_list_multiple` (storage) · `pools_query_returns_only_the_callers_p
 
 ### POOL-12 — The result-user is never a pool owner or member
 Status: new · Actor: (system) · Screen: Pools
-Given  the result-user `Player`.
+Given  the result-user `Player` — the **root of the referral graph**.
 When   pools are created or membership is computed.
 Then   the result-user can never own or belong to a pool — consistent with its
-       exclusion from all player listings.
-Tests: `join_rejects_the_result_user` (domain) · `create_pool_rejected_for_the_result_user` (api)
+       exclusion from all player listings. It is the root that makes others
+       admins (its direct referees), but is never an admin itself.
+Tests: `join_rejects_the_result_user` (domain) · `the_result_user_may_never_create_a_pool`, `may_create_pool_when_referred_by_the_result_user` (domain) · `create_pool_rejected_for_the_result_user` (api)
 
 ---
 

@@ -1,6 +1,6 @@
 # Pools & invites — design explainer + simplification (for the maintainer)
 
-Status: in-progress (branch `pools-invites`)
+Status: **shipped** (2026-06-08, branch `pools-invites`) — see `DESIGN.md` / `PLAN.md`
 Area: docs / design understanding → simplification of crates/api auth + invite/pool
 
 ## Reframe (2026-06-07)

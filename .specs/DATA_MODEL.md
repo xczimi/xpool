@@ -121,14 +121,25 @@ as results land is **FWC26-specific application code** (using `FWC26_RULES.md`
 ## 8. Pools
 
 A `Pool` is **scoreboard scoping only**: `(id, name, owner: Player,
-members: [Player])`. Players make **one global prediction set**; a Player's
-score is computed once. A pool scoreboard ranks that same score among the
-pool's members. The "everyone" scoreboard is the implicit root pool.
+members: [Player], prefix)`. Players make **one global prediction set**; a
+Player's score is computed once. A pool scoreboard ranks that same score among
+the pool's members. The "everyone" scoreboard is the implicit root pool.
 Predictions, results, and the scoring engine are untouched by pools.
 
-Membership is **explicit lists** (no rule-based pools). A Player creates a pool
-and owns it. **Pool membership population/management is a separate concern**,
-out of scope for this model — `Pool` just holds the member list.
+Membership is **explicit lists** (no rule-based pools). Pool **creation is
+restricted** — only an admin (a Player whose `referrer` is the result-user, the
+referral-graph root) may create a pool, and owns it; the result-user never can
+(POOL-12). `prefix` is a cosmetic, unique-per-pool label that fronts the pool's
+invite links (e.g. `SOUTH7K`); a bare prefix resolves to the owner's invite (the
+"pool link").
+
+**Invites are the single membership mechanism** (`Invite` rows, §9): one stored,
+reusable, high-entropy code per member per pool, `{code, pool_id, invited_by,
+created_at, expires_at?, revoked}`. Whoever joins with a code becomes "invited
+by" `invited_by`; the pool's canonical link is the owner's row. `Player.referrer`
+is the *realized* edge, copied from the used code's `invited_by` at join time
+(set once). This replaces the former `pool.join_code` + signed-HMAC invite tokens
+(retired — a random code that simply isn't in the table is unforgeable).
 
 ## 9. Storage layout
 
@@ -147,7 +158,8 @@ Single DynamoDB table, on-demand. Two key zones:
 |---|---|---|
 | Player | `<t>#PLAYER` / `<playerId>` | profile **+ all** MatchPredictions + StandingsPredictions; `person_id`; `referrer`; `version` |
 | Tournament | `<t>#TOURNAMENT` | the GroupGame tree, SingleGames, Teams |
-| Pool | `<t>#POOL` / `<poolId>` | name, owner, member ids |
+| Pool | `<t>#POOL` / `<poolId>` | name, owner, member ids, `prefix` |
+| Invite | `<t>#INVITE` / `<code>` | reusable referral channel: `pool_id`, `invited_by`, `created_at`, `expires_at?`, `revoked` |
 | Scoreboard | `<t>#SCOREBOARD` | materialized `playerId → {stage → score}`; recomputed wholesale on result change (see [`SCORING.md`](./SCORING.md) §8) |
 
 Notes:

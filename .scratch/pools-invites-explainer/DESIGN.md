@@ -1,6 +1,6 @@
 # Invite / referral / pool model — agreed design
 
-Status: agreed (grilled 2026-06-07) · branch `pools-invites` · **not yet implemented**
+Status: **shipped** (2026-06-08) · branch `pools-invites` · agreed (grilled 2026-06-07)
 Supersedes the over-complicated framing in `~/.agent/diagrams/xpool-invites-explainer.html`.
 
 Scope note: **identity / sign-in / Auth0 are out of scope here** (assume identity is

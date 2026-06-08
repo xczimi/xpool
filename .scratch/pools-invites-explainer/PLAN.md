@@ -1,10 +1,15 @@
 # Implementation plan — invite/referral/pool model
 
-Status: **NOT STARTED** · branch `pools-invites` · design in `DESIGN.md`
+Status: **SHIPPED** (2026-06-08) · branch `pools-invites` · design in `DESIGN.md`
 
-Do not start until the user says go. Phases are ordered bottom-up (storage → domain →
-api → web → i18n → docs → e2e) so each layer compiles green before the next. TDD per
-the repo's testing rules: write/extend tests first where practical.
+All phases landed bottom-up (storage → domain → api → web → i18n → docs → e2e), each
+layer green before the next, TDD where practical. Verified: `cargo test --workspace`
+(+ `DYNAMO_TEST=1` storage), `cargo clippy --workspace -- -D warnings`, `npm run build`,
+`npm run lint`, `npm run e2e` (25/25).
+
+One deviation from the bottom-up plan: the `join_code`/`claim_invite_code`/HMAC
+**removals** were deferred from Phases 1–2 into Phase 3 (the API migration), so the
+workspace stayed green at every commit rather than breaking mid-sequence.
 
 ## Phase 0 — Resolve the three open wrinkles (decisions, no code)
 - **POOL-12 ownership:** relax so the admin can own pools, **or** designate a

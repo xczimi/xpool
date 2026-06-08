@@ -83,9 +83,11 @@ client-side. Most screens are a render of one or two cached queries.
 | Mutation | Effect |
 |---|---|
 | `submitGroup(groupId, predictions[], lock)` | save/lock a whole group's predictions in one call |
-| `createPool`, `updatePool` | pools |
+| `createPool`, `updatePool`, `leavePool`, `removeMember`, `deletePool` | pools (creation restricted to admins — POOL-01) |
+| `createInvite(pool)`, `revokeInvite(code)` | mint/reuse or revoke a member's reusable pool invite |
+| `join(code)` | an identified player accepts an invite (lenient resolution) |
+| `claimInvite(code, nick, fullName)` | a not-yet-a-Player accepts an invite — establishes identity + joins |
 | `updateProfile` | profile |
-| `invite` | referral invitation |
 | *(admin set)* | results entry, banner, etc. |
 
 `submitGroup` matches UC-5 ("save submits a whole group together") and the

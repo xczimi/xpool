@@ -161,8 +161,15 @@ reference only.
   `xpool`.
 - i18n is first-class (English + Hungarian) in `web/src/i18n/strings.ts`;
   `.specs/LEGACY_I18N.md` is the legacy-wording reference.
-- Auth is a **dev stub** — the API resolves the current player from an
-  `X-Dev-Player` header; there is no real auth yet (deferred).
+- Auth is a **Bearer-JWT seam** (`crates/api/src/auth/`): multi-issuer
+  (Auth0 + a local issuer), resolving `Identity → Person → Player` into a
+  three-state `CurrentPlayer` (`Visitor` / `AuthenticatedUnclaimed` / `Player`).
+  The `X-Dev-Player` header is gone — local dev mints local-issuer JWTs via the
+  `/api/dev/login` endpoint (one code path). The **real Auth0 sign-in/signup is
+  still deferred**; today a not-yet-a-Player who accepts an invite is
+  lazy-created at accept time (`claimInvite`) as the dev stand-in for Auth0
+  signup. The invite link is the front door to identity — see
+  `.scratch/pools-invites-explainer/DESIGN.md`.
 
 ## Working agreement
 
