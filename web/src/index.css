@@ -68,6 +68,9 @@
   --text-on-dark:   #1c1813;
   --flash-bg:       #fdf3dc;
   --flash-border:   var(--accent-dim);
+  /* Text drawn on an accent fill (e.g. the active mode button). On light
+     surfaces --bg-deep is near-white, so override to dark ink for contrast. */
+  --accent-ink:     #1c1813;
 }
 
 /* Soften the CRT scanline on light surfaces (the dark overlay is too heavy). */
