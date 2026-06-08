@@ -51,29 +51,51 @@ fn outcome_sign(home: u8, away: u8) -> std::cmp::Ordering {
     home.cmp(&away)
 }
 
+/// Which components of a per-match score were earned (`SCORING.md` §3). Each
+/// flag drives a fixed point award: `exact_home`/`exact_away` → `exact_score_point`,
+/// `outcome` → `outcome_point`. Exposed so callers can show *how* a score was
+/// earned without re-deriving the rule.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct MatchScoreParts {
+    /// Home score matched exactly, or both sides scored ≥ threshold (4-goal rule).
+    pub exact_home: bool,
+    /// Away score matched exactly, or both sides scored ≥ threshold (4-goal rule).
+    pub exact_away: bool,
+    /// Correct outcome (win / draw / loss).
+    pub outcome: bool,
+}
+
+/// Decompose a per-match score into its components (`SCORING.md` §3). The
+/// per-side, symmetric 4-goal rule treats a side as exact when both predicted
+/// and actual are ≥ `high_scoring_threshold`.
+pub fn score_match_parts(
+    p: &MatchPrediction,
+    r: &MatchPrediction,
+    c: &ScoringConfig,
+) -> MatchScoreParts {
+    let thr = c.high_scoring_threshold;
+    MatchScoreParts {
+        exact_home: p.home_score == r.home_score || (p.home_score >= thr && r.home_score >= thr),
+        exact_away: p.away_score == r.away_score || (p.away_score >= thr && r.away_score >= thr),
+        outcome: outcome_sign(p.home_score, p.away_score)
+            == outcome_sign(r.home_score, r.away_score),
+    }
+}
+
+impl MatchScoreParts {
+    /// The points these parts are worth under `c`.
+    pub fn points(&self, c: &ScoringConfig) -> i64 {
+        (self.exact_home as i64) * c.exact_score_point
+            + (self.exact_away as i64) * c.exact_score_point
+            + (self.outcome as i64) * c.outcome_point
+    }
+}
+
 /// Per-match points: prediction `p` vs result `r`, both 90-minute scores.
 /// Max `2*exact + outcome`. Implements the per-side, symmetric 4-goal rule
 /// (`SCORING.md` §3).
 pub fn score_match(p: &MatchPrediction, r: &MatchPrediction, c: &ScoringConfig) -> i64 {
-    let thr = c.high_scoring_threshold;
-    let mut pts: i64 = 0;
-
-    // Home side: exact match OR both ≥ threshold (4-goal rule, §3)
-    if p.home_score == r.home_score || (p.home_score >= thr && r.home_score >= thr) {
-        pts += c.exact_score_point;
-    }
-
-    // Away side: exact match OR both ≥ threshold (per-side, symmetric — fixes legacy bug §10 #1)
-    if p.away_score == r.away_score || (p.away_score >= thr && r.away_score >= thr) {
-        pts += c.exact_score_point;
-    }
-
-    // Outcome: correct W/D/L (sign of home − away)
-    if outcome_sign(p.home_score, p.away_score) == outcome_sign(r.home_score, r.away_score) {
-        pts += c.outcome_point;
-    }
-
-    pts
+    score_match_parts(p, r, c).points(c)
 }
 
 /// A prediction is a "perfect" when it scored the maximum (`SCORING.md` §7).
@@ -393,32 +415,93 @@ pub fn rank_group(
     rank_tied(&teams, &all_stats, games, predictions, draw_order)
 }
 
-/// Standings bonus: `standings_pair_point` per team-pair whose relative order
-/// in `predicted` matches `official` (`SCORING.md` §4).
-pub fn standings_bonus(predicted: &[TeamId], official: &[TeamId], c: &ScoringConfig) -> i64 {
-    let mut bonus: i64 = 0;
+/// Count team-pairs whose relative order in `predicted` matches `official`,
+/// and the total comparable pairs. `(correct, total)` — the standings bonus is
+/// `correct * standings_pair_point` (`SCORING.md` §4).
+pub fn standings_pairs(predicted: &[TeamId], official: &[TeamId]) -> (usize, usize) {
+    let mut correct = 0;
+    let mut total = 0;
 
-    // For every pair (i, j) where i < j in one ordering, check if same relative order in other.
+    // For every pair (i, j) with i < j in `official` (a ranks above b), check
+    // whether `predicted` keeps the same relative order.
     for i in 0..official.len() {
         for j in (i + 1)..official.len() {
-            let team_a = &official[i]; // official: a ranks above b
-            let team_b = &official[j];
-
-            // Find positions in predicted
-            let pos_a = predicted.iter().position(|t| t == team_a);
-            let pos_b = predicted.iter().position(|t| t == team_b);
-
+            let pos_a = predicted.iter().position(|t| t == &official[i]);
+            let pos_b = predicted.iter().position(|t| t == &official[j]);
             if let (Some(pa), Some(pb)) = (pos_a, pos_b) {
-                // In official, a (at pos i) is before b (at pos j), i.e., official order = a > b
-                // In predicted, same order iff pa < pb
+                total += 1;
                 if pa < pb {
-                    bonus += c.standings_pair_point;
+                    correct += 1;
                 }
             }
         }
     }
 
-    bonus
+    (correct, total)
+}
+
+/// Standings bonus: `standings_pair_point` per team-pair whose relative order
+/// in `predicted` matches `official` (`SCORING.md` §4).
+pub fn standings_bonus(predicted: &[TeamId], official: &[TeamId], c: &ScoringConfig) -> i64 {
+    standings_pairs(predicted, official).0 as i64 * c.standings_pair_point
+}
+
+/// How a player's standings bonus for one group was earned (before multiplier).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct StandingsBreakdown {
+    /// Pairs ordered correctly vs the official final table.
+    pub pairs_correct: usize,
+    /// Total comparable pairs (the maximum achievable).
+    pub pairs_total: usize,
+    /// Raw bonus points (`pairs_correct * standings_pair_point`), pre-multiplier.
+    pub bonus: i64,
+}
+
+/// Score one player's standings prediction for a leaf group against the
+/// official outcome — the per-group sibling of the standings block inside
+/// `score_leaf_group`, exposed so the API can show the bonus transparently.
+///
+/// Returns `None` when the group carries no standings, when either side's
+/// standings prediction is not yet effective-locked (so the bonus isn't
+/// scoreable), or when there is no comparable ranking. Both the official and
+/// predicted final orders are derived from match scores via `rank_group`, the
+/// same way the scoreboard computes them.
+pub fn standings_score(
+    group: &GroupGame,
+    games: &[&SingleGame],
+    prediction: &Player,
+    result: &Player,
+    now: DateTime<Utc>,
+    deadline: DateTime<Utc>,
+    c: &ScoringConfig,
+) -> Option<StandingsBreakdown> {
+    if !group.carries_standings {
+        return None;
+    }
+    let pred_sp = prediction.standings_prediction(&group.id)?;
+    let result_sp = result.standings_prediction(&group.id)?;
+
+    // Both standings must be effective-locked — the same gate `score_leaf_group`
+    // applies, so this reconciles with the scoreboard.
+    let r_locked = effective_locked(result_sp.locked, now, deadline, !result_sp.ordering.is_empty());
+    let p_locked = effective_locked(pred_sp.locked, now, deadline, !pred_sp.ordering.is_empty());
+    if !r_locked || !p_locked {
+        return None;
+    }
+
+    let official = rank_group(group, games, &result_mp_refs(result, games), &result_sp.draw_order);
+    let predicted = rank_group(
+        group,
+        games,
+        &result_mp_refs(prediction, games),
+        &pred_sp.draw_order,
+    );
+    let (pairs_correct, pairs_total) = standings_pairs(&predicted, &official);
+    Some(StandingsBreakdown {
+        pairs_correct,
+        pairs_total,
+        bonus: pairs_correct as i64 * c.standings_pair_point,
+    })
 }
 
 // ─── Tournament scoring internals ───────────────────────────────────────────
@@ -467,53 +550,10 @@ fn score_leaf_group(
         }
     }
 
-    // Standings bonus (if group carries standings)
-    if group.carries_standings {
-        let pred_sp = prediction.standings_prediction(&group.id);
-        let result_sp = result.standings_prediction(&group.id);
-
-        if let (Some(pred_sp), Some(result_sp)) = (pred_sp, result_sp) {
-            // Result standings must be effective-locked — same rule as the
-            // predicted standings below.
-            let r_sp_locked = effective_locked(
-                result_sp.locked,
-                now,
-                deadline,
-                !result_sp.ordering.is_empty(),
-            );
-            if !r_sp_locked {
-                return raw; // no bonus
-            }
-            // Predicted standings must be effective-locked
-            let p_locked =
-                effective_locked(pred_sp.locked, now, deadline, !pred_sp.ordering.is_empty());
-            if !p_locked {
-                return raw; // no bonus
-            }
-
-            // Compute official standings from result's predictions via rank_group
-            let official_ranking = rank_group(
-                group,
-                games,
-                &result_mp_refs(result, games),
-                &result_sp.draw_order,
-            );
-            // Compute predicted standings from prediction's predictions via rank_group
-            let predicted_ranking = rank_group(
-                group,
-                games,
-                &result_mp_refs(prediction, games),
-                &pred_sp.draw_order,
-            );
-
-            // If we have explicit orderings in the StandingsPredictions, use them directly
-            // when rank_group would produce empty results (e.g., no predictions).
-            // Actually: rank_group uses predictions to compute standings, which is what we want.
-            // The StandingsPrediction.ordering is the player's explicit ordering (for display/storage),
-            // but ranking is computed from match results for the bonus comparison.
-            let bonus = standings_bonus(&predicted_ranking, &official_ranking, c);
-            raw += bonus;
-        }
+    // Standings bonus (if group carries standings) — the same computation the
+    // API exposes per group via `standings_score`, so the two never drift.
+    if let Some(sb) = standings_score(group, games, prediction, result, now, deadline, c) {
+        raw += sb.bonus;
     }
 
     raw
@@ -633,5 +673,49 @@ mod unit_tests {
     fn standings_bonus_empty_teams() {
         let c = ScoringConfig::default();
         assert_eq!(standings_bonus(&[], &[], &c), 0);
+    }
+
+    fn mp(h: u8, a: u8) -> MatchPrediction {
+        MatchPrediction {
+            game_id: "x".into(),
+            home_score: h,
+            away_score: a,
+            locked: true,
+        }
+    }
+
+    #[test]
+    fn score_match_parts_decompose_and_sum_to_score_match() {
+        let c = ScoringConfig::default();
+        // Right outcome, away exact, home wrong: 0 + 1 + 2 = 3.
+        let parts = score_match_parts(&mp(2, 1), &mp(3, 1), &c);
+        assert_eq!(
+            parts,
+            MatchScoreParts { exact_home: false, exact_away: true, outcome: true }
+        );
+        assert_eq!(parts.points(&c), 3);
+        assert_eq!(parts.points(&c), score_match(&mp(2, 1), &mp(3, 1), &c));
+    }
+
+    #[test]
+    fn score_match_parts_four_goal_rule_counts_a_side_as_exact() {
+        let c = ScoringConfig::default();
+        // Home differs (5 vs 4) but both ≥ threshold → exact_home true; away exact;
+        // outcome (home win) correct.
+        let parts = score_match_parts(&mp(5, 0), &mp(4, 0), &c);
+        assert!(parts.exact_home, "4-goal rule makes the home side count");
+        assert!(parts.exact_away);
+        assert!(parts.outcome);
+        assert_eq!(parts.points(&c), 4);
+    }
+
+    #[test]
+    fn standings_pairs_counts_correct_and_total() {
+        let order = |ids: &[&str]| ids.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        let official = order(&["A", "B", "C"]); // 3 pairs: AB, AC, BC
+        // Swap the last two → AB, AC correct, BC reversed → 2 of 3.
+        let predicted = order(&["A", "C", "B"]);
+        assert_eq!(standings_pairs(&predicted, &official), (2, 3));
+        assert_eq!(standings_pairs(&official, &official), (3, 3));
     }
 }

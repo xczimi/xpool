@@ -5,14 +5,19 @@ import { useI18n } from '../i18n/useI18n'
 import {
   ME_QUERY,
   RESULTS_QUERY,
+  STANDINGS_QUERY,
   SUBMIT_GROUP_MUTATION,
+  TIPS_QUERY,
   TOURNAMENT_QUERY,
 } from '../graphql/queries'
 import type {
   GroupGame,
   MatchPrediction,
   Me,
+  PointsBreakdown,
   Round,
+  StandingsScore,
+  Tip,
   Tournament,
 } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
@@ -67,6 +72,56 @@ export function MyTipsPage() {
     }
   }, [activeRound])
 
+  // Round/group selection — derived above the early returns so the tips query
+  // (for per-game earned points) can key off it without a conditional hook.
+  // Group Stage drills into one selected leaf group; knockout rounds show every
+  // one-match group stacked. The `tips` query takes the round node id for
+  // knockout (its resolver walks the subtree) or the leaf group id otherwise.
+  const activeRoundNode = rounds.find((r) => r.round === activeRound) ?? null
+  const roundLeaves = activeRoundNode
+    ? leafGroupsOfRound(activeRoundNode, tournament?.groups ?? [])
+    : []
+  const isGroupStage = activeRound === 'GROUP_STAGE'
+  const activeGroupId = selectedGroupId ?? roundLeaves[0]?.id ?? null
+  const tipsGroupId = isGroupStage ? activeGroupId : (activeRoundNode?.id ?? null)
+
+  // The server computes per-(player, game) earned points + breakdown on the tip
+  // grid, and the per-group standings bonus on the standings query; we reuse
+  // both (same source as All Tips) rather than re-deriving scoring on the
+  // client. Keep only the current player's rows.
+  const myId = meRaw?.__typename === 'Player' ? meRaw.id : null
+  const [tipsResult] = useQuery<{ tips: Tip[] }>({
+    query: TIPS_QUERY,
+    variables: { groupId: tipsGroupId },
+    pause: !label || !tipsGroupId,
+  })
+  const [standingsResult] = useQuery<{ standings: StandingsScore[] }>({
+    query: STANDINGS_QUERY,
+    variables: { groupId: tipsGroupId },
+    pause: !label || !tipsGroupId,
+  })
+  const pointsByGame = useMemo(() => {
+    const map = new Map<
+      string,
+      { breakdown: PointsBreakdown | null; isPerfect: boolean }
+    >()
+    if (!myId) return map
+    for (const tip of tipsResult.data?.tips ?? []) {
+      if (tip.playerId === myId) {
+        map.set(tip.gameId, { breakdown: tip.breakdown, isPerfect: tip.isPerfect })
+      }
+    }
+    return map
+  }, [tipsResult.data, myId])
+  const standingsByGroup = useMemo(() => {
+    const map = new Map<string, StandingsScore>()
+    if (!myId) return map
+    for (const s of standingsResult.data?.standings ?? []) {
+      if (s.playerId === myId) map.set(s.groupId, s)
+    }
+    return map
+  }, [standingsResult.data, myId])
+
   if (!label) return <NeedsLogin />
   if (tournamentResult.fetching || meResult.fetching) return <Loading />
   if (tournamentResult.error)
@@ -78,15 +133,6 @@ export function MyTipsPage() {
     )
   if (!tournament || !me) return <ErrorView />
 
-  const activeRoundNode = rounds.find((r) => r.round === activeRound) ?? null
-  const roundLeaves = activeRoundNode
-    ? leafGroupsOfRound(activeRoundNode, tournament.groups)
-    : []
-
-  // Group Stage drills into one selected group; knockout rounds show every
-  // one-match group stacked.
-  const isGroupStage = activeRound === 'GROUP_STAGE'
-  const activeGroupId = selectedGroupId ?? roundLeaves[0]?.id ?? null
   const shownGroups: GroupGame[] = isGroupStage
     ? roundLeaves.filter((g) => g.id === activeGroupId)
     : roundLeaves
@@ -105,25 +151,42 @@ export function MyTipsPage() {
         onSelectGroup={setSelectedGroupId}
       />
       {shownGroups.length > 0 ? (
-        shownGroups.map((group) => (
-          <GroupTipForm
-            key={group.id}
-            tournament={tournament}
-            group={group}
-            me={me}
-            results={results}
-            onSubmit={async (predictions, standings, lock) => {
-              const res = await submitGroup({
-                groupId: group.id,
-                predictions,
-                standings,
-                lock,
-              })
-              await refetchMe({ requestPolicy: 'network-only' })
-              return res
-            }}
-          />
-        ))
+        shownGroups.map((group) => {
+          // Remount the form when this group's locked state flips, so a
+          // successful Lock re-seeds the form from the refetched `me` (the
+          // server is the source of truth). GroupTipForm seeds its match state
+          // via useState (init runs once); without a key change the locked
+          // flags from the refetch never resynced and the group kept rendering
+          // "Draft" with the Lock button live — inviting a second, rejected
+          // submit. The signature is per-group, so only the locked group
+          // remounts (other groups keep their in-progress drafts).
+          const groupLocked =
+            group.childGameIds.length > 0 &&
+            group.childGameIds.every(
+              (id) => me.matchPredictions.find((p) => p.gameId === id)?.locked,
+            )
+          return (
+            <GroupTipForm
+              key={`${group.id}:${groupLocked ? 'locked' : 'draft'}`}
+              tournament={tournament}
+              group={group}
+              me={me}
+              results={results}
+              pointsByGame={pointsByGame}
+              standings={standingsByGroup.get(group.id) ?? null}
+              onSubmit={async (predictions, standings, lock) => {
+                const res = await submitGroup({
+                  groupId: group.id,
+                  predictions,
+                  standings,
+                  lock,
+                })
+                await refetchMe({ requestPolicy: 'network-only' })
+                return res
+              }}
+            />
+          )
+        })
       ) : (
         <p>{t('selectGroup')}</p>
       )}

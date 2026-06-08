@@ -12,7 +12,7 @@ export const TOURNAMENT_QUERY = `
         id kickoff venue groupId
         home { teamId description }
         away { teamId description }
-        resultPending withinTodayWindow
+        resultPending withinTodayWindow isToday
       }
       teams { id name shortCode flag externalId }
     }
@@ -83,13 +83,27 @@ export const TIPS_QUERY = `
     tips(groupId: $groupId) {
       playerId nick gameId
       prediction { gameId homeScore awayScore locked }
+      points isPerfect
+      breakdown { exactHome exactAway outcome base multiplier points }
+    }
+  }
+`
+
+/** Per-player standings (group-table) bonus for the leaf groups under a node. */
+export const STANDINGS_QUERY = `
+  query Standings($groupId: ID!) {
+    standings(groupId: $groupId) {
+      playerId nick groupId pairsCorrect pairsTotal bonus multiplier points
     }
   }
 `
 
 export const PERFECTS_QUERY = `
   query Perfects {
-    perfects { playerId nick gameId }
+    perfects {
+      playerId nick gameId points
+      breakdown { exactHome exactAway outcome base multiplier points }
+    }
   }
 `
 

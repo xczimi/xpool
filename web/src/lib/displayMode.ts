@@ -36,6 +36,17 @@ export function resolveDisplayMode(
   return mode
 }
 
+/**
+ * Downgrade a mode so it never shows a full team name — names become short
+ * codes. Used where horizontal space is tight (e.g. All Tips column headers,
+ * one per match) so headers stay compact regardless of the global preference.
+ */
+export function compactMode(mode: ConcreteDisplayMode): ConcreteDisplayMode {
+  if (mode === 'name') return 'code'
+  if (mode === 'flag-name') return 'flag-code'
+  return mode
+}
+
 /** A flag image reference — the ISO code drives the asset path, name is alt text. */
 export interface FlagPart {
   iso: string

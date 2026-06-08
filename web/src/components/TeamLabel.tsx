@@ -1,5 +1,5 @@
 import type { Team, TeamSlot } from '../graphql/types'
-import { teamLabelParts } from '../lib/displayMode'
+import { compactMode, teamLabelParts } from '../lib/displayMode'
 import { useResolvedDisplayMode } from '../display/useResolvedDisplayMode'
 
 /** An 8-bit flag image. The ISO code drives the bundled asset path. */
@@ -25,17 +25,23 @@ export function Flag({ iso, name }: { iso: string; name: string }) {
  * `side` controls flag placement for the scoreboard matchup layout: the home
  * team puts its flag on the right (next to the centre dash), the away team on
  * the left. Omit `side` (single-team contexts) to keep the flag on the left.
+ *
+ * `compact` forces names down to short codes (see `compactMode`) for dense,
+ * space-constrained contexts — the flag/flag-only modes are unaffected.
  */
 export function TeamLabel({
   slot,
   teams,
   side,
+  compact,
 }: {
   slot: TeamSlot
   teams: Map<string, Team>
   side?: 'home' | 'away'
+  compact?: boolean
 }) {
-  const mode = useResolvedDisplayMode()
+  const resolved = useResolvedDisplayMode()
+  const mode = compact ? compactMode(resolved) : resolved
   const { flag, text } = teamLabelParts(slot, teams, mode)
   const flagEl = flag && <Flag iso={flag.iso} name={flag.name} />
   const textEl = text && <span className="team-label-text">{text}</span>
@@ -60,24 +66,29 @@ export function TeamLabel({
  * A home–away matchup, scoreboard style: the home team hugs the centre dash
  * from the right, the away team from the left, and the dash sits in a fixed
  * centre column so it lines up vertically across rows (`1fr auto 1fr`).
+ *
+ * `compact` is forwarded to both team labels (names → codes) for dense layouts
+ * such as the All Tips column headers.
  */
 export function Matchup({
   home,
   away,
   teams,
+  compact,
 }: {
   home: TeamSlot
   away: TeamSlot
   teams: Map<string, Team>
+  compact?: boolean
 }) {
   return (
     <span className="matchup">
       <span className="matchup-home">
-        <TeamLabel slot={home} teams={teams} side="home" />
+        <TeamLabel slot={home} teams={teams} side="home" compact={compact} />
       </span>
       <span className="matchup-sep">–</span>
       <span className="matchup-away">
-        <TeamLabel slot={away} teams={teams} side="away" />
+        <TeamLabel slot={away} teams={teams} side="away" compact={compact} />
       </span>
     </span>
   )

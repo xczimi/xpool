@@ -5,6 +5,8 @@ import type {
   GroupGame,
   MatchPrediction,
   Player,
+  PointsBreakdown,
+  StandingsScore,
   Tournament,
 } from '../../graphql/types'
 import { byKickoff, teamIndex } from '../../lib/format'
@@ -13,6 +15,7 @@ import {
   computeStandings,
 } from '../../lib/standings'
 import { Matchup } from '../../components/TeamLabel'
+import { PointsBadge } from '../../components/PointsBadge'
 import { StandingsTable, PredictedStandingsEditor } from './StandingsTables'
 
 interface PredictionInput {
@@ -44,6 +47,8 @@ export function GroupTipForm({
   group,
   me,
   results,
+  pointsByGame,
+  standings,
   onSubmit,
 }: {
   tournament: Tournament
@@ -51,6 +56,13 @@ export function GroupTipForm({
   me: Player
   /** The result user's locked match predictions — official scores. */
   results: MatchPrediction[]
+  /** gameId → earned-points breakdown for the current player (server-computed). */
+  pointsByGame?: Map<
+    string,
+    { breakdown: PointsBreakdown | null; isPerfect: boolean }
+  >
+  /** This player's standings bonus for the group, once scoreable. */
+  standings?: StandingsScore | null
   onSubmit: (
     predictions: PredictionInput[],
     standings: StandingsInput | null,
@@ -204,6 +216,7 @@ export function GroupTipForm({
             <th className="col-match">{t('match')}</th>
             <th>{t('prediction')}</th>
             <th>{t('result')}</th>
+            <th>{t('points')}</th>
           </tr>
         </thead>
         <tbody>
@@ -216,22 +229,44 @@ export function GroupTipForm({
                   <Matchup home={game.home} away={game.away} teams={teams} />
                 </td>
                 <td className="score-cell">
-                  <ScoreInput
-                    value={m.homeScore}
-                    disabled={matchLocked}
-                    onChange={(v) => setScore(game.id, 'homeScore', v)}
-                  />
-                  <span>:</span>
-                  <ScoreInput
-                    value={m.awayScore}
-                    disabled={matchLocked}
-                    onChange={(v) => setScore(game.id, 'awayScore', v)}
-                  />
+                  {matchLocked ? (
+                    // A locked prediction is settled — show it as plain text, not
+                    // dead form controls.
+                    <span className="score-locked">
+                      {m.homeScore === '' ? '–' : m.homeScore} :{' '}
+                      {m.awayScore === '' ? '–' : m.awayScore}
+                    </span>
+                  ) : (
+                    <>
+                      <ScoreInput
+                        value={m.homeScore}
+                        onChange={(v) => setScore(game.id, 'homeScore', v)}
+                      />
+                      <span>:</span>
+                      <ScoreInput
+                        value={m.awayScore}
+                        onChange={(v) => setScore(game.id, 'awayScore', v)}
+                      />
+                    </>
+                  )}
                 </td>
                 <td>
                   {(() => {
                     const r = resultsByGame.get(game.id)
                     return r ? `${r.homeScore}–${r.awayScore}` : '—'
+                  })()}
+                </td>
+                <td>
+                  {(() => {
+                    const pt = pointsByGame?.get(game.id)
+                    return pt?.breakdown ? (
+                      <PointsBadge
+                        breakdown={pt.breakdown}
+                        isPerfect={pt.isPerfect}
+                      />
+                    ) : (
+                      '—'
+                    )
                   })()}
                 </td>
               </tr>
@@ -255,6 +290,14 @@ export function GroupTipForm({
           teams={teams}
         />
       </div>
+
+      {group.carriesStandings && standings && (
+        <p className="standings-bonus">
+          <strong>{t('standingsBonus')}:</strong>{' '}
+          {standings.pairsCorrect}/{standings.pairsTotal} {t('pairsCorrect')} —{' '}
+          {standings.bonus} × {standings.multiplier} = <strong>{standings.points}</strong>
+        </p>
+      )}
 
       {!readOnly && (
         <div className="tip-actions">
@@ -282,19 +325,13 @@ export function GroupTipForm({
 
 function ScoreInput({
   value,
-  disabled,
   onChange,
 }: {
   value: string
-  disabled: boolean
   onChange: (v: string) => void
 }) {
   return (
-    <select
-      value={value}
-      disabled={disabled}
-      onChange={(e) => onChange(e.target.value)}
-    >
+    <select value={value} onChange={(e) => onChange(e.target.value)}>
       <option value="">–</option>
       {SCORE_OPTIONS.map((n) => (
         <option key={n} value={n}>

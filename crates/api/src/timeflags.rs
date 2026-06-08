@@ -38,6 +38,14 @@ pub fn within_today_window(kickoff: DateTime<Utc>, now: DateTime<Utc>) -> bool {
     (kickoff - now).abs() <= TODAY_WINDOW
 }
 
+/// A match kicks off on the current (UTC) calendar day. The Today screen shows a
+/// ±2-day window; this narrower flag lets the SPA highlight the matches that are
+/// *actually* today. UTC-day equality keeps it server-authoritative and consistent
+/// with the `XPOOL_NOW` / `X-Dev-Now` clock seam.
+pub fn is_today(kickoff: DateTime<Utc>, now: DateTime<Utc>) -> bool {
+    kickoff.date_naive() == now.date_naive()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -108,5 +116,16 @@ mod tests {
         assert!(within_today_window(t("2026-06-21T12:00:00Z"), now));
         assert!(within_today_window(t("2026-06-19T12:00:00Z"), now));
         assert!(!within_today_window(t("2026-06-23T13:00:00Z"), now));
+    }
+
+    #[test]
+    fn is_today_is_same_utc_calendar_day() {
+        let now = t("2026-06-20T12:00:00Z");
+        // Same UTC day, any time within it.
+        assert!(is_today(t("2026-06-20T00:30:00Z"), now));
+        assert!(is_today(t("2026-06-20T22:00:00Z"), now));
+        // Adjacent days are within the ±2-day window but are NOT today.
+        assert!(!is_today(t("2026-06-19T23:59:00Z"), now));
+        assert!(!is_today(t("2026-06-21T00:01:00Z"), now));
     }
 }

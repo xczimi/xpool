@@ -7,7 +7,7 @@
 use crate::auth::CurrentPlayer;
 use crate::gql::types::*;
 use async_graphql::{Context, Object};
-use domain::scoring::{is_perfect, ScoringConfig};
+use domain::scoring::{score_match_parts, standings_score, ScoringConfig};
 use std::collections::HashMap;
 use std::sync::Arc;
 use storage::Repository;
@@ -23,6 +23,27 @@ fn repo<'a>(ctx: &'a Context<'_>) -> &'a dyn Repository {
 /// The request's `now` (the clock seam — `.specs/TESTING.md` §3.2).
 fn now(ctx: &Context<'_>) -> chrono::DateTime<chrono::Utc> {
     ctx.data_unchecked::<crate::clock::RequestNow>().0
+}
+
+/// Collect the leaf groups (those that directly hold games) in the subtree
+/// rooted at `node_id`, in tree order. A leaf group passed directly returns
+/// itself; a round node returns its one-match leaf groups.
+fn collect_leaf_groups<'a>(
+    t: &'a domain::Tournament,
+    node_id: &str,
+    out: &mut Vec<&'a domain::GroupGame>,
+) {
+    let Some(g) = t.groups.get(node_id) else {
+        return;
+    };
+    match &g.children {
+        domain::GroupChildren::Games(_) => out.push(g),
+        domain::GroupChildren::Groups(ids) => {
+            for id in ids {
+                collect_leaf_groups(t, id, out);
+            }
+        }
+    }
 }
 
 #[Object]
@@ -180,6 +201,19 @@ impl QueryRoot {
         let deadline = tournament.deadline(&group_id);
         let now = now(ctx);
 
+        // Official results = the result user's predictions. Used to score each
+        // visible tip via the pure domain scoring functions (no domain logic
+        // here — just the lookup + call). Absent until the result is entered.
+        let config = ScoringConfig::default();
+        let result_user = players.iter().find(|p| p.is_result_user);
+        let round_of = |game: &domain::SingleGame| {
+            tournament
+                .groups
+                .get(&game.group_id)
+                .map(|g| g.round)
+                .unwrap_or(domain::Round::GroupStage)
+        };
+
         let mut tips = Vec::new();
         for player in &players {
             if player.is_result_user {
@@ -195,6 +229,22 @@ impl QueryRoot {
                         // the match itself kicked off.
                         p.locked || now >= game.kickoff || deadline.is_some_and(|d| now > d)
                     });
+                // Score a visible prediction once the game has a result. By the
+                // time a result exists the match has kicked off, so a scored
+                // tip is always already visible — no hidden info is revealed.
+                let result = result_user.and_then(|r| r.match_prediction(&game.id));
+                let breakdown = match (visible, prediction, result) {
+                    (true, Some(pred), Some(res)) => Some(PointsBreakdown::build(
+                        score_match_parts(pred, res, &config),
+                        config.multiplier(round_of(game)),
+                        &config,
+                    )),
+                    _ => None,
+                };
+                let points = breakdown.as_ref().map(|b| b.points);
+                let is_perfect_tip = breakdown
+                    .as_ref()
+                    .is_some_and(|b| b.base >= config.perfect_threshold);
                 tips.push(Tip {
                     player_id: player.id.clone(),
                     nick: player.nick.clone(),
@@ -204,10 +254,74 @@ impl QueryRoot {
                     } else {
                         None
                     },
+                    points,
+                    is_perfect: is_perfect_tip,
+                    breakdown,
                 });
             }
         }
         Ok(tips)
+    }
+
+    /// Every player's *scoreable* standings (group-table) bonus for the leaf
+    /// groups under `group_id` — the per-(player, group) sibling of the `tips`
+    /// grid. Mirrors the scoreboard's standings computation (`standings_score`),
+    /// so it only appears once both the official table and the player's
+    /// standings prediction are effective-locked. A group-stage leaf id returns
+    /// that one group; a knockout round-node id returns its one-match groups.
+    async fn standings(
+        &self,
+        ctx: &Context<'_>,
+        group_id: String,
+    ) -> async_graphql::Result<Vec<StandingsScore>> {
+        CurrentPlayer::require(ctx)?;
+        let repo = repo(ctx);
+        let tournament = repo
+            .get_tournament()
+            .await?
+            .ok_or_else(|| async_graphql::Error::new("no tournament loaded"))?;
+        let players = repo.list_players().await?;
+        let now = now(ctx);
+        let config = ScoringConfig::default();
+
+        let Some(result_user) = players.iter().find(|p| p.is_result_user) else {
+            return Ok(Vec::new());
+        };
+
+        let mut leaves = Vec::new();
+        collect_leaf_groups(&tournament, &group_id, &mut leaves);
+
+        let mut out = Vec::new();
+        for group in leaves {
+            if !group.carries_standings {
+                continue;
+            }
+            let games = tournament.games_in(&group.id);
+            let deadline = tournament
+                .deadline(&group.id)
+                .unwrap_or(chrono::DateTime::<chrono::Utc>::MAX_UTC);
+            let multiplier = config.multiplier(group.round);
+            for player in &players {
+                if player.is_result_user {
+                    continue;
+                }
+                if let Some(sb) =
+                    standings_score(group, &games, player, result_user, now, deadline, &config)
+                {
+                    out.push(StandingsScore {
+                        player_id: player.id.clone(),
+                        nick: player.nick.clone(),
+                        group_id: group.id.clone(),
+                        pairs_correct: sb.pairs_correct as i64,
+                        pairs_total: sb.pairs_total as i64,
+                        bonus: sb.bonus,
+                        multiplier,
+                        points: sb.bonus * multiplier,
+                    });
+                }
+            }
+        }
+        Ok(out)
     }
 
     /// Every "perfect" (maximum-scoring) prediction across all players (UC-10).
@@ -215,6 +329,16 @@ impl QueryRoot {
         let repo = repo(ctx);
         let players = repo.list_players().await?;
         let config = ScoringConfig::default();
+
+        // The tournament gives each game's round, for the points multiplier.
+        let tournament = repo.get_tournament().await?;
+        let round_of = |game_id: &str| {
+            tournament
+                .as_ref()
+                .and_then(|t| t.games.get(game_id).and_then(|g| t.groups.get(&g.group_id)))
+                .map(|grp| grp.round)
+                .unwrap_or(domain::Round::GroupStage)
+        };
 
         let result_user = match players.iter().find(|p| p.is_result_user) {
             Some(r) => r,
@@ -228,11 +352,18 @@ impl QueryRoot {
             }
             for prediction in &player.match_predictions {
                 if let Some(result) = result_user.match_prediction(&prediction.game_id) {
-                    if is_perfect(prediction, result, &config) {
+                    let breakdown = PointsBreakdown::build(
+                        score_match_parts(prediction, result, &config),
+                        config.multiplier(round_of(&prediction.game_id)),
+                        &config,
+                    );
+                    if breakdown.base >= config.perfect_threshold {
                         perfects.push(Perfect {
                             player_id: player.id.clone(),
                             nick: player.nick.clone(),
                             game_id: prediction.game_id.clone(),
+                            points: breakdown.points,
+                            breakdown,
                         });
                     }
                 }

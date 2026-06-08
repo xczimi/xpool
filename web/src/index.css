@@ -437,6 +437,12 @@ a:hover { color: var(--amber); }
 
 .data-table tr:hover td { background: rgba(255, 140, 0, 0.04); }
 
+/* Matches kicking off today (the Today screen spans ±2 days; these are the
+   ones that are actually today). A left accent bar + tint draws the eye. */
+.data-table tr.is-today td { background: rgba(255, 140, 0, 0.10); }
+.data-table tr.is-today td:first-child { border-left: 3px solid var(--amber); }
+.data-table tr.is-today:hover td { background: rgba(255, 140, 0, 0.16); }
+
 .data-table.compact th,
 .data-table.compact td {
   padding: 6px 8px;
@@ -445,6 +451,92 @@ a:hover { color: var(--amber); }
 .data-table.compact th { font-size: 8px; }
 
 .grid-scroll { overflow-x: auto; }
+
+/* A tip cell that pairs the predicted score with its earned-points badge
+   (All Tips grid). The badge wraps under the score in tight columns. */
+.tip-cell {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Earned points beside a tip — round-multiplied. A perfect gets the bright
+   amber + star treatment so maximum predictions pop out of the grid. The badge
+   is the anchor for the breakdown tooltip (hover or keyboard/tap focus). */
+.points-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: rgba(255, 140, 0, 0.10);
+  color: var(--amber);
+  white-space: nowrap;
+  cursor: help;
+}
+.points-badge.is-perfect {
+  background: rgba(255, 140, 0, 0.22);
+  color: var(--amber-bright);
+}
+
+/* The points value leads and is the prominent element; the component marks
+   trail, smaller and dimmer, as an at-a-glance hint of how it was earned. */
+.pts-value { font-size: 12px; color: var(--amber-bright); }
+.points-badge.is-perfect .pts-value { color: var(--amber-bright); }
+
+/* The three component marks (exact-home / exact-away / outcome): a scored one
+   is bright, an unscored one is dimmed. Full detail lives in the tooltip. */
+.pts-marks { display: inline-flex; gap: 1px; font-size: 7px; }
+.pts-mark { opacity: 0.3; }
+.pts-mark.on { opacity: 1; color: var(--amber-bright); }
+.pts-empty { opacity: 0.5; }
+
+/* The breakdown tooltip — hidden until the badge is hovered or focused
+   (keyboard / tap), then shown as a small panel above the badge. */
+.pts-tip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  display: none;
+  min-width: 180px;
+  padding: 8px;
+  background: var(--bg-card);
+  border: 2px solid var(--bg-card-border);
+  border-radius: 4px;
+  color: var(--amber);
+  font-size: 8px;
+  line-height: 1.5;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+.points-badge:hover .pts-tip,
+.points-badge:focus-within .pts-tip,
+.points-badge:focus .pts-tip { display: block; }
+
+.pts-tip-row { display: flex; gap: 8px; align-items: baseline; }
+.pts-tip-label { flex: 1; }
+.pts-tip-pts { color: var(--amber-bright); }
+.pts-tip-total {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--bg-card-border);
+  color: var(--amber-bright);
+}
+
+/* The standings-bonus line under the My Tips standings tables. */
+.standings-bonus {
+  margin-top: 8px;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--amber);
+}
+.standings-bonus strong { color: var(--amber-bright); }
 
 /* ============================================================================
    SCORE CELLS / INPUTS (the tip-entry mini-display)
@@ -475,6 +567,9 @@ a:hover { color: var(--amber); }
   border-color: var(--amber);
   box-shadow: 0 0 6px rgba(255, 140, 0, 0.4);
 }
+/* A locked prediction is settled — render the score as plain text rather than
+   dead, disabled form controls. */
+.score-locked { letter-spacing: 1px; }
 
 /* ============================================================================
    BUTTONS

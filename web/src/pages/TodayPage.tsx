@@ -112,7 +112,7 @@ export function TodayPage() {
             {games.map((m) => {
               const tip = tipFor.get(m.id)
               return (
-                <tr key={m.id}>
+                <tr key={m.id} className={m.isToday ? 'is-today' : undefined}>
                   <td>{formatKickoff(m.kickoff, locale)}</td>
                   <td>
                     <Matchup home={m.home} away={m.away} teams={teams} />
