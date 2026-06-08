@@ -4,7 +4,7 @@
 //! and `DynamoRepository` bodies are filled by the `storage` subagent (task P3).
 
 use async_trait::async_trait;
-use domain::{Identity, Person, Player, PlayerId, Pool, Round, Tournament};
+use domain::{Identity, Invite, Person, Player, PlayerId, Pool, Round, Tournament};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -48,6 +48,24 @@ pub trait Repository: Send + Sync {
     async fn put_pool(&self, p: &Pool) -> anyhow::Result<()>;
     /// Remove a pool. A no-op if no pool with `id` exists.
     async fn delete_pool(&self, id: &str) -> anyhow::Result<()>;
+
+    // ── Invite table ────────────────────────────────────────────────────────
+    //
+    // Reusable referral channels (`domain::Invite`). Keyed globally by `code`
+    // (the high-entropy suffix is globally unique). A new code that simply does
+    // not exist in this table is unforgeable — no signature needed.
+
+    /// Store (insert or overwrite) an invite row, keyed by `invite.code`.
+    async fn put_invite(&self, invite: &Invite) -> anyhow::Result<()>;
+    /// Fetch an invite by its code. `None` if no such code exists.
+    async fn get_invite(&self, code: &str) -> anyhow::Result<Option<Invite>>;
+    /// Every invite channel into `pool_id` (all members' codes for that pool).
+    async fn list_invites_by_pool(&self, pool_id: &str) -> anyhow::Result<Vec<Invite>>;
+    /// Every invite a given player has minted (their codes across pools).
+    async fn list_invites_by_invited_by(&self, player_id: &str) -> anyhow::Result<Vec<Invite>>;
+    /// Flag an invite revoked (the reusable-code off-switch). A no-op if no
+    /// invite with `code` exists.
+    async fn revoke_invite(&self, code: &str) -> anyhow::Result<()>;
 
     async fn get_identity(
         &self,

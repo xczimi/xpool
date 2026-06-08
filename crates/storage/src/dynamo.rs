@@ -17,6 +17,7 @@
 //! | Player | `<t>#PLAYER` | `<playerId>` | JSON |
 //! | Tournament | `<t>#TOURNAMENT` | `#` | JSON |
 //! | Pool | `<t>#POOL` | `<poolId>` | JSON |
+//! | Invite | `<t>#INVITE` | `<code>` | JSON |
 //! | Scoreboard | `<t>#SCOREBOARD` | `#` | JSON |
 //!
 //! Players additionally store a bare numeric `version` attribute so that a
@@ -35,7 +36,7 @@ use aws_sdk_dynamodb::{
     },
     Client,
 };
-use domain::{Identity, Person, Player, Pool, Tournament};
+use domain::{Identity, Invite, Person, Player, Pool, Tournament};
 
 /// DynamoDB-backed repository. Scoped to `tournament_id` — every per-tournament
 /// key is prefixed `<tournament_id>#…`.
@@ -447,6 +448,48 @@ impl Repository for DynamoRepository {
     async fn delete_pool(&self, id: &str) -> anyhow::Result<()> {
         let pk = format!("{}#POOL", self.t());
         self.delete_item(&pk, id).await
+    }
+
+    // ── Invite table ─────────────────────────────────────────────────────────
+
+    async fn put_invite(&self, invite: &Invite) -> anyhow::Result<()> {
+        let pk = format!("{}#INVITE", self.t());
+        self.put_item_simple(&pk, &invite.code, invite).await
+    }
+
+    async fn get_invite(&self, code: &str) -> anyhow::Result<Option<Invite>> {
+        let pk = format!("{}#INVITE", self.t());
+        self.get_item(&pk, code).await
+    }
+
+    async fn list_invites_by_pool(&self, pool_id: &str) -> anyhow::Result<Vec<Invite>> {
+        // Invites for one tournament share a partition; filter in Rust. The
+        // invite set is small (one row per member per pool).
+        let pk = format!("{}#INVITE", self.t());
+        let invites: Vec<Invite> = self.query_partition(&pk).await?;
+        Ok(invites.into_iter().filter(|i| i.pool_id == pool_id).collect())
+    }
+
+    async fn list_invites_by_invited_by(&self, player_id: &str) -> anyhow::Result<Vec<Invite>> {
+        let pk = format!("{}#INVITE", self.t());
+        let invites: Vec<Invite> = self.query_partition(&pk).await?;
+        Ok(invites
+            .into_iter()
+            .filter(|i| i.invited_by == player_id)
+            .collect())
+    }
+
+    async fn revoke_invite(&self, code: &str) -> anyhow::Result<()> {
+        // Read-modify-write: flip the `revoked` flag in the stored JSON. A
+        // missing code is a no-op (reusable codes have no single-use marker).
+        if let Some(existing) = self.get_invite(code).await? {
+            let revoked = Invite {
+                revoked: true,
+                ..existing
+            };
+            self.put_invite(&revoked).await?;
+        }
+        Ok(())
     }
 
     // ── Identity ───────────────────────────────────────────────────────────

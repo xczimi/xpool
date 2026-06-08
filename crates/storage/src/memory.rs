@@ -5,7 +5,7 @@
 
 use crate::{Repository, Scoreboard};
 use async_trait::async_trait;
-use domain::{Identity, Person, Player, PlayerId, Pool, Tournament};
+use domain::{Identity, Invite, Person, Player, PlayerId, Pool, Tournament};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
@@ -18,6 +18,8 @@ struct Inner {
     players: HashMap<PlayerId, Player>,
     scoreboard: Option<Scoreboard>,
     pools: HashMap<String, Pool>,
+    /// Invite/referral channels, keyed by `Invite::code`.
+    invites: HashMap<String, Invite>,
     /// Keyed `"<provider>#<provider_id>"` → `Identity`.
     identities: HashMap<String, Identity>,
     persons: HashMap<String, Person>,
@@ -130,6 +132,51 @@ impl Repository for InMemoryRepository {
     async fn delete_pool(&self, id: &str) -> anyhow::Result<()> {
         let mut inner = self.inner.lock().unwrap();
         inner.pools.remove(id);
+        Ok(())
+    }
+
+    // ── Invite table ─────────────────────────────────────────────────────────
+
+    async fn put_invite(&self, invite: &Invite) -> anyhow::Result<()> {
+        let mut inner = self.inner.lock().unwrap();
+        inner.invites.insert(invite.code.clone(), invite.clone());
+        Ok(())
+    }
+
+    async fn get_invite(&self, code: &str) -> anyhow::Result<Option<Invite>> {
+        let inner = self.inner.lock().unwrap();
+        Ok(inner.invites.get(code).cloned())
+    }
+
+    async fn list_invites_by_pool(&self, pool_id: &str) -> anyhow::Result<Vec<Invite>> {
+        let inner = self.inner.lock().unwrap();
+        Ok(inner
+            .invites
+            .values()
+            .filter(|i| i.pool_id == pool_id)
+            .cloned()
+            .collect())
+    }
+
+    async fn list_invites_by_invited_by(&self, player_id: &str) -> anyhow::Result<Vec<Invite>> {
+        let inner = self.inner.lock().unwrap();
+        Ok(inner
+            .invites
+            .values()
+            .filter(|i| i.invited_by == player_id)
+            .cloned()
+            .collect())
+    }
+
+    async fn revoke_invite(&self, code: &str) -> anyhow::Result<()> {
+        let mut inner = self.inner.lock().unwrap();
+        if let Some(existing) = inner.invites.get(code) {
+            let revoked = Invite {
+                revoked: true,
+                ..existing.clone()
+            };
+            inner.invites.insert(code.to_owned(), revoked);
+        }
         Ok(())
     }
 
