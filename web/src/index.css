@@ -11,10 +11,18 @@
   --bg-input:       #050508;
   --bg-card-border: #2a1a08;
 
-  /* Amber spectrum (the primary brand colour) */
-  --amber:          #ff8c00;
-  --amber-bright:   #ffd76a;
-  --amber-dim:      #a04400;
+  /* Accent spectrum — the brand colour, themeable via [data-accent].
+     Legacy --amber* names alias the accent so existing var(--amber*) callers
+     (≈47 of them) retheme automatically with zero component churn. */
+  --accent:         #ff8c00;
+  --accent-bright:  #ffd76a;
+  --accent-dim:     #a04400;
+  --amber:          var(--accent);
+  --amber-bright:   var(--accent-bright);
+  --amber-dim:      var(--accent-dim);
+
+  /* Bar surface — slightly darker than --bg-card (used by the auth bar). */
+  --bg-bar:         #0a0a14;
 
   /* LED status indicators */
   --led-green:      #33ff66;
@@ -32,7 +40,6 @@
   --surface:      var(--bg-card);
   --ink:          var(--text-on-dark);
   --muted:        var(--text-dim);
-  --accent:       var(--amber);
   --accent-ink:   var(--bg-deep);
   --border:       var(--bg-card-border);
   --locked:       var(--led-red);
@@ -43,6 +50,38 @@
   font-family: 'VT323', monospace;
   font-size: 18px;
   color: var(--text-on-dark);
+}
+
+/* ── Accent presets. `amber` is the :root baseline and needs no override. ── */
+:root[data-accent='green']   { --accent: #33ff66; --accent-bright: #8effb0; --accent-dim: #14a33d; }
+:root[data-accent='cyan']    { --accent: #21d4fd; --accent-bright: #8be9ff; --accent-dim: #0a7fa0; }
+:root[data-accent='magenta'] { --accent: #ff49d0; --accent-bright: #ffa6ef; --accent-dim: #9c1f86; }
+:root[data-accent='violet']  { --accent: #9d6bff; --accent-bright: #c9b0ff; --accent-dim: #5a3aa0; }
+:root[data-accent='mono']    { --accent: #e8e8f0; --accent-bright: #ffffff; --accent-dim: #8a8a99; }
+
+/* ── Light mode — lightweight inverted palette (warm paper, dark ink). ───── */
+:root[data-theme='light'] {
+  --bg-deep:        #f2eee1;
+  --bg-card:        #fffdf6;
+  --bg-input:       #ffffff;
+  --bg-card-border: #d8c4a0;
+  --bg-bar:         #ece6d4;
+  --text-on-dark:   #1c1813;
+  --text-dim:       #6a5a3a;
+  --flash-bg:       #fdf3dc;
+  --flash-border:   var(--accent-dim);
+}
+
+/* Soften the CRT scanline on light surfaces (the dark overlay is too heavy). */
+:root[data-theme='light'] body {
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0.05) 0,
+      rgba(0, 0, 0, 0.05) 1px,
+      transparent 1px,
+      transparent 4px
+    );
 }
 
 * { box-sizing: border-box; }
@@ -90,7 +129,7 @@ a:hover { color: var(--amber); }
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  background: linear-gradient(180deg, #0e0e1a 0%, #07070d 100%);
+  background: linear-gradient(180deg, var(--bg-card) 0%, var(--bg-deep) 100%);
   border-bottom: 2px solid var(--amber-dim);
   gap: 16px;
   flex-wrap: wrap;
@@ -149,7 +188,7 @@ a:hover { color: var(--amber); }
   gap: 12px;
   flex-wrap: wrap;
   padding: 10px 24px;
-  background: #0a0a14;
+  background: var(--bg-bar);
   border-bottom: 1px solid var(--bg-card-border);
   font-family: 'Share Tech Mono', monospace;
   font-size: 14px;
