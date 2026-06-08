@@ -19,7 +19,7 @@ serde.workspace = true
 serde_json.workspace = true
 clap = { version = "4", features = ["derive"] }
 dotenvy = "0.15"
-rand = "0.8"
+rand = "0.9"
 
 [lib]
 name = "xtask"

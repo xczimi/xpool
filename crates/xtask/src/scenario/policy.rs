@@ -91,7 +91,7 @@ impl Chaos {
 }
 impl ScorelinePolicy for Chaos {
     fn score(&mut self, _ctx: &GameContext) -> (u8, u8) {
-        (self.rng.gen_range(0..=4), self.rng.gen_range(0..=4))
+        (self.rng.random_range(0..=4), self.rng.random_range(0..=4))
     }
 }
 
