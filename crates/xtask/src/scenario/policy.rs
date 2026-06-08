@@ -95,6 +95,41 @@ impl ScorelinePolicy for Chaos {
     }
 }
 
+/// "Realistic": the stronger side usually wins, with a tunable `upset_prob`
+/// (0.0 = strict chalk-with-margins, 1.0 = the weaker side always wins). Never
+/// produces a draw — the favourite (or the upset winner) scores one more.
+pub struct Realistic {
+    rng: StdRng,
+    upset_prob: f64,
+}
+
+impl Realistic {
+    pub fn new(seed: u64, upset_prob: f64) -> Self {
+        Realistic {
+            rng: StdRng::seed_from_u64(seed),
+            upset_prob: upset_prob.clamp(0.0, 1.0),
+        }
+    }
+}
+
+impl ScorelinePolicy for Realistic {
+    fn score(&mut self, ctx: &GameContext) -> (u8, u8) {
+        let home_is_strong = ctx.home_strength >= ctx.away_strength;
+        let upset = self.rng.random::<f64>() < self.upset_prob;
+        // Winner = the strong side unless this is an upset.
+        let home_wins = home_is_strong ^ upset;
+
+        let winner_goals: u8 = self.rng.random_range(1..=3);
+        let loser_goals: u8 = self.rng.random_range(0..winner_goals);
+
+        if home_wins {
+            (winner_goals, loser_goals)
+        } else {
+            (loser_goals, winner_goals)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -154,5 +189,38 @@ mod tests {
             seed_for("chalk", "demo-alan")
         );
         assert_ne!(seed_for("chalk", "demo-ada"), seed_for("chaos", "demo-ada"));
+    }
+
+    #[test]
+    fn realistic_with_zero_upset_always_favours_the_stronger_side() {
+        let mut p = Realistic::new(seed_for("balanced", "demo-ada"), 0.0);
+        for _ in 0..50 {
+            let (h, a) = p.score(&ctx("STRONG", 90, "WEAK", 40));
+            assert!(h > a, "stronger home should win: {h}-{a}");
+            let (h, a) = p.score(&ctx("WEAK", 40, "STRONG", 90));
+            assert!(a > h, "stronger away should win: {h}-{a}");
+        }
+    }
+
+    #[test]
+    fn realistic_is_reproducible_for_a_seed() {
+        let mut a = Realistic::new(seed_for("balanced", "demo-ada"), 0.3);
+        let mut b = Realistic::new(seed_for("balanced", "demo-ada"), 0.3);
+        for _ in 0..50 {
+            assert_eq!(
+                a.score(&ctx("X", 70, "Y", 55)),
+                b.score(&ctx("X", 70, "Y", 55))
+            );
+        }
+    }
+
+    #[test]
+    fn realistic_high_upset_sometimes_flips_the_favourite() {
+        let mut p = Realistic::new(seed_for("balanced", "underdog"), 1.0);
+        // upset_prob = 1.0 → the weaker side always wins.
+        for _ in 0..20 {
+            let (h, a) = p.score(&ctx("STRONG", 90, "WEAK", 40));
+            assert!(a > h, "forced upset: {h}-{a}");
+        }
     }
 }
