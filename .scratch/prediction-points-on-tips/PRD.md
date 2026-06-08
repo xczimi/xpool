@@ -1,7 +1,17 @@
 # Show points earned per prediction, wherever a player's tip is shown
 
-Status: ready-for-agent
+Status: done
 Area: api + web
+
+> **Shipped.** Per-(player, game) earned points are computed server-side via the
+> pure `domain` scoring functions and shown on All Tips, Perfect, and My Tips —
+> with a full component breakdown (exact home / exact away / outcome, the round
+> multiplier) in a hover/tap tooltip, and the per-group **standings bonus**
+> surfaced too (My Tips panel + an All Tips per-player column). Multiplied points
+> reconcile with the scoreboard stage totals. Open questions resolved: multiplied
+> points; full breakdown (not just the number); standings bonus included
+> everywhere; Perfect folded in. Standings stage-split on the scoreboard was left
+> out by decision (the detail lives on the tip pages).
 
 ## Idea
 
