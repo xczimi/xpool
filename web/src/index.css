@@ -839,3 +839,59 @@ button.danger:hover:not(:disabled) {
   align-items: center;
   gap: 16px;
 }
+
+.theme-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.accent-swatches {
+  display: flex;
+  gap: 6px;
+}
+
+.accent-swatch {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.accent-swatch.is-active {
+  border-color: var(--text-on-dark);
+  box-shadow: 0 0 0 2px var(--bg-deep), 0 0 6px currentColor;
+}
+
+.accent-swatch-amber   { background: #ff8c00; color: #ff8c00; }
+.accent-swatch-green   { background: #33ff66; color: #33ff66; }
+.accent-swatch-cyan    { background: #21d4fd; color: #21d4fd; }
+.accent-swatch-magenta { background: #ff49d0; color: #ff49d0; }
+.accent-swatch-violet  { background: #9d6bff; color: #9d6bff; }
+.accent-swatch-mono    { background: #e8e8f0; color: #e8e8f0; }
+
+.mode-toggle {
+  display: flex;
+  border: 1px solid var(--bg-card-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mode-option {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 8px;
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  cursor: pointer;
+}
+
+.mode-option.is-active {
+  background: var(--accent);
+  color: var(--accent-ink);
+}

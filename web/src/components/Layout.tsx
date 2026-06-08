@@ -8,6 +8,7 @@ import { AuthBar } from './AuthBar'
 import { BrandIcon } from './BrandIcon'
 import { DisplayModeSelector } from './DisplayModeSelector'
 import { LanguageSelector } from './LanguageSelector'
+import { ThemeSelector } from './ThemeSelector'
 import { NavBar } from './NavBar'
 import { UnclaimedBanner } from './UnclaimedBanner'
 
@@ -40,6 +41,7 @@ export function Layout() {
         <div className="header-controls">
           <DisplayModeSelector />
           <LanguageSelector />
+          <ThemeSelector />
         </div>
       </header>
 
