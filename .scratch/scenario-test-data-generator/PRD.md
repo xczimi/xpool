@@ -1,6 +1,6 @@
 # Scenario generator — realistic + whacky results/predictions as test data
 
-Status: needs-triage
+Status: done (merge 87a3f14, 2026-06-07) — shipped as `xtask scenario` + `bin/local-scenario`
 Area: crates/xtask / test data
 
 ## Idea
