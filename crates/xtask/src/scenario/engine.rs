@@ -129,8 +129,13 @@ pub fn generate(t: &Tournament, ranking: &Ranking, policy: &mut dyn ScorelinePol
         }
 
         // Group-stage standings: rank each leaf group from the scores just set.
+        // Iterate group ids in sorted order so the `standings_predictions` Vec
+        // is byte-for-byte reproducible (HashMap iteration order is not stable).
         if round == Round::GroupStage {
-            for (gid, group) in &t.groups {
+            let mut group_ids: Vec<&String> = t.groups.keys().collect();
+            group_ids.sort();
+            for gid in group_ids {
+                let group = &t.groups[gid];
                 if group.round != Round::GroupStage || !group.carries_standings {
                     continue;
                 }
