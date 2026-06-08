@@ -164,6 +164,31 @@ reference only.
 - Auth is a **dev stub** — the API resolves the current player from an
   `X-Dev-Player` header; there is no real auth yet (deferred).
 
+## Working agreement
+
+### Branch discipline
+
+`master` is unprotected, but **code changes always go on a branch or git
+worktree — never committed straight to `master`.** Work on a local
+branch/worktree, merge into `master` locally, then push. The *only* changes
+that may land directly on `master` are non-code:
+
+- tooling scripts (`bin/`)
+- specs (`.specs/`)
+- ideas / scratch notes (`.scratch/`)
+- documentation
+
+Anything touching crate (`crates/*`) or web (`web/`) source → branch/worktree
+first. Open a **PR only for complex work** where self-review-as-a-record or CI
+gating adds value; routine changes merge locally (it's a solo project).
+
+### Communication style
+
+Be precise and avoid inferring beyond what's stated. When corrected, **don't
+grovel or self-flagellate** — no "You're right to call me out, let me be precise
+and stop inferring." State the correction plainly ("X is actually Y") and move
+on. The behaviour matters, not an apology for lacking it.
+
 ## Agent skills
 
 ### Issue tracker
