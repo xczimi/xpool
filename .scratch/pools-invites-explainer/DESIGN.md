@@ -90,16 +90,26 @@ contained i18n-only flavour we can adopt anytime — not now.
   in the displayed URL, stored as independent unique codes, lenient entry.
 - Q8 vocabulary → adopt **invite / join / invited-by / sign-in**; keep the word "pool".
 
-## Open wrinkles (resolve during implementation, not user-facing forks)
+## Resolved wrinkles (Phase 0 decisions, 2026-06-07)
 
-- **POOL-12 ownership.** The result-user (admin) is currently barred from owning a
-  pool. "You create the pools" needs either: relax POOL-12 so the admin can own pools,
-  or pools owned by a normal-player you (distinct from the results identity). Decide at
-  build time.
-- **Suffix uniqueness / prefix validation.** Suffix must be globally unique (it's the
-  key). Decide whether a mismatched prefix is an error or just ignored (lean: validate,
-  warn, resolve by suffix).
-- **Code entropy / format.** Pick length + alphabet (lean: ~10 chars base32 ≈ 50 bits).
+- **POOL-12 ownership → keep POOL-12 intact; pool-creation is a referral-graph rule.**
+  The result-user is **never** an owner/member (POOL-12 unchanged) and is the **root of
+  the referral graph**. A player may create pools **iff `player.referrer ==
+  result_user_id`** ("admins"). Admins are seeded with `referrer = result_user` (the
+  one poolless, bootstrap-only referral edge); everyone else is invited *into a pool* by
+  a normal member, so their referrer is a normal player and they **cannot** create
+  pools. This realizes "restricted creation, open inviting" as a data rule, not a
+  hardcoded admin list. `create_pool` gate changes from `!is_result_user` to
+  `referrer == result_user` (and still rejects the result-user itself).
+- **Code entropy / format → 10-char Crockford base32 (~50 bits).** Alphabet
+  `0123456789ABCDEFGHJKMNPQRSTVWXYZ` (no I/L/O/U; no ambiguous 0/O 1/I/l). Suffix is the
+  globally-unique key, generated from OS randomness. Entry is case-insensitive and
+  tolerates dashes/whitespace.
+- **Prefix handling → resolve by suffix; prefix is advisory.** Full `SOUTH7K-AD9XK3P7QT`,
+  bare suffix `AD9XK3P7QT`, or bare prefix `SOUTH7K` all resolve. A mismatched prefix
+  does **not** hard-error — resolve by suffix, surface a soft warning. The prefix is a
+  **unique-per-pool** label (name slug + short disambiguator) so bare-prefix reliably
+  maps to that pool's owner invite.
 
 ## Out of scope here
 
