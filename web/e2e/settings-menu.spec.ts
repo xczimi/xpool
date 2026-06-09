@@ -33,6 +33,21 @@ test('gear reveals a labelled settings panel and closes on Escape / outside clic
   // And the toggles themselves are now reachable.
   await expect(page.getByRole('radiogroup', { name: 'Flag' })).toBeVisible()
 
+  // The language segments show country flags (English → Canada, Hungarian →
+  // Hungary); assert both bundled PNGs actually resolve (naturalWidth > 0).
+  const langGroup = page.getByRole('radiogroup', { name: 'Language' })
+  const langFlags = langGroup.locator('img.team-flag')
+  await expect(langFlags).toHaveCount(2)
+  for (let i = 0; i < 2; i++) {
+    await expect
+      .poll(async () =>
+        langFlags
+          .nth(i)
+          .evaluate((img: HTMLImageElement) => img.naturalWidth),
+      )
+      .toBeGreaterThan(0)
+  }
+
   // Escape closes it.
   await page.keyboard.press('Escape')
   await expect(panel).toBeHidden()

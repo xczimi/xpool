@@ -439,3 +439,12 @@ export const localeNames: Record<Locale, string> = {
   en: 'English',
   hu: 'Magyar',
 }
+
+/**
+ * Flag (ISO code → `/flags/{iso}.png`) shown on each language segment. English
+ * flies the Canadian flag (this pool's home), Hungarian the Hungarian flag.
+ */
+export const localeFlags: Record<Locale, string> = {
+  en: 'ca',
+  hu: 'hu',
+}
