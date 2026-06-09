@@ -10,7 +10,7 @@ import { byKickoff, teamIndex } from '../lib/format'
 import { Matchup } from '../components/TeamLabel'
 import { PointsBadge } from '../components/PointsBadge'
 import { StandingsBadge } from '../components/StandingsBadge'
-import { currentRoundNode, leafGroupsOfRound, roundNodes } from '../lib/rounds'
+import { currentRoundNode, leafGroupsOfRound, visibleRoundNodes } from '../lib/rounds'
 
 /**
  * All Tips (UC-9) — a grid of every player's predictions. Round tabs pick a
@@ -33,8 +33,8 @@ export function AllTipsPage() {
 
   const tournament = tournamentResult.data?.tournament ?? null
   const rounds = useMemo(
-    () => roundNodes(tournament?.groups ?? []),
-    [tournament?.groups],
+    () => visibleRoundNodes(tournament?.groups ?? [], tournament?.games ?? []),
+    [tournament?.groups, tournament?.games],
   )
   const activeRound =
     selectedRound ?? currentRoundNode(rounds)?.round ?? rounds[0]?.round ?? null
@@ -124,6 +124,7 @@ export function AllTipsPage() {
       <h2>{t('allTipsTitle')}</h2>
       <RoundNav
         groups={tournament.groups}
+        games={tournament.games}
         selectedRound={activeRound}
         onSelectRound={(round) => {
           setSelectedRound(round)
