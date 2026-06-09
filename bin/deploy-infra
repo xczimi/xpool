@@ -11,8 +11,14 @@
 #   bin/deploy-api    — ships Lambda code (aws lambda update-function-code).
 #   bin/deploy-spa    — ships the SPA bundle (S3 sync + CF invalidation).
 #
-# Runs with -auto-approve — no interactive yes/no prompt. Run `tofu plan` first
-# if you want to eyeball changes (especially for prod).
+# Interactive: `tofu apply` prompts for confirmation (no -auto-approve). Review
+# the plan — especially for prod — and type `yes` to proceed.
+#
+# Env vars load via a gitignored `env.auto.tfvars` symlink (-> env/<env>.tfvars)
+# that this script repoints on every run. OpenTofu auto-loads any *.auto.tfvars in
+# the working dir, so a bare `tofu plan` / `tofu apply` you run by hand in
+# infrastructure/ picks up the SAME env this script last selected — no forgotten
+# -var-file silently applying default vars against the wrong env.
 #
 # Extra tofu flags after the env are passed through, so e.g.
 #   bin/deploy-infra dev -target=module.cloudfront
@@ -43,5 +49,13 @@ if [[ ! -d .terraform || "$HAVE_KEY" != "$WANT_KEY" ]]; then
     tofu init -reconfigure -backend-config="env/${ENV}.backend.hcl"
 fi
 
-echo "==> tofu apply -auto-approve -var-file=env/${ENV}.tfvars$([ $# -gt 0 ] && echo " $*")"
-tofu apply -auto-approve -var-file="env/${ENV}.tfvars" "$@"
+# Repoint the auto-loaded tfvars symlink at the selected env, the same way the
+# backend key is bound above. `-n` so an existing symlink is replaced, not
+# followed. This is the var-loading half of the env switch; keeping it in lockstep
+# with the backend binding is what makes dev<->prod switching safe.
+[[ -f "env/${ENV}.tfvars" ]] || { echo "missing env/${ENV}.tfvars" >&2; exit 1; }
+ln -sfn "env/${ENV}.tfvars" env.auto.tfvars
+echo "==> env.auto.tfvars -> env/${ENV}.tfvars"
+
+echo "==> tofu apply$([ $# -gt 0 ] && echo " $*")"
+tofu apply "$@"

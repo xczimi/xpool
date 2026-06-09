@@ -27,6 +27,7 @@ web/.e2e-api.log
 # OpenTofu
 infrastructure/.terraform/
 infrastructure/.terraform.lock.hcl
+infrastructure/env.auto.tfvars
 *.tfstate
 *.tfstate.*
 *.tfplan
