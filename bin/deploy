@@ -1,0 +1,75 @@
+#!/bin/bash
+# xpool deploy orchestrator: run the deploy-* steps in the right order, once.
+#
+# Usage: bin/deploy [dev|prod] [steps...]   # default env: dev, default steps: infra api spa
+#
+# Deployment is split across four sibling scripts (the split is deliberate —
+# code is decoupled from infra via ignore_source_code_hash = true, so shipping
+# code needs no tofu run). They share one real ordering dependency: infra must
+# exist before code/data can land on it. This wrapper encodes that order once
+# and passes a single env arg through, so you can't mix `dev` infra with a
+# `prod` data load. It delegates — the four keep working standalone.
+#
+#   infra   bin/deploy-infra   function shell, S3, CloudFront, DynamoDB, … (tofu apply)
+#   api     bin/deploy-api     Lambda code (cargo lambda build + update-function-code)
+#   spa     bin/deploy-spa     SPA bundle (vite build + s3 sync + CF invalidation)
+#   data    bin/deploy-data    tournament data into the live table (xtask import)
+#
+# Steps always run in the canonical order infra -> api -> spa -> data, whatever
+# order you name them in. With no steps named, the default is `infra api spa`
+# (a full code deploy; infra is a fast no-op when unchanged). `data` is opt-in —
+# a re-import is rarely needed and is prod-gated — so name it explicitly:
+#
+#   bin/deploy dev                 # infra api spa  -> dev
+#   bin/deploy prod                # infra api spa  -> prod
+#   bin/deploy prod api spa        # ship code only, skip infra
+#   bin/deploy dev spa             # ship just the SPA (e.g. a web-only change)
+#   bin/deploy prod infra api spa data   # the works
+#
+# For deploy-data's own flags (--seed / --bootstrap / --dry-run), run
+# bin/deploy-data directly — this wrapper only does a plain import.
+#
+# `set -euo pipefail`: a failed step stops the chain. prod confirmations live in
+# the delegates (deploy-infra's `tofu apply`, deploy-data's typed `prod`); a full
+# prod run surfaces each in turn.
+set -euo pipefail
+
+ENV="dev"
+STEPS=()
+for arg in "$@"; do
+    case "$arg" in
+        dev|prod)            ENV="$arg" ;;
+        infra|api|spa|data)  STEPS+=("$arg") ;;
+        *) echo "Usage: $0 [dev|prod] [infra api spa data]" >&2; exit 2 ;;
+    esac
+done
+
+# No steps named -> the default code deploy. `data` stays opt-in.
+[[ ${#STEPS[@]} -eq 0 ]] && STEPS=(infra api spa)
+
+BIN="$(cd "$(dirname "$0")" && pwd)"
+
+# Centralise the AWS env the delegates each default to, so the whole chain runs
+# against one account/region (they read `${AWS_PROFILE:-…}` / `${AWS_REGION:-…}`).
+export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
+export AWS_REGION="${AWS_REGION:-ca-central-1}"
+
+# Was a step requested? (membership test over the parsed STEPS.)
+wants() {
+    local want="$1" s
+    for s in "${STEPS[@]}"; do [[ "$s" == "$want" ]] && return 0; done
+    return 1
+}
+
+# Run only the requested steps, always in dependency order.
+ORDERED=()
+for step in infra api spa data; do
+    wants "$step" && ORDERED+=("$step")
+done
+
+echo "==> deploy env=$ENV  steps=${ORDERED[*]}"
+for step in "${ORDERED[@]}"; do
+    echo "==> bin/deploy-$step $ENV"
+    "$BIN/deploy-$step" "$ENV"
+done
+echo "==> deploy done: $ENV (${ORDERED[*]})"

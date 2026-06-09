@@ -1,7 +1,26 @@
 # Joint `bin/deploy` orchestrator script
 
-Status: needs-triage
+Status: done — shipped as `bin/deploy`
 Area: bin / infra
+
+## Resolution
+
+Shipped `bin/deploy [dev|prod] [infra api spa data]`. A thin wrapper that
+delegates to the four existing scripts in the fixed dependency order
+`infra → api → spa → data` (whatever order the steps are named in; duplicates
+are deduped), passing one env arg through and exporting `AWS_PROFILE` /
+`AWS_REGION` once. `set -euo pipefail` stops the chain on the first failed step.
+
+Open questions, as decided:
+
+- **`data` in the default set?** No — opt-in. Default steps are `infra api spa`
+  (a full code deploy; `infra`'s `tofu apply` is a fast no-op when unchanged).
+  Name `data` explicitly when a re-import is actually needed.
+- **prod confirmations?** Left in the delegates (deploy-infra's `tofu apply`,
+  deploy-data's typed `prod`) — not consolidated. The wrapper stays thin; a full
+  prod run surfaces each prompt in turn.
+- **`--dry-run` pass-through?** Not added — kept the wrapper simple. Run
+  `bin/deploy-data … --dry-run` directly for a data preview.
 
 ## Idea
 
