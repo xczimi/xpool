@@ -1,4 +1,4 @@
-import type { GroupGame, Round } from '../graphql/types'
+import type { GroupGame, Round, SingleGame } from '../graphql/types'
 import type { StringKey } from '../i18n/strings'
 
 /**
@@ -67,6 +67,43 @@ export function roundNodes(groups: GroupGame[]): GroupGame[] {
     )
     .slice()
     .sort((a, b) => ROUND_ORDER.indexOf(a.round) - ROUND_ORDER.indexOf(b.round))
+}
+
+/**
+ * The rounds whose participants are known well enough to predict: a round is
+ * "ready" once at least one of its games has BOTH teams determined (a real
+ * `teamId`, not a knockout placeholder). Group Stage games carry real teams
+ * from import, so it is always ready. Readiness reflects the official results
+ * the API has already resolved onto the games — never a player's own picks.
+ */
+export function readyRounds(
+  groups: GroupGame[],
+  games: SingleGame[],
+): Set<Round> {
+  const roundByGroupId = new Map(groups.map((g) => [g.id, g.round]))
+  const ready = new Set<Round>()
+  for (const game of games) {
+    if (game.home.teamId && game.away.teamId) {
+      const round = roundByGroupId.get(game.groupId)
+      if (round) ready.add(round)
+    }
+  }
+  return ready
+}
+
+/**
+ * `roundNodes` filtered to the rounds ready for predictions (see `readyRounds`).
+ * Drives the round-tab nav and the default round selection so neither ever
+ * surfaces a round whose teams are still unknown. The ready-set only grows as
+ * the tournament progresses, so a visible round never disappears underneath the
+ * user.
+ */
+export function visibleRoundNodes(
+  groups: GroupGame[],
+  games: SingleGame[],
+): GroupGame[] {
+  const ready = readyRounds(groups, games)
+  return roundNodes(groups).filter((node) => ready.has(node.round))
 }
 
 /**

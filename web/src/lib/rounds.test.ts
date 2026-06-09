@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'vitest'
-import type { GroupGame, Round } from '../graphql/types'
+import type { GroupGame, Round, SingleGame } from '../graphql/types'
 import {
   ROUND_ORDER,
   STAGE_MULTIPLIERS,
   chronologicalLeafGroups,
   currentRoundNode,
   leafGroupsOfRound,
+  readyRounds,
   roundLabel,
   roundLabelKey,
   roundNodes,
+  visibleRoundNodes,
 } from './rounds'
 import { catalogues } from '../i18n/strings'
 import type { StringKey } from '../i18n/strings'
@@ -194,5 +196,101 @@ describe('roundLabel', () => {
   it('resolves the Hungarian label when given the hu translator', () => {
     expect(roundLabel('FINAL', huT)).toBe('Döntő')
     expect(roundLabel('GROUP_STAGE', huT)).toBe('Csoportkör')
+  })
+})
+
+describe('readyRounds / visibleRoundNodes', () => {
+  const node = (
+    id: string,
+    round: Round,
+    opts: { childGroupIds?: string[]; childGameIds?: string[] },
+  ): GroupGame => ({
+    id,
+    name: id,
+    parent: null,
+    round,
+    lockMode: 'LOCK_TOGETHER',
+    carriesStandings: false,
+    childGroupIds: opts.childGroupIds ?? [],
+    childGameIds: opts.childGameIds ?? [],
+    deadline: null,
+    deadlinePassed: false,
+  })
+
+  // ROOT -> GROUPSTAGE -> {A,B}; ROOT -> KNOCKOUT -> {R32 -> {M1,M2}, FINAL -> {M3}}
+  const tree: GroupGame[] = [
+    node('ROOT', 'GROUP_STAGE', { childGroupIds: ['GROUPSTAGE', 'KNOCKOUT'] }),
+    node('GROUPSTAGE', 'GROUP_STAGE', { childGroupIds: ['A', 'B'] }),
+    node('KNOCKOUT', 'R32', { childGroupIds: ['R32', 'FINAL'] }),
+    node('R32', 'R32', { childGroupIds: ['M1', 'M2'] }),
+    node('FINAL', 'FINAL', { childGroupIds: ['M3'] }),
+    node('A', 'GROUP_STAGE', { childGameIds: ['g1'] }),
+    node('B', 'GROUP_STAGE', { childGameIds: ['g2'] }),
+    node('M1', 'R32', { childGameIds: ['g3'] }),
+    node('M2', 'R32', { childGameIds: ['g4'] }),
+    node('M3', 'FINAL', { childGameIds: ['g5'] }),
+  ]
+
+  const game = (
+    id: string,
+    groupId: string,
+    homeTeam: string | null,
+    awayTeam: string | null,
+  ): SingleGame => ({
+    id,
+    kickoff: '2026-06-11T12:00:00Z',
+    venue: null,
+    groupId,
+    home: { teamId: homeTeam, description: homeTeam ?? 'TBD' },
+    away: { teamId: awayTeam, description: awayTeam ?? 'TBD' },
+    resultPending: false,
+    withinTodayWindow: false,
+    isToday: false,
+  })
+
+  // Group games always carry real teams; knockout slots start unresolved.
+  const groupOnly: SingleGame[] = [
+    game('g1', 'A', 'ARG', 'BRA'),
+    game('g2', 'B', 'FRA', 'GER'),
+    game('g3', 'M1', null, null),
+    game('g4', 'M2', null, null),
+    game('g5', 'M3', null, null),
+  ]
+
+  it('readyRounds is just GROUP_STAGE when every knockout slot is a placeholder', () => {
+    expect(readyRounds(tree, groupOnly)).toEqual(new Set(['GROUP_STAGE']))
+  })
+
+  it('readyRounds includes a round once one of its games has BOTH teams', () => {
+    const withR32 = groupOnly.map((g) =>
+      g.id === 'g3' ? game('g3', 'M1', 'ARG', 'FRA') : g,
+    )
+    const ready = readyRounds(tree, withR32)
+    expect(ready.has('R32')).toBe(true)
+    // FINAL still has only a placeholder game -> excluded.
+    expect(ready.has('FINAL')).toBe(false)
+  })
+
+  it('readyRounds excludes a round when only ONE slot of its game is known', () => {
+    const halfR32 = groupOnly.map((g) =>
+      g.id === 'g3' ? game('g3', 'M1', 'ARG', null) : g,
+    )
+    expect(readyRounds(tree, halfR32).has('R32')).toBe(false)
+  })
+
+  it('visibleRoundNodes drops not-yet-ready round nodes', () => {
+    expect(visibleRoundNodes(tree, groupOnly).map((n) => n.id)).toEqual([
+      'GROUPSTAGE',
+    ])
+  })
+
+  it('visibleRoundNodes reveals a round once it is ready, keeping ROUND_ORDER', () => {
+    const withR32 = groupOnly.map((g) =>
+      g.id === 'g3' ? game('g3', 'M1', 'ARG', 'FRA') : g,
+    )
+    expect(visibleRoundNodes(tree, withR32).map((n) => n.id)).toEqual([
+      'GROUPSTAGE',
+      'R32',
+    ])
   })
 })
