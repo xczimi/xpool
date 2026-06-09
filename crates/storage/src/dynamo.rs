@@ -467,7 +467,10 @@ impl Repository for DynamoRepository {
         // invite set is small (one row per member per pool).
         let pk = format!("{}#INVITE", self.t());
         let invites: Vec<Invite> = self.query_partition(&pk).await?;
-        Ok(invites.into_iter().filter(|i| i.pool_id == pool_id).collect())
+        Ok(invites
+            .into_iter()
+            .filter(|i| i.pool_id == pool_id)
+            .collect())
     }
 
     async fn list_invites_by_invited_by(&self, player_id: &str) -> anyhow::Result<Vec<Invite>> {

@@ -119,7 +119,9 @@ async fn dynamo_repo() -> storage::DynamoRepository {
         "CURRENT_TOURNAMENT_ID",
         std::env::var("CURRENT_TOURNAMENT_ID").unwrap_or_else(|_| "test".to_owned()),
     );
-    let repo = storage::DynamoRepository::from_env().await.expect("build repo");
+    let repo = storage::DynamoRepository::from_env()
+        .await
+        .expect("build repo");
     repo.ensure_table().await.expect("ensure_table");
     repo
 }

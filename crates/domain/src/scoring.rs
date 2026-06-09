@@ -483,13 +483,23 @@ pub fn standings_score(
 
     // Both standings must be effective-locked — the same gate `score_leaf_group`
     // applies, so this reconciles with the scoreboard.
-    let r_locked = effective_locked(result_sp.locked, now, deadline, !result_sp.ordering.is_empty());
+    let r_locked = effective_locked(
+        result_sp.locked,
+        now,
+        deadline,
+        !result_sp.ordering.is_empty(),
+    );
     let p_locked = effective_locked(pred_sp.locked, now, deadline, !pred_sp.ordering.is_empty());
     if !r_locked || !p_locked {
         return None;
     }
 
-    let official = rank_group(group, games, &result_mp_refs(result, games), &result_sp.draw_order);
+    let official = rank_group(
+        group,
+        games,
+        &result_mp_refs(result, games),
+        &result_sp.draw_order,
+    );
     let predicted = rank_group(
         group,
         games,
@@ -691,7 +701,11 @@ mod unit_tests {
         let parts = score_match_parts(&mp(2, 1), &mp(3, 1), &c);
         assert_eq!(
             parts,
-            MatchScoreParts { exact_home: false, exact_away: true, outcome: true }
+            MatchScoreParts {
+                exact_home: false,
+                exact_away: true,
+                outcome: true
+            }
         );
         assert_eq!(parts.points(&c), 3);
         assert_eq!(parts.points(&c), score_match(&mp(2, 1), &mp(3, 1), &c));
@@ -713,7 +727,7 @@ mod unit_tests {
     fn standings_pairs_counts_correct_and_total() {
         let order = |ids: &[&str]| ids.iter().map(|s| s.to_string()).collect::<Vec<_>>();
         let official = order(&["A", "B", "C"]); // 3 pairs: AB, AC, BC
-        // Swap the last two → AB, AC correct, BC reversed → 2 of 3.
+                                                // Swap the last two → AB, AC correct, BC reversed → 2 of 3.
         let predicted = order(&["A", "C", "B"]);
         assert_eq!(standings_pairs(&predicted, &official), (2, 3));
         assert_eq!(standings_pairs(&official, &official), (3, 3));
