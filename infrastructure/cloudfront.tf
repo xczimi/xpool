@@ -47,7 +47,10 @@ module "cloudfront" {
 
   create_origin_access_control = true
   origin_access_control = {
-    s3_spa = {
+    # OAC name (the map key) must be account-global-unique, so it is
+    # env-namespaced — dev and prod each own their own OAC. A bare "s3_spa"
+    # collided across environments (409 OriginAccessControlAlreadyExists).
+    "xpool-${var.environment}-spa" = {
       description      = "OAC for the xpool SPA bucket"
       origin_type      = "s3"
       signing_behavior = "always"
@@ -62,7 +65,7 @@ module "cloudfront" {
   origin = {
     s3_spa = {
       domain_name           = module.spa_bucket.s3_bucket_bucket_regional_domain_name
-      origin_access_control = "s3_spa"
+      origin_access_control = "xpool-${var.environment}-spa"
     }
     api_lambda = {
       domain_name = local.lambda_origin_host
