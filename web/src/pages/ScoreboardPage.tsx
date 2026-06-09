@@ -15,7 +15,7 @@ import type {
 import { ErrorView, Loading } from '../components/StatusViews'
 import { usePolledQuery } from '../lib/usePolledQuery'
 import { pollIntervalMs } from '../lib/polling'
-import { roundLabel, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
+import { readyRounds, roundLabel, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
 
 /** Ranked leaderboard, overall + per stage, with pool selector (UC-8). */
 export function ScoreboardPage() {
@@ -49,6 +49,15 @@ export function ScoreboardPage() {
   }>({ query: SCOREBOARD_QUERY, variables: { pool: effectivePool } }, interval)
 
   const scoreboard = result.data?.scoreboard ?? null
+
+  // Only show round columns whose teams are known — a future round with no
+  // game determined yet (knockouts before the bracket resolves) is hidden,
+  // mirroring the My Tips / All Tips round tabs. GROUP_STAGE is always ready.
+  const ready = readyRounds(
+    probe.data?.tournament?.groups ?? [],
+    probe.data?.tournament?.games ?? [],
+  )
+  const visibleRounds = ROUND_ORDER.filter((r) => ready.has(r))
 
   if (result.fetching && !scoreboard) return <Loading />
   if (result.error)
@@ -87,7 +96,7 @@ export function ScoreboardPage() {
           <tr>
             <th>{t('rank')}</th>
             <th>{t('player')}</th>
-            {ROUND_ORDER.map((r) => (
+            {visibleRounds.map((r) => (
               <th key={r}>
                 {roundLabel(r, t)}
                 <br />
@@ -108,7 +117,7 @@ export function ScoreboardPage() {
               <tr key={entry.playerId}>
                 <td>{i + 1}</td>
                 <td>{entry.nick}</td>
-                {ROUND_ORDER.map((r) => (
+                {visibleRounds.map((r) => (
                   <td key={r}>{byRound.get(r) ?? 0}</td>
                 ))}
                 <td>
