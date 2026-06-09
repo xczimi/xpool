@@ -64,7 +64,27 @@ export function Layout() {
         {deadEnd ? <NeedsInvite /> : <Outlet />}
       </main>
 
-      <footer className="app-footer">{t('footer')}</footer>
+      <footer className="app-footer">
+        <span className="footer-tagline">{t('footer')}</span>
+        <span className="footer-meta">
+          ©{' '}
+          <a
+            href="https://xczimi.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            xczimi
+          </a>{' '}
+          ·{' '}
+          <a
+            href="https://github.com/xczimi/xpool"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            GitHub
+          </a>
+        </span>
+      </footer>
     </div>
   )
 }

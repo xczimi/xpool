@@ -44,6 +44,23 @@ for (const route of PUBLIC_ROUTES) {
   })
 }
 
+test('footer shows copyright and a link to the GitHub repo', async ({
+  page,
+}) => {
+  await page.goto('/')
+  const footer = page.locator('footer.app-footer')
+  await expect(footer).toContainText('© xczimi')
+
+  const authorLink = footer.getByRole('link', { name: 'xczimi' })
+  await expect(authorLink).toHaveAttribute('href', 'https://xczimi.com/')
+
+  const repoLink = footer.getByRole('link', { name: 'GitHub' })
+  await expect(repoLink).toHaveAttribute(
+    'href',
+    'https://github.com/xczimi/xpool',
+  )
+})
+
 test('the GraphQL API is reached over POST (urql must not use GET)', async ({
   page,
 }) => {
