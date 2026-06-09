@@ -23,7 +23,10 @@ test('a logged-out visitor enters an invite code on Home and is routed to the cl
   await home.getByRole('button', { name: 'Open' }).click()
 
   await expect(page).toHaveURL(/\/invite\/ABC123XYZ0$/)
-  await expect(page.getByText('Log in to claim this invite.')).toBeVisible()
+  // On the claim page a logged-out viewer is invited to establish identity.
+  await expect(
+    page.getByRole('button', { name: 'Continue to join' }),
+  ).toBeVisible()
 
   await expectNoErrorView(page)
   await net.assertNoGraphqlErrors()
