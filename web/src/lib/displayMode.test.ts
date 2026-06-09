@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { Team, TeamSlot } from '../graphql/types'
 import {
-  DISPLAY_MODES,
-  resolveDisplayMode,
+  axesFromLegacy,
+  composeDisplayMode,
+  FLAG_MODES,
+  TEXT_MODES,
   teamLabelParts,
+  type ConcreteDisplayMode,
+  type FlagMode,
+  type TextMode,
 } from './displayMode'
 
 function team(over: Partial<Team>): Team {
@@ -24,31 +29,61 @@ function slot(over: Partial<TeamSlot>): TeamSlot {
 const teams = new Map<string, Team>([['BRA', team({})]])
 const noFlag = new Map<string, Team>([['BRA', team({ flag: null })]])
 
-describe('DISPLAY_MODES', () => {
-  it('lists auto first, then the five explicit modes', () => {
-    expect(DISPLAY_MODES).toEqual([
-      'auto',
-      'flag',
-      'code',
-      'name',
-      'flag-name',
-      'flag-code',
-    ])
+describe('FLAG_MODES / TEXT_MODES', () => {
+  it('lists the flag segments on then off', () => {
+    expect(FLAG_MODES).toEqual(['on', 'off'])
+  })
+  it('lists the text segments auto, name, code, off', () => {
+    expect(TEXT_MODES).toEqual(['auto', 'name', 'code', 'off'])
   })
 })
 
-describe('resolveDisplayMode', () => {
-  it('resolves auto to flag on mobile', () => {
-    expect(resolveDisplayMode('auto', true)).toBe('flag')
+describe('composeDisplayMode', () => {
+  // Full (flag x text) x {desktop, mobile} mapping table. `auto` is the only
+  // axis value that depends on the viewport, and it is flag-aware so the label
+  // is never empty.
+  const cases: Array<{
+    flag: FlagMode
+    text: TextMode
+    desktop: ConcreteDisplayMode
+    mobile: ConcreteDisplayMode
+  }> = [
+    { flag: 'on', text: 'auto', desktop: 'flag-name', mobile: 'flag' },
+    { flag: 'on', text: 'name', desktop: 'flag-name', mobile: 'flag-name' },
+    { flag: 'on', text: 'code', desktop: 'flag-code', mobile: 'flag-code' },
+    { flag: 'on', text: 'off', desktop: 'flag', mobile: 'flag' },
+    { flag: 'off', text: 'auto', desktop: 'name', mobile: 'code' },
+    { flag: 'off', text: 'name', desktop: 'name', mobile: 'name' },
+    { flag: 'off', text: 'code', desktop: 'code', mobile: 'code' },
+    // off+off is guarded in the UI; compose stays total and never empty.
+    { flag: 'off', text: 'off', desktop: 'code', mobile: 'code' },
+  ]
+
+  for (const c of cases) {
+    it(`flag=${c.flag} text=${c.text} → ${c.desktop} (desktop) / ${c.mobile} (mobile)`, () => {
+      expect(composeDisplayMode(c.flag, c.text, false)).toBe(c.desktop)
+      expect(composeDisplayMode(c.flag, c.text, true)).toBe(c.mobile)
+    })
+  }
+
+  it('default (on, auto) reproduces today’s `auto`: flag-name desktop, flag-only mobile', () => {
+    expect(composeDisplayMode('on', 'auto', false)).toBe('flag-name')
+    expect(composeDisplayMode('on', 'auto', true)).toBe('flag')
   })
-  it('resolves auto to flag-name on larger screens', () => {
-    expect(resolveDisplayMode('auto', false)).toBe('flag-name')
+})
+
+describe('axesFromLegacy', () => {
+  it('maps each legacy enum value to its (flag, text) axes', () => {
+    expect(axesFromLegacy('auto')).toEqual({ flag: 'on', text: 'auto' })
+    expect(axesFromLegacy('flag')).toEqual({ flag: 'on', text: 'off' })
+    expect(axesFromLegacy('flag-name')).toEqual({ flag: 'on', text: 'name' })
+    expect(axesFromLegacy('flag-code')).toEqual({ flag: 'on', text: 'code' })
+    expect(axesFromLegacy('name')).toEqual({ flag: 'off', text: 'name' })
+    expect(axesFromLegacy('code')).toEqual({ flag: 'off', text: 'code' })
   })
-  it('passes explicit modes through unchanged', () => {
-    for (const m of ['flag', 'code', 'name', 'flag-name', 'flag-code'] as const) {
-      expect(resolveDisplayMode(m, true)).toBe(m)
-      expect(resolveDisplayMode(m, false)).toBe(m)
-    }
+  it('returns null for an unknown legacy value', () => {
+    expect(axesFromLegacy('bogus')).toBeNull()
+    expect(axesFromLegacy('')).toBeNull()
   })
 })
 

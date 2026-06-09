@@ -1,9 +1,11 @@
 import { createContext } from 'react'
-import type { DisplayMode } from '../lib/displayMode'
+import type { FlagMode, TextMode } from '../lib/displayMode'
 
 export interface DisplayModeState {
-  mode: DisplayMode
-  setMode: (mode: DisplayMode) => void
+  flag: FlagMode
+  text: TextMode
+  setFlag: (flag: FlagMode) => void
+  setText: (text: TextMode) => void
 }
 
 export const DisplayModeContext = createContext<DisplayModeState | undefined>(

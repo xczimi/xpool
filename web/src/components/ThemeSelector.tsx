@@ -37,14 +37,14 @@ export function ThemeSelector() {
           />
         ))}
       </div>
-      <div className="mode-toggle" role="radiogroup" aria-label={t('mode')}>
+      <div className="seg-toggle" role="radiogroup" aria-label={t('mode')}>
         {THEME_MODES.map((m) => (
           <button
             key={m}
             type="button"
             role="radio"
             aria-checked={m === mode}
-            className={`mode-option${m === mode ? ' is-active' : ''}`}
+            className={`seg-option${m === mode ? ' is-active' : ''}`}
             onClick={() => setMode(m)}
           >
             {t(MODE_LABEL[m])}

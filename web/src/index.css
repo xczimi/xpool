@@ -178,14 +178,6 @@ a:hover { color: var(--amber); }
   text-transform: uppercase;
 }
 
-.lang-selector {
-  font-family: 'Share Tech Mono', monospace;
-  font-size: 12px;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
 /* ============================================================================
    AUTH BAR
    ============================================================================ */
@@ -1037,14 +1029,16 @@ button.danger:hover:not(:disabled) {
 .accent-swatch-violet  { background: #9d6bff; color: #9d6bff; }
 .accent-swatch-mono    { background: #e8e8f0; color: #e8e8f0; }
 
-.mode-toggle {
+/* Shared segmented toggle — the language, display-flag, display-text and theme
+   pickers all use this so the header controls read as one family. */
+.seg-toggle {
   display: flex;
   border: 1px solid var(--bg-card-border);
   border-radius: 4px;
   overflow: hidden;
 }
 
-.mode-option {
+.seg-option {
   font-family: 'Share Tech Mono', monospace;
   font-size: 11px;
   text-transform: uppercase;
@@ -1056,7 +1050,12 @@ button.danger:hover:not(:disabled) {
   cursor: pointer;
 }
 
-.mode-option.is-active {
+.seg-option.is-active {
   background: var(--accent);
   color: var(--accent-ink);
+}
+
+.seg-option:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
