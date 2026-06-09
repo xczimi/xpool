@@ -48,6 +48,43 @@ test('create a pool and it appears in the list as owner', async ({ page }) => {
   net.assertNoPageErrors()
 })
 
+test('owner renames a pool inline and deletes it via inline confirm (no native popups)', async ({
+  page,
+}) => {
+  const net = watchNetwork(page)
+  const name = `Rename Cup ${Date.now()}`
+  const renamed = `${name} (v2)`
+  await page.goto('/')
+  await devLogin(page, 'demo-grace')
+  await page.goto('/pools')
+
+  await page.getByPlaceholder('e.g. Office League').fill(name)
+  await page.getByRole('button', { name: 'Create pool' }).click()
+  const card = page.locator('.pool-card', { hasText: name })
+  await expect(card).toBeVisible()
+
+  // Inline rename: the title turns into an editor, save commits. Once editing,
+  // the name is an <input value> (not text), so the `hasText` card no longer
+  // matches — locate the (single) open editor directly.
+  await card.getByRole('button', { name: 'Rename' }).click()
+  const renameEditor = page.locator('.pool-rename')
+  const editor = renameEditor.locator('input')
+  await expect(editor).toBeVisible()
+  await editor.fill(renamed)
+  await renameEditor.getByRole('button', { name: 'Save' }).click()
+  const renamedCard = page.locator('.pool-card', { hasText: renamed })
+  await expect(renamedCard).toBeVisible()
+
+  // Inline delete: the Delete button arms a confirm; Confirm removes the card.
+  await renamedCard.getByRole('button', { name: 'Delete' }).click()
+  await renamedCard.getByRole('button', { name: 'Confirm' }).click()
+  await expect(page.locator('.pool-card', { hasText: renamed })).toHaveCount(0)
+
+  await expectNoErrorView(page)
+  await net.assertNoGraphqlErrors()
+  net.assertNoPageErrors()
+})
+
 test('result user bootstraps a pool, invites a player, then hands it over', async ({
   page,
 }) => {
@@ -80,8 +117,9 @@ test('result user bootstraps a pool, invites a player, then hands it over', asyn
   await page.goto('/pools')
   const owned = page.locator('.pool-card', { hasText: name })
   await expect(owned).toBeVisible()
-  page.on('dialog', (d) => void d.accept())
+  // Picking a member arms an inline confirm (no native dialog); confirm it.
   await owned.locator('.handover-select').selectOption('demo-margaret')
+  await owned.getByRole('button', { name: 'Confirm' }).click()
 
   // The result user is now detached: the pool drops off its list.
   await expect(page.locator('.pool-card', { hasText: name })).toHaveCount(0)

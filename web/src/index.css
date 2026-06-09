@@ -651,6 +651,36 @@ button.danger:hover:not(:disabled) {
 }
 .tip-actions { margin-top: 16px; }
 .pool-actions { margin-top: 10px; }
+
+/* inline confirmation (InlineConfirm) — replaces window.confirm() */
+.inline-confirm {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.inline-confirm-q {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+.inline-confirm-q strong { color: var(--amber-bright); font-weight: normal; }
+
+/* inline pool rename — the H3 title turns into an editor */
+.pool-rename {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pool-rename input {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 15px;
+  color: var(--amber-bright);
+  background: var(--bg-input);
+  letter-spacing: 0.5px;
+}
 .reorder button {
   font-size: 9px;
   padding: 4px 6px;

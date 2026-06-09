@@ -73,6 +73,7 @@ const en = {
   retry: 'Retry',
   save: 'Save',
   cancel: 'Cancel',
+  confirmAction: 'Confirm',
   group: 'Group',
   team: 'Team',
   teams: 'Teams',
@@ -129,6 +130,7 @@ const en = {
   selectGroup: 'Select a group',
   saveDraft: 'Save draft',
   lockGroup: 'Lock group',
+  lockConfirm: 'Lock these predictions? Once locked, they cannot be changed.',
   locked: 'Locked',
   draft: 'Draft',
   predictedStandings: 'Predicted standings',
@@ -197,6 +199,7 @@ const en = {
   poolRenamed: 'Pool renamed.',
   transferOwnership: 'Hand over',
   handOverTo: 'Hand over ownership to…',
+  handOverConfirm: 'Hand over ownership to',
   ownershipTransferred: 'Ownership handed over.',
 
   // profile
@@ -280,6 +283,7 @@ const hu: Record<StringKey, string> = {
   retry: 'Újra',
   save: 'Mentés',
   cancel: 'Mégse',
+  confirmAction: 'Megerősítés',
   group: 'Csoport',
   team: 'Csapat',
   teams: 'Csapatok',
@@ -332,6 +336,7 @@ const hu: Record<StringKey, string> = {
   selectGroup: 'Válassz csoportot',
   saveDraft: 'Piszkozat mentése',
   lockGroup: 'Csoport zárása',
+  lockConfirm: 'Lezárod ezeket a tippeket? Lezárás után nem módosíthatók.',
   locked: 'Zárva',
   draft: 'Piszkozat',
   predictedStandings: 'Tippelt sorrend',
@@ -395,6 +400,7 @@ const hu: Record<StringKey, string> = {
   poolRenamed: 'Liga átnevezve.',
   transferOwnership: 'Átadás',
   handOverTo: 'Tulajdon átadása…',
+  handOverConfirm: 'Tulajdon átadása neki:',
   ownershipTransferred: 'Tulajdon átadva.',
 
   profileTitle: 'Adatok',

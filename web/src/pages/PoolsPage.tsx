@@ -17,6 +17,7 @@ import {
 } from '../graphql/queries'
 import type { Me, Pool } from '../graphql/types'
 import { Loading, NeedsLogin } from '../components/StatusViews'
+import { InlineConfirm } from '../components/InlineConfirm'
 import { useDisplayName } from '../hooks/useDisplayName'
 
 /**
@@ -56,6 +57,12 @@ export function PoolsPage() {
   const [flash, setFlash] = useState<string | null>(null)
   // The current member's invite link per pool, revealed by "Share invite".
   const [invites, setInvites] = useState<Record<string, { code: string; link: string }>>({})
+  // Inline rename: the pool being renamed (id) and its draft name.
+  const [renaming, setRenaming] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
+  // Inline hand-over confirmation: the member picked from the select, pending
+  // confirmation, per pool.
+  const [pendingOwner, setPendingOwner] = useState<{ poolId: string; memberId: string } | null>(null)
 
   if (!label) return <NeedsLogin />
   if (poolsResult.fetching && !poolsResult.data) return <Loading />
@@ -94,11 +101,18 @@ export function PoolsPage() {
     setJoinCode('')
   }
 
-  /** Hand a pool over to one of its members (owner-only). */
-  const onTransfer = (poolId: string, newOwner: string) => {
-    if (!newOwner) return
-    if (window.confirm(t('handOverTo'))) {
-      act(transferOwnership({ poolId, newOwner }), 'ownershipTransferred')
+  /** Open the inline rename editor for a pool, seeded with its current name. */
+  const startRename = (pool: Pool) => {
+    setRenaming(pool.id)
+    setRenameDraft(pool.name)
+  }
+
+  /** Commit the inline rename, if the draft is a non-empty change. */
+  const saveRename = (poolId: string) => {
+    const name = renameDraft.trim()
+    setRenaming(null)
+    if (name) {
+      act(updatePool({ id: poolId, name }), 'poolRenamed')
     }
   }
 
@@ -175,8 +189,42 @@ export function PoolsPage() {
             return (
               <li key={pool.id} className="pool-card">
                 <h3>
-                  {pool.name}
-                  {isOwner && <span className="owner-tag"> · {t('ownerTag')}</span>}
+                  {renaming === pool.id ? (
+                    <span className="pool-rename">
+                      <input
+                        autoFocus
+                        aria-label={t('renamePrompt')}
+                        value={renameDraft}
+                        onChange={(e) => setRenameDraft(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveRename(pool.id)
+                          if (e.key === 'Escape') setRenaming(null)
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="primary"
+                        disabled={!renameDraft.trim()}
+                        onClick={() => saveRename(pool.id)}
+                      >
+                        {t('save')}
+                      </button>
+                      <button
+                        type="button"
+                        className="link-button"
+                        onClick={() => setRenaming(null)}
+                      >
+                        {t('cancel')}
+                      </button>
+                    </span>
+                  ) : (
+                    <>
+                      {pool.name}
+                      {isOwner && (
+                        <span className="owner-tag"> · {t('ownerTag')}</span>
+                      )}
+                    </>
+                  )}
                 </h3>
                 <ul className="pool-members">
                   {pool.members.map((m) => (
@@ -211,51 +259,79 @@ export function PoolsPage() {
                     <>
                       <button
                         type="button"
-                        onClick={() => {
-                          const name = window.prompt(t('renamePrompt'), pool.name)
-                          if (name?.trim()) {
-                            act(
-                              updatePool({ id: pool.id, name: name.trim() }),
-                              'poolRenamed',
-                            )
-                          }
-                        }}
+                        disabled={renaming === pool.id}
+                        onClick={() => startRename(pool)}
                       >
                         {t('renamePool')}
                       </button>
-                      {pool.members.some((m) => m !== pool.owner) && (
-                        <select
-                          className="handover-select"
-                          aria-label={t('handOverTo')}
-                          value=""
-                          onChange={(e) => {
-                            onTransfer(pool.id, e.target.value)
-                            e.target.value = ''
-                          }}
-                        >
-                          <option value="" disabled>
-                            {t('transferOwnership')}…
-                          </option>
-                          {pool.members
-                            .filter((m) => m !== pool.owner)
-                            .map((m) => (
-                              <option key={m} value={m}>
-                                {displayName(m)}
-                              </option>
-                            ))}
-                        </select>
+                      {pendingOwner?.poolId === pool.id ? (
+                        <span className="inline-confirm" role="group">
+                          <span className="inline-confirm-q">
+                            {t('handOverConfirm')}{' '}
+                            <strong>{displayName(pendingOwner.memberId)}</strong>?
+                          </span>
+                          <button
+                            type="button"
+                            className="danger"
+                            onClick={() => {
+                              act(
+                                transferOwnership({
+                                  poolId: pool.id,
+                                  newOwner: pendingOwner.memberId,
+                                }),
+                                'ownershipTransferred',
+                              )
+                              setPendingOwner(null)
+                            }}
+                          >
+                            {t('confirmAction')}
+                          </button>
+                          <button
+                            type="button"
+                            className="link-button"
+                            onClick={() => setPendingOwner(null)}
+                          >
+                            {t('cancel')}
+                          </button>
+                        </span>
+                      ) : (
+                        pool.members.some((m) => m !== pool.owner) && (
+                          <select
+                            className="handover-select"
+                            aria-label={t('handOverTo')}
+                            value=""
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                setPendingOwner({
+                                  poolId: pool.id,
+                                  memberId: e.target.value,
+                                })
+                              }
+                              e.target.value = ''
+                            }}
+                          >
+                            <option value="" disabled>
+                              {t('transferOwnership')}…
+                            </option>
+                            {pool.members
+                              .filter((m) => m !== pool.owner)
+                              .map((m) => (
+                                <option key={m} value={m}>
+                                  {displayName(m)}
+                                </option>
+                              ))}
+                          </select>
+                        )
                       )}
-                      <button
-                        type="button"
+                      <InlineConfirm
                         className="danger"
-                        onClick={() => {
-                          if (window.confirm(t('deleteConfirm'))) {
-                            act(deletePool({ id: pool.id }), 'poolDeleted')
-                          }
-                        }}
+                        question={t('deleteConfirm')}
+                        onConfirm={() =>
+                          act(deletePool({ id: pool.id }), 'poolDeleted')
+                        }
                       >
                         {t('deletePool')}
-                      </button>
+                      </InlineConfirm>
                     </>
                   ) : (
                     <button

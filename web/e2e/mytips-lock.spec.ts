@@ -62,10 +62,12 @@ test('My Tips: a locked group renders read-only immediately, with no re-lock', a
   await expect(page.locator('.tip-form .state-draft')).toBeVisible()
   await fillAllScores(page, '2', '0')
 
-  // Lock it — the first (only) submit succeeds.
+  // Lock it — the first (only) submit succeeds. Locking is irreversible, so the
+  // button arms an inline confirm; click Confirm to commit.
   const lockBtn = page.getByRole('button', { name: 'Lock group' })
   await expect(lockBtn).toBeEnabled()
   await lockBtn.click()
+  await page.getByRole('button', { name: 'Confirm' }).click()
 
   // ── The regression assertions: WITHOUT a reload, the form must reflect the
   //    locked state, so the user is never invited to submit an already-locked

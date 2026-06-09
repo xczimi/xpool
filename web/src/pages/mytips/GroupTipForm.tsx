@@ -16,6 +16,7 @@ import {
 } from '../../lib/standings'
 import { Matchup } from '../../components/TeamLabel'
 import { PointsBadge } from '../../components/PointsBadge'
+import { InlineConfirm } from '../../components/InlineConfirm'
 import { StandingsTable, PredictedStandingsEditor } from './StandingsTables'
 
 interface PredictionInput {
@@ -308,15 +309,16 @@ export function GroupTipForm({
           >
             {t('saveDraft')}
           </button>
-          <button
-            type="button"
+          <InlineConfirm
             className="primary"
+            confirmClassName="primary"
             disabled={busy || !allComplete}
             title={!allComplete ? 'All matches must have scores to lock' : ''}
-            onClick={() => submit(true)}
+            question={t('lockConfirm')}
+            onConfirm={() => void submit(true)}
           >
             {t('lockGroup')}
-          </button>
+          </InlineConfirm>
         </div>
       )}
     </div>
