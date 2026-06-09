@@ -19,6 +19,7 @@ export type StringKey = keyof typeof en
 const en = {
   // chrome
   tagline: 'This is our little friendly pool.',
+  settings: 'Settings',
   language: 'Language',
   displayFlag: 'Flag',
   displayText: 'Text',
@@ -232,6 +233,7 @@ const en = {
 
 const hu: Record<StringKey, string> = {
   tagline: 'Ez a mi kis baráti tippelő környezetünk',
+  settings: 'Beállítások',
   language: 'Nyelv',
   displayFlag: 'Zászló',
   displayText: 'Szöveg',

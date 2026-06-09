@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { expectNoErrorView, watchNetwork } from './helpers'
+import { expectNoErrorView, openSettings, watchNetwork } from './helpers'
 
 /**
  * Theme switcher — accent presets + dark/light mode. Both are global
@@ -12,6 +12,7 @@ test('accent + mode switch, drive CSS tokens, and persist', async ({ page }) => 
   await page.goto('/games')
   await expect(page.locator('h2')).toHaveText('Schedule')
   await expectNoErrorView(page)
+  await openSettings(page)
 
   const html = page.locator('html')
   const cssVar = (name: string) =>
@@ -57,6 +58,7 @@ test('system mode follows prefers-color-scheme', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' })
   await page.goto('/games')
   await expect(page.locator('h2')).toHaveText('Schedule')
+  await openSettings(page)
 
   const html = page.locator('html')
 

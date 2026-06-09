@@ -7,9 +7,7 @@ import type { Me } from '../graphql/types'
 import { accessFor } from '../auth/routeAccess'
 import { AuthBar } from './AuthBar'
 import { BrandIcon } from './BrandIcon'
-import { DisplayModeSelector } from './DisplayModeSelector'
-import { LanguageSelector } from './LanguageSelector'
-import { ThemeSelector } from './ThemeSelector'
+import { SettingsMenu } from './SettingsMenu'
 import { NavBar } from './NavBar'
 import { NeedsInvite } from './NeedsInvite'
 
@@ -55,9 +53,7 @@ export function Layout() {
           </div>
         </div>
         <div className="header-controls">
-          <DisplayModeSelector />
-          <LanguageSelector />
-          <ThemeSelector />
+          <SettingsMenu />
         </div>
       </header>
 

@@ -5,6 +5,38 @@ Branch: `picker-redesign`
 Area: web (header chrome)
 Supersedes: `.scratch/language-picker-redesign/PRD.md`
 
+## Iteration (post-review): collapse behind a gear + label every row
+
+After building the toggles inline in the header, two problems surfaced on
+review: (1) the four controls took too much horizontal space by default, and
+(2) an unlabelled toggle gives no hint of what it controls — the `aria-label`
+is invisible.
+
+Both are fixed by a **settings gear**: the chrome preferences collapse into a
+popover opened from a single gear button in the header, and every control sits
+in a **labelled row** (visible text label + its toggle). All four preferences
+move into the panel — language, display flag, display text, theme accent, theme
+mode.
+
+- `SegToggle` / `SegRow` (`components/SegToggle.tsx`) — a reusable labelled
+  segmented toggle (and its bare label-row wrapper, for the accent swatches).
+  The language, display and theme-mode pickers all render through it, so a row
+  is "visible label + `.seg-toggle`" everywhere.
+- `SettingsMenu` (`components/SettingsMenu.tsx`) — the gear button
+  (`aria-haspopup="dialog"` / `aria-expanded`) and the popover (`role="dialog"`,
+  labelled `Settings`). Closes on Escape or an outside `mousedown`. Hosts the
+  `LanguageSelector`, `DisplayModeSelector` and `ThemeSelector`.
+- `Layout` renders `<SettingsMenu/>` in `.header-controls` in place of the three
+  inline selectors.
+- New i18n key `settings`. The visible row labels reuse existing keys
+  (`language`, `displayFlag`, `displayText`, `theme`, `mode`).
+- E2E: a new `settings-menu.spec.ts` (gear hidden-by-default → reveals a
+  labelled panel → Escape / outside-click close); the existing display / i18n /
+  theme specs open the gear first via an `openSettings` helper.
+
+The rest of this document describes the underlying two-axis display model, which
+is unchanged by the iteration.
+
 ## Problem
 
 Two header controls are still `<select>` dropdowns sharing the `.lang-selector`

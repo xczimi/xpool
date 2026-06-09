@@ -997,10 +997,56 @@ button.danger:hover:not(:disabled) {
   gap: 16px;
 }
 
-.theme-selector {
+/* Settings gear + popover — collapses the chrome preferences off the header. */
+.settings-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.settings-gear {
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.settings-gear:hover,
+.settings-gear[aria-expanded='true'] {
+  color: var(--text-on-dark);
+}
+
+.settings-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--bg-bar);
+  border: 1px solid var(--bg-card-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* A labelled settings row: visible label on the left, control on the right. */
+.seg-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.seg-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
 }
 
 .accent-swatches {

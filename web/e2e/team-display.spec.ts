@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { expectNoErrorView, watchNetwork } from './helpers'
+import { expectNoErrorView, openSettings, watchNetwork } from './helpers'
 
 /**
  * Team display picker — now two segmented toggles (Flag on/off, Text
@@ -21,6 +21,7 @@ test('display toggles switch flags/names, guard the empty combo, and persist', a
   await page.goto('/games')
   await expect(page.locator('h2')).toHaveText('Schedule')
   await expectNoErrorView(page)
+  await openSettings(page)
 
   // Flag On + Text Name: both a flag image and the country name are present.
   await flagRadio(page, 'On').click()
@@ -57,6 +58,8 @@ test('display toggles switch flags/names, guard the empty combo, and persist', a
   await expect(page.locator('h2')).toHaveText('Schedule')
   await expect(page.locator('img.team-flag')).toHaveCount(0)
   await expect(page.locator('.team-label-text').first()).toBeVisible()
+  // Reopen the gear (closed by the reload) to confirm the stored axes.
+  await openSettings(page)
   await expect(flagRadio(page, 'Off')).toHaveAttribute('aria-checked', 'true')
   await expect(textRadio(page, 'Name')).toHaveAttribute('aria-checked', 'true')
 

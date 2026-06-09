@@ -7,6 +7,7 @@ import {
   type TextMode,
 } from '../lib/displayMode'
 import type { StringKey } from '../i18n/strings'
+import { SegToggle } from './SegToggle'
 
 const FLAG_LABEL: Record<FlagMode, StringKey> = {
   on: 'flagOn',
@@ -21,10 +22,9 @@ const TEXT_LABEL: Record<TextMode, StringKey> = {
 }
 
 /**
- * The "show" picker, split into two independent segmented toggles: whether to
- * show a flag, and what text accompanies it. Styled like the theme picker.
- * Flag off + Text off would render an empty label, so the Text `off` segment is
- * disabled while Flag is off.
+ * The "show" picker, split into two labelled segmented toggles: whether to show
+ * a flag, and what text accompanies it. Flag off + Text off would render an
+ * empty label, so the Text `off` segment is disabled while Flag is off.
  */
 export function DisplayModeSelector() {
   const { t } = useI18n()
@@ -32,46 +32,21 @@ export function DisplayModeSelector() {
 
   return (
     <>
-      <div
-        className="seg-toggle"
-        role="radiogroup"
-        aria-label={t('displayFlag')}
-      >
-        {FLAG_MODES.map((f) => (
-          <button
-            key={f}
-            type="button"
-            role="radio"
-            aria-checked={f === flag}
-            className={`seg-option${f === flag ? ' is-active' : ''}`}
-            onClick={() => setFlag(f)}
-          >
-            {t(FLAG_LABEL[f])}
-          </button>
-        ))}
-      </div>
-      <div
-        className="seg-toggle"
-        role="radiogroup"
-        aria-label={t('displayText')}
-      >
-        {TEXT_MODES.map((m) => {
-          const disabled = m === 'off' && flag === 'off'
-          return (
-            <button
-              key={m}
-              type="button"
-              role="radio"
-              aria-checked={m === text}
-              disabled={disabled}
-              className={`seg-option${m === text ? ' is-active' : ''}`}
-              onClick={() => setText(m)}
-            >
-              {t(TEXT_LABEL[m])}
-            </button>
-          )
-        })}
-      </div>
+      <SegToggle
+        label={t('displayFlag')}
+        options={FLAG_MODES}
+        value={flag}
+        onChange={setFlag}
+        renderOption={(f) => t(FLAG_LABEL[f])}
+      />
+      <SegToggle
+        label={t('displayText')}
+        options={TEXT_MODES}
+        value={text}
+        onChange={setText}
+        renderOption={(m) => t(TEXT_LABEL[m])}
+        isDisabled={(m) => m === 'off' && flag === 'off'}
+      />
     </>
   )
 }

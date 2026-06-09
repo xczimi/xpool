@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { expectNoErrorView, watchNetwork } from './helpers'
+import { expectNoErrorView, openSettings, watchNetwork } from './helpers'
 
 /**
  * Team names follow the UI language. `/games` is public; we force the
@@ -12,6 +12,7 @@ test('team names render in the selected UI language', async ({ page }) => {
   await page.goto('/games')
   await expect(page.locator('h2')).toHaveText('Schedule')
   await expectNoErrorView(page)
+  await openSettings(page)
 
   // Show full names (not flags/codes) so the text is assertable.
   await page

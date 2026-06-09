@@ -107,6 +107,21 @@ export async function devLogout(page: Page): Promise<void> {
 }
 
 /**
+ * Open the header settings popover (gear), where the language / display / theme
+ * controls now live. Idempotent: only clicks the gear if the panel is closed,
+ * so it is safe to call when a previous step already opened it. The gear's
+ * accessible name is localised, so we target it by class, not by role+name.
+ */
+export async function openSettings(page: Page): Promise<void> {
+  const gear = page.locator('.settings-gear')
+  await expect(gear).toBeVisible()
+  if ((await gear.getAttribute('aria-expanded')) !== 'true') {
+    await gear.click()
+  }
+  await expect(page.getByRole('dialog')).toBeVisible()
+}
+
+/**
  * Dev-login as a seeded player via the auth bar `<select>`. Logs out first if
  * already logged in (the picker is hidden while logged in), then asserts the
  * auth bar shows the chosen player as logged in.
