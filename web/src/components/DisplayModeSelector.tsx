@@ -7,7 +7,7 @@ import {
   type TextMode,
 } from '../lib/displayMode'
 import type { StringKey } from '../i18n/strings'
-import { SegToggle } from './SegToggle'
+import { SegHeading, SegToggle } from './SegToggle'
 
 const FLAG_LABEL: Record<FlagMode, StringKey> = {
   on: 'flagOn',
@@ -32,6 +32,7 @@ export function DisplayModeSelector() {
 
   return (
     <>
+      <SegHeading>{t('teams')}</SegHeading>
       <SegToggle
         label={t('displayFlag')}
         options={FLAG_MODES}

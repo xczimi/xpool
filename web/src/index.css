@@ -1033,6 +1033,17 @@ button.danger:hover:not(:disabled) {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
+/* A section heading grouping related settings rows (e.g. "Teams"). */
+.seg-heading {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-on-dark);
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--bg-card-border);
+}
+
 /* A labelled settings row: visible label on the left, control on the right. */
 .seg-row {
   display: flex;

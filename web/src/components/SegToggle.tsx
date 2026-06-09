@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react'
 
+/** A small section heading grouping related settings rows. */
+export function SegHeading({ children }: { children: ReactNode }) {
+  return <div className="seg-heading">{children}</div>
+}
+
 /** A labelled settings row: a visible text label beside its control. */
 export function SegRow({
   label,

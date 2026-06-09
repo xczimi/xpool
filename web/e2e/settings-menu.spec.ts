@@ -26,8 +26,9 @@ test('gear reveals a labelled settings panel and closes on Escape / outside clic
   await expect(panel).toBeVisible()
   await expect(gear).toHaveAttribute('aria-expanded', 'true')
 
-  // Every row carries a visible label (the old confusion was unlabelled toggles).
-  for (const label of ['Language', 'Flag', 'Text', 'Theme', 'Mode']) {
+  // Every row carries a visible label (the old confusion was unlabelled
+  // toggles), and the team-display rows sit under a "Teams" heading.
+  for (const label of ['Language', 'Teams', 'Flag', 'Text', 'Theme', 'Mode']) {
     await expect(panel.getByText(label, { exact: true })).toBeVisible()
   }
   // And the toggles themselves are now reachable.
