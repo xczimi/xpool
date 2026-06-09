@@ -103,7 +103,7 @@ const en = {
 
   // invite-only funnel + dead-end (invite-only-hardening)
   frontDoorLead: 'Got an invite? Open the link a friend sent you to join.',
-  frontDoorMembers: 'Members: log in',
+  frontDoorMembers: 'Already playing? Log in',
   inviteOnlyTitle: 'You need an invite',
   inviteOnlyBody:
     'xPool is a small, friendly, invite-only pool. To play, open the invite link a friend who already plays sent you — that link signs you in and adds you to their pool.',
@@ -222,6 +222,23 @@ const en = {
 
   // rules
   rulesTitle: 'Rules & Scoring',
+  // onboarding / invite claim
+  inviteWelcomeTitle: "You've been invited to xPool!",
+  inviteWelcomeBody:
+    "We'll set up a quick, secure sign-in (email or Google) so only you can enter your picks.",
+  inviteContinue: 'Continue to join',
+  inviteClaimTitle: 'Accept your invite',
+  inviteClaimBody: 'Set your display name.',
+  join: 'Join',
+  inviteJoinTitle: 'Join this pool',
+  inviteJoinBody: 'Accept this invite to join the pool.',
+  inviteJoinedPrefix: "You're in",
+  inviteGoScoreboard: 'Go to the scoreboard',
+  inviteLinkTitle: 'Link this login?',
+  inviteLinkBody: 'An account already exists for this email. Link this login to it?',
+  inviteLinkConfirm: 'Yes, link',
+  inviteLinkCancel: 'No, cancel',
+  inviteMissingCode: 'Missing invite code.',
 
   // privacy
   privacy: 'Privacy',
@@ -318,7 +335,7 @@ const hu: Record<StringKey, string> = {
 
   // meghívásos tölcsér + zsákutca (invite-only-hardening)
   frontDoorLead: 'Van meghívód? Nyisd meg a linket, amit egy barátod küldött, hogy csatlakozz.',
-  frontDoorMembers: 'Tagoknak: belépés',
+  frontDoorMembers: 'Már játszol? Belépés',
   inviteOnlyTitle: 'Meghívó szükséges',
   inviteOnlyBody:
     'A xPool egy kicsi, baráti, csak meghívással elérhető tippverseny. A játékhoz nyisd meg a meghívó linket, amit egy már játszó barátod küldött — a link beléptet és hozzáad a tippcsapatához.',
@@ -425,6 +442,22 @@ const hu: Record<StringKey, string> = {
   inviteExists: 'Ez a felhasználó már benne van a tutiban!',
 
   rulesTitle: 'Szabályok és pontozás',
+  inviteWelcomeTitle: 'Meghívtak az xPoolba!',
+  inviteWelcomeBody:
+    'Beállítunk egy gyors, biztonságos belépést (e-mail vagy Google), hogy csak te adhasd meg a tippjeidet.',
+  inviteContinue: 'Tovább a csatlakozáshoz',
+  inviteClaimTitle: 'Fogadd el a meghívót',
+  inviteClaimBody: 'Add meg a megjelenítendő neved.',
+  join: 'Csatlakozás',
+  inviteJoinTitle: 'Csatlakozz ehhez a tutihoz',
+  inviteJoinBody: 'Fogadd el a meghívót, hogy csatlakozz a tutihoz.',
+  inviteJoinedPrefix: 'Bent vagy itt:',
+  inviteGoScoreboard: 'Irány az eredménytábla',
+  inviteLinkTitle: 'Összekapcsolod ezt a belépést?',
+  inviteLinkBody: 'Már létezik fiók ehhez az e-mailhez. Összekapcsolod vele ezt a belépést?',
+  inviteLinkConfirm: 'Igen, kapcsold össze',
+  inviteLinkCancel: 'Nem, mégse',
+  inviteMissingCode: 'Hiányzó meghívókód.',
 
   privacy: 'Adatvédelem',
   privacyTitle: 'Adatvédelmi tájékoztató',
