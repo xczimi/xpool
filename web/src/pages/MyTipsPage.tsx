@@ -22,7 +22,7 @@ import type {
 } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { RoundNav } from '../components/RoundNav'
-import { currentRoundNode, leafGroupsOfRound, roundNodes } from '../lib/rounds'
+import { currentRoundNode, leafGroupsOfRound, visibleRoundNodes } from '../lib/rounds'
 import { GroupTipForm } from './mytips/GroupTipForm'
 
 /**
@@ -55,8 +55,8 @@ export function MyTipsPage() {
   const results = resultsResult.data?.results ?? []
 
   const rounds = useMemo(
-    () => roundNodes(tournament?.groups ?? []),
-    [tournament?.groups],
+    () => visibleRoundNodes(tournament?.groups ?? [], tournament?.games ?? []),
+    [tournament?.groups, tournament?.games],
   )
   const activeRound =
     selectedRound ?? currentRoundNode(rounds)?.round ?? rounds[0]?.round ?? null
@@ -142,6 +142,7 @@ export function MyTipsPage() {
       <h2>{t('myTipsTitle')}</h2>
       <RoundNav
         groups={tournament.groups}
+        games={tournament.games}
         selectedRound={activeRound}
         onSelectRound={(round) => {
           setSelectedRound(round)
