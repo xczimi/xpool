@@ -223,6 +223,10 @@ const en = {
   // rules
   rulesTitle: 'Rules & Scoring',
 
+  // privacy
+  privacy: 'Privacy',
+  privacyTitle: 'Privacy Policy',
+
   // admin
   adminTitle: 'Admin',
   adminTeams: 'Teams',
@@ -421,6 +425,9 @@ const hu: Record<StringKey, string> = {
   inviteExists: 'Ez a felhasználó már benne van a tutiban!',
 
   rulesTitle: 'Szabályok és pontozás',
+
+  privacy: 'Adatvédelem',
+  privacyTitle: 'Adatvédelmi tájékoztató',
 
   adminTitle: 'Admin',
   adminTeams: 'Csapatok',
