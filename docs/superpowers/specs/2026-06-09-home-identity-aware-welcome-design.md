@@ -59,12 +59,19 @@ logout, so a shared `InviteCodeEntry` is now the clean boundary.
 
 ### Identity branches on Home
 
-| State | How detected | Home content |
+The welcome heading (`homeWelcome`) and intro (`homeIntro`) render in **every**
+state. `homeIntro` already states the pool is "private, invite-only" — so the
+non-player block does **not** repeat a separate `inviteOnly*` explainer; the
+`<InviteCodeEntry/>` widget (whose own label is "Have an invite link?") is the
+whole non-player block. (As-built decision, 2026-06-09: an extra explainer would
+duplicate `homeIntro`.)
+
+| State | How detected | Home content (below the always-shown heading + `homeIntro`) |
 |---|---|---|
-| **Visitor** | no session (`label` falsy) | welcome heading + invite-only explainer (`inviteOnly*` strings) + `<InviteCodeEntry/>` |
+| **Visitor** | no session (`label` falsy) | `<InviteCodeEntry/>` |
 | **Unclaimed** | session, `me.__typename === 'UnclaimedViewer'` | same block as Visitor — one shared non-player block |
-| **Player** | session, `me.__typename === 'Player'` | welcome heading + quick-action links: My Tips, Today, Scoreboard, Pools |
-| **Loading** | session present, `me` in flight | neutral welcome heading + `homeIntro` only — no branch-specific block, to avoid a flash of the wrong state |
+| **Player** | session, `me.__typename === 'Player'` | quick-action links: My Tips, Today, Scoreboard, Pools |
+| **Loading** | session present, `me` in flight | nothing below the intro — no branch-specific block, to avoid a flash of the wrong state |
 
 Visitor and Unclaimed render the **same** non-player block (both are "not in a
 pool yet; paste your invite to get in"). The branch reads identity only; it does
