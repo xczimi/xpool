@@ -1,7 +1,19 @@
 # Theme switcher — colour themes + dark/light mode
 
-Status: needs-triage
+Status: done (commit ea60e87 — `feat(web): theme selector control in the chrome`)
 Area: web
+
+## Resolution
+
+Shipped as `ThemeSelector` in the chrome (`web/src/components/ThemeSelector.tsx`),
+covered by `web/e2e/theme.spec.ts` (accent + mode switch drive CSS tokens and
+persist; system mode follows `prefers-color-scheme`). Open questions resolved:
+
+- **Per-device, not per-account** — the choice persists in localStorage.
+- **"Follow system" exists** — a System / Dark / Light mode toggle; system mode
+  tracks `prefers-color-scheme`.
+- **Six accent presets** — Amber (default/on-brand), Green, Cyan, Magenta,
+  Violet, Mono — driven by CSS custom properties, not hardcoded colours.
 
 ## Idea
 
