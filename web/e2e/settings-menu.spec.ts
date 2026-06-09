@@ -37,7 +37,7 @@ test('gear reveals a labelled settings panel and closes on Escape / outside clic
   // The language segments show country flags (English → Canada, Hungarian →
   // Hungary); assert both bundled PNGs actually resolve (naturalWidth > 0).
   const langGroup = page.getByRole('radiogroup', { name: 'Language' })
-  const langFlags = langGroup.locator('img.team-flag')
+  const langFlags = langGroup.locator('img.lang-flag')
   await expect(langFlags).toHaveCount(2)
   for (let i = 0; i < 2; i++) {
     await expect

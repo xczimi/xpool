@@ -17,7 +17,9 @@ export function LanguageSelector() {
       options={locales}
       value={locale}
       onChange={setLocale}
-      renderOption={(l) => <Flag iso={localeFlags[l]} name={localeNames[l]} />}
+      renderOption={(l) => (
+        <Flag iso={localeFlags[l]} name={localeNames[l]} className="lang-flag" />
+      )}
       optionAriaLabel={(l) => localeNames[l]}
     />
   )

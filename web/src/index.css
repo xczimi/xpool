@@ -959,7 +959,8 @@ button.danger:hover:not(:disabled) {
   align-items: center;
   gap: 6px;
 }
-.team-flag {
+.team-flag,
+.lang-flag {
   height: 14px;
   width: auto;
   image-rendering: pixelated;
