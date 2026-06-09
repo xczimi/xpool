@@ -52,7 +52,7 @@ test('My Tips: enter scores, save, and they persist across a reload', async ({
   await page.goto('/')
   await devLogin(page, 'demo-ada')
 
-  await page.getByRole('link', { name: 'My Tips' }).click()
+  await page.locator('.nav-bar').getByRole('link', { name: 'My Tips' }).click()
   await expect(page).toHaveURL(/\/mytips$/)
   await expect(page.locator('h2')).toHaveText('My Tips')
 

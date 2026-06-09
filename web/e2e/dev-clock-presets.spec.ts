@@ -25,7 +25,7 @@ async function setPreset(page: Page, phase: 'before' | 'during' | 'after') {
 
 /** Open Group A in the My Tips sub-navigation. */
 async function openGroupA(page: Page) {
-  await page.getByRole('link', { name: 'My Tips' }).click()
+  await page.locator('.nav-bar').getByRole('link', { name: 'My Tips' }).click()
   await expect(page).toHaveURL(/\/mytips$/)
   // Row 1: pick the Group Stage round — only then do the group pills appear.
   await page

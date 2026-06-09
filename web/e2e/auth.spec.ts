@@ -22,10 +22,13 @@ test('dev login picks a seeded player and unlocks player-only nav', async ({
   await devLogin(page, 'demo-ada')
   await expect(page.locator('.auth-bar')).toContainText('ada')
 
-  // Player-only nav becomes usable.
-  await expect(page.getByRole('link', { name: 'My Tips' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Profile' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'All Tips' })).toBeVisible()
+  // Player-only nav becomes usable. Scope to the nav bar: the identity-aware
+  // Home also renders action links (My Tips, Pools, …) whose accessible names
+  // collide with the nav links, so an unscoped role query would be ambiguous.
+  const nav = page.locator('.nav-bar')
+  await expect(nav.getByRole('link', { name: 'My Tips' })).toBeVisible()
+  await expect(nav.getByRole('link', { name: 'Profile' })).toBeVisible()
+  await expect(nav.getByRole('link', { name: 'All Tips' })).toBeVisible()
 
   await expectNoErrorView(page)
   await net.assertNoGraphqlErrors()

@@ -54,7 +54,7 @@ test('My Tips: a locked group renders read-only immediately, with no re-lock', a
   await page.goto('/')
   await devLogin(page, 'demo-dennis')
 
-  await page.getByRole('link', { name: 'My Tips' }).click()
+  await page.locator('.nav-bar').getByRole('link', { name: 'My Tips' }).click()
   await expect(page).toHaveURL(/\/mytips$/)
   await selectTestGroup(page)
 

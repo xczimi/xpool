@@ -16,7 +16,7 @@ test('pools page lists a pool the player belongs to', async ({ page }) => {
   await page.goto('/')
   await devLogin(page, 'demo-ada')
 
-  await page.getByRole('link', { name: 'Pools' }).click()
+  await page.locator('.nav-bar').getByRole('link', { name: 'Pools' }).click()
   await expect(page).toHaveURL(/\/pools$/)
   await expect(page.locator('h2')).toHaveText('Pools')
   // The seeded "Demo Pool" is visible to its members.

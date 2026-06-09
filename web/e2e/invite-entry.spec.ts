@@ -47,8 +47,13 @@ test('the standalone Invite nav item is gone; sharing lives on Pools', async ({
   await page.goto('/')
   await devLogin(page, 'demo-ada')
 
+  // No "Invite" nav link anywhere (the share page is gone).
   await expect(
     page.getByRole('link', { name: 'Invite', exact: true }),
   ).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'Pools' })).toBeVisible()
+  // Sharing lives on Pools — assert the nav link specifically. (The
+  // identity-aware Home also renders a "Pools" action link, so scope to nav.)
+  await expect(
+    page.locator('.nav-bar').getByRole('link', { name: 'Pools' }),
+  ).toBeVisible()
 })

@@ -21,7 +21,7 @@ async function setPreset(page: Page, phase: 'before' | 'during' | 'after') {
 
 /** Open Group A in My Tips. */
 async function openGroupA(page: Page) {
-  await page.getByRole('link', { name: 'My Tips' }).click()
+  await page.locator('.nav-bar').getByRole('link', { name: 'My Tips' }).click()
   await expect(page).toHaveURL(/\/mytips$/)
   await page.locator('.round-tabs button', { hasText: /^Group Stage$/ }).click()
   await page.locator('.group-subnav button', { hasText: /^Group A$/ }).click()
@@ -73,7 +73,7 @@ test('result user enters results via My Tips and the scoreboard updates', async 
   await expect(page.locator('.tip-form .flash-bar')).toContainText('Saved')
 
   // ── 3. the scoreboard credits demo-ada non-zero points ─────────────────────
-  await page.getByRole('link', { name: 'Scoreboard' }).click()
+  await page.locator('.nav-bar').getByRole('link', { name: 'Scoreboard' }).click()
   await expect(page).toHaveURL(/\/scoreboard$/)
   const adaRow = page
     .locator('table.data-table tbody tr')
