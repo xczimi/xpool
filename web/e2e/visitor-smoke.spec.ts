@@ -33,6 +33,11 @@ for (const route of PUBLIC_ROUTES) {
 
     // The persistent chrome must always be present.
     await expect(page.locator('header.app-header h1')).toHaveText('xPool')
+    // Env suffix: the e2e stack is served from localhost, so the wordmark
+    // must carry the ·local tag (prod would show none).
+    await expect(page.locator('header.app-header .env-tag')).toHaveText(
+      '·local',
+    )
 
     // The page rendered its real content (not a loading/error placeholder).
     await expect(page.locator('main.content')).toContainText(route.expectText)

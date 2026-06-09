@@ -5,6 +5,7 @@ import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY } from '../graphql/queries'
 import type { Me } from '../graphql/types'
 import { accessFor } from '../auth/routeAccess'
+import { detectEnv, envSuffix } from '../lib/env'
 import { AuthBar } from './AuthBar'
 import { BrandIcon } from './BrandIcon'
 import { SettingsMenu } from './SettingsMenu'
@@ -25,6 +26,7 @@ export function Layout() {
   const { label } = useAuth()
   const { t } = useI18n()
   const location = useLocation()
+  const envTag = envSuffix(detectEnv())
 
   const [meResult] = useQuery<{ me: Me }>({
     query: ME_QUERY,
@@ -48,7 +50,10 @@ export function Layout() {
         <div className="brand">
           <BrandIcon />
           <div className="brand-text">
-            <h1>xPool</h1>
+            <div className="wordmark">
+              <h1>xPool</h1>
+              {envTag && <span className="env-tag">{envTag}</span>}
+            </div>
             <p className="tagline">{t('tagline')}</p>
           </div>
         </div>
