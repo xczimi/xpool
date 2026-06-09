@@ -76,9 +76,20 @@ test('scoreboard re-materialises larger as the dev clock advances', async ({ pag
   await setClock(page, 'M1', 'after')
   const early = await scoreboardTotal(page)
 
+  // As-of M1 the bracket is unresolved — Group Stage column shows, knockout
+  // columns are hidden (no game with both teams known yet).
+  await expect(page.locator('.data-table thead')).toContainText('Group Stage')
+  await expect(page.locator('.data-table thead')).not.toContainText(
+    'Round of 32',
+  )
+
   // Late: clock just after the Final → all matches scored → larger board.
   await setClock(page, 'M104', 'after')
   const late = await scoreboardTotal(page)
+
+  // As-of the final every round is resolved — the knockout columns appear.
+  await expect(page.locator('.data-table thead')).toContainText('Round of 32')
+  await expect(page.locator('.data-table thead')).toContainText('Final')
 
   expect(late).toBeGreaterThan(early)
 
