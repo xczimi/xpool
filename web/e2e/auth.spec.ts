@@ -111,9 +111,14 @@ test('an invite link establishes a new player with referrer set', async ({ page,
   await newbie.evaluate((t) => localStorage.setItem('xpool.jwt', t), token)
   await newbie.goto(`/invite/${code}`)
 
-  // Fill the form (the not-yet-a-Player branch of InviteClaimPage).
-  await newbie.getByPlaceholder('Nick').fill('Newbie')
-  await newbie.getByPlaceholder('Full name').fill('New B.')
+  // Fill the form (the not-yet-a-Player branch of InviteClaimPage renders the
+  // shared NameForm with labelled fields, not placeholders).
+  const form = newbie.locator('form.form')
+  await form.locator('label', { hasText: 'Nick' }).locator('input').fill('Newbie')
+  await form
+    .locator('label', { hasText: 'Full name' })
+    .locator('input')
+    .fill('New B.')
   await newbie.getByRole('button', { name: 'Join' }).click()
 
   // Lands on /profile.

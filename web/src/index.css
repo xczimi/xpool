@@ -1033,13 +1033,22 @@ button.danger:hover:not(:disabled) {
 }
 
 .settings-gear {
-  font-size: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 22px;
   line-height: 1;
-  padding: 2px 4px;
+  padding: 4px 8px;
   background: transparent;
   border: none;
-  color: var(--text-dim);
+  color: var(--text-on-dark);
   cursor: pointer;
+}
+
+.settings-gear-label {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .settings-gear:hover,

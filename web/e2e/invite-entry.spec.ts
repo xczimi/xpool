@@ -23,8 +23,10 @@ test('a logged-out visitor can open /invite and paste a bare code to reach the c
   await page.getByRole('button', { name: 'Open' }).click()
 
   await expect(page).toHaveURL(/\/invite\/ABC123XYZ0$/)
-  // On the claim page a logged-out viewer is prompted to sign in.
-  await expect(page.getByText('Log in to claim this invite.')).toBeVisible()
+  // On the claim page a logged-out viewer is invited to establish identity.
+  await expect(
+    page.getByRole('button', { name: 'Continue to join' }),
+  ).toBeVisible()
 
   await expectNoErrorView(page)
   await net.assertNoGraphqlErrors()

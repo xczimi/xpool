@@ -40,8 +40,8 @@ export function SettingsMenu() {
         aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
       >
-        {/* gear glyph */}
         <span aria-hidden="true">⚙</span>
+        <span className="settings-gear-label">{t('settings')}</span>
       </button>
       {open && (
         <div className="settings-panel" role="dialog" aria-label={t('settings')}>

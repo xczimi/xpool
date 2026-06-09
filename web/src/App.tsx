@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { Layout } from './components/Layout'
+import { PostLoginRedirect } from './components/PostLoginRedirect'
 import { HomePage } from './pages/HomePage'
 import { TodayPage } from './pages/TodayPage'
 import { SchedulePage } from './pages/SchedulePage'
@@ -17,8 +18,10 @@ import { AdminPage } from './pages/AdminPage'
 
 export function App() {
   return (
-    <Routes>
-      <Route element={<Layout />}>
+    <>
+      <PostLoginRedirect />
+      <Routes>
+        <Route element={<Layout />}>
         <Route index element={<HomePage />} />
         <Route path="today" element={<TodayPage />} />
         <Route path="games" element={<SchedulePage />} />
@@ -38,7 +41,8 @@ export function App() {
         <Route path="admin/*" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
-    </Routes>
+      </Routes>
+    </>
   )
 }
 

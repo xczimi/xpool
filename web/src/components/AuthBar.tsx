@@ -43,7 +43,10 @@ function ProdAuthBar() {
         <button
           className="front-door-login"
           onClick={() =>
-            void loginWithRedirect({ authorizationParams: { screen_hint: 'login' } })
+            void loginWithRedirect({
+              appState: { returnTo: window.location.pathname + window.location.search },
+              authorizationParams: { screen_hint: 'login' },
+            })
           }
         >
           {t('frontDoorMembers')}

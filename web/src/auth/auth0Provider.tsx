@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { useEffect } from 'react'
 import { Auth0Provider as SdkProvider, useAuth0 } from '@auth0/auth0-react'
 import { clearToken, setAuth0Getter, setTokenFromAuth0 } from './devAuth'
+import { stashReturnTo } from './returnTo'
 
 const DOMAIN = import.meta.env.VITE_AUTH0_DOMAIN as string | undefined
 const CLIENT = import.meta.env.VITE_AUTH0_CLIENT_ID as string | undefined
@@ -15,6 +16,10 @@ export function Auth0Gate({ children }: { children: ReactNode }) {
     <SdkProvider
       domain={DOMAIN!}
       clientId={CLIENT!}
+      onRedirectCallback={(appState) => {
+        const returnTo = (appState as { returnTo?: string } | undefined)?.returnTo
+        if (returnTo) stashReturnTo(returnTo)
+      }}
       authorizationParams={{
         redirect_uri: window.location.origin,
         audience: AUDIENCE,
