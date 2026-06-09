@@ -1,6 +1,9 @@
-import { useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery } from 'urql'
-import { useState } from 'react'
+import { useAuth0 } from '@auth0/auth0-react'
+import { useI18n } from '../i18n/useI18n'
+import { auth0Enabled } from '../auth/auth0Provider'
+import { NameForm } from '../components/NameForm'
 
 const ME = `query ViewerState {
   me {
@@ -33,52 +36,86 @@ type UnclaimedViewerShape = {
 }
 type ViewerShape = PlayerViewer | UnclaimedViewerShape
 
+/**
+ * The invite link is the front door to identity. This page handles every state
+ * a recipient can be in:
+ *  - logged out      → welcome + "Continue to join" (Auth0, preserving the code)
+ *  - already a Player → accept the invite (join the pool)
+ *  - unclaimed + a matching account → offer to link the login (AUTH-13)
+ *  - unclaimed, new   → set a display name (shared NameForm) and claim
+ */
 export function InviteClaimPage() {
+  const { t } = useI18n()
   const { code } = useParams<{ code: string }>()
+  const navigate = useNavigate()
+  const { loginWithRedirect } = useAuth0()
   const [meResult] = useQuery({ query: ME })
   const [claimResult, runClaim] = useMutation(CLAIM)
   const [joinResult, runJoin] = useMutation(JOIN)
   const [linkResult, runLink] = useMutation(LINK)
-  const [nick, setNick] = useState('')
-  const [fullName, setFullName] = useState('')
 
-  if (!code) return <p>missing invite code</p>
+  if (!code)
+    return (
+      <main className="content">
+        <p>{t('inviteMissingCode')}</p>
+      </main>
+    )
   if (meResult.fetching) return null
 
   const viewer = meResult.data?.me as ViewerShape | null | undefined
 
+  // Logged out — establish identity, preserving this invite path across Auth0.
   if (!viewer) {
+    const onContinue = () => {
+      const returnTo = `/invite/${code}`
+      if (auth0Enabled) {
+        void loginWithRedirect({
+          appState: { returnTo },
+          authorizationParams: { screen_hint: 'signup' },
+        })
+      } else {
+        // Dev/e2e: no Auth0 — the auth bar's player picker is the sign-in.
+        navigate('/')
+      }
+    }
     return (
       <main className="content">
-        <h2>Claim your invite</h2>
-        <p>Log in to claim this invite.</p>
-        <a href="/">Go to log in</a>
+        <h2>{t('inviteWelcomeTitle')}</h2>
+        <p>{t('inviteWelcomeBody')}</p>
+        <button type="button" className="primary" onClick={onContinue}>
+          {t('inviteContinue')}
+        </button>
       </main>
     )
   }
 
-  // Already signed in — just accept the invite (join the pool).
+  // Already a Player — accept the invite (join the pool).
   if (viewer.__typename === 'Player') {
     const joinedName = joinResult.data?.join?.name as string | undefined
     return (
       <main className="content">
-        <h2>Join this pool</h2>
+        <h2>{t('inviteJoinTitle')}</h2>
         {joinedName ? (
           <>
-            <p>You're in {joinedName}.</p>
-            <a href="/scoreboard">Go to the scoreboard</a>
+            <p>
+              {t('inviteJoinedPrefix')} <strong>{joinedName}</strong>.
+            </p>
+            <Link to="/scoreboard">{t('inviteGoScoreboard')}</Link>
           </>
         ) : (
           <>
-            <p>Accept this invite to join the pool.</p>
+            <p>{t('inviteJoinBody')}</p>
             {joinResult.error && (
-              <p className="flash-bar">Error: {joinResult.error.message}</p>
+              <p className="flash-bar">
+                {t('errorPrefix')}: {joinResult.error.message}
+              </p>
             )}
             <button
+              className="primary"
               disabled={joinResult.fetching}
               onClick={() => void runJoin({ code })}
             >
-              Join
+              {t('join')}
             </button>
           </>
         )}
@@ -86,61 +123,50 @@ export function InviteClaimPage() {
     )
   }
 
-  // Unclaimed viewer with a link candidate — AUTH-13 flow
+  // Unclaimed viewer with a matching account — offer to link (AUTH-13).
   if (viewer.linkCandidate) {
     const candidate = viewer.linkCandidate
     return (
       <main className="content">
-        <h2>Link this login?</h2>
-        <p>
-          An account already exists for {viewer.email}, signed in via{' '}
-          {candidate.provider}. Link this login to that account?
-        </p>
+        <h2>{t('inviteLinkTitle')}</h2>
+        <p>{t('inviteLinkBody')}</p>
         {linkResult.error && (
-          <p className="flash-bar">Error: {linkResult.error.message}</p>
+          <p className="flash-bar">
+            {t('errorPrefix')}: {linkResult.error.message}
+          </p>
         )}
         <button
+          className="primary"
           onClick={async () => {
             const res = await runLink({ personId: candidate.personId })
-            if (!res.error) window.location.href = '/profile'
+            if (!res.error) navigate('/profile')
           }}
         >
-          Yes, link
-        </button>
-        <button onClick={() => (window.location.href = '/')}>
-          No, cancel
-        </button>
+          {t('inviteLinkConfirm')}
+        </button>{' '}
+        <button onClick={() => navigate('/')}>{t('inviteLinkCancel')}</button>
       </main>
     )
   }
 
-  // Unclaimed viewer without a link candidate — establish identity + join.
+  // Unclaimed, new — set a display name and claim.
   return (
     <main className="content">
-      <h2>Accept your invite</h2>
-      <p>Set your display name.</p>
-      {claimResult.error && (
-        <p className="flash-bar">Error: {claimResult.error.message}</p>
-      )}
-      <input
-        value={nick}
-        onChange={(e) => setNick(e.target.value)}
-        placeholder="Nick"
-      />
-      <input
-        value={fullName}
-        onChange={(e) => setFullName(e.target.value)}
-        placeholder="Full name"
-      />
-      <button
-        disabled={claimResult.fetching || !nick.trim()}
-        onClick={async () => {
+      <h2>{t('inviteClaimTitle')}</h2>
+      <p>{t('inviteClaimBody')}</p>
+      <NameForm
+        submitLabel={t('join')}
+        busy={claimResult.fetching}
+        flash={
+          claimResult.error
+            ? `${t('errorPrefix')}: ${claimResult.error.message}`
+            : null
+        }
+        onSubmit={async (nick, fullName) => {
           const res = await runClaim({ code, nick, fullName })
-          if (!res.error) window.location.href = '/profile'
+          if (!res.error) navigate('/profile')
         }}
-      >
-        Join
-      </button>
+      />
     </main>
   )
 }
