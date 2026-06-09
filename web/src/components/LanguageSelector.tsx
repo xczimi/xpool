@@ -1,21 +1,26 @@
 import { useI18n } from '../i18n/useI18n'
-import { localeNames, type Locale } from '../i18n/strings'
+import { localeFlags, localeNames, type Locale } from '../i18n/strings'
+import { SegToggle } from './SegToggle'
+import { Flag } from './TeamLabel'
 
+/**
+ * Language picker as a labelled segmented toggle. Each segment shows the
+ * country flag (English → Canada, Hungarian → Hungary); the full language name
+ * is the accessible label / tooltip.
+ */
 export function LanguageSelector() {
   const { locale, setLocale, t } = useI18n()
+  const locales = Object.keys(localeNames) as Locale[]
   return (
-    <label className="lang-selector">
-      {t('language')}:{' '}
-      <select
-        value={locale}
-        onChange={(e) => setLocale(e.target.value as Locale)}
-      >
-        {(Object.keys(localeNames) as Locale[]).map((l) => (
-          <option key={l} value={l}>
-            {localeNames[l]}
-          </option>
-        ))}
-      </select>
-    </label>
+    <SegToggle
+      label={t('language')}
+      options={locales}
+      value={locale}
+      onChange={setLocale}
+      renderOption={(l) => (
+        <Flag iso={localeFlags[l]} name={localeNames[l]} className="lang-flag" />
+      )}
+      optionAriaLabel={(l) => localeNames[l]}
+    />
   )
 }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  resolveDisplayMode,
+  composeDisplayMode,
   type ConcreteDisplayMode,
 } from '../lib/displayMode'
 import { useDisplayMode } from './useDisplayMode'
@@ -27,9 +27,9 @@ function useIsMobile(): boolean {
   return isMobile
 }
 
-/** The current display mode with `auto` resolved against the viewport. */
+/** The two display axes composed into a concrete rendering for the viewport. */
 export function useResolvedDisplayMode(): ConcreteDisplayMode {
-  const { mode } = useDisplayMode()
+  const { flag, text } = useDisplayMode()
   const isMobile = useIsMobile()
-  return resolveDisplayMode(mode, isMobile)
+  return composeDisplayMode(flag, text, isMobile)
 }

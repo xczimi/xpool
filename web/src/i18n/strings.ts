@@ -19,14 +19,16 @@ export type StringKey = keyof typeof en
 const en = {
   // chrome
   tagline: 'This is our little friendly pool.',
+  settings: 'Settings',
   language: 'Language',
-  display: 'Show',
-  displayAuto: 'Auto',
   displayFlag: 'Flag',
-  displayCode: 'Code',
-  displayName: 'Name',
-  displayFlagName: 'Flag + name',
-  displayFlagCode: 'Flag + code',
+  displayText: 'Text',
+  flagOn: 'On',
+  flagOff: 'Off',
+  textAuto: 'Auto',
+  textName: 'Name',
+  textCode: 'Code',
+  textOff: 'Off',
   theme: 'Theme',
   mode: 'Mode',
   accentAmber: 'Amber',
@@ -231,14 +233,16 @@ const en = {
 
 const hu: Record<StringKey, string> = {
   tagline: 'Ez a mi kis baráti tippelő környezetünk',
+  settings: 'Beállítások',
   language: 'Nyelv',
-  display: 'Mutat',
-  displayAuto: 'Auto',
   displayFlag: 'Zászló',
-  displayCode: 'Kód',
-  displayName: 'Név',
-  displayFlagName: 'Zászló + név',
-  displayFlagCode: 'Zászló + kód',
+  displayText: 'Szöveg',
+  flagOn: 'Be',
+  flagOff: 'Ki',
+  textAuto: 'Auto',
+  textName: 'Név',
+  textCode: 'Kód',
+  textOff: 'Nincs',
   theme: 'Téma',
   mode: 'Mód',
   accentAmber: 'Borostyán',
@@ -434,4 +438,13 @@ export const catalogues: Record<Locale, Record<StringKey, string>> = {
 export const localeNames: Record<Locale, string> = {
   en: 'English',
   hu: 'Magyar',
+}
+
+/**
+ * Flag (ISO code → `/flags/{iso}.png`) shown on each language segment. English
+ * flies the Canadian flag (this pool's home), Hungarian the Hungarian flag.
+ */
+export const localeFlags: Record<Locale, string> = {
+  en: 'ca',
+  hu: 'hu',
 }

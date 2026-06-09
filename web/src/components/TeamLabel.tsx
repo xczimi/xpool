@@ -2,11 +2,23 @@ import type { Team, TeamSlot } from '../graphql/types'
 import { compactMode, teamLabelParts } from '../lib/displayMode'
 import { useResolvedDisplayMode } from '../display/useResolvedDisplayMode'
 
-/** An 8-bit flag image. The ISO code drives the bundled asset path. */
-export function Flag({ iso, name }: { iso: string; name: string }) {
+/**
+ * An 8-bit flag image. The ISO code drives the bundled asset path. `className`
+ * defaults to `team-flag` (the schedule/scoreboard flags); the language picker
+ * passes `lang-flag` so the two are distinguishable in markup and tests.
+ */
+export function Flag({
+  iso,
+  name,
+  className = 'team-flag',
+}: {
+  iso: string
+  name: string
+  className?: string
+}) {
   return (
     <img
-      className="team-flag"
+      className={className}
       src={`/flags/${iso}.png`}
       alt={name}
       title={name}

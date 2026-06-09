@@ -1,39 +1,87 @@
 import type { Team, TeamSlot } from '../graphql/types'
 
-/** How a team is displayed. `auto` resolves responsively (see resolveDisplayMode). */
-export type DisplayMode =
-  | 'auto'
+/**
+ * Team display is two orthogonal axes the user controls independently:
+ *
+ * - `FlagMode` — whether a flag is shown at all.
+ * - `TextMode` — what text label accompanies it (`auto` is responsive).
+ *
+ * `ConcreteDisplayMode` is the resolved rendering the label layer consumes;
+ * `composeDisplayMode` collapses the two axes (plus the viewport) into one.
+ */
+export type FlagMode = 'on' | 'off'
+export type TextMode = 'auto' | 'name' | 'code' | 'off'
+
+/** A fully-resolved rendering — what `teamLabelParts` knows how to draw. */
+export type ConcreteDisplayMode =
   | 'flag'
   | 'code'
   | 'name'
   | 'flag-name'
   | 'flag-code'
 
-/** A display mode with `auto` already resolved to a concrete rendering. */
-export type ConcreteDisplayMode = Exclude<DisplayMode, 'auto'>
+/** The paired axes, as stored and passed around. */
+export interface DisplayAxes {
+  flag: FlagMode
+  text: TextMode
+}
 
-/** Selector options, in display order. */
-export const DISPLAY_MODES: readonly DisplayMode[] = [
-  'auto',
-  'flag',
-  'code',
-  'name',
-  'flag-name',
-  'flag-code',
-]
+/** Flag segments, in display order. */
+export const FLAG_MODES: readonly FlagMode[] = ['on', 'off']
+
+/** Text segments, in display order. */
+export const TEXT_MODES: readonly TextMode[] = ['auto', 'name', 'code', 'off']
 
 /**
- * Resolve `auto` against the viewport: flag-only on mobile, flag + name on
- * larger screens. Every explicit mode passes through unchanged.
+ * Collapse the two axes (and the viewport) into a concrete rendering.
+ *
+ * `text: 'auto'` is the only viewport-dependent value, and it is flag-aware so
+ * the label is never empty: on a narrow phone it shows nothing when a flag is
+ * present (compact flag-only), otherwise the short code. The one nonsensical
+ * combination — flag off, text off — is guarded in the UI; here it falls back
+ * to the code so the function stays total.
  */
-export function resolveDisplayMode(
-  mode: DisplayMode,
+export function composeDisplayMode(
+  flag: FlagMode,
+  text: TextMode,
   isMobile: boolean,
 ): ConcreteDisplayMode {
-  if (mode === 'auto') {
-    return isMobile ? 'flag' : 'flag-name'
+  // Resolve the text axis to a concrete choice first.
+  let resolvedText: 'name' | 'code' | 'none'
+  if (text === 'name') resolvedText = 'name'
+  else if (text === 'code') resolvedText = 'code'
+  else if (text === 'off') resolvedText = 'none'
+  else {
+    // auto
+    if (!isMobile) resolvedText = 'name'
+    else resolvedText = flag === 'on' ? 'none' : 'code'
   }
-  return mode
+
+  if (flag === 'on') {
+    if (resolvedText === 'name') return 'flag-name'
+    if (resolvedText === 'code') return 'flag-code'
+    return 'flag'
+  }
+  // flag off — text must carry the label; 'none' would be empty, so use code.
+  if (resolvedText === 'name') return 'name'
+  return 'code'
+}
+
+const LEGACY_AXES: Readonly<Record<string, DisplayAxes>> = {
+  auto: { flag: 'on', text: 'auto' },
+  flag: { flag: 'on', text: 'off' },
+  'flag-name': { flag: 'on', text: 'name' },
+  'flag-code': { flag: 'on', text: 'code' },
+  name: { flag: 'off', text: 'name' },
+  code: { flag: 'off', text: 'code' },
+}
+
+/**
+ * Translate a legacy single-enum `xpool.displayMode` value into the two axes,
+ * for the one-time storage migration. Returns null for anything unrecognised.
+ */
+export function axesFromLegacy(legacy: string): DisplayAxes | null {
+  return LEGACY_AXES[legacy] ?? null
 }
 
 /**
@@ -59,7 +107,7 @@ export interface TeamLabelParts {
   text: string | null
 }
 
-const FLAG_MODES: ReadonlySet<ConcreteDisplayMode> = new Set([
+const RENDERS_FLAG: ReadonlySet<ConcreteDisplayMode> = new Set([
   'flag',
   'flag-name',
   'flag-code',
@@ -86,7 +134,7 @@ export function teamLabelParts(
     return { flag: null, text: slot.teamId || slot.description || 'TBD' }
   }
 
-  const wantsFlag = FLAG_MODES.has(mode)
+  const wantsFlag = RENDERS_FLAG.has(mode)
   const flag =
     wantsFlag && team.flag ? { iso: team.flag, name: team.name } : null
 
