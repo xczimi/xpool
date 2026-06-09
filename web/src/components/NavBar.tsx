@@ -18,7 +18,6 @@ const ITEMS: NavItem[] = [
   { to: '/perfect', label: 'navPerfect' },
   { to: '/pools', label: 'navPools' },
   { to: '/profile', label: 'navProfile' },
-  { to: '/invite', label: 'navInvite' },
   { to: '/rules', label: 'navRules' },
   { to: '/admin', label: 'navAdmin' },
 ]

@@ -26,7 +26,6 @@ test('dev login picks a seeded player and unlocks player-only nav', async ({
   await expect(page.getByRole('link', { name: 'My Tips' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Profile' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'All Tips' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Invite' })).toBeVisible()
 
   await expectNoErrorView(page)
   await net.assertNoGraphqlErrors()
@@ -80,15 +79,16 @@ test('an invalid Bearer token gates player-only routes', async ({ page }) => {
 })
 
 test('an invite link establishes a new player with referrer set', async ({ page, context }) => {
-  // Inviter (demo-ada) shares her invite into a pool via the InvitePage. She is
-  // a member of the seeded Demo Pool, so the pool selector is pre-populated.
+  // Inviter (demo-ada) shares her invite from the Pools page — the sole share
+  // surface (the standalone Invite share page was removed). She is a member of
+  // the seeded Demo Pool, so its card carries her Share-invite control.
   await page.goto('/')
   await devLogin(page, 'demo-ada')
-  await page.getByRole('link', { name: 'Invite' }).click()
-  await page.getByRole('button', { name: 'Share invite' }).click()
-  const linkBox = page.locator('.invite-link textarea')
-  await expect(linkBox).toBeVisible()
-  const link = await linkBox.inputValue()
+  await page.goto('/pools')
+  const card = page.locator('.pool-card', { hasText: 'Demo Pool' })
+  await expect(card).toBeVisible()
+  await card.getByRole('button', { name: 'Share invite' }).click()
+  const link = await card.locator('.invite-link input').inputValue()
   expect(link).toMatch(/\/invite\//)
   const code = link.split('/invite/')[1]
   expect(code.length).toBeGreaterThan(0)

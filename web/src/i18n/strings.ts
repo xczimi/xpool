@@ -65,7 +65,6 @@ const en = {
   navPerfect: 'Perfect',
   navPools: 'Pools',
   navProfile: 'Profile',
-  navInvite: 'Invite',
   navRules: 'Rules',
   navAdmin: 'Admin',
 
@@ -278,7 +277,6 @@ const hu: Record<StringKey, string> = {
   navPerfect: 'Telitalálat',
   navPools: 'Ligák',
   navProfile: 'Adatok',
-  navInvite: 'Meghívó',
   navRules: 'Szabályok',
   navAdmin: 'Admin',
 

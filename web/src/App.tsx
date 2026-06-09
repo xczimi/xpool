@@ -10,7 +10,7 @@ import { PerfectPage } from './pages/PerfectPage'
 import { PoolsPage } from './pages/PoolsPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { InviteClaimPage } from './pages/InviteClaimPage'
-import { InvitePage } from './pages/InvitePage'
+import { NeedsInvite } from './components/NeedsInvite'
 import { RulesPage } from './pages/RulesPage'
 import { AdminPage } from './pages/AdminPage'
 
@@ -27,7 +27,10 @@ export function App() {
         <Route path="perfect" element={<PerfectPage />} />
         <Route path="pools" element={<PoolsPage />} />
         <Route path="profile" element={<ProfilePage />} />
-        <Route path="invite" element={<InvitePage />} />
+        {/* Public recipient-side entry: paste an invite code/link → routes to
+            the claim page below. Sharing lives on Pools; see
+            .scratch/merge-pools-invite-pages/PRD.md. */}
+        <Route path="invite" element={<NeedsInvite />} />
         <Route path="invite/:code" element={<InviteClaimPage />} />
         <Route path="rules" element={<RulesPage />} />
         <Route path="admin/*" element={<AdminPage />} />
