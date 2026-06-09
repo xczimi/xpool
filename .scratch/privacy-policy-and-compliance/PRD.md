@@ -1,7 +1,27 @@
 # Privacy policy + third-party data/compliance basics
 
-Status: needs-triage
+Status: MVP shipped (2026-06-09) — minimal bilingual `/privacy` page
 Area: web / legal / api
+
+## Resolution (MVP)
+
+Shipped a minimal, self-authored `/privacy` page (`web/src/pages/PrivacyPage.tsx`),
+footer-linked, public route, EN/HU body switched by locale. Covers: data
+collected (email, nick, full name, predictions, referrer), storage (DynamoDB on
+AWS ca-central-1), processors (Auth0/Okta, Google sign-in, AWS, Amazon SES),
+functional-cookies-only (no banner), retention, and request-based access/
+deletion at `pool@xczimi.com`. Verified against infra: SES send permission is
+wired (`infrastructure/lambda.tf`).
+
+Decisions: minimal scope — no Terms of Service, no self-serve deletion UI, no
+cookie consent banner, no DPAs. Contact address: `pool@xczimi.com`.
+
+**Follow-ups (not done):**
+- **Hungarian copy needs a native-speaker review pass** (Peter) — the HU body
+  was machine-authored.
+- Self-serve account deletion/export UI (today deletion is request-by-email).
+- Terms of Service, if the pool ever opens beyond friends-and-family.
+- DPAs with Auth0 / Google if scope grows.
 
 ## Idea
 
