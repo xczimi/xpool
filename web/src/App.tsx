@@ -12,6 +12,7 @@ import { ProfilePage } from './pages/ProfilePage'
 import { InviteClaimPage } from './pages/InviteClaimPage'
 import { NeedsInvite } from './components/NeedsInvite'
 import { RulesPage } from './pages/RulesPage'
+import { PrivacyPage } from './pages/PrivacyPage'
 import { AdminPage } from './pages/AdminPage'
 
 export function App() {
@@ -33,6 +34,7 @@ export function App() {
         <Route path="invite" element={<NeedsInvite />} />
         <Route path="invite/:code" element={<InviteClaimPage />} />
         <Route path="rules" element={<RulesPage />} />
+        <Route path="privacy" element={<PrivacyPage />} />
         <Route path="admin/*" element={<AdminPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

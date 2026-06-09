@@ -22,6 +22,7 @@ const PUBLIC_ROUTES: PublicRoute[] = [
   { path: '/scoreboard', expectText: 'Scoreboard' },
   { path: '/perfect', expectText: 'Perfect Predictions' },
   { path: '/rules', expectText: 'Rules' },
+  { path: '/privacy', expectText: 'Privacy Policy' },
 ]
 
 for (const route of PUBLIC_ROUTES) {
@@ -64,6 +65,17 @@ test('footer shows copyright and a link to the GitHub repo', async ({
     'href',
     'https://github.com/xczimi/xpool',
   )
+})
+
+test('a logged-out visitor can open the privacy policy from the footer', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await page.locator('footer.app-footer').getByRole('link', { name: 'Privacy' }).click()
+  await expect(page).toHaveURL(/\/privacy$/)
+  await expect(page.locator('main.content h2')).toHaveText('Privacy Policy')
+  // The policy must surface the contact route for data-rights requests.
+  await expect(page.locator('main.content')).toContainText('pool@xczimi.com')
 })
 
 test('the GraphQL API is reached over POST (urql must not use GET)', async ({

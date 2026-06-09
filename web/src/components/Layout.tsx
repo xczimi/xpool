@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom'
+import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -80,6 +80,8 @@ export function Layout() {
           >
             xczimi
           </a>{' '}
+          ·{' '}
+          <Link to="/privacy">{t('privacy')}</Link>{' '}
           ·{' '}
           <a
             href="https://github.com/xczimi/xpool"
