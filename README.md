@@ -53,13 +53,18 @@ point the api + web servers at a git worktree, run `bin/local-dev <worktree>` (o
 time, since the ports are fixed. See
 [`docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md`](./docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md).
 
-**Dev login:** auth is a stub — the SPA sends an `X-Dev-Player` header. Pick a
-seeded player in the SPA's auth bar. Seeded ids: `result-user` (the admin /
-official results), and `demo-ada`, `demo-alan`, `demo-grace`, `demo-linus`,
-`demo-margaret`, `demo-dennis`. There is one demo pool, `pool-demo`.
+**Dev login:** auth is a Bearer-JWT seam — a local issuer for dev, Auth0 for the
+deployed stages (real Auth0 sign-in is still deferred). In local dev the SPA's
+auth bar lets you pick a seeded player and mints a local-issuer JWT via
+`POST /api/dev/login` (the `X-Dev-Player` header is gone). Seeded ids:
+`result-user` (the admin / official results), and `demo-ada`, `demo-alan`,
+`demo-grace`, `demo-linus`, `demo-margaret`, `demo-dennis`. There is one demo
+pool, `pool-demo`.
 
-**Tests:** `cargo test` (workspace) and `cd web && npm run build`.
-DynamoDB integration tests are gated behind `DYNAMO_TEST=1`.
+**Tests:** `cargo test` (workspace), `cd web && npm run build`, `npm run lint`,
+`npm run test` (Vitest), and `npm run e2e` (Playwright — boots the full live
+stack itself on isolated ports). DynamoDB integration tests are gated behind
+`DYNAMO_TEST=1`. See [`.specs/TESTING.md`](./.specs/TESTING.md).
 
 The implementation plan is in
 [`docs/superpowers/plans/`](./docs/superpowers/plans/).
@@ -72,6 +77,8 @@ Specs and reference docs for agentic development live in [`.specs/`](./.specs/).
 |----------|----------------|
 | [`.specs/REWRITE_USE_CASES.md`](./.specs/REWRITE_USE_CASES.md) | User journeys, scenarios, and use cases — *what the app does*, technology-independent |
 | [`.specs/REWRITE_IMPLEMENTATION.md`](./.specs/REWRITE_IMPLEMENTATION.md) | Domain model, scoring engine, data ingestion, legacy anti-patterns — *how to build it* |
+| [`.specs/SCENARIOS.md`](./.specs/SCENARIOS.md) | Test-linked behaviour catalogue — concrete scenarios mapped to tests (supersedes `REWRITE_USE_CASES.md` §3) |
+| [`.specs/TESTING.md`](./.specs/TESTING.md) | Test strategy — layers, isolation, and the server-authoritative clock model |
 | [`.specs/DATA_MODEL.md`](./.specs/DATA_MODEL.md) | The agreed domain & storage model — entities, tournament tree, pools, identity, DynamoDB layout |
 | [`.specs/SCORING.md`](./.specs/SCORING.md) | The agreed scoring engine — per-match points, standings bonus, multipliers, materialized scoreboard |
 | [`.specs/API.md`](./.specs/API.md) | The agreed API & frontend contract — GraphQL, coarse queries/mutations, draft→locked, smart polling |
