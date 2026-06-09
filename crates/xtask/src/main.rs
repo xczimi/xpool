@@ -3,6 +3,7 @@
 //! ```text
 //! xtask import <path>   load a tournament JSON into the repository
 //! xtask seed            create demo players + a result user + a demo pool
+//! xtask bootstrap       create only the result-user (production, no demo data)
 //! xtask drop-table      drop the DynamoDB table named by XPOOL_TABLE
 //! ```
 //!
@@ -31,6 +32,8 @@ enum Command {
     },
     /// Seed demo data (result user, demo players, a demo pool).
     Seed,
+    /// Bootstrap production: seed only the result-user (no demo data).
+    Bootstrap,
     /// Drop the DynamoDB table named by XPOOL_TABLE (e2e teardown).
     DropTable,
     /// Seed a generated scenario (full results + ~12 players' predictions).
@@ -65,6 +68,11 @@ async fn main() -> anyhow::Result<()> {
             repo.ensure_table().await?;
             xtask::seed::seed(&repo).await?;
             println!("seeded demo data: result user + 6 demo players + 1 demo pool");
+        }
+        Command::Bootstrap => {
+            repo.ensure_table().await?;
+            xtask::seed::bootstrap(&repo).await?;
+            println!("bootstrapped: result user only (no demo data)");
         }
         Command::DropTable => {
             repo.delete_table().await?;

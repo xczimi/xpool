@@ -52,16 +52,24 @@ pub(crate) async fn put_player_idempotent(
     repo.put_player(&player).await
 }
 
-/// Inner seed implementation that takes the result-user email explicitly.
-/// Public callers use [`seed`] which resolves the email from the environment.
+/// Seed **only** the result-user (Person + email Identity + Player), keyed at
+/// `result_user_email`. This is the production bootstrap: it creates the
+/// admin/official-results identity with no demo data attached, so the operator
+/// can log in via Auth0 with that email and resolve to the result-user.
+///
+/// Idempotent — `put_person`/`put_identity` are last-write-wins and the Player
+/// is put via [`put_player_idempotent`].
 ///
 /// The result-user's Identity is keyed by email (`IDENTITY#email#<email>`).
-/// If `RESULT_USER_EMAIL` is changed between runs the old key at the previous
-/// email address will linger as an orphan — the trait has no `delete_identity`
+/// If the email is changed between runs the old key at the previous email
+/// address will linger as an orphan — the trait has no `delete_identity`
 /// method and adding one just to handle this rare operator action was judged
 /// disproportionate.  Operators who rotate the email can remove the stale row
 /// manually (e.g. via the AWS console or `aws dynamodb delete-item`).
-async fn seed_with_email(repo: &dyn Repository, result_user_email: String) -> anyhow::Result<()> {
+pub async fn seed_result_user(
+    repo: &dyn Repository,
+    result_user_email: String,
+) -> anyhow::Result<()> {
     // Result user — its prediction set is the official result (DATA_MODEL §5).
     let result_person = Person {
         id: "person-result".to_owned(),
@@ -91,7 +99,20 @@ async fn seed_with_email(repo: &dyn Repository, result_user_email: String) -> an
             true,
         ),
     )
-    .await?;
+    .await
+}
+
+/// Bootstrap a production table with just the result-user. Reads
+/// `RESULT_USER_EMAIL` from the environment (same source as [`seed`]); defaults
+/// to the synthetic `result-user@dev.invalid` that no one can authenticate with.
+pub async fn bootstrap(repo: &dyn Repository) -> anyhow::Result<()> {
+    seed_result_user(repo, result_user_email_from_env()).await
+}
+
+/// Inner seed implementation that takes the result-user email explicitly.
+/// Public callers use [`seed`] which resolves the email from the environment.
+async fn seed_with_email(repo: &dyn Repository, result_user_email: String) -> anyhow::Result<()> {
+    seed_result_user(repo, result_user_email).await?;
 
     // Demo players, each with a Person + email Identity.
     // The identity is keyed at ("email", "{player_id}@dev.invalid") so that
@@ -157,17 +178,20 @@ async fn seed_with_email(repo: &dyn Repository, result_user_email: String) -> an
     Ok(())
 }
 
+/// The result-user email, resolved from the environment. Configurable so the
+/// operator's real verified email can be set in production without touching
+/// code. Defaults to a synthetic address that no one can authenticate with,
+/// effectively disabling admin.
+fn result_user_email_from_env() -> String {
+    std::env::var("RESULT_USER_EMAIL").unwrap_or_else(|_| "result-user@dev.invalid".into())
+}
+
 /// Seed demo data into the repository. Idempotent.
 ///
 /// Reads `RESULT_USER_EMAIL` from the environment; defaults to
 /// `result-user@dev.invalid` when the variable is absent.
 pub async fn seed(repo: &dyn Repository) -> anyhow::Result<()> {
-    // Result-user email is configurable so the operator's real verified email
-    // can be set in production without touching code.  Defaults to a synthetic
-    // address that no one can authenticate with, effectively disabling admin.
-    let result_user_email =
-        std::env::var("RESULT_USER_EMAIL").unwrap_or_else(|_| "result-user@dev.invalid".into());
-    seed_with_email(repo, result_user_email).await
+    seed_with_email(repo, result_user_email_from_env()).await
 }
 
 #[cfg(test)]
@@ -249,6 +273,43 @@ mod tests {
             .expect("result-user person resolves to no player");
         assert_eq!(player.id, RESULT_USER_ID);
         assert!(player.is_result_user);
+    }
+
+    #[tokio::test]
+    async fn bootstrap_seeds_only_the_result_user_no_demo_data() {
+        let repo = InMemoryRepository::new();
+        seed_result_user(&repo, "pool@xczimi.com".into())
+            .await
+            .expect("bootstrap failed");
+
+        // The result-user chain resolves: identity → person → admin Player.
+        let identity = repo
+            .get_identity("email", "pool@xczimi.com")
+            .await
+            .expect("repo error")
+            .expect("result-user identity row missing");
+        let player = repo
+            .get_player_by_person(&identity.person_id)
+            .await
+            .expect("repo error")
+            .expect("result-user person resolves to no player");
+        assert_eq!(player.id, RESULT_USER_ID);
+        assert!(player.is_result_user);
+
+        // No demo data leaked into a bootstrapped (prod) table.
+        for (player_id, nick, _) in DEMO_PLAYERS {
+            assert!(
+                repo.get_player(player_id)
+                    .await
+                    .expect("repo error")
+                    .is_none(),
+                "demo player {nick} must not exist after bootstrap"
+            );
+        }
+        assert!(
+            repo.list_pools().await.expect("repo error").is_empty(),
+            "no pools must exist after bootstrap"
+        );
     }
 
     #[tokio::test]

@@ -1,7 +1,7 @@
 #!/bin/bash
 # xpool data: (re-)import the tournament into a DEPLOYED environment's table.
 #
-# Usage: bin/deploy-data [dev|prod] [--seed] [--dry-run]   # default: dev
+# Usage: bin/deploy-data [dev|prod] [--seed|--bootstrap] [--dry-run]  # default: dev
 #
 # The deploy-* siblings ship CODE; this ships DATA. It runs the same xtask
 # `import` the local stack uses (bin/local-stack), but against the real
@@ -9,10 +9,15 @@
 # when tournaments/<tid>.json changes under an already-seeded table — e.g. new
 # team flags — since an existing table is never auto-re-imported.
 #
-#   import     non-destructive `put_tournament`: refreshes teams/games (and
-#              their flags), leaves players & pools untouched. The default.
-#   --seed     also load demo players + a demo pool (dev only; refused for prod).
-#   --dry-run  print the resolved table/tournament + plan, write nothing.
+#   import       non-destructive `put_tournament`: refreshes teams/games (and
+#                their flags), leaves players & pools untouched. The default.
+#   --seed       also load demo players + a demo pool (dev only; refused for prod).
+#   --bootstrap  also create ONLY the result-user (no demo data) keyed at
+#                result_user_email — the production admin bootstrap. Idempotent;
+#                run it once on a fresh prod table so the operator's Auth0 login
+#                resolves to the result-user. Mutually exclusive with --seed
+#                (seed already creates the result-user).
+#   --dry-run    print the resolved table/tournament + plan, write nothing.
 #
 # Table name and tournament id are DERIVED so they can't drift from the Lambda:
 #   XPOOL_TABLE           = xpool-<env>          (matches module.dynamodb)
@@ -20,15 +25,23 @@
 #   tournament file       = tournaments/<tid>.json
 set -euo pipefail
 
-ENV="dev"; SEED=0; DRYRUN=0
+ENV="dev"; SEED=0; BOOTSTRAP=0; DRYRUN=0
 for arg in "$@"; do
     case "$arg" in
         dev|prod)      ENV="$arg" ;;
         --seed)        SEED=1 ;;
+        --bootstrap)   BOOTSTRAP=1 ;;
         --dry-run|-n)  DRYRUN=1 ;;
-        *) echo "Usage: $0 [dev|prod] [--seed] [--dry-run]" >&2; exit 2 ;;
+        *) echo "Usage: $0 [dev|prod] [--seed|--bootstrap] [--dry-run]" >&2; exit 2 ;;
     esac
 done
+
+# --seed already creates the result-user; --bootstrap is the no-demo subset.
+# Asking for both is contradictory — fail loudly rather than guess.
+if [[ "$SEED" == "1" && "$BOOTSTRAP" == "1" ]]; then
+    echo "--seed and --bootstrap are mutually exclusive (seed includes the result-user)" >&2
+    exit 2
+fi
 
 PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT"
@@ -77,9 +90,13 @@ export CURRENT_TOURNAMENT_ID="$TID"
 # storage layer treats empty as real AWS.
 export DYNAMO_ENDPOINT=""
 
-[[ "$SEED" == "1" ]] && PLAN="import + seed" || PLAN="import"
+PLAN="import"
+[[ "$SEED" == "1" ]] && PLAN="import + seed"
+[[ "$BOOTSTRAP" == "1" ]] && PLAN="import + bootstrap"
 echo "==> env=$ENV  table=$XPOOL_TABLE  tournament=$TOURNAMENT  plan=$PLAN"
-[[ "$SEED" == "1" && -n "${RESULT_USER_EMAIL:-}" ]] && echo "==> result-user email=$RESULT_USER_EMAIL"
+if [[ ( "$SEED" == "1" || "$BOOTSTRAP" == "1" ) && -n "${RESULT_USER_EMAIL:-}" ]]; then
+    echo "==> result-user email=$RESULT_USER_EMAIL"
+fi
 
 if [[ "$DRYRUN" == "1" ]]; then
     echo "==> --dry-run: writing nothing"
@@ -98,6 +115,11 @@ cargo run -q -p xtask -- import "$TOURNAMENT"
 if [[ "$SEED" == "1" ]]; then
     echo "==> xtask seed (demo players + pool)"
     cargo run -q -p xtask -- seed
+fi
+
+if [[ "$BOOTSTRAP" == "1" ]]; then
+    echo "==> xtask bootstrap (result-user only)"
+    cargo run -q -p xtask -- bootstrap
 fi
 
 echo "==> done"
