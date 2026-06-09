@@ -30,13 +30,17 @@ cd "$PROJECT/infrastructure"
 
 export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
 
-# .terraform/ holds the resolved backend for whichever env was last inited.
-# If it's missing or stale (env switch), tofu apply will fail with a clear
-# message — re-run with `tofu init -backend-config=env/${ENV}.backend.hcl
-# -reconfigure` to fix.
-if [[ ! -d .terraform ]]; then
-    echo "==> tofu init -backend-config=env/${ENV}.backend.hcl"
-    tofu init -backend-config="env/${ENV}.backend.hcl"
+# .terraform/ holds the resolved backend for whichever env was last inited —
+# dev and prod live in separate state objects (env/<env>.backend.hcl sets the
+# S3 `key`). A plain `tofu apply` reuses that cached backend and does NOT re-read
+# -backend-config, so switching env without re-initing would silently apply this
+# env's tfvars against the LAST env's state. Guard against it: re-init whenever
+# .terraform/ is absent or bound to a different env's state key.
+WANT_KEY="xpool/infrastructure/${ENV}/terraform.tfstate"
+HAVE_KEY="$(jq -r '.backend.config.key // empty' .terraform/terraform.tfstate 2>/dev/null || true)"
+if [[ ! -d .terraform || "$HAVE_KEY" != "$WANT_KEY" ]]; then
+    echo "==> tofu init -reconfigure -backend-config=env/${ENV}.backend.hcl"
+    tofu init -reconfigure -backend-config="env/${ENV}.backend.hcl"
 fi
 
 echo "==> tofu apply -auto-approve -var-file=env/${ENV}.tfvars$([ $# -gt 0 ] && echo " $*")"
