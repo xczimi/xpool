@@ -1,8 +1,10 @@
 # Invite-only hardening — stop random Auth0 signups
 
-Status: in progress (branch `invite-only-hardening`, 2026-06-08) — soft funnel
-built; Auth0 tenant settings + hard-gate fallback documented (not built).
-Builds on the **shipped** invite model ([[pools-invites-explainer]]).
+Status: **shipped** (merged to master, 2026-06-08) — soft funnel built; Auth0
+tenant settings + hard-gate fallback documented (not built). The Auth0 front
+door goes live only once real Auth0 sign-in is enabled; the dead-end works in
+any auth mode today. Builds on the **shipped** invite model
+([[pools-invites-explainer]]).
 Area: web (funnel UI) + Auth0 tenant config (+ docs)
 
 ## Implementation (2026-06-08)
