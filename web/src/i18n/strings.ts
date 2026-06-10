@@ -123,6 +123,13 @@ const en = {
   homeHowStep3:
     "Climb the live scoreboard. It's free and just for bragging rights.",
   homeRulesLink: 'See full rules & scoring',
+  homeFaqTitle: 'Common questions',
+  homeFaqQ1: "Isn't that a lot of predictions?",
+  homeFaqA1:
+    "You fill in one group at a time, and each pick only has to be in before that match kicks off. It's a score-prediction pool, not fantasy football — no transfers, no line-ups, no daily admin.",
+  homeFaqQ2: 'How does scoring work?',
+  homeFaqA2:
+    '+1 for the right home score, +1 for the right away score, and +2 for the correct result — up to 4 points a match. Knockout rounds carry higher multipliers, and there is a bonus for the group standings order. Picks lock at kickoff; nobody sees yours until then.',
 
   // today
   todayTitle: 'Today / Fresh',
@@ -212,6 +219,14 @@ const en = {
   handOverTo: 'Hand over ownership to…',
   handOverConfirm: 'Hand over ownership to',
   ownershipTransferred: 'Ownership handed over.',
+  shareTemplatesTitle: 'Ready-to-send invite messages',
+  shareTemplatesHint:
+    'Copy a message and paste your invite link where it says {LINK}.',
+  shareTemplateShort: 'Short (WhatsApp / text)',
+  shareTemplateOneLiner: 'One-liner',
+  shareTemplateEmail: 'Email (colleagues)',
+  shareTemplateHungarian: 'Hungarian',
+  copied: 'Copied!',
 
   // profile
   profileTitle: 'Profile',
@@ -390,6 +405,13 @@ const hu: Record<StringKey, string> = {
   homeHowStep3:
     'Mászfel az élő eredménytáblán. Ingyenes, és csak a dicsőségért megy.',
   homeRulesLink: 'Teljes szabályok és pontozás',
+  homeFaqTitle: 'Gyakori kérdések',
+  homeFaqQ1: 'Nem túl sok az a tipp?',
+  homeFaqA1:
+    'Egyszerre csak egy csoportot töltesz ki, és minden tippet csak az adott meccs kezdése előtt kell leadni. Ez eredménytippelő játék, nem fantasy foci — nincs igazolás, nincs kezdőcsapat, nincs napi pepecselés.',
+  homeFaqQ2: 'Hogyan megy a pontozás?',
+  homeFaqA2:
+    '+1 a jó hazai eredményért, +1 a jó vendégeredményért, és +2 a helyes végkimenetelért — meccsenként akár 4 pont. Az egyenes kieséses körök nagyobb szorzót érnek, és a csoport végeredmény sorrendjéért is jár bónusz. A tippek a kezdő sípszóra zárolódnak; a tiédet addig más nem látja.',
 
   todayTitle: 'Ma / Friss',
   todayEmpty: 'Nincs meccs a közelben.',
@@ -471,6 +493,14 @@ const hu: Record<StringKey, string> = {
   handOverTo: 'Tulajdon átadása…',
   handOverConfirm: 'Tulajdon átadása neki:',
   ownershipTransferred: 'Tulajdon átadva.',
+  shareTemplatesTitle: 'Kész meghívó üzenetek',
+  shareTemplatesHint:
+    'Másolj ki egy üzenetet, és illeszd be a meghívó linkedet oda, ahol {LINK} áll.',
+  shareTemplateShort: 'Rövid (WhatsApp / SMS)',
+  shareTemplateOneLiner: 'Egysoros',
+  shareTemplateEmail: 'E-mail (kollégáknak)',
+  shareTemplateHungarian: 'Magyar',
+  copied: 'Másolva!',
 
   profileTitle: 'Adatok',
   nick: 'Becenév',

@@ -371,6 +371,12 @@ a:hover { color: var(--amber); }
 .home-howto h3 { margin-bottom: 8px; }
 .home-howto ol { margin: 0 0 8px; padding-left: 20px; line-height: 1.6; }
 
+.home-faq { margin-top: 16px; }
+.home-faq h3 { margin-bottom: 8px; }
+.home-faq dl { margin: 0; }
+.home-faq dt { color: var(--amber-bright); font-weight: 600; margin-top: 10px; }
+.home-faq dd { margin: 4px 0 0; color: var(--text-dim); line-height: 1.5; }
+
 /* ============================================================================
    ROUND NAV / SUBNAV (scoreboard chip tabs)
    ============================================================================ */
@@ -883,6 +889,39 @@ button.danger:hover:not(:disabled) {
   color: var(--amber-bright);
   background: var(--bg-input);
   letter-spacing: 0.5px;
+}
+
+/* ready-to-send invite messages (Pools page, collapsible) */
+.share-templates { margin-top: 20px; }
+.share-templates > summary {
+  cursor: pointer;
+  color: var(--amber-bright);
+  font-weight: 600;
+}
+.share-templates-hint {
+  margin: 8px 0 12px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.share-template-list { list-style: none; margin: 0; padding: 0; }
+.share-template { margin-bottom: 16px; }
+.share-template-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.share-template-body {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--bg-input);
+  color: var(--text-on-dark);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* invite-only dead-end (NeedsInvite) + front-door funnel */
