@@ -40,6 +40,7 @@ export function PoolsPage() {
   const [meResult] = useQuery<{ me: Me }>({ query: ME_QUERY, pause: !label })
   const me = meResult.data?.me
   const myId = me?.__typename === 'Player' ? me.id : null
+  const canCreatePool = me?.__typename === 'Player' && me.mayCreatePool
   // Pool members/owner are bare player ids; resolve them to nicks for display.
   const displayName = useDisplayName()
 
@@ -150,20 +151,22 @@ export function PoolsPage() {
       {flash && <p className="flash-bar">{flash}</p>}
 
       <div className="pool-forms">
-        <form className="form" onSubmit={onCreate}>
-          <label>
-            {t('poolName')}
-            <input
-              required
-              placeholder={t('poolNamePlaceholder')}
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-            />
-          </label>
-          <button type="submit" className="primary" disabled={!newName.trim()}>
-            {t('createPool')}
-          </button>
-        </form>
+        {canCreatePool && (
+          <form className="form" onSubmit={onCreate}>
+            <label>
+              {t('poolName')}
+              <input
+                required
+                placeholder={t('poolNamePlaceholder')}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+              />
+            </label>
+            <button type="submit" className="primary" disabled={!newName.trim()}>
+              {t('createPool')}
+            </button>
+          </form>
+        )}
 
         <form className="form" onSubmit={onJoin}>
           <label>

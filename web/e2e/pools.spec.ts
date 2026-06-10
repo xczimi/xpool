@@ -166,6 +166,21 @@ test('share-templates panel offers copyable invite messages with the {LINK} plac
   net.assertNoPageErrors()
 })
 
+test('an authorized player sees the create-pool form', async ({ page }) => {
+  const net = watchNetwork(page)
+  await page.goto('/')
+  await devLogin(page, 'demo-grace')
+  await page.goto('/pools')
+
+  await expect(
+    page.getByRole('button', { name: 'Create pool' }),
+  ).toBeVisible()
+
+  await expectNoErrorView(page)
+  await net.assertNoGraphqlErrors()
+  net.assertNoPageErrors()
+})
+
 test('a player joins a pool via the inviter’s link', async ({ page }) => {
   const net = watchNetwork(page)
   const name = `Linus Invite ${Date.now()}`
