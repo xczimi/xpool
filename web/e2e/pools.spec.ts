@@ -136,6 +136,36 @@ test('result user bootstraps a pool, invites a player, then hands it over', asyn
   net.assertNoPageErrors()
 })
 
+test('share-templates panel offers copyable invite messages with the {LINK} placeholder', async ({
+  page,
+}) => {
+  const net = watchNetwork(page)
+  await page.goto('/')
+  await devLogin(page, 'demo-ada')
+  await page.goto('/pools')
+
+  // Collapsed by default; the summary expands it.
+  const panel = page.locator('.share-templates')
+  await panel.getByText('Ready-to-send invite messages').click()
+
+  // A template body renders with the literal placeholder for the inviter to swap.
+  const firstBody = panel.locator('.share-template-body').first()
+  await expect(firstBody).toBeVisible()
+  await expect(firstBody).toContainText('{LINK}')
+
+  // The Hungarian variant is present regardless of the (English) UI locale —
+  // message language follows the recipient, not the toggle.
+  await expect(panel.getByText('Hungarian')).toBeVisible()
+  // Each template carries a Copy button.
+  await expect(
+    panel.locator('.share-template').first().getByRole('button', { name: 'Copy' }),
+  ).toBeVisible()
+
+  await expectNoErrorView(page)
+  await net.assertNoGraphqlErrors()
+  net.assertNoPageErrors()
+})
+
 test('a player joins a pool via the inviter’s link', async ({ page }) => {
   const net = watchNetwork(page)
   const name = `Linus Invite ${Date.now()}`

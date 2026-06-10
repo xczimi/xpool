@@ -18,6 +18,7 @@ import {
 import type { Me, Pool } from '../graphql/types'
 import { Loading, NeedsLogin } from '../components/StatusViews'
 import { InlineConfirm } from '../components/InlineConfirm'
+import { ShareTemplates } from '../components/ShareTemplates'
 import { useDisplayName } from '../hooks/useDisplayName'
 
 /**
@@ -378,6 +379,8 @@ export function PoolsPage() {
           })}
         </ul>
       )}
+
+      <ShareTemplates />
     </section>
   )
 }
