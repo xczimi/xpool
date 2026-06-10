@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import { takeReturnTo } from '../auth/returnTo'
+import { takePendingInvitePath } from '../auth/pendingInvite'
 
 /**
  * After an Auth0 sign-in redirect lands the app back on `/`, restore the page
@@ -10,13 +11,20 @@ import { takeReturnTo } from '../auth/returnTo'
  * the SDK has processed the redirect (which is after the stash), avoiding a race
  * with this component's mount. No-op in dev (no Auth0 provider → `isAuthenticated`
  * stays false, and nothing is ever stashed).
+ *
+ * Falls back to the durable pending-invite breadcrumb when no `returnTo` was
+ * stashed — that is the first-time-signup case where Auth0's `appState` was lost
+ * (email verification breaks the same-tab chain). Both one-shots are taken so a
+ * stale breadcrumb can't re-fire on a later login.
  */
 export function PostLoginRedirect() {
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth0()
   useEffect(() => {
     if (!isAuthenticated) return
-    const target = takeReturnTo()
+    const returnTo = takeReturnTo()
+    const pendingInvite = takePendingInvitePath()
+    const target = returnTo ?? pendingInvite
     if (target && target !== window.location.pathname) {
       navigate(target, { replace: true })
     }

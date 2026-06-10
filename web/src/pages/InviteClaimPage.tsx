@@ -3,6 +3,7 @@ import { useMutation, useQuery } from 'urql'
 import { useAuth0 } from '@auth0/auth0-react'
 import { useI18n } from '../i18n/useI18n'
 import { auth0Enabled } from '../auth/auth0Provider'
+import { rememberPendingInvite } from '../auth/pendingInvite'
 import { NameForm } from '../components/NameForm'
 
 const ME = `query ViewerState {
@@ -68,6 +69,9 @@ export function InviteClaimPage() {
   if (!viewer) {
     const onContinue = () => {
       const returnTo = `/invite/${code}`
+      // Durable breadcrumb: Auth0's `appState.returnTo` is lost if signup breaks
+      // the same-tab chain (email verification opens a fresh tab). This survives.
+      rememberPendingInvite(code)
       if (auth0Enabled) {
         void loginWithRedirect({
           appState: { returnTo },
