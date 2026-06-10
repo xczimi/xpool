@@ -38,6 +38,16 @@ export function HomePage() {
         <Link to="/rules">{t('homeRulesLink')}</Link>
       </div>
 
+      <div className="home-faq">
+        <h3>{t('homeFaqTitle')}</h3>
+        <dl>
+          <dt>{t('homeFaqQ1')}</dt>
+          <dd>{t('homeFaqA1')}</dd>
+          <dt>{t('homeFaqQ2')}</dt>
+          <dd>{t('homeFaqA2')}</dd>
+        </dl>
+      </div>
+
       {!loading &&
         (isPlayer ? (
           <div className="home-links">

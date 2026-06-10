@@ -4,6 +4,13 @@ Ready-to-send messages for inviting friends and colleagues to an xPool pool.
 Drop your reusable pool invite link (the `…/invite/<pool>-<code>` one from the
 Pools page) in place of `{LINK}`. No money, just for fun — keep that tone.
 
+> **In the app:** the four ready-to-send messages below (A short, B one-liner,
+> C email, D Hungarian) are also surfaced on the **Pools page** "Ready-to-send
+> invite messages" panel, copyable straight from the browser — their canonical
+> wording lives in `web/src/content/shareTemplates.ts`. The objection-handling
+> and scoring blurbs are folded into the Home page how-it-works FAQ
+> (`web/src/i18n/strings.ts`, `homeFaq*`). Keep this doc and those in sync.
+
 ## A — WhatsApp / text, friends (short)
 
 > ⚽ The World Cup kicks off this week and I'm running a score-prediction pool.
