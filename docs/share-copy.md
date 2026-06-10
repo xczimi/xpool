@@ -49,7 +49,8 @@ Pools page) in place of `{LINK}`. No money, just for fun — keep that tone.
 > each pick only has to be in before that match kicks off. By the knockouts you've
 > watched everyone play, so the picks get quicker and the calls get sharper. It's a
 > score-prediction pool, **not fantasy football** — no transfers, no line-ups, no
-> daily admin.
+> daily admin. The rules have barely changed since the first pool back in **2002**,
+> so they're well broken-in by now.
 
 ## Scoring at a glance (for any custom message)
 
