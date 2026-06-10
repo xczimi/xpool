@@ -1,6 +1,11 @@
 # Rules content — basics on the home page, full rules on the Rules page
 
-Status: needs-triage
+Status: done (branch `rules-content`, 2026-06-09) — RulesPage moved off
+hardcoded English into i18n'd EN+HU strings; Home gained a short i18n'd "how it
+works" block (predict → earn → climb) linking to the full Rules page. Scoring
+detail still sourced from `lib/rounds` `STAGE_MULTIPLIERS` so it can't drift.
+e2e: `rules-content.spec.ts`. Open question "worked examples on Rules page"
+deferred — prose only for now.
 Area: web / content
 
 ## Idea

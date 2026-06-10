@@ -1,6 +1,11 @@
 # Merge the Pools and Invite pages
 
-Status: ready-for-agent
+Status: done (commit 30fb602, 2026-06-09) — `feat(web): merge pools/invite
+pages — delete share page, repurpose /invite`. `InvitePage.tsx` deleted,
+`navInvite` removed, bare `/invite` now renders `NeedsInvite` (public
+code-entry front door), `/invite/:code` → `InviteClaimPage` unchanged.
+Follow-ups below (D6 logout-button guard, D7 code-entry consolidation) remain
+open as separate, optional items.
 Area: web
 
 > **Agreed design below** (grilled 2026-06-09). The original idea framing is
