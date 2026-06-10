@@ -15,6 +15,7 @@ import {
   computeStandings,
 } from '../../lib/standings'
 import { Matchup } from '../../components/TeamLabel'
+import { Countdown } from '../../components/Countdown'
 import { PointsBadge } from '../../components/PointsBadge'
 import { InlineConfirm } from '../../components/InlineConfirm'
 import { StandingsTable, PredictedStandingsEditor } from './StandingsTables'
@@ -50,6 +51,8 @@ export function GroupTipForm({
   results,
   pointsByGame,
   standings,
+  serverNowMs,
+  onExpire,
   onSubmit,
 }: {
   tournament: Tournament
@@ -64,6 +67,10 @@ export function GroupTipForm({
   >
   /** This player's standings bonus for the group, once scoreable. */
   standings?: StandingsScore | null
+  /** Estimated server-now in ms (from `useServerClock`) for the countdown. */
+  serverNowMs: number
+  /** Fired when this group's countdown crosses zero — triggers a refetch. */
+  onExpire?: () => void
   onSubmit: (
     predictions: PredictionInput[],
     standings: StandingsInput | null,
@@ -206,6 +213,17 @@ export function GroupTipForm({
         <span className={groupLocked ? 'state-locked' : 'state-draft'}>
           {groupLocked ? t('locked') : t('draft')}
         </span>
+        {!groupLocked && group.deadline && (
+          <span className="finalize-countdown">
+            {' · '}
+            {t('finalizeIn')}{' '}
+            <Countdown
+              deadline={group.deadline}
+              serverNowMs={serverNowMs}
+              onExpire={onExpire}
+            />
+          </span>
+        )}
       </h3>
 
       {readOnly && <p className="flash-bar">{t('lockedNotice')}</p>}

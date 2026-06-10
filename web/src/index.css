@@ -742,6 +742,24 @@ button.danger:hover:not(:disabled) {
   text-shadow: 0 0 4px rgba(33, 212, 253, 0.4);
 }
 
+/* Finalize countdown — the page-level "next to finalize" nudge and the
+   per-group inline timer. Tabular numerals keep the ticking digits from
+   jittering as they change. */
+.finalize-banner {
+  margin: 8px 0 16px;
+  font-weight: 600;
+}
+.finalize-banner .finalize-countdown,
+.finalize-banner > span {
+  font-variant-numeric: tabular-nums;
+}
+.finalize-countdown {
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+
 .status {
   padding: 16px;
   color: var(--text-dim);

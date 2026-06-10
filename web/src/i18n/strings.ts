@@ -136,6 +136,9 @@ const en = {
   // my tips
   myTipsTitle: 'My Tips',
   selectGroup: 'Select a group',
+  nextToFinalize: 'Next to finalize',
+  finalizeIn: 'finalize in',
+  finalizeClosed: 'Finalize closed',
   saveDraft: 'Save draft',
   lockGroup: 'Finalize predictions',
   lockConfirm: "Finalize these predictions? Once final, they can't be changed.",
@@ -397,6 +400,9 @@ const hu: Record<StringKey, string> = {
 
   myTipsTitle: 'Tippjeim',
   selectGroup: 'Válassz csoportot',
+  nextToFinalize: 'Következő véglegesítés',
+  finalizeIn: 'véglegesítésig',
+  finalizeClosed: 'Véglegesítés lezárva',
   saveDraft: 'Piszkozat mentése',
   lockGroup: 'Tippek véglegesítése',
   lockConfirm: 'Véglegesíted ezeket a tippeket? Ezután már nem módosíthatók.',

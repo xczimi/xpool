@@ -22,7 +22,9 @@ import type {
 } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { RoundNav } from '../components/RoundNav'
+import { Countdown } from '../components/Countdown'
 import { currentRoundNode, leafGroupsOfRound, visibleRoundNodes } from '../lib/rounds'
+import { useServerClock } from '../lib/useServerClock'
 import { GroupTipForm } from './mytips/GroupTipForm'
 
 /**
@@ -39,6 +41,7 @@ export function MyTipsPage() {
 
   const [tournamentResult, refetchTournament] = useQuery<{
     tournament: Tournament | null
+    now: string
   }>({ query: TOURNAMENT_QUERY })
   const [meResult, refetchMe] = useQuery<{ me: Me }>({
     query: ME_QUERY,
@@ -48,6 +51,11 @@ export function MyTipsPage() {
     query: RESULTS_QUERY,
   })
   const [, submitGroup] = useMutation(SUBMIT_GROUP_MUTATION)
+
+  // Estimated server-now, ticking once a second, anchored to the GraphQL `now`
+  // — drives the finalize countdowns without ever gating locking on the
+  // browser clock (CLAUDE.md server-authoritative clock).
+  const serverNowMs = useServerClock(tournamentResult.data?.now)
 
   const tournament = tournamentResult.data?.tournament ?? null
   const meRaw = meResult.data?.me ?? null
@@ -137,9 +145,47 @@ export function MyTipsPage() {
     ? roundLeaves.filter((g) => g.id === activeGroupId)
     : roundLeaves
 
+  // A leaf group this player has finalized — every child game locked. Mirrors
+  // the per-group `groupLocked` signature below.
+  const playerFinalized = (g: GroupGame): boolean =>
+    g.childGameIds.length > 0 &&
+    g.childGameIds.every(
+      (id) => me.matchPredictions.find((p) => p.gameId === id)?.locked,
+    )
+
+  // The soonest deadline still open to finalize, across the visible rounds'
+  // leaf groups — the page-level "next to finalize" nudge. The result user is
+  // never bound by deadlines, so they get no banner.
+  const nextFinalize = me.isResultUser
+    ? null
+    : (rounds
+        .flatMap((r) => leafGroupsOfRound(r, tournament.groups))
+        .filter(
+          (g) => g.deadline && !g.deadlinePassed && !playerFinalized(g),
+        )
+        .sort(
+          (a, b) => Date.parse(a.deadline!) - Date.parse(b.deadline!),
+        )[0] ?? null)
+
+  const refetchAll = () => {
+    refetchTournament({ requestPolicy: 'network-only' })
+    refetchMe({ requestPolicy: 'network-only' })
+  }
+
   return (
     <section className="page">
       <h2>{t('myTipsTitle')}</h2>
+      {nextFinalize && (
+        <p className="finalize-banner">
+          ⏰ {t('nextToFinalize')}: {nextFinalize.name}
+          {' · '}
+          <Countdown
+            deadline={nextFinalize.deadline}
+            serverNowMs={serverNowMs}
+            onExpire={refetchAll}
+          />
+        </p>
+      )}
       <RoundNav
         groups={tournament.groups}
         games={tournament.games}
@@ -175,6 +221,8 @@ export function MyTipsPage() {
               results={results}
               pointsByGame={pointsByGame}
               standings={standingsByGroup.get(group.id) ?? null}
+              serverNowMs={serverNowMs}
+              onExpire={refetchAll}
               onSubmit={async (predictions, standings, lock) => {
                 const res = await submitGroup({
                   groupId: group.id,
