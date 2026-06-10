@@ -2,46 +2,39 @@ import { useI18n } from '../i18n/useI18n'
 import { roundLabel, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
 
 /**
- * Player-facing rules of play (REWRITE_USE_CASES §5, SCORING.md). Static copy.
+ * Player-facing rules of play (REWRITE_USE_CASES §5, SCORING.md). All copy is
+ * i18n'd (EN + HU) in `strings.ts` — see `.scratch/rules-content/PRD.md`. The
+ * round labels and stage multipliers are sourced from `lib/rounds` so the table
+ * can't drift from the scoring engine's `STAGE_MULTIPLIERS`.
  */
 export function RulesPage() {
   const { t } = useI18n()
   return (
     <section className="page">
       <h2>{t('rulesTitle')}</h2>
+      <p>{t('rulesIntro')}</p>
 
-      <h3>Per match</h3>
+      <h3>{t('rulesPerMatchTitle')}</h3>
       <ul>
-        <li>+1 for the exact home score.</li>
-        <li>+1 for the exact away score.</li>
-        <li>+2 for the correct outcome (win / draw / loss).</li>
-        <li>Maximum 4 points per match.</li>
-        <li>
-          4-goal rule: a side scoring 4 or more is matched by any prediction of
-          4 or more for that side.
-        </li>
-        <li>Scores are judged at full time (90 minutes) — extra time and
-          penalties do not count toward the per-match score.</li>
+        <li>{t('rulesPerMatchExactHome')}</li>
+        <li>{t('rulesPerMatchExactAway')}</li>
+        <li>{t('rulesPerMatchOutcome')}</li>
+        <li>{t('rulesPerMatchMax')}</li>
+        <li>{t('rulesPerMatchFourGoal')}</li>
+        <li>{t('rulesPerMatchFullTime')}</li>
       </ul>
 
-      <h3>Per group</h3>
+      <h3>{t('rulesPerGroupTitle')}</h3>
       <ul>
-        <li>
-          +1 for every pair of teams ordered correctly in your predicted
-          standings.
-        </li>
-        <li>
-          Predicted standings are derived from your own predicted scores, then
-          ranked by points (3/1/0), head-to-head, goal difference, goals
-          scored, and finally your manual tie order.
-        </li>
+        <li>{t('rulesPerGroupPairs')}</li>
+        <li>{t('rulesPerGroupStandings')}</li>
       </ul>
 
-      <h3>Stage multipliers</h3>
+      <h3>{t('rulesMultipliersTitle')}</h3>
       <table className="data-table">
         <thead>
           <tr>
-            <th>Round</th>
+            <th>{t('rulesRoundColumn')}</th>
             <th>{t('multiplier')}</th>
           </tr>
         </thead>
@@ -55,15 +48,12 @@ export function RulesPage() {
         </tbody>
       </table>
 
-      <h3>Fair play</h3>
+      <h3>{t('rulesFairPlayTitle')}</h3>
       <ul>
-        <li>Predictions only count once locked; unlocked predictions score 0
-          and stay hidden from others.</li>
-        <li>A "perfect" is a maximum-point (4) match prediction.</li>
-        <li>Lock before the group's first match (group stage) or before the
-          match (knockout).</li>
-        <li>You cannot see other players' predictions until they lock them — by
-          design, to prevent copying.</li>
+        <li>{t('rulesFairPlayLock')}</li>
+        <li>{t('rulesFairPlayPerfect')}</li>
+        <li>{t('rulesFairPlayDeadline')}</li>
+        <li>{t('rulesFairPlayHidden')}</li>
       </ul>
     </section>
   )

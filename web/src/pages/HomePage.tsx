@@ -28,6 +28,16 @@ export function HomePage() {
       <h2>{t('homeWelcome')}</h2>
       <p>{t('homeIntro')}</p>
 
+      <div className="home-howto">
+        <h3>{t('homeHowTitle')}</h3>
+        <ol>
+          <li>{t('homeHowStep1')}</li>
+          <li>{t('homeHowStep2')}</li>
+          <li>{t('homeHowStep3')}</li>
+        </ol>
+        <Link to="/rules">{t('homeRulesLink')}</Link>
+      </div>
+
       {!loading &&
         (isPlayer ? (
           <div className="home-links">
