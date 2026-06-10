@@ -1,6 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { useI18n } from '../i18n/useI18n'
-import { formatCountdown, remainingMs } from '../lib/countdown'
+import {
+  formatAbsoluteDeadline,
+  formatRelative,
+  remainingMs,
+} from '../lib/countdown'
 
 interface CountdownProps {
   /** ISO deadline; `null` renders nothing (no known deadline). */
@@ -14,9 +18,11 @@ interface CountdownProps {
 }
 
 /**
- * A live-ticking countdown to a finalize deadline (My Tips). Display-only: it
- * renders the server-anchored remaining time, and on expiry shows the closed
- * label and signals `onExpire`. It never decides locking itself.
+ * A live finalize-deadline display (My Tips). Shows the absolute deadline in the
+ * viewer's local time plus a relative hint whose granularity scales to urgency
+ * (see `lib/countdown.formatRelative`) — only the final hour ticks per second.
+ * Display-only: on expiry it shows the closed label and signals `onExpire`; it
+ * never decides locking itself.
  */
 export function Countdown({
   deadline,
@@ -24,7 +30,7 @@ export function Countdown({
   onExpire,
   className,
 }: CountdownProps) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const firedRef = useRef(false)
 
   const remaining =
@@ -39,10 +45,14 @@ export function Countdown({
     if (!expired) firedRef.current = false
   }, [expired, onExpire])
 
-  if (remaining === null) return null
+  if (remaining === null || deadline === null) return null
+  if (expired) return <span className={className}>{t('finalizeClosed')}</span>
+
+  const absolute = formatAbsoluteDeadline(deadline, serverNowMs, locale)
+  const relative = formatRelative(remaining, locale)
   return (
     <span className={className}>
-      {expired ? t('finalizeClosed') : formatCountdown(remaining)}
+      {absolute} — {relative}
     </span>
   )
 }

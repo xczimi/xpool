@@ -216,7 +216,7 @@ export function GroupTipForm({
         {!groupLocked && group.deadline && (
           <span className="finalize-countdown">
             {' · '}
-            {t('finalizeIn')}{' '}
+            {t('finalizeBy')}{' '}
             <Countdown
               deadline={group.deadline}
               serverNowMs={serverNowMs}
