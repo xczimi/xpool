@@ -86,6 +86,8 @@ export interface Player {
   fullName: string
   /** The result user IS the admin — gate admin features on this flag. */
   isResultUser: boolean
+  /** Whether this viewer may create pools (result user or a direct referral). */
+  mayCreatePool: boolean
   version: number
   matchPredictions: MatchPrediction[]
   standingsPredictions: StandingsPrediction[]

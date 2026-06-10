@@ -43,7 +43,7 @@ export const ME_QUERY = `
     me {
       __typename
       ... on Player {
-        id nick fullName isResultUser version
+        id nick fullName isResultUser mayCreatePool version
         matchPredictions { gameId homeScore awayScore locked }
         standingsPredictions { groupId ordering drawOrder locked }
       }

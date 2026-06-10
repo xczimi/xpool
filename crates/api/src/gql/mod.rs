@@ -29,3 +29,15 @@ pub fn build_schema(repo: Arc<dyn Repository>) -> XpoolSchema {
         .limit_depth(20)
         .finish()
 }
+
+/// The id of the result-user player (the referral-graph root), or empty string
+/// if none is configured. Used to gate pool creation (`may_create_pool`).
+pub(crate) async fn result_user_id(repo: &dyn Repository) -> async_graphql::Result<String> {
+    Ok(repo
+        .list_players()
+        .await?
+        .into_iter()
+        .find(|p| p.is_result_user)
+        .map(|p| p.id)
+        .unwrap_or_default())
+}

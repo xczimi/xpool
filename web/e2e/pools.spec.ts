@@ -166,6 +166,62 @@ test('share-templates panel offers copyable invite messages with the {LINK} plac
   net.assertNoPageErrors()
 })
 
+test('a solo owned pool shows the handover hint, not the dropdown', async ({
+  page,
+}) => {
+  const net = watchNetwork(page)
+  const name = `Solo Cup ${Date.now()}`
+  await page.goto('/')
+  await devLogin(page, 'demo-grace')
+  await page.goto('/pools')
+
+  await page.getByPlaceholder('e.g. Office League').fill(name)
+  await page.getByRole('button', { name: 'Create pool' }).click()
+
+  const card = page.locator('.pool-card', { hasText: name })
+  await expect(card).toBeVisible()
+  await expect(
+    card.getByText('Invite someone to this pool before you can hand it over.'),
+  ).toBeVisible()
+  await expect(card.locator('.handover-select')).toHaveCount(0)
+
+  await expectNoErrorView(page)
+  await net.assertNoGraphqlErrors()
+  net.assertNoPageErrors()
+})
+
+test('a multi-member owned pool shows the handover dropdown', async ({
+  page,
+}) => {
+  const net = watchNetwork(page)
+  await page.goto('/')
+  await devLogin(page, 'demo-ada')
+  await page.goto('/pools')
+
+  const card = page.locator('.pool-card', { hasText: 'Demo Pool' })
+  await expect(card).toBeVisible()
+  await expect(card.locator('.handover-select')).toBeVisible()
+
+  await expectNoErrorView(page)
+  await net.assertNoGraphqlErrors()
+  net.assertNoPageErrors()
+})
+
+test('an authorized player sees the create-pool form', async ({ page }) => {
+  const net = watchNetwork(page)
+  await page.goto('/')
+  await devLogin(page, 'demo-grace')
+  await page.goto('/pools')
+
+  await expect(
+    page.getByRole('button', { name: 'Create pool' }),
+  ).toBeVisible()
+
+  await expectNoErrorView(page)
+  await net.assertNoGraphqlErrors()
+  net.assertNoPageErrors()
+})
+
 test('a player joins a pool via the inviter’s link', async ({ page }) => {
   const net = watchNetwork(page)
   const name = `Linus Invite ${Date.now()}`
