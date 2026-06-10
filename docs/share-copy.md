@@ -43,6 +43,14 @@ Pools page) in place of `{LINK}`. No money, just for fun — keep that tone.
 > játékban, viszont lesz okod minden meccset végignézni. Pár perc a csoportkört
 > kitölteni. Csatlakozz az első sípszó előtt 👉 {LINK}
 
+## If someone balks at "that's a lot of matches"
+
+> You don't predict everything at once — you fill in **one group at a time**, and
+> each pick only has to be in before that match kicks off. By the knockouts you've
+> watched everyone play, so the picks get quicker and the calls get sharper. It's a
+> score-prediction pool, **not fantasy football** — no transfers, no line-ups, no
+> daily admin.
+
 ## Scoring at a glance (for any custom message)
 
 - Predict the exact score of every match.
