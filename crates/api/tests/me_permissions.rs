@@ -7,8 +7,7 @@ mod common;
 
 use common::{ALICE, BOB};
 
-const ME_MAY_CREATE: &str =
-    r#"{"query":"query { me { ... on Player { mayCreatePool } } }"}"#;
+const ME_MAY_CREATE: &str = r#"{"query":"query { me { ... on Player { mayCreatePool } } }"}"#;
 
 #[tokio::test]
 async fn me_reports_may_create_pool_for_a_result_user_referral() {
