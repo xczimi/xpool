@@ -53,14 +53,14 @@ test('result user enters results via My Tips and the scoreboard updates', async 
   await setPreset(page, 'before') // Group A open
   await openGroupA(page)
   await fillAll(page, '2', '1')
-  const lockBtn = page.getByRole('button', { name: 'Lock group' })
+  const lockBtn = page.getByRole('button', { name: 'Finalize predictions' })
   await expect(lockBtn).toBeEnabled()
   await lockBtn.click()
   await page.getByRole('button', { name: 'Confirm' }).click()
   // After a successful lock the form re-seeds from the refetched `me`: the group
   // becomes Locked and read-only (no more action buttons). See mytips-lock.spec.
   await expect(page.locator('.tip-form .state-locked')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Lock group' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Finalize predictions' })).toHaveCount(0)
 
   // ── 2. the result user enters official results via My Tips AFTER kickoff ────
   await devLogin(page, 'result-user')
