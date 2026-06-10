@@ -1136,7 +1136,7 @@
     {
       "id": "M1",
       "kickoff": "2026-06-11T19:00:00Z",
-      "venue": null,
+      "venue": "Estadio Azteca, Mexico City",
       "group_id": "A",
       "home": {
         "team_id": "MEX",
@@ -1150,7 +1150,7 @@
     {
       "id": "M2",
       "kickoff": "2026-06-12T02:00:00Z",
-      "venue": null,
+      "venue": "Estadio Akron, Guadalajara",
       "group_id": "A",
       "home": {
         "team_id": "KOR",
@@ -1164,7 +1164,7 @@
     {
       "id": "M3",
       "kickoff": "2026-06-12T19:00:00Z",
-      "venue": null,
+      "venue": "BMO Field, Toronto",
       "group_id": "B",
       "home": {
         "team_id": "CAN",
@@ -1178,7 +1178,7 @@
     {
       "id": "M4",
       "kickoff": "2026-06-13T01:00:00Z",
-      "venue": null,
+      "venue": "SoFi Stadium, Los Angeles",
       "group_id": "D",
       "home": {
         "team_id": "USA",
@@ -1192,7 +1192,7 @@
     {
       "id": "M5",
       "kickoff": "2026-06-13T19:00:00Z",
-      "venue": null,
+      "venue": "Levi's Stadium, San Francisco",
       "group_id": "B",
       "home": {
         "team_id": "QAT",
@@ -1206,7 +1206,7 @@
     {
       "id": "M6",
       "kickoff": "2026-06-13T22:00:00Z",
-      "venue": null,
+      "venue": "MetLife Stadium, New York",
       "group_id": "C",
       "home": {
         "team_id": "BRA",
@@ -1220,7 +1220,7 @@
     {
       "id": "M7",
       "kickoff": "2026-06-14T01:00:00Z",
-      "venue": null,
+      "venue": "Gillette Stadium, Boston",
       "group_id": "C",
       "home": {
         "team_id": "HAI",
@@ -1234,7 +1234,7 @@
     {
       "id": "M8",
       "kickoff": "2026-06-14T04:00:00Z",
-      "venue": null,
+      "venue": "BC Place, Vancouver",
       "group_id": "D",
       "home": {
         "team_id": "AUS",
@@ -1248,7 +1248,7 @@
     {
       "id": "M9",
       "kickoff": "2026-06-14T17:00:00Z",
-      "venue": null,
+      "venue": "NRG Stadium, Houston",
       "group_id": "E",
       "home": {
         "team_id": "GER",
@@ -1262,7 +1262,7 @@
     {
       "id": "M10",
       "kickoff": "2026-06-14T20:00:00Z",
-      "venue": null,
+      "venue": "AT&T Stadium, Dallas",
       "group_id": "F",
       "home": {
         "team_id": "NED",
@@ -1276,7 +1276,7 @@
     {
       "id": "M11",
       "kickoff": "2026-06-14T23:00:00Z",
-      "venue": null,
+      "venue": "Lincoln Financial Field, Philadelphia",
       "group_id": "E",
       "home": {
         "team_id": "CIV",
@@ -1290,7 +1290,7 @@
     {
       "id": "M12",
       "kickoff": "2026-06-15T02:00:00Z",
-      "venue": null,
+      "venue": "Estadio BBVA, Monterrey",
       "group_id": "F",
       "home": {
         "team_id": "SWE",
@@ -1304,7 +1304,7 @@
     {
       "id": "M13",
       "kickoff": "2026-06-15T16:00:00Z",
-      "venue": null,
+      "venue": "Mercedes-Benz Stadium, Atlanta",
       "group_id": "G",
       "home": {
         "team_id": "ESP",
@@ -1318,7 +1318,7 @@
     {
       "id": "M14",
       "kickoff": "2026-06-15T19:00:00Z",
-      "venue": null,
+      "venue": "Lumen Field, Seattle",
       "group_id": "H",
       "home": {
         "team_id": "BEL",
@@ -1332,7 +1332,7 @@
     {
       "id": "M15",
       "kickoff": "2026-06-15T22:00:00Z",
-      "venue": null,
+      "venue": "Hard Rock Stadium, Miami",
       "group_id": "G",
       "home": {
         "team_id": "KSA",
@@ -1346,7 +1346,7 @@
     {
       "id": "M16",
       "kickoff": "2026-06-16T01:00:00Z",
-      "venue": null,
+      "venue": "SoFi Stadium, Los Angeles",
       "group_id": "H",
       "home": {
         "team_id": "IRN",
@@ -1360,7 +1360,7 @@
     {
       "id": "M17",
       "kickoff": "2026-06-16T19:00:00Z",
-      "venue": null,
+      "venue": "MetLife Stadium, New York",
       "group_id": "I",
       "home": {
         "team_id": "FRA",
@@ -1374,7 +1374,7 @@
     {
       "id": "M18",
       "kickoff": "2026-06-16T22:00:00Z",
-      "venue": null,
+      "venue": "Gillette Stadium, Boston",
       "group_id": "I",
       "home": {
         "team_id": "IRQ",
@@ -1388,7 +1388,7 @@
     {
       "id": "M19",
       "kickoff": "2026-06-17T01:00:00Z",
-      "venue": null,
+      "venue": "Arrowhead Stadium, Kansas City",
       "group_id": "J",
       "home": {
         "team_id": "ARG",
@@ -1402,7 +1402,7 @@
     {
       "id": "M20",
       "kickoff": "2026-06-17T04:00:00Z",
-      "venue": null,
+      "venue": "Levi's Stadium, San Francisco",
       "group_id": "J",
       "home": {
         "team_id": "AUT",
@@ -1416,7 +1416,7 @@
     {
       "id": "M21",
       "kickoff": "2026-06-17T17:00:00Z",
-      "venue": null,
+      "venue": "NRG Stadium, Houston",
       "group_id": "K",
       "home": {
         "team_id": "POR",
@@ -1430,7 +1430,7 @@
     {
       "id": "M22",
       "kickoff": "2026-06-17T20:00:00Z",
-      "venue": null,
+      "venue": "AT&T Stadium, Dallas",
       "group_id": "L",
       "home": {
         "team_id": "ENG",
@@ -1444,7 +1444,7 @@
     {
       "id": "M23",
       "kickoff": "2026-06-17T23:00:00Z",
-      "venue": null,
+      "venue": "BMO Field, Toronto",
       "group_id": "L",
       "home": {
         "team_id": "GHA",
@@ -1458,7 +1458,7 @@
     {
       "id": "M24",
       "kickoff": "2026-06-18T02:00:00Z",
-      "venue": null,
+      "venue": "Estadio Azteca, Mexico City",
       "group_id": "K",
       "home": {
         "team_id": "UZB",
@@ -1472,7 +1472,7 @@
     {
       "id": "M25",
       "kickoff": "2026-06-18T16:00:00Z",
-      "venue": null,
+      "venue": "Mercedes-Benz Stadium, Atlanta",
       "group_id": "A",
       "home": {
         "team_id": "CZE",
@@ -1486,7 +1486,7 @@
     {
       "id": "M26",
       "kickoff": "2026-06-18T19:00:00Z",
-      "venue": null,
+      "venue": "SoFi Stadium, Los Angeles",
       "group_id": "B",
       "home": {
         "team_id": "SUI",
@@ -1500,7 +1500,7 @@
     {
       "id": "M27",
       "kickoff": "2026-06-18T22:00:00Z",
-      "venue": null,
+      "venue": "BC Place, Vancouver",
       "group_id": "B",
       "home": {
         "team_id": "CAN",
@@ -1514,7 +1514,7 @@
     {
       "id": "M28",
       "kickoff": "2026-06-19T01:00:00Z",
-      "venue": null,
+      "venue": "Estadio Akron, Guadalajara",
       "group_id": "A",
       "home": {
         "team_id": "MEX",
@@ -1528,7 +1528,7 @@
     {
       "id": "M29",
       "kickoff": "2026-06-19T19:00:00Z",
-      "venue": null,
+      "venue": "Lumen Field, Seattle",
       "group_id": "D",
       "home": {
         "team_id": "USA",
@@ -1542,7 +1542,7 @@
     {
       "id": "M30",
       "kickoff": "2026-06-19T22:00:00Z",
-      "venue": null,
+      "venue": "Gillette Stadium, Boston",
       "group_id": "C",
       "home": {
         "team_id": "SCO",
@@ -1556,7 +1556,7 @@
     {
       "id": "M31",
       "kickoff": "2026-06-20T00:30:00Z",
-      "venue": null,
+      "venue": "Lincoln Financial Field, Philadelphia",
       "group_id": "C",
       "home": {
         "team_id": "BRA",
@@ -1570,7 +1570,7 @@
     {
       "id": "M32",
       "kickoff": "2026-06-20T03:00:00Z",
-      "venue": null,
+      "venue": "Levi's Stadium, San Francisco",
       "group_id": "D",
       "home": {
         "team_id": "TUR",
@@ -1584,7 +1584,7 @@
     {
       "id": "M33",
       "kickoff": "2026-06-20T17:00:00Z",
-      "venue": null,
+      "venue": "NRG Stadium, Houston",
       "group_id": "F",
       "home": {
         "team_id": "NED",
@@ -1598,7 +1598,7 @@
     {
       "id": "M34",
       "kickoff": "2026-06-20T20:00:00Z",
-      "venue": null,
+      "venue": "BMO Field, Toronto",
       "group_id": "E",
       "home": {
         "team_id": "GER",
@@ -1612,7 +1612,7 @@
     {
       "id": "M35",
       "kickoff": "2026-06-21T00:00:00Z",
-      "venue": null,
+      "venue": "Arrowhead Stadium, Kansas City",
       "group_id": "E",
       "home": {
         "team_id": "ECU",
@@ -1626,7 +1626,7 @@
     {
       "id": "M36",
       "kickoff": "2026-06-21T04:00:00Z",
-      "venue": null,
+      "venue": "Estadio BBVA, Monterrey",
       "group_id": "F",
       "home": {
         "team_id": "TUN",
@@ -1640,7 +1640,7 @@
     {
       "id": "M37",
       "kickoff": "2026-06-21T16:00:00Z",
-      "venue": null,
+      "venue": "Mercedes-Benz Stadium, Atlanta",
       "group_id": "G",
       "home": {
         "team_id": "ESP",
@@ -1654,7 +1654,7 @@
     {
       "id": "M38",
       "kickoff": "2026-06-21T19:00:00Z",
-      "venue": null,
+      "venue": "SoFi Stadium, Los Angeles",
       "group_id": "H",
       "home": {
         "team_id": "BEL",
@@ -1668,7 +1668,7 @@
     {
       "id": "M39",
       "kickoff": "2026-06-21T22:00:00Z",
-      "venue": null,
+      "venue": "Hard Rock Stadium, Miami",
       "group_id": "G",
       "home": {
         "team_id": "URU",
@@ -1682,7 +1682,7 @@
     {
       "id": "M40",
       "kickoff": "2026-06-22T01:00:00Z",
-      "venue": null,
+      "venue": "BC Place, Vancouver",
       "group_id": "H",
       "home": {
         "team_id": "NZL",
@@ -1696,7 +1696,7 @@
     {
       "id": "M41",
       "kickoff": "2026-06-22T17:00:00Z",
-      "venue": null,
+      "venue": "AT&T Stadium, Dallas",
       "group_id": "J",
       "home": {
         "team_id": "ARG",
@@ -1710,7 +1710,7 @@
     {
       "id": "M42",
       "kickoff": "2026-06-22T21:00:00Z",
-      "venue": null,
+      "venue": "Lincoln Financial Field, Philadelphia",
       "group_id": "I",
       "home": {
         "team_id": "FRA",
@@ -1724,7 +1724,7 @@
     {
       "id": "M43",
       "kickoff": "2026-06-23T00:00:00Z",
-      "venue": null,
+      "venue": "MetLife Stadium, New York",
       "group_id": "I",
       "home": {
         "team_id": "NOR",
@@ -1738,7 +1738,7 @@
     {
       "id": "M44",
       "kickoff": "2026-06-23T03:00:00Z",
-      "venue": null,
+      "venue": "Levi's Stadium, San Francisco",
       "group_id": "J",
       "home": {
         "team_id": "JOR",
@@ -1752,7 +1752,7 @@
     {
       "id": "M45",
       "kickoff": "2026-06-23T17:00:00Z",
-      "venue": null,
+      "venue": "NRG Stadium, Houston",
       "group_id": "K",
       "home": {
         "team_id": "POR",
@@ -1766,7 +1766,7 @@
     {
       "id": "M46",
       "kickoff": "2026-06-23T20:00:00Z",
-      "venue": null,
+      "venue": "Gillette Stadium, Boston",
       "group_id": "L",
       "home": {
         "team_id": "ENG",
@@ -1780,7 +1780,7 @@
     {
       "id": "M47",
       "kickoff": "2026-06-23T23:00:00Z",
-      "venue": null,
+      "venue": "BMO Field, Toronto",
       "group_id": "L",
       "home": {
         "team_id": "PAN",
@@ -1794,7 +1794,7 @@
     {
       "id": "M48",
       "kickoff": "2026-06-24T02:00:00Z",
-      "venue": null,
+      "venue": "Estadio Akron, Guadalajara",
       "group_id": "K",
       "home": {
         "team_id": "COL",
@@ -1808,7 +1808,7 @@
     {
       "id": "M49",
       "kickoff": "2026-06-24T19:00:00Z",
-      "venue": null,
+      "venue": "Lumen Field, Seattle",
       "group_id": "B",
       "home": {
         "team_id": "BIH",
@@ -1822,7 +1822,7 @@
     {
       "id": "M50",
       "kickoff": "2026-06-24T19:00:00Z",
-      "venue": null,
+      "venue": "BC Place, Vancouver",
       "group_id": "B",
       "home": {
         "team_id": "SUI",
@@ -1836,7 +1836,7 @@
     {
       "id": "M51",
       "kickoff": "2026-06-24T22:00:00Z",
-      "venue": null,
+      "venue": "Mercedes-Benz Stadium, Atlanta",
       "group_id": "C",
       "home": {
         "team_id": "MAR",
@@ -1850,7 +1850,7 @@
     {
       "id": "M52",
       "kickoff": "2026-06-24T22:00:00Z",
-      "venue": null,
+      "venue": "Hard Rock Stadium, Miami",
       "group_id": "C",
       "home": {
         "team_id": "SCO",
@@ -1864,7 +1864,7 @@
     {
       "id": "M53",
       "kickoff": "2026-06-25T01:00:00Z",
-      "venue": null,
+      "venue": "Estadio Azteca, Mexico City",
       "group_id": "A",
       "home": {
         "team_id": "CZE",
@@ -1878,7 +1878,7 @@
     {
       "id": "M54",
       "kickoff": "2026-06-25T01:00:00Z",
-      "venue": null,
+      "venue": "Estadio BBVA, Monterrey",
       "group_id": "A",
       "home": {
         "team_id": "RSA",
@@ -1892,7 +1892,7 @@
     {
       "id": "M55",
       "kickoff": "2026-06-25T20:00:00Z",
-      "venue": null,
+      "venue": "Lincoln Financial Field, Philadelphia",
       "group_id": "E",
       "home": {
         "team_id": "CUW",
@@ -1906,7 +1906,7 @@
     {
       "id": "M56",
       "kickoff": "2026-06-25T20:00:00Z",
-      "venue": null,
+      "venue": "MetLife Stadium, New York",
       "group_id": "E",
       "home": {
         "team_id": "ECU",
@@ -1920,7 +1920,7 @@
     {
       "id": "M57",
       "kickoff": "2026-06-25T23:00:00Z",
-      "venue": null,
+      "venue": "AT&T Stadium, Dallas",
       "group_id": "F",
       "home": {
         "team_id": "JPN",
@@ -1934,7 +1934,7 @@
     {
       "id": "M58",
       "kickoff": "2026-06-25T23:00:00Z",
-      "venue": null,
+      "venue": "Arrowhead Stadium, Kansas City",
       "group_id": "F",
       "home": {
         "team_id": "TUN",
@@ -1948,7 +1948,7 @@
     {
       "id": "M59",
       "kickoff": "2026-06-26T02:00:00Z",
-      "venue": null,
+      "venue": "Levi's Stadium, San Francisco",
       "group_id": "D",
       "home": {
         "team_id": "PAR",
@@ -1962,7 +1962,7 @@
     {
       "id": "M60",
       "kickoff": "2026-06-26T02:00:00Z",
-      "venue": null,
+      "venue": "SoFi Stadium, Los Angeles",
       "group_id": "D",
       "home": {
         "team_id": "TUR",
@@ -1976,7 +1976,7 @@
     {
       "id": "M61",
       "kickoff": "2026-06-26T19:00:00Z",
-      "venue": null,
+      "venue": "Gillette Stadium, Boston",
       "group_id": "I",
       "home": {
         "team_id": "NOR",
@@ -1990,7 +1990,7 @@
     {
       "id": "M62",
       "kickoff": "2026-06-26T19:00:00Z",
-      "venue": null,
+      "venue": "BMO Field, Toronto",
       "group_id": "I",
       "home": {
         "team_id": "SEN",
@@ -2004,7 +2004,7 @@
     {
       "id": "M63",
       "kickoff": "2026-06-27T00:00:00Z",
-      "venue": null,
+      "venue": "NRG Stadium, Houston",
       "group_id": "G",
       "home": {
         "team_id": "CPV",
@@ -2018,7 +2018,7 @@
     {
       "id": "M64",
       "kickoff": "2026-06-27T00:00:00Z",
-      "venue": null,
+      "venue": "Estadio Akron, Guadalajara",
       "group_id": "G",
       "home": {
         "team_id": "URU",
@@ -2032,7 +2032,7 @@
     {
       "id": "M65",
       "kickoff": "2026-06-27T03:00:00Z",
-      "venue": null,
+      "venue": "Lumen Field, Seattle",
       "group_id": "H",
       "home": {
         "team_id": "EGY",
@@ -2046,7 +2046,7 @@
     {
       "id": "M66",
       "kickoff": "2026-06-27T03:00:00Z",
-      "venue": null,
+      "venue": "BC Place, Vancouver",
       "group_id": "H",
       "home": {
         "team_id": "NZL",
@@ -2060,7 +2060,7 @@
     {
       "id": "M67",
       "kickoff": "2026-06-27T21:00:00Z",
-      "venue": null,
+      "venue": "Lincoln Financial Field, Philadelphia",
       "group_id": "L",
       "home": {
         "team_id": "CRO",
@@ -2074,7 +2074,7 @@
     {
       "id": "M68",
       "kickoff": "2026-06-27T21:00:00Z",
-      "venue": null,
+      "venue": "MetLife Stadium, New York",
       "group_id": "L",
       "home": {
         "team_id": "PAN",
@@ -2088,7 +2088,7 @@
     {
       "id": "M69",
       "kickoff": "2026-06-27T23:30:00Z",
-      "venue": null,
+      "venue": "Hard Rock Stadium, Miami",
       "group_id": "K",
       "home": {
         "team_id": "COL",
@@ -2102,7 +2102,7 @@
     {
       "id": "M70",
       "kickoff": "2026-06-27T23:30:00Z",
-      "venue": null,
+      "venue": "Mercedes-Benz Stadium, Atlanta",
       "group_id": "K",
       "home": {
         "team_id": "COD",
@@ -2116,7 +2116,7 @@
     {
       "id": "M71",
       "kickoff": "2026-06-28T02:00:00Z",
-      "venue": null,
+      "venue": "Arrowhead Stadium, Kansas City",
       "group_id": "J",
       "home": {
         "team_id": "ALG",
@@ -2130,7 +2130,7 @@
     {
       "id": "M72",
       "kickoff": "2026-06-28T02:00:00Z",
-      "venue": null,
+      "venue": "AT&T Stadium, Dallas",
       "group_id": "J",
       "home": {
         "team_id": "JOR",
@@ -2144,7 +2144,7 @@
     {
       "id": "M73",
       "kickoff": "2026-06-28T19:00:00Z",
-      "venue": null,
+      "venue": "SoFi Stadium, Los Angeles",
       "group_id": "KO-M73",
       "home": {
         "team_id": null,
@@ -2158,7 +2158,7 @@
     {
       "id": "M74",
       "kickoff": "2026-06-29T17:00:00Z",
-      "venue": null,
+      "venue": "Gillette Stadium, Boston",
       "group_id": "KO-M74",
       "home": {
         "team_id": null,
@@ -2172,7 +2172,7 @@
     {
       "id": "M75",
       "kickoff": "2026-06-29T20:30:00Z",
-      "venue": null,
+      "venue": "Estadio BBVA, Monterrey",
       "group_id": "KO-M75",
       "home": {
         "team_id": null,
@@ -2186,7 +2186,7 @@
     {
       "id": "M76",
       "kickoff": "2026-06-30T01:00:00Z",
-      "venue": null,
+      "venue": "NRG Stadium, Houston",
       "group_id": "KO-M76",
       "home": {
         "team_id": null,
@@ -2200,7 +2200,7 @@
     {
       "id": "M77",
       "kickoff": "2026-06-30T17:00:00Z",
-      "venue": null,
+      "venue": "MetLife Stadium, New York",
       "group_id": "KO-M77",
       "home": {
         "team_id": null,
@@ -2214,7 +2214,7 @@
     {
       "id": "M78",
       "kickoff": "2026-06-30T21:00:00Z",
-      "venue": null,
+      "venue": "AT&T Stadium, Dallas",
       "group_id": "KO-M78",
       "home": {
         "team_id": null,
@@ -2228,7 +2228,7 @@
     {
       "id": "M79",
       "kickoff": "2026-07-01T01:00:00Z",
-      "venue": null,
+      "venue": "Estadio Azteca, Mexico City",
       "group_id": "KO-M79",
       "home": {
         "team_id": null,
@@ -2242,7 +2242,7 @@
     {
       "id": "M80",
       "kickoff": "2026-07-01T16:00:00Z",
-      "venue": null,
+      "venue": "Mercedes-Benz Stadium, Atlanta",
       "group_id": "KO-M80",
       "home": {
         "team_id": null,
@@ -2256,7 +2256,7 @@
     {
       "id": "M81",
       "kickoff": "2026-07-01T20:00:00Z",
-      "venue": null,
+      "venue": "Levi's Stadium, San Francisco",
       "group_id": "KO-M81",
       "home": {
         "team_id": null,
@@ -2270,7 +2270,7 @@
     {
       "id": "M82",
       "kickoff": "2026-07-02T00:00:00Z",
-      "venue": null,
+      "venue": "Lumen Field, Seattle",
       "group_id": "KO-M82",
       "home": {
         "team_id": null,
@@ -2284,7 +2284,7 @@
     {
       "id": "M83",
       "kickoff": "2026-07-02T19:00:00Z",
-      "venue": null,
+      "venue": "BMO Field, Toronto",
       "group_id": "KO-M83",
       "home": {
         "team_id": null,
@@ -2298,7 +2298,7 @@
     {
       "id": "M84",
       "kickoff": "2026-07-02T23:00:00Z",
-      "venue": null,
+      "venue": "SoFi Stadium, Los Angeles",
       "group_id": "KO-M84",
       "home": {
         "team_id": null,
@@ -2312,7 +2312,7 @@
     {
       "id": "M85",
       "kickoff": "2026-07-03T03:00:00Z",
-      "venue": null,
+      "venue": "BC Place, Vancouver",
       "group_id": "KO-M85",
       "home": {
         "team_id": null,
@@ -2326,7 +2326,7 @@
     {
       "id": "M86",
       "kickoff": "2026-07-03T18:00:00Z",
-      "venue": null,
+      "venue": "Hard Rock Stadium, Miami",
       "group_id": "KO-M86",
       "home": {
         "team_id": null,
@@ -2340,7 +2340,7 @@
     {
       "id": "M87",
       "kickoff": "2026-07-03T22:00:00Z",
-      "venue": null,
+      "venue": "Arrowhead Stadium, Kansas City",
       "group_id": "KO-M87",
       "home": {
         "team_id": null,
@@ -2354,7 +2354,7 @@
     {
       "id": "M88",
       "kickoff": "2026-07-04T01:30:00Z",
-      "venue": null,
+      "venue": "AT&T Stadium, Dallas",
       "group_id": "KO-M88",
       "home": {
         "team_id": null,
@@ -2368,7 +2368,7 @@
     {
       "id": "M89",
       "kickoff": "2026-07-04T17:00:00Z",
-      "venue": null,
+      "venue": "Lincoln Financial Field, Philadelphia",
       "group_id": "KO-M89",
       "home": {
         "team_id": null,
@@ -2382,7 +2382,7 @@
     {
       "id": "M90",
       "kickoff": "2026-07-04T21:00:00Z",
-      "venue": null,
+      "venue": "NRG Stadium, Houston",
       "group_id": "KO-M90",
       "home": {
         "team_id": null,
@@ -2396,7 +2396,7 @@
     {
       "id": "M91",
       "kickoff": "2026-07-05T20:00:00Z",
-      "venue": null,
+      "venue": "MetLife Stadium, New York",
       "group_id": "KO-M91",
       "home": {
         "team_id": null,
@@ -2410,7 +2410,7 @@
     {
       "id": "M92",
       "kickoff": "2026-07-06T00:00:00Z",
-      "venue": null,
+      "venue": "Estadio Azteca, Mexico City",
       "group_id": "KO-M92",
       "home": {
         "team_id": null,
@@ -2424,7 +2424,7 @@
     {
       "id": "M93",
       "kickoff": "2026-07-06T19:00:00Z",
-      "venue": null,
+      "venue": "AT&T Stadium, Dallas",
       "group_id": "KO-M93",
       "home": {
         "team_id": null,
@@ -2438,7 +2438,7 @@
     {
       "id": "M94",
       "kickoff": "2026-07-07T00:00:00Z",
-      "venue": null,
+      "venue": "Lumen Field, Seattle",
       "group_id": "KO-M94",
       "home": {
         "team_id": null,
@@ -2452,7 +2452,7 @@
     {
       "id": "M95",
       "kickoff": "2026-07-07T16:00:00Z",
-      "venue": null,
+      "venue": "Mercedes-Benz Stadium, Atlanta",
       "group_id": "KO-M95",
       "home": {
         "team_id": null,
@@ -2466,7 +2466,7 @@
     {
       "id": "M96",
       "kickoff": "2026-07-07T20:00:00Z",
-      "venue": null,
+      "venue": "BC Place, Vancouver",
       "group_id": "KO-M96",
       "home": {
         "team_id": null,
@@ -2480,7 +2480,7 @@
     {
       "id": "M97",
       "kickoff": "2026-07-09T20:00:00Z",
-      "venue": null,
+      "venue": "Gillette Stadium, Boston",
       "group_id": "KO-M97",
       "home": {
         "team_id": null,
@@ -2494,7 +2494,7 @@
     {
       "id": "M98",
       "kickoff": "2026-07-10T19:00:00Z",
-      "venue": null,
+      "venue": "SoFi Stadium, Los Angeles",
       "group_id": "KO-M98",
       "home": {
         "team_id": null,
@@ -2508,7 +2508,7 @@
     {
       "id": "M99",
       "kickoff": "2026-07-11T21:00:00Z",
-      "venue": null,
+      "venue": "Hard Rock Stadium, Miami",
       "group_id": "KO-M99",
       "home": {
         "team_id": null,
@@ -2522,7 +2522,7 @@
     {
       "id": "M100",
       "kickoff": "2026-07-12T01:00:00Z",
-      "venue": null,
+      "venue": "Arrowhead Stadium, Kansas City",
       "group_id": "KO-M100",
       "home": {
         "team_id": null,
@@ -2536,7 +2536,7 @@
     {
       "id": "M101",
       "kickoff": "2026-07-14T19:00:00Z",
-      "venue": null,
+      "venue": "AT&T Stadium, Dallas",
       "group_id": "KO-M101",
       "home": {
         "team_id": null,
@@ -2550,7 +2550,7 @@
     {
       "id": "M102",
       "kickoff": "2026-07-15T19:00:00Z",
-      "venue": null,
+      "venue": "Mercedes-Benz Stadium, Atlanta",
       "group_id": "KO-M102",
       "home": {
         "team_id": null,
@@ -2564,7 +2564,7 @@
     {
       "id": "M103",
       "kickoff": "2026-07-18T21:00:00Z",
-      "venue": null,
+      "venue": "Hard Rock Stadium, Miami",
       "group_id": "KO-M103",
       "home": {
         "team_id": null,
@@ -2578,7 +2578,7 @@
     {
       "id": "M104",
       "kickoff": "2026-07-19T19:00:00Z",
-      "venue": null,
+      "venue": "MetLife Stadium, New York",
       "group_id": "KO-M104",
       "home": {
         "team_id": null,

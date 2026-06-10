@@ -98,6 +98,11 @@ The decided design (settled in design review).
 - **Structure & fixtures = data** → `tournaments/fwc26.json`: the 12 groups,
   104 fixtures (kickoff, venue, group/round, team slots + placeholder
   descriptions), 48 teams. Declarative, hand-curated, git-committed.
+  Venues are `"Stadium, City"` strings: the 72 group fixtures came from
+  TheSportsDB V1 (`eventsround.php?id=4429&s=2026`, joined by team matchup); the
+  32 knockout venues from the published FIFA match schedule (Wikipedia "2026
+  FIFA World Cup knockout stage"), keyed by FIFA match number — TheSportsDB has
+  not entered the knockout fixtures yet.
 - **FWC26-specific logic = code** → an `fwc26` module: knockout bracket
   *resolution* (placeholder → concrete team), the §3 third-placed ranking, and
   the Annexe C lookup. The 495-row Annexe C table is *data consumed by code* —
