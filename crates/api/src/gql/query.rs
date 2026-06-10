@@ -149,7 +149,13 @@ impl QueryRoot {
         match ctx.data_unchecked::<CurrentPlayer>() {
             CurrentPlayer::Visitor => Ok(None),
             CurrentPlayer::Player(p) => {
-                Ok(Some(Viewer::Player(Box::new(Player::from(p.as_ref())))))
+                let repo = ctx.data_unchecked::<Arc<dyn Repository>>();
+                let ruid = crate::gql::mutation::result_user_id(repo.as_ref()).await?;
+                let player = Player {
+                    may_create_pool: domain::pool::may_create_pool(p.as_ref(), &ruid),
+                    ..Player::from(p.as_ref())
+                };
+                Ok(Some(Viewer::Player(Box::new(player))))
             }
             CurrentPlayer::AuthenticatedUnclaimed(u) => {
                 let repo = ctx.data_unchecked::<Arc<dyn Repository>>();

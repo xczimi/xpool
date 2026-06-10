@@ -254,6 +254,11 @@ pub struct Player {
     pub nick: String,
     pub full_name: String,
     pub is_result_user: bool,
+    /// Whether this viewer may create pools — the result user or one of its
+    /// direct referrals (`domain::pool::may_create_pool`). Computed in the `me`
+    /// resolver; defaults to `false` here (least privilege) for the
+    /// mutation-return call-sites that never expose it.
+    pub may_create_pool: bool,
     pub version: u64,
     pub match_predictions: Vec<MatchPrediction>,
     pub standings_predictions: Vec<StandingsPrediction>,
@@ -266,6 +271,7 @@ impl From<&domain::Player> for Player {
             nick: p.nick.clone(),
             full_name: p.full_name.clone(),
             is_result_user: p.is_result_user,
+            may_create_pool: false,
             version: p.version,
             match_predictions: p
                 .match_predictions

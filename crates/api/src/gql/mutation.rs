@@ -48,7 +48,7 @@ fn generate_invite_code() -> String {
 
 /// The id of the result-user player (the referral-graph root), or empty string
 /// if none is configured. Used to gate pool creation (`may_create_pool`).
-async fn result_user_id(repo: &dyn Repository) -> async_graphql::Result<String> {
+pub(crate) async fn result_user_id(repo: &dyn Repository) -> async_graphql::Result<String> {
     Ok(repo
         .list_players()
         .await?
