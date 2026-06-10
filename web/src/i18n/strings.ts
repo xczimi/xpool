@@ -116,6 +116,13 @@ const en = {
   homeWelcome: 'Hi there!',
   homeIntro:
     'A private, invite-only pool where friends predict every match of the tournament. Earn points for accurate scores; climb the live scoreboard.',
+  homeHowTitle: 'How it works',
+  homeHowStep1: 'Predict the exact score of every match.',
+  homeHowStep2:
+    'Earn points for accuracy — up to 4 a match, worth more in the knockouts.',
+  homeHowStep3:
+    "Climb the live scoreboard. It's free and just for bragging rights.",
+  homeRulesLink: 'See full rules & scoring',
 
   // today
   todayTitle: 'Today / Fresh',
@@ -222,6 +229,32 @@ const en = {
 
   // rules
   rulesTitle: 'Rules & Scoring',
+  rulesIntro:
+    'Predict the score of every match. The closer you are, the more you score — and the live scoreboard does the rest.',
+  rulesPerMatchTitle: 'Per match',
+  rulesPerMatchExactHome: '+1 for the exact home score.',
+  rulesPerMatchExactAway: '+1 for the exact away score.',
+  rulesPerMatchOutcome: '+2 for the correct outcome (win / draw / loss).',
+  rulesPerMatchMax: 'Maximum 4 points per match.',
+  rulesPerMatchFourGoal:
+    'A side scoring 4 or more is matched by any prediction of 4 or more for that side.',
+  rulesPerMatchFullTime:
+    'Scores are judged at full time (90 minutes) — extra time and penalties do not count toward the per-match score.',
+  rulesPerGroupTitle: 'Per group',
+  rulesPerGroupPairs:
+    '+1 for every pair of teams ordered correctly in your predicted standings.',
+  rulesPerGroupStandings:
+    'Predicted standings are derived from your own predicted scores, then ranked by points (3/1/0), head-to-head, goal difference, goals scored, and finally your manual tie order.',
+  rulesMultipliersTitle: 'Stage multipliers',
+  rulesRoundColumn: 'Round',
+  rulesFairPlayTitle: 'Fair play',
+  rulesFairPlayLock:
+    'Predictions only count once locked; unlocked predictions score 0 and stay hidden from others.',
+  rulesFairPlayPerfect: 'A "perfect" is a maximum-point (4) match prediction.',
+  rulesFairPlayDeadline:
+    "Lock before the group's first match (group stage) or before the match (knockout).",
+  rulesFairPlayHidden:
+    "You cannot see other players' predictions until they lock them — by design, to prevent copying.",
   // onboarding / invite claim
   inviteWelcomeTitle: "You've been invited to xPool!",
   inviteWelcomeBody:
@@ -347,6 +380,13 @@ const hu: Record<StringKey, string> = {
   homeWelcome: 'Szevasztok!',
   homeIntro:
     'Zárt, meghívásos tippjáték, ahol a barátok megtippelik a torna minden meccsét. Pontot kapsz a pontos tippekért; mászhatsz az élő eredménytáblán.',
+  homeHowTitle: 'Hogyan működik',
+  homeHowStep1: 'Tippeld meg minden meccs pontos eredményét.',
+  homeHowStep2:
+    'Pontot kapsz a pontosságért — meccsenként akár 4-et, az egyenes kieséses szakaszban többet.',
+  homeHowStep3:
+    'Mászfel az élő eredménytáblán. Ingyenes, és csak a dicsőségért megy.',
+  homeRulesLink: 'Teljes szabályok és pontozás',
 
   todayTitle: 'Ma / Friss',
   todayEmpty: 'Nincs meccs a közelben.',
@@ -442,6 +482,34 @@ const hu: Record<StringKey, string> = {
   inviteExists: 'Ez a felhasználó már benne van a tutiban!',
 
   rulesTitle: 'Szabályok és pontozás',
+  rulesIntro:
+    'Tippeld meg minden meccs eredményét. Minél közelebb vagy, annál több pontod van — a többit az élő eredménytábla elintézi.',
+  rulesPerMatchTitle: 'Meccsenként',
+  rulesPerMatchExactHome: '+1 a pontos hazai eredményért.',
+  rulesPerMatchExactAway: '+1 a pontos vendég eredményért.',
+  rulesPerMatchOutcome:
+    '+2 a helyes végkimenetelért (győzelem / döntetlen / vereség).',
+  rulesPerMatchMax: 'Meccsenként legfeljebb 4 pont.',
+  rulesPerMatchFourGoal:
+    'Ha egy csapat 4 vagy több gólt rúg, bármely 4-re vagy többre tett tipp találat arra az oldalra.',
+  rulesPerMatchFullTime:
+    'Az eredményeket a rendes játékidő (90 perc) végén értékeljük — a hosszabbítás és a büntetők nem számítanak a meccs pontozásába.',
+  rulesPerGroupTitle: 'Csoportonként',
+  rulesPerGroupPairs:
+    '+1 minden olyan csapatpárért, amelynek sorrendjét helyesen tippelted a tabelládon.',
+  rulesPerGroupStandings:
+    'A tippelt tabella a saját tippelt eredményeidből áll össze, majd pontszám (3/1/0), egymás elleni eredmény, gólkülönbség, lőtt gólok és végül a kézi sorrended szerint rendeződik.',
+  rulesMultipliersTitle: 'Szakasz-szorzók',
+  rulesRoundColumn: 'Forduló',
+  rulesFairPlayTitle: 'Fair play',
+  rulesFairPlayLock:
+    'A tippek csak rögzítés után számítanak; a nem rögzített tippek 0 pontot érnek és rejtve maradnak a többiek elől.',
+  rulesFairPlayPerfect:
+    'A „telitalálat" egy maximális pontot (4) érő meccstipp.',
+  rulesFairPlayDeadline:
+    'Rögzíts a csoport első meccse előtt (csoportkör), illetve a meccs előtt (egyenes kiesés).',
+  rulesFairPlayHidden:
+    'A többiek tippjeit nem látod, amíg nem rögzítik őket — szándékosan, a másolás megelőzésére.',
   inviteWelcomeTitle: 'Meghívtak az xPoolba!',
   inviteWelcomeBody:
     'Beállítunk egy gyors, biztonságos belépést (e-mail vagy Google), hogy csak te adhasd meg a tippjeidet.',
