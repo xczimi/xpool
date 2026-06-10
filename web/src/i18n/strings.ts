@@ -145,6 +145,8 @@ const en = {
   selectGroup: 'Select a group',
   nextToFinalize: 'Next to finalize',
   finalizeBy: 'finalize by',
+  enterAllGamesHint:
+    'Make sure you enter predictions for all games of the group before the deadline.',
   finalizeClosed: 'Finalize closed',
   saveDraft: 'Save draft',
   lockGroup: 'Finalize predictions',
@@ -424,6 +426,8 @@ const hu: Record<StringKey, string> = {
   selectGroup: 'Válassz csoportot',
   nextToFinalize: 'Következő véglegesítés',
   finalizeBy: 'véglegesítés eddig',
+  enterAllGamesHint:
+    'Ügyelj rá, hogy a csoport összes meccsére adj tippet a határidő előtt.',
   finalizeClosed: 'Véglegesítés lezárva',
   saveDraft: 'Piszkozat mentése',
   lockGroup: 'Tippek véglegesítése',

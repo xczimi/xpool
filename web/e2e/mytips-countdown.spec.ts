@@ -37,6 +37,11 @@ test('days from the deadline: coarse relative, no ticking, absolute deadline sho
   await expect(banner).toBeVisible()
   await expect(banner).toContainText('Group A')
 
+  // An open group nudges the player to predict every match before the deadline.
+  await expect(
+    page.getByText(/all games of the group before the deadline/i).first(),
+  ).toBeVisible()
+
   const countdown = page.locator('.finalize-countdown').first()
   await expect(countdown).toBeVisible()
   // Day-grained relative — and crucially NO ticking HH:MM:SS clock.
@@ -88,7 +93,10 @@ test('no countdown once every deadline has passed', async ({ page }) => {
   await page.goto('/mytips')
 
   await expect(page.getByRole('heading', { name: 'My Tips' })).toBeVisible()
-  // Nothing left to finalize: no banner, no open per-group timer.
+  // Nothing left to finalize: no banner, no open per-group timer, no hint.
+  await expect(
+    page.getByText(/all games of the group before the deadline/i),
+  ).toHaveCount(0)
   await expect(page.locator('.finalize-banner')).toHaveCount(0)
   await expect(page.locator('.finalize-countdown')).toHaveCount(0)
 

@@ -226,6 +226,10 @@ export function GroupTipForm({
         )}
       </h3>
 
+      {!groupLocked && group.deadline && (
+        <p className="hint">{t('enterAllGamesHint')}</p>
+      )}
+
       {readOnly && <p className="flash-bar">{t('lockedNotice')}</p>}
       {flash && <p className="flash-bar">{flash}</p>}
 
