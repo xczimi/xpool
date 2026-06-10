@@ -64,7 +64,7 @@ test('My Tips: a locked group renders read-only immediately, with no re-lock', a
 
   // Lock it — the first (only) submit succeeds. Locking is irreversible, so the
   // button arms an inline confirm; click Confirm to commit.
-  const lockBtn = page.getByRole('button', { name: 'Lock group' })
+  const lockBtn = page.getByRole('button', { name: 'Finalize predictions' })
   await expect(lockBtn).toBeEnabled()
   await lockBtn.click()
   await page.getByRole('button', { name: 'Confirm' }).click()
@@ -81,7 +81,7 @@ test('My Tips: a locked group renders read-only immediately, with no re-lock', a
     'read-only',
   )
   await expect(page.locator('.tip-form .state-draft')).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Lock group' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Finalize predictions' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Save draft' })).toHaveCount(0)
 
   // The lock must survive a reload too (server is the source of truth).
