@@ -298,34 +298,34 @@ export function PoolsPage() {
                             {t('cancel')}
                           </button>
                         </span>
+                      ) : pool.members.some((m) => m !== pool.owner) ? (
+                        <select
+                          className="handover-select"
+                          aria-label={t('handOverTo')}
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              setPendingOwner({
+                                poolId: pool.id,
+                                memberId: e.target.value,
+                              })
+                            }
+                            e.target.value = ''
+                          }}
+                        >
+                          <option value="" disabled>
+                            {t('transferOwnership')}…
+                          </option>
+                          {pool.members
+                            .filter((m) => m !== pool.owner)
+                            .map((m) => (
+                              <option key={m} value={m}>
+                                {displayName(m)}
+                              </option>
+                            ))}
+                        </select>
                       ) : (
-                        pool.members.some((m) => m !== pool.owner) && (
-                          <select
-                            className="handover-select"
-                            aria-label={t('handOverTo')}
-                            value=""
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                setPendingOwner({
-                                  poolId: pool.id,
-                                  memberId: e.target.value,
-                                })
-                              }
-                              e.target.value = ''
-                            }}
-                          >
-                            <option value="" disabled>
-                              {t('transferOwnership')}…
-                            </option>
-                            {pool.members
-                              .filter((m) => m !== pool.owner)
-                              .map((m) => (
-                                <option key={m} value={m}>
-                                  {displayName(m)}
-                                </option>
-                              ))}
-                          </select>
-                        )
+                        <span className="hint">{t('handOverNeedsMember')}</span>
                       )}
                       <InlineConfirm
                         className="danger"

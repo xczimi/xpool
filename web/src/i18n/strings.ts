@@ -220,6 +220,7 @@ const en = {
   transferOwnership: 'Hand over',
   handOverTo: 'Hand over ownership to…',
   handOverConfirm: 'Hand over ownership to',
+  handOverNeedsMember: 'Invite someone to this pool before you can hand it over.',
   ownershipTransferred: 'Ownership handed over.',
   shareTemplatesTitle: 'Ready-to-send invite messages',
   shareTemplatesHint:
@@ -496,6 +497,7 @@ const hu: Record<StringKey, string> = {
   transferOwnership: 'Átadás',
   handOverTo: 'Tulajdon átadása…',
   handOverConfirm: 'Tulajdon átadása neki:',
+  handOverNeedsMember: 'Hívj meg valakit a ligába, mielőtt átadhatnád.',
   ownershipTransferred: 'Tulajdon átadva.',
   shareTemplatesTitle: 'Kész meghívó üzenetek',
   shareTemplatesHint:
