@@ -150,7 +150,7 @@ impl QueryRoot {
             CurrentPlayer::Visitor => Ok(None),
             CurrentPlayer::Player(p) => {
                 let repo = ctx.data_unchecked::<Arc<dyn Repository>>();
-                let ruid = crate::gql::mutation::result_user_id(repo.as_ref()).await?;
+                let ruid = crate::gql::result_user_id(repo.as_ref()).await?;
                 let player = Player {
                     may_create_pool: domain::pool::may_create_pool(p.as_ref(), &ruid),
                     ..Player::from(p.as_ref())

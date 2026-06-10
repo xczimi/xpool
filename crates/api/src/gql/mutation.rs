@@ -46,18 +46,6 @@ fn generate_invite_code() -> String {
     domain::invite::encode_suffix(&bytes[..domain::invite::SUFFIX_LEN])
 }
 
-/// The id of the result-user player (the referral-graph root), or empty string
-/// if none is configured. Used to gate pool creation (`may_create_pool`).
-pub(crate) async fn result_user_id(repo: &dyn Repository) -> async_graphql::Result<String> {
-    Ok(repo
-        .list_players()
-        .await?
-        .into_iter()
-        .find(|p| p.is_result_user)
-        .map(|p| p.id)
-        .unwrap_or_default())
-}
-
 /// A unique-per-pool cosmetic prefix label from the pool name: a 5-char slug
 /// plus a 2-char disambiguator, regenerated until it collides with no existing
 /// pool prefix (case-insensitive). Falls back to a pure code if the name has no
@@ -481,7 +469,7 @@ impl MutationRoot {
     ) -> async_graphql::Result<Pool> {
         let viewer = CurrentPlayer::require(ctx)?;
         let repo = repo(ctx);
-        let ruid = result_user_id(repo.as_ref()).await?;
+        let ruid = crate::gql::result_user_id(repo.as_ref()).await?;
         if !domain::pool::may_create_pool(viewer, &ruid) {
             return Err(async_graphql::Error::new(
                 "you are not allowed to create pools",
