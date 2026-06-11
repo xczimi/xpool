@@ -1,0 +1,73 @@
+#!/bin/bash
+# One-off migration: fix FWC26 Group G/H standings-prediction mislabels in a
+# DEPLOYED environment's table.
+#
+# Usage: bin/migrate-standings-gh [dev|prod] [--apply]   # default: dev, read-only
+#
+# Background: the fixture had the Group G and H labels swapped. `bin/deploy-data`
+# fixes the tournament (games + group nodes); this fixes the *player* side —
+# standings predictions are keyed by group letter, so a prediction saved under
+# the old label still points at the wrong team-set. Match (score) predictions
+# need no migration (keyed by match id; teams/kickoff/venue per id are unchanged).
+#
+# The underlying `xtask fix-groups-gh` is content-driven and idempotent: it
+# relabels a G/H standings prediction only when its team-set belongs to the other
+# group, and refuses to run unless the tournament is already in the corrected
+# state — so run `bin/deploy-data <env>` FIRST.
+#
+# Default is a read-only report (the check). Pass --apply to write; a prod write
+# requires a typed confirmation.
+#
+# Table name and tournament id are DERIVED the same way as bin/deploy-data so
+# they can't drift from the Lambda:
+#   XPOOL_TABLE           = xpool-<env>
+#   CURRENT_TOURNAMENT_ID = infrastructure/env/<env>.tfvars
+set -euo pipefail
+
+ENV="dev"; APPLY=0
+for arg in "$@"; do
+    case "$arg" in
+        dev|prod)  ENV="$arg" ;;
+        --apply)   APPLY=1 ;;
+        *) echo "Usage: $0 [dev|prod] [--apply]" >&2; exit 2 ;;
+    esac
+done
+
+PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT"
+
+export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
+export AWS_REGION="${AWS_REGION:-ca-central-1}"
+
+# Resolve the profile into real static credentials NOW (see bin/deploy-data for
+# the dotenvy-vs-AWS_PROFILE rationale).
+eval "$(aws configure export-credentials --profile "$AWS_PROFILE" --format env 2>/dev/null)" \
+    || { echo "could not resolve AWS credentials for profile $AWS_PROFILE" >&2; exit 1; }
+
+TFVARS="infrastructure/env/${ENV}.tfvars"
+[[ -f "$TFVARS" ]] || { echo "missing $TFVARS" >&2; exit 1; }
+
+TID="$(sed -n 's/.*current_tournament_id[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$TFVARS")"
+[[ -n "$TID" ]] || { echo "could not read current_tournament_id from $TFVARS" >&2; exit 1; }
+
+export XPOOL_TABLE="xpool-${ENV}"
+export CURRENT_TOURNAMENT_ID="$TID"
+# Force real AWS, NOT DynamoDB Local. Must be EMPTY, not unset (see deploy-data).
+export DYNAMO_ENDPOINT=""
+
+MODE="$([[ "$APPLY" == "1" ]] && echo APPLY || echo 'dry-run (read-only)')"
+echo "==> env=$ENV  table=$XPOOL_TABLE  tournament=$TID  mode=$MODE"
+
+if [[ "$APPLY" == "0" ]]; then
+    cargo run -q -p xtask -- fix-groups-gh
+    exit 0
+fi
+
+# A prod write has no throwaway table to undo it — require a typed confirm.
+if [[ "$ENV" == "prod" ]]; then
+    read -r -p "About to MODIFY standings predictions in PROD table $XPOOL_TABLE. Type 'prod' to confirm: " reply
+    [[ "$reply" == "prod" ]] || { echo "aborted" >&2; exit 1; }
+fi
+
+cargo run -q -p xtask -- fix-groups-gh --apply
+echo "==> done"

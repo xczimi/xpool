@@ -41,6 +41,13 @@ enum Command {
         /// Scenario id: `chalk`, `balanced`, or `chaos`.
         id: String,
     },
+    /// One-off: fix FWC26 Group G/H standings-prediction mislabels. Idempotent;
+    /// a read-only report unless `--apply` is given.
+    FixGroupsGh {
+        /// Write the relabels. Without this flag the command reports only.
+        #[arg(long)]
+        apply: bool,
+    },
 }
 
 #[tokio::main]
@@ -87,6 +94,10 @@ async fn main() -> anyhow::Result<()> {
                  Move the dev clock and call the `devRematerialize` mutation to build the \
                  scoreboard as-of that time."
             );
+        }
+        Command::FixGroupsGh { apply } => {
+            let report = xtask::migrate_gh::run(&repo, apply).await?;
+            report.print(apply);
         }
     }
 
