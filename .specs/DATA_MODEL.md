@@ -115,8 +115,14 @@ as results land is **FWC26-specific application code** (using `FWC26_RULES.md`
   deadline, while the unpredicted games (no `MatchPrediction` at all) score 0.
   An "incomplete draft scores 0" therefore means an *absent or empty*
   prediction, not a partially-filled group.
-- **Visibility** (UC-9): a prediction is visible to others when
-  `effective-locked OR match kicked off`.
+- **Visibility** (UC-9) is **mutual**: another player's prediction is visible
+  to the viewer only when *both* are effective-locked — the viewer's own
+  prediction for that match **and** the target's. Because the deadline/kickoff
+  effective-locks every prediction at once, the tip then opens to everyone.
+  This stops a viewer peeking at tips for a game they can still change, and
+  never exposes a still-unlocked draft. (Legacy gated on the viewer's lock
+  alone, `archive/control.py:576`; the rewrite additionally keeps the target's
+  lock in the gate.)
 
 ## 8. Pools
 

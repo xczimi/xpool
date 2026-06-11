@@ -157,9 +157,10 @@ for the whole tournament and per stage/group. Each stage shows its point
 multiplier. Public.
 
 **UC-9 — Player views everyone's tips ("All Tips").** A grid of every active
-player's predictions for a group, side by side. A given player's prediction is
-revealed to others **only after that player locked it or the match kicked
-off** — preventing strategic copying.
+player's predictions for a group, side by side. Another player's prediction is
+revealed to the viewer **only once both have locked that match** (or the match
+kicked off / the deadline passed, which opens it for everyone) — so you can't
+copy others' tips for a game you can still change.
 
 **UC-10 — Player sees "perfect" predictions.** A list of players who scored a
 maximum (4-point) prediction on a match. Public, celebratory.

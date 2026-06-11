@@ -354,8 +354,10 @@ Note:  changed — legacy did a full-page POST per save (`archive/control.py:417
 Status: keep · Actor: Player · Screen: My Tips
 Given  a player with a complete draft for a group.
 When   they choose **Lock**.
-Then   `submitGroup` persists with `lock = true`; the predictions are locked,
-       irreversible by the player, and become visible to others.
+Then   `submitGroup` persists with `lock = true`; the predictions are locked
+       and irreversible by the player. They become visible to *other players
+       who have themselves locked that match* (see VIEW-TIPS-01); the deadline
+       later opens them to everyone.
 Tests: `submit_group_locks_predictions` (api) · web/e2e/mytips.spec.ts
 
 ### PRED-03 — A match can only be locked when both scores are filled
@@ -422,6 +424,23 @@ When   it is scored or checked for visibility.
 Then   it is **not** effective-locked — scores 0, hidden from others.
 Tests: `effective_locked_before_deadline_not_locked`, `effective_locked_exactly_at_deadline_not_locked` (domain) · `tips_visibility_uses_the_request_clock` (api)
 Note:  The deadline boundary is exclusive: *at* the deadline, still not locked.
+
+### VIEW-TIPS-01 — All Tips reveals another player's tip only on mutual commitment
+Status: changed · Actor: Player · Screen: All Tips
+Given  the viewer is looking at the All Tips grid for a group before its
+       deadline/kickoff.
+When   the grid renders another player's prediction for a match.
+Then   it shows only if **both** the viewer's and that player's predictions for
+       that match are effective-locked: a viewer who has not locked sees
+       `hidden` (no peeking at a game they can still change), and a not-yet-
+       locked draft of another player stays `hidden` even from a locked viewer.
+       The deadline/kickoff effective-locks every prediction and opens the
+       whole grid.
+Tests: `tips_hides_locked_target_when_viewer_has_not_locked`, `tips_reveals_locked_target_when_viewer_also_locked`, `tips_hides_unlocked_target_even_when_viewer_locked`, `tips_reveals_after_kickoff_even_if_unlocked`, `tips_always_shows_own_unlocked_prediction`, `tips_visibility_uses_the_request_clock` (api)
+Note:  changed — the rewrite originally gated on the *target's* lock alone
+       (a locked player's tips leaked to viewers who hadn't committed). Restored
+       the legacy viewer-gate (`archive/control.py:576`) and additionally keep
+       the target's lock in the gate so drafts never leak.
 
 ### PRED-11 — Concurrent saves resolve via optimistic concurrency
 Status: new · Actor: Player · Screen: My Tips

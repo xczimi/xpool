@@ -106,8 +106,10 @@ Preserved from `REWRITE_USE_CASES.md`:
 - **draft → locked** — a prediction scores 0 and is editable until locked;
   locking is final for the player (auto-lock of complete drafts at the
   deadline — see [`DATA_MODEL.md`](./DATA_MODEL.md) §7).
-- **hidden-until-locked** — `tips` returns a player's prediction to others only
-  once it is effective-locked or the match kicked off.
+- **hidden-until-locked (mutual)** — `tips` returns another player's prediction
+  to the viewer only once *both* the viewer's and that player's predictions for
+  the match are effective-locked. The match kicking off / the deadline passing
+  effective-locks every prediction at once, opening the tip to everyone.
 
 ## 7. Live updates — smart polling
 

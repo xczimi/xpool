@@ -537,7 +537,11 @@ async fn tips_hides_unlocked_predictions_before_kickoff() {
 }
 
 #[tokio::test]
-async fn tips_reveals_locked_predictions() {
+async fn tips_hides_locked_target_when_viewer_has_not_locked() {
+    // Mutual commitment: Bob locking his prediction must NOT reveal it to Alice
+    // while Alice can still change her own (she has none, deadline is in the
+    // future). This is the leak from the bug report — a locked player's tips
+    // leaking to a viewer who hasn't committed.
     let repo = seeded_repo(Duration::hours(24)).await;
     {
         let mut bob = repo.get_player(BOB).await.unwrap().unwrap();
@@ -556,7 +560,69 @@ async fn tips_reveals_locked_predictions() {
         .clone();
     assert_eq!(
         bob_g1["prediction"],
+        json!(null),
+        "hidden until the viewer also commits"
+    );
+}
+
+#[tokio::test]
+async fn tips_reveals_locked_target_when_viewer_also_locked() {
+    // Both committed → reveal. Bob locked GAME_1 and Alice (the viewer) locked
+    // her own GAME_1, so she may see his.
+    let repo = seeded_repo(Duration::hours(24)).await;
+    {
+        let mut bob = repo.get_player(BOB).await.unwrap().unwrap();
+        bob.match_predictions.push(locked_pred(GAME_1, 2, 1)); // locked
+        repo.put_player(&bob).await.unwrap();
+        let mut alice = repo.get_player(ALICE).await.unwrap().unwrap();
+        alice.match_predictions.push(locked_pred(GAME_1, 0, 0)); // viewer locked too
+        repo.put_player(&alice).await.unwrap();
+    }
+    let vars = Variables::from_json(json!({ "g": GROUP_A }));
+    let resp = run(&repo, TIPS, vars, Some(ALICE)).await;
+    let tips = data(&resp);
+    let bob_g1 = tips["tips"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["playerId"] == "bob" && t["gameId"] == GAME_1)
+        .unwrap()
+        .clone();
+    assert_eq!(
+        bob_g1["prediction"],
         json!({ "homeScore": 2, "awayScore": 1 })
+    );
+}
+
+#[tokio::test]
+async fn tips_hides_unlocked_target_even_when_viewer_locked() {
+    // The other half of mutual commitment: even a viewer who has locked must
+    // not see another player's still-unlocked draft before the deadline.
+    let repo = seeded_repo(Duration::hours(24)).await;
+    {
+        let mut alice = repo.get_player(ALICE).await.unwrap().unwrap();
+        alice.match_predictions.push(locked_pred(GAME_1, 0, 0)); // viewer locked
+        repo.put_player(&alice).await.unwrap();
+        let mut bob = repo.get_player(BOB).await.unwrap().unwrap();
+        let mut pred = locked_pred(GAME_1, 2, 1);
+        pred.locked = false; // Bob's draft
+        bob.match_predictions.push(pred);
+        repo.put_player(&bob).await.unwrap();
+    }
+    let vars = Variables::from_json(json!({ "g": GROUP_A }));
+    let resp = run(&repo, TIPS, vars, Some(ALICE)).await;
+    let tips = data(&resp);
+    let bob_g1 = tips["tips"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["playerId"] == "bob" && t["gameId"] == GAME_1)
+        .unwrap()
+        .clone();
+    assert_eq!(
+        bob_g1["prediction"],
+        json!(null),
+        "another player's draft stays hidden even to a locked viewer"
     );
 }
 

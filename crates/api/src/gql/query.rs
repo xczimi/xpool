@@ -192,8 +192,10 @@ impl QueryRoot {
     }
 
     /// Every player's *visible* predictions for a group's matches (`API.md`
-    /// §6, UC-9). A prediction is visible to others only once it is
-    /// effective-locked or the match has kicked off.
+    /// §6, UC-9). Mutual commitment: another player's tip is revealed to the
+    /// viewer only once *both* have effective-locked that match (the viewer
+    /// can't peek at a game they can still change, and an un-locked draft is
+    /// never exposed); the deadline/kickoff opens every tip for that match.
     async fn tips(&self, ctx: &Context<'_>, group_id: String) -> async_graphql::Result<Vec<Tip>> {
         let viewer = CurrentPlayer::require(ctx)?;
         let repo = repo(ctx);
@@ -229,12 +231,19 @@ impl QueryRoot {
                 let prediction = player.match_prediction(&game.id);
                 // Own predictions are always visible to the viewer.
                 let is_own = player.id == viewer.id;
+                // Once the match kicks off (or the group deadline passes) the
+                // game is open to everyone — viewer and target are both then
+                // effective-locked regardless of their explicit lock flags.
+                let time_open = now >= game.kickoff || deadline.is_some_and(|d| now > d);
+                // Mutual commitment (legacy `AllTipsHandler`): another player's
+                // tip is revealed only once the *viewer* has effective-locked
+                // this match — so you can't peek at others' tips for a game you
+                // can still change. We also keep the target's lock in the gate
+                // so an un-locked draft is never exposed before the deadline.
+                let viewer_committed =
+                    time_open || viewer.match_prediction(&game.id).is_some_and(|p| p.locked);
                 let visible = is_own
-                    || prediction.is_some_and(|p| {
-                        // effective-locked: locked, OR deadline passed, OR
-                        // the match itself kicked off.
-                        p.locked || now >= game.kickoff || deadline.is_some_and(|d| now > d)
-                    });
+                    || (viewer_committed && prediction.is_some_and(|p| p.locked || time_open));
                 // Score a visible prediction once the game has a result. By the
                 // time a result exists the match has kicked off, so a scored
                 // tip is always already visible — no hidden info is revealed.
