@@ -448,8 +448,8 @@
       }
     },
     {
-      "id": "G",
-      "name": "Group G",
+      "id": "H",
+      "name": "Group H",
       "parent": "GROUPSTAGE",
       "round": "GroupStage",
       "lock_mode": "LockTogether",
@@ -466,8 +466,8 @@
       }
     },
     {
-      "id": "H",
-      "name": "Group H",
+      "id": "G",
+      "name": "Group G",
       "parent": "GROUPSTAGE",
       "round": "GroupStage",
       "lock_mode": "LockTogether",
@@ -1305,56 +1305,56 @@
       "id": "M13",
       "kickoff": "2026-06-15T16:00:00Z",
       "venue": "Mercedes-Benz Stadium, Atlanta",
-      "group_id": "G",
+      "group_id": "H",
       "home": {
         "team_id": "ESP",
-        "description": "G1"
+        "description": "H1"
       },
       "away": {
         "team_id": "CPV",
-        "description": "G2"
+        "description": "H2"
       }
     },
     {
       "id": "M14",
       "kickoff": "2026-06-15T19:00:00Z",
       "venue": "Lumen Field, Seattle",
-      "group_id": "H",
+      "group_id": "G",
       "home": {
         "team_id": "BEL",
-        "description": "H1"
+        "description": "G1"
       },
       "away": {
         "team_id": "EGY",
-        "description": "H2"
+        "description": "G2"
       }
     },
     {
       "id": "M15",
       "kickoff": "2026-06-15T22:00:00Z",
       "venue": "Hard Rock Stadium, Miami",
-      "group_id": "G",
+      "group_id": "H",
       "home": {
         "team_id": "KSA",
-        "description": "G3"
+        "description": "H3"
       },
       "away": {
         "team_id": "URU",
-        "description": "G4"
+        "description": "H4"
       }
     },
     {
       "id": "M16",
       "kickoff": "2026-06-16T01:00:00Z",
       "venue": "SoFi Stadium, Los Angeles",
-      "group_id": "H",
+      "group_id": "G",
       "home": {
         "team_id": "IRN",
-        "description": "H3"
+        "description": "G3"
       },
       "away": {
         "team_id": "NZL",
-        "description": "H4"
+        "description": "G4"
       }
     },
     {
@@ -1641,56 +1641,56 @@
       "id": "M37",
       "kickoff": "2026-06-21T16:00:00Z",
       "venue": "Mercedes-Benz Stadium, Atlanta",
-      "group_id": "G",
+      "group_id": "H",
       "home": {
         "team_id": "ESP",
-        "description": "G1"
+        "description": "H1"
       },
       "away": {
         "team_id": "KSA",
-        "description": "G3"
+        "description": "H3"
       }
     },
     {
       "id": "M38",
       "kickoff": "2026-06-21T19:00:00Z",
       "venue": "SoFi Stadium, Los Angeles",
-      "group_id": "H",
+      "group_id": "G",
       "home": {
         "team_id": "BEL",
-        "description": "H1"
+        "description": "G1"
       },
       "away": {
         "team_id": "IRN",
-        "description": "H3"
+        "description": "G3"
       }
     },
     {
       "id": "M39",
       "kickoff": "2026-06-21T22:00:00Z",
       "venue": "Hard Rock Stadium, Miami",
-      "group_id": "G",
+      "group_id": "H",
       "home": {
         "team_id": "URU",
-        "description": "G4"
+        "description": "H4"
       },
       "away": {
         "team_id": "CPV",
-        "description": "G2"
+        "description": "H2"
       }
     },
     {
       "id": "M40",
       "kickoff": "2026-06-22T01:00:00Z",
       "venue": "BC Place, Vancouver",
-      "group_id": "H",
+      "group_id": "G",
       "home": {
         "team_id": "NZL",
-        "description": "H4"
+        "description": "G4"
       },
       "away": {
         "team_id": "EGY",
-        "description": "H2"
+        "description": "G2"
       }
     },
     {
@@ -2005,56 +2005,56 @@
       "id": "M63",
       "kickoff": "2026-06-27T00:00:00Z",
       "venue": "NRG Stadium, Houston",
-      "group_id": "G",
+      "group_id": "H",
       "home": {
         "team_id": "CPV",
-        "description": "G2"
+        "description": "H2"
       },
       "away": {
         "team_id": "KSA",
-        "description": "G3"
+        "description": "H3"
       }
     },
     {
       "id": "M64",
       "kickoff": "2026-06-27T00:00:00Z",
       "venue": "Estadio Akron, Guadalajara",
-      "group_id": "G",
+      "group_id": "H",
       "home": {
         "team_id": "URU",
-        "description": "G4"
+        "description": "H4"
       },
       "away": {
         "team_id": "ESP",
-        "description": "G1"
+        "description": "H1"
       }
     },
     {
       "id": "M65",
       "kickoff": "2026-06-27T03:00:00Z",
       "venue": "Lumen Field, Seattle",
-      "group_id": "H",
+      "group_id": "G",
       "home": {
         "team_id": "EGY",
-        "description": "H2"
+        "description": "G2"
       },
       "away": {
         "team_id": "IRN",
-        "description": "H3"
+        "description": "G3"
       }
     },
     {
       "id": "M66",
       "kickoff": "2026-06-27T03:00:00Z",
       "venue": "BC Place, Vancouver",
-      "group_id": "H",
+      "group_id": "G",
       "home": {
         "team_id": "NZL",
-        "description": "H4"
+        "description": "G4"
       },
       "away": {
         "team_id": "BEL",
-        "description": "H1"
+        "description": "G1"
       }
     },
     {
