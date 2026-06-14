@@ -19,6 +19,10 @@ web/dist
 .env
 .env.local
 
+# Prod/dev data snapshots pulled by bin/pull-data. E-mails are anonymised, but
+# real names remain — these stay on local disk only, never committed.
+/snapshots/
+
 # E2E run artefacts
 web/.e2e-table
 web/.e2e-api.pid

@@ -11,7 +11,7 @@ use std::collections::HashMap;
 pub mod dynamo;
 pub mod memory;
 
-pub use dynamo::DynamoRepository;
+pub use dynamo::{DynamoRepository, RawItem};
 pub use memory::InMemoryRepository;
 
 /// Materialized scoreboard — `playerId → {round → points}` (`SCORING.md` §8).

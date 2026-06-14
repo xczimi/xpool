@@ -4,9 +4,11 @@
 //! without the CLI shell.
 
 pub mod dto;
+pub mod export;
 pub mod migrate_gh;
 pub mod scenario;
 pub mod seed;
+pub mod snapshot;
 pub mod validate;
 
 use anyhow::Context;

@@ -37,6 +37,25 @@ use aws_sdk_dynamodb::{
     Client,
 };
 use domain::{Identity, Invite, Person, Player, Pool, Tournament};
+use serde::{Deserialize, Serialize};
+
+/// A raw table row, exactly as stored: the composite key plus the verbatim
+/// `data` JSON string and (for Player rows) the bare `version` attribute.
+///
+/// This is the unit of the bulk export/import path ([`DynamoRepository::scan_all`]
+/// / [`DynamoRepository::put_raw`]). Keeping `data` an opaque string makes the
+/// round-trip byte-faithful for every row the exporter does not deliberately
+/// rewrite — no deserialise/reserialise drift.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RawItem {
+    pub pk: String,
+    pub sk: String,
+    /// The item's `data` attribute — a JSON document, kept as a string.
+    pub data: String,
+    /// The bare `version` attribute (present on Player rows only).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<u64>,
+}
 
 /// DynamoDB-backed repository. Scoped to `tournament_id` — every per-tournament
 /// key is prefixed `<tournament_id>#…`.
@@ -309,6 +328,85 @@ impl DynamoRepository {
         }
 
         Ok(results)
+    }
+
+    // ── Bulk export / import (dev tooling) ───────────────────────────────────
+
+    /// Scan the **entire** table and return every row verbatim as a [`RawItem`].
+    ///
+    /// For the prod→local snapshot tooling only — this is a full table `Scan`,
+    /// not a partition `Query`, so it reads across every namespace. Paginates
+    /// over `LastEvaluatedKey` until the table is exhausted.
+    pub async fn scan_all(&self) -> anyhow::Result<Vec<RawItem>> {
+        let mut results = Vec::new();
+        let mut last_evaluated_key = None;
+
+        loop {
+            let resp = self
+                .client
+                .scan()
+                .table_name(&self.table)
+                .set_exclusive_start_key(last_evaluated_key.clone())
+                .send()
+                .await
+                .context("scan_all")?;
+
+            for item in resp.items.unwrap_or_default() {
+                let pk = item
+                    .get("pk")
+                    .and_then(|v| v.as_s().ok())
+                    .context("missing `pk` attribute in scan_all result")?
+                    .clone();
+                let sk = item
+                    .get("sk")
+                    .and_then(|v| v.as_s().ok())
+                    .context("missing `sk` attribute in scan_all result")?
+                    .clone();
+                let data = item
+                    .get("data")
+                    .and_then(|v| v.as_s().ok())
+                    .with_context(|| format!("missing `data` attribute for pk={pk} sk={sk}"))?
+                    .clone();
+                let version = item
+                    .get("version")
+                    .and_then(|v| v.as_n().ok())
+                    .and_then(|n| n.parse::<u64>().ok());
+                results.push(RawItem {
+                    pk,
+                    sk,
+                    data,
+                    version,
+                });
+            }
+
+            last_evaluated_key = resp.last_evaluated_key;
+            if last_evaluated_key.is_none() {
+                break;
+            }
+        }
+
+        Ok(results)
+    }
+
+    /// Write a [`RawItem`] back verbatim — an **unconditional** overwrite (no
+    /// optimistic-concurrency guard), so a re-import is idempotent. The
+    /// counterpart of [`scan_all`](Self::scan_all) for loading a snapshot into a
+    /// local/dev table.
+    pub async fn put_raw(&self, item: &RawItem) -> anyhow::Result<()> {
+        let mut put = self
+            .client
+            .put_item()
+            .table_name(&self.table)
+            .item("pk", AttributeValue::S(item.pk.clone()))
+            .item("sk", AttributeValue::S(item.sk.clone()))
+            .item("data", AttributeValue::S(item.data.clone()));
+        if let Some(v) = item.version {
+            put = put.item("version", AttributeValue::N(v.to_string()));
+        }
+        put.send()
+            .await
+            .with_context(|| format!("put_raw pk={} sk={}", item.pk, item.sk))?;
+        Ok(())
     }
 }
 
