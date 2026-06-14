@@ -673,4 +673,47 @@ impl Repository for DynamoRepository {
 
         Ok(results)
     }
+
+    /// Return every `Identity` linked to `person_id`.
+    ///
+    /// Same scan-and-filter shape as [`find_identities_by_verified_email`] —
+    /// identities have no single grouping partition, so this scans items whose
+    /// `pk` begins with `IDENTITY#` and filters in Rust on `person_id`. Cheap at
+    /// hobby scale; add a GSI on `person_id` if scale ever demands it.
+    async fn find_identities_by_person(&self, person_id: &str) -> anyhow::Result<Vec<Identity>> {
+        let mut results: Vec<Identity> = Vec::new();
+        let mut last_evaluated_key = None;
+
+        loop {
+            let resp = self
+                .client
+                .scan()
+                .table_name(&self.table)
+                .filter_expression("begins_with(pk, :prefix)")
+                .expression_attribute_values(":prefix", AttributeValue::S("IDENTITY#".to_owned()))
+                .set_exclusive_start_key(last_evaluated_key.clone())
+                .send()
+                .await
+                .context("scan identity partition (by person)")?;
+
+            for item in resp.items.unwrap_or_default() {
+                let data = item
+                    .get("data")
+                    .and_then(|v| v.as_s().ok())
+                    .context("missing `data` attribute in scan result")?;
+                let identity: Identity =
+                    serde_json::from_str(data).context("deserialise identity scan item")?;
+                if identity.person_id == person_id {
+                    results.push(identity);
+                }
+            }
+
+            last_evaluated_key = resp.last_evaluated_key;
+            if last_evaluated_key.is_none() {
+                break;
+            }
+        }
+
+        Ok(results)
+    }
 }

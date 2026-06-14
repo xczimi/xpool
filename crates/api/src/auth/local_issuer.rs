@@ -42,8 +42,16 @@ fn decoding_key() -> DecodingKey {
     DecodingKey::from_rsa_pem(PUBLIC_PEM).expect("dev_issuer/public_key.pem is invalid")
 }
 
-/// Mint a token for tests / dev-login. 1-hour TTL.
+/// Mint a token for tests / dev-login. 1-hour TTL. Sets the `"dev"` connection,
+/// which the seam resolves via the e-mail path.
 pub fn mint_for_test(sub: &str, email: &str) -> String {
+    mint_claims(sub, Some(email), "dev")
+}
+
+/// Mint a local-issuer token with an explicit `connection`, so dev-login can
+/// reproduce a player's *actual* identity: `"google"` (resolved by `sub`),
+/// `"email"`/`"dev"` (resolved by `email`). 1-hour TTL.
+pub fn mint_claims(sub: &str, email: Option<&str>, connection: &str) -> String {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
@@ -53,9 +61,9 @@ pub fn mint_for_test(sub: &str, email: &str) -> String {
         iss: ISSUER.to_owned(),
         aud: AUDIENCE.to_owned(),
         exp: now + 3600,
-        email: Some(email.to_owned()),
+        email: email.map(|e| e.to_owned()),
         phone_number: None,
-        connection: Some("dev".to_owned()),
+        connection: Some(connection.to_owned()),
     };
     encode(&Header::new(Algorithm::RS256), &claims, &encoding_key())
         .expect("encoding a local-issuer JWT must not fail")

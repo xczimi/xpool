@@ -381,6 +381,34 @@ pub async fn seed_identity_for(repo: &Arc<dyn Repository>, player_id: &str, emai
     .unwrap();
 }
 
+/// Seed a **Google** Identity (+ its Person) for a player — keyed by the opaque
+/// OAuth `sub`, not an e-mail. Mirrors a real federated login (and a pulled prod
+/// player), so dev-login must reproduce the google connection to resolve it.
+#[allow(dead_code)]
+pub async fn seed_google_identity_for(
+    repo: &Arc<dyn Repository>,
+    player_id: &str,
+    sub: &str,
+    email: &str,
+) {
+    let identity_id = format!("i-google-{player_id}");
+    repo.put_identity(&Identity {
+        id: identity_id.clone(),
+        provider: "google".to_owned(),
+        provider_id: sub.to_owned(),
+        person_id: player_id.to_owned(),
+        verified_email: Some(email.to_owned()),
+    })
+    .await
+    .unwrap();
+    repo.put_person(&Person {
+        id: player_id.to_owned(),
+        identity_ids: vec![identity_id],
+    })
+    .await
+    .unwrap();
+}
+
 /// Same as `query_as`, but with a pre-minted Bearer token. Used when testing
 /// the unclaimed / claim flows for arbitrary subs where `player_id` is not
 /// known ahead of time.
