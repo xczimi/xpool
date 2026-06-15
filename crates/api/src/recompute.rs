@@ -164,6 +164,7 @@ mod tests {
                 team_id: Some("BBB".into()),
                 description: "A2".into(),
             },
+            external_id: None,
         };
         let g2 = SingleGame {
             id: "M2".into(),
@@ -178,6 +179,7 @@ mod tests {
                 team_id: Some("BBB".into()),
                 description: "A2".into(),
             },
+            external_id: None,
         };
         let group = GroupGame {
             id: "A".into(),

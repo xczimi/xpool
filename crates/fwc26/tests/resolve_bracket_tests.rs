@@ -46,6 +46,7 @@ fn game(id: &str, group_id: &str, home: TeamSlot, away: TeamSlot) -> SingleGame 
         group_id: group_id.to_string(),
         home,
         away,
+        external_id: None,
     }
 }
 

@@ -52,6 +52,7 @@ pub fn tiny_tournament(kickoff_offset: Duration) -> Tournament {
             team_id: Some(away.to_owned()),
             description: format!("{away}-slot"),
         },
+        external_id: None,
     };
     let mut games = HashMap::new();
     games.insert(GAME_1.to_owned(), mk_game(GAME_1, "MEX", "RSA"));
@@ -125,6 +126,7 @@ pub fn tournament_with_knockout(kickoff_offset: Duration) -> Tournament {
             team_id: None,
             description: away_desc.to_owned(),
         },
+        external_id: None,
     };
     t.games.insert(
         GAME_KO.to_owned(),

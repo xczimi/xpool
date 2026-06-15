@@ -85,6 +85,7 @@ fn make_tournament() -> Tournament {
             team_id: None,
             description: "2B".to_owned(),
         },
+        external_id: None,
     };
     let group = GroupGame {
         id: "GroupA".to_owned(),

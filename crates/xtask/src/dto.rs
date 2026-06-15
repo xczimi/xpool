@@ -58,6 +58,8 @@ pub struct GameDto {
     pub group_id: String,
     pub home: TeamSlotDto,
     pub away: TeamSlotDto,
+    #[serde(default)]
+    pub external_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -140,6 +142,7 @@ impl TournamentDto {
                         group_id: g.group_id,
                         home: g.home.into_domain(),
                         away: g.away.into_domain(),
+                        external_id: g.external_id,
                     },
                 )
             })
