@@ -435,10 +435,7 @@ impl QueryRoot {
         group_id: String,
     ) -> async_graphql::Result<Vec<ReportedResult>> {
         // Gate: only the result user (the official-results admin).
-        let viewer = CurrentPlayer::require(ctx)?;
-        if !viewer.is_result_user {
-            return Err(async_graphql::Error::new("not authorized"));
-        }
+        CurrentPlayer::require_admin(ctx)?;
 
         let repo = repo(ctx);
         let now = now(ctx);
@@ -544,6 +541,21 @@ mod reported_tests {
         }
     }
 
+    // An authenticated, ordinary player (NOT the result user).
+    fn regular_player() -> Player {
+        Player {
+            id: "demo-ada".into(),
+            person_id: "pa".into(),
+            nick: "ada".into(),
+            full_name: "Ada".into(),
+            referrer: None,
+            is_result_user: false,
+            version: 0,
+            match_predictions: vec![],
+            standings_predictions: vec![],
+        }
+    }
+
     // Result user with NO prediction for M1 -> M1 is result-pending.
     fn result_user() -> Player {
         Player {
@@ -637,6 +649,21 @@ mod reported_tests {
         let schema = crate::gql::build_schema(repo, source);
         let req = async_graphql::Request::new(r#"{ reportedResults(groupId:"A"){ gameId } }"#)
             .data(CurrentPlayer::Visitor)
+            .data(crate::clock::RequestNow(
+                "2026-06-12T12:00:00Z".parse().unwrap(),
+            ));
+        let resp = schema.execute(req).await;
+        assert!(!resp.errors.is_empty());
+    }
+
+    #[tokio::test]
+    async fn authenticated_non_admin_is_rejected() {
+        let repo = repo_with_pending_m1().await;
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![finished("E1", 2, 1)]));
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(r#"{ reportedResults(groupId:"A"){ gameId } }"#)
+            .data(CurrentPlayer::Player(Box::new(regular_player())))
             .data(crate::clock::RequestNow(
                 "2026-06-12T12:00:00Z".parse().unwrap(),
             ));
