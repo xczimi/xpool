@@ -65,6 +65,10 @@ enum Command {
         #[arg(long)]
         apply: bool,
     },
+    /// Reconcile xpool games against TheSportsDB and print proposed
+    /// `M# -> idEvent` mappings. Read-only: prints a table for the human to
+    /// paste into `tournaments/fwc26.json`. Requires THESPORTSDB_API_KEY.
+    ReconcileEvents,
 }
 
 #[tokio::main]
@@ -133,6 +137,56 @@ async fn main() -> anyhow::Result<()> {
         Command::FixGroupsGh { apply } => {
             let report = xtask::migrate_gh::run(&repo, apply).await?;
             report.print(apply);
+        }
+        Command::ReconcileEvents => {
+            let client = sportsdb::SportsDb::from_env()
+                .ok_or_else(|| anyhow::anyhow!("THESPORTSDB_API_KEY not set"))?;
+            let tournament = repo
+                .get_tournament()
+                .await?
+                .ok_or_else(|| anyhow::anyhow!("no tournament loaded — run `import` first"))?;
+            let events = client.season_schedule().await?;
+            let team_rows = client.teams().await?;
+
+            // Team external_ids: prefer those already committed on the teams,
+            // else fall back to exact-name match against SportsDB.
+            let names = xtask::reconcile::team_ids_by_name(&team_rows);
+            let mut team_ext = std::collections::HashMap::new();
+            for team in tournament.teams.values() {
+                if let Some(ext) = &team.external_id {
+                    team_ext.insert(team.id.clone(), ext.clone());
+                } else if let Some(id) = names.get(&team.name.to_lowercase()) {
+                    team_ext.insert(team.id.clone(), id.clone());
+                }
+            }
+
+            let games: Vec<xtask::reconcile::GameStub> = tournament
+                .games
+                .values()
+                .map(|g| xtask::reconcile::GameStub {
+                    game_id: g.id.clone(),
+                    date: g.kickoff.format("%Y-%m-%d").to_string(),
+                    home_team_id: g.home.team_id.clone(),
+                    away_team_id: g.away.team_id.clone(),
+                })
+                .collect();
+
+            let report = xtask::reconcile::reconcile(&games, &team_ext, &events);
+            println!(
+                "# Proposed game -> idEvent mappings ({} matched):",
+                report.matched.len()
+            );
+            let mut matched = report.matched;
+            matched.sort_by(|a, b| a.game_id.cmp(&b.game_id));
+            for m in &matched {
+                println!("{}\t{}", m.game_id, m.id_event);
+            }
+            if !report.unmatched_games.is_empty() {
+                let mut un = report.unmatched_games;
+                un.sort();
+                eprintln!("# Unmatched ({}): {}", un.len(), un.join(", "));
+            }
+            println!("# Review, then set each game's `external_id` in tournaments/fwc26.json.");
         }
     }
 
