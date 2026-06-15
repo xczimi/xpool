@@ -3,7 +3,7 @@
 //! (`.specs/THESPORTSDB_API.md` §6). These functions take the raw body and
 //! return the field subset xpool uses — no HTTP, fully unit-testable.
 
-use crate::model::Event;
+use crate::model::{Event, TeamRow};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -93,14 +93,14 @@ struct RawTeam {
 }
 
 /// Decode a `/list/teams/{leagueId}` body into team rows.
-pub fn decode_teams(body: &str) -> anyhow::Result<Vec<crate::model::TeamRow>> {
+pub fn decode_teams(body: &str) -> anyhow::Result<Vec<TeamRow>> {
     let env: ListEnvelope = serde_json::from_str(body)?;
     Ok(env
         .list
         .unwrap_or_default()
         .into_iter()
         .filter_map(|t| {
-            Some(crate::model::TeamRow {
+            Some(TeamRow {
                 id_team: t.id_team?,
                 str_team: t.str_team.unwrap_or_default(),
             })
