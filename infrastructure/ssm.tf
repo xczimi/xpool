@@ -1,6 +1,6 @@
 resource "aws_ssm_parameter" "thesportsdb_key" {
   name        = "/xpool/${var.environment}/thesportsdb-api-key"
-  description = "TheSportsDB premium API key. Forward-provisioned per DEPLOYMENT.md §3/§7 (the Lambda role is granted SSM read); no code consumes it yet."
+  description = "TheSportsDB premium API key. Injected into the Lambda env (THESPORTSDB_API_KEY) at deploy time via the data source in lambda.tf; the api reads it to back the reportedResults query."
   type        = "SecureString"
   value       = "PLACEHOLDER-set-out-of-band"
 
