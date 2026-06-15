@@ -935,6 +935,52 @@ async fn standings_exposes_each_players_group_bonus() {
     );
 }
 
+#[tokio::test]
+async fn standings_omits_players_with_no_standings_prediction_for_the_group() {
+    // Deadline passed so locked standings are scoreable. Group A doesn't carry
+    // standings in the base fixture — turn it on.
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    {
+        let mut t = repo.get_tournament().await.unwrap().unwrap();
+        t.groups.get_mut(GROUP_A).unwrap().carries_standings = true;
+        repo.put_tournament(&t).await.unwrap();
+    }
+    // Only BOB enters a standings prediction for the group; ALICE enters none.
+    let standings_pred = domain::StandingsPrediction {
+        group_id: GROUP_A.to_owned(),
+        ordering: vec!["KOR".into(), "MEX".into(), "RSA".into(), "CZE".into()],
+        draw_order: vec![],
+        locked: true,
+    };
+    for id in [RESULT_ID, BOB] {
+        let mut p = repo.get_player(id).await.unwrap().unwrap();
+        p.match_predictions.push(locked_pred(GAME_1, 2, 1));
+        p.match_predictions.push(locked_pred(GAME_2, 3, 0));
+        p.standings_predictions.push(standings_pred.clone());
+        repo.put_player(&p).await.unwrap();
+    }
+
+    let vars = Variables::from_json(json!({ "g": GROUP_A }));
+    let resp = run(&repo, STANDINGS, vars, Some(BOB)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let d = data(&resp);
+    let ids: Vec<&str> = d["standings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["playerId"].as_str().unwrap())
+        .collect();
+    assert!(ids.contains(&BOB), "a standings tipper is kept: {ids:?}");
+    assert!(
+        !ids.contains(&ALICE),
+        "a no-standings player is dropped: {ids:?}"
+    );
+    assert!(
+        !ids.contains(&RESULT_ID),
+        "result user is never listed: {ids:?}"
+    );
+}
+
 // ── recompute mutation ───────────────────────────────────────────────────────
 
 const RECOMPUTE: &str = r#"

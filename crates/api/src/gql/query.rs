@@ -314,6 +314,8 @@ impl QueryRoot {
 
         let mut leaves = Vec::new();
         collect_leaf_groups(&tournament, &group_id, &mut leaves);
+        let leaf_group_ids: Vec<domain::GroupId> = leaves.iter().map(|g| g.id.clone()).collect();
+        let roster = domain::participation::standings_tippers(&players, &leaf_group_ids);
 
         let mut out = Vec::new();
         for group in leaves {
@@ -325,10 +327,7 @@ impl QueryRoot {
                 .deadline(&group.id)
                 .unwrap_or(chrono::DateTime::<chrono::Utc>::MAX_UTC);
             let multiplier = config.multiplier(group.round);
-            for player in &players {
-                if player.is_result_user {
-                    continue;
-                }
+            for player in roster.iter().copied() {
                 if let Some(sb) =
                     standings_score(group, &games, player, result_user, now, deadline, &config)
                 {
