@@ -217,6 +217,7 @@ impl QueryRoot {
         let players = repo.list_players().await?;
 
         let games = tournament.games_in(&group_id);
+        let game_ids: Vec<domain::GameId> = games.iter().map(|g| g.id.clone()).collect();
         let deadline = tournament.deadline(&group_id);
         let now = now(ctx);
 
@@ -234,10 +235,7 @@ impl QueryRoot {
         };
 
         let mut tips = Vec::new();
-        for player in &players {
-            if player.is_result_user {
-                continue;
-            }
+        for player in domain::participation::tippers_in(&players, &game_ids) {
             for game in &games {
                 let prediction = player.match_prediction(&game.id);
                 // Own predictions are always visible to the viewer.

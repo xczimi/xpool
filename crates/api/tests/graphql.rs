@@ -676,6 +676,78 @@ async fn tips_always_shows_own_unlocked_prediction() {
     assert_eq!(own["prediction"], json!({ "homeScore": 1, "awayScore": 1 }));
 }
 
+#[tokio::test]
+async fn tips_omits_players_with_no_tip_in_the_group() {
+    // Games kicked off 2h ago → all tips visible. ALICE tipped M1 (a partial
+    // tipper — she skipped M2); BOB tipped nothing in the group.
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    add_pred(&repo, ALICE, GAME_1, 1, 0).await;
+
+    let vars = Variables::from_json(json!({ "g": GROUP_A }));
+    let resp = run(&repo, TIPS, vars, Some(ALICE)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let d = data(&resp);
+    let rows = d["tips"].as_array().unwrap();
+
+    let players: std::collections::HashSet<&str> = rows
+        .iter()
+        .map(|t| t["playerId"].as_str().unwrap())
+        .collect();
+    assert!(players.contains("alice"), "a tipper is kept: {players:?}");
+    assert!(
+        !players.contains("bob"),
+        "a non-tipper is dropped: {players:?}"
+    );
+    assert!(
+        !players.contains(RESULT_ID),
+        "result user is never listed: {players:?}"
+    );
+
+    // The partial tipper is kept across the whole group: ALICE gets a row for
+    // both games (M2 renders with an empty prediction — see Non-goals).
+    let alice_rows: Vec<&str> = rows
+        .iter()
+        .filter(|t| t["playerId"] == "alice")
+        .map(|t| t["gameId"].as_str().unwrap())
+        .collect();
+    assert!(
+        alice_rows.contains(&GAME_1),
+        "ALICE row for M1: {alice_rows:?}"
+    );
+    assert!(
+        alice_rows.contains(&GAME_2),
+        "ALICE row for M2 too: {alice_rows:?}"
+    );
+}
+
+#[tokio::test]
+async fn tips_keeps_a_tipper_whose_prediction_is_still_hidden() {
+    // Before kickoff. BOB locked a tip; viewer ALICE has not committed, so BOB's
+    // prediction is hidden by mutual commitment — but his ROW must still appear
+    // (he participated in this group), not be filtered out as a non-tipper.
+    let repo = seeded_repo(Duration::hours(24)).await;
+    {
+        let mut bob = repo.get_player(BOB).await.unwrap().unwrap();
+        bob.match_predictions.push(locked_pred(GAME_1, 2, 1));
+        repo.put_player(&bob).await.unwrap();
+    }
+    let vars = Variables::from_json(json!({ "g": GROUP_A }));
+    let resp = run(&repo, TIPS, vars, Some(ALICE)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let d = data(&resp);
+    let bob_g1 = d["tips"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["playerId"] == "bob" && t["gameId"] == GAME_1);
+    assert!(bob_g1.is_some(), "the hidden tipper's row is still present");
+    assert_eq!(
+        bob_g1.unwrap()["prediction"],
+        json!(null),
+        "but the prediction stays hidden until the viewer commits"
+    );
+}
+
 // ── tips & perfects: earned points (prediction-points-on-tips) ───────────────
 
 const TIPS_PTS: &str = r#"
