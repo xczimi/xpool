@@ -465,3 +465,22 @@ pub enum Viewer {
     /// An authenticated session that has not yet been linked.
     Unclaimed(UnclaimedViewer),
 }
+
+/// A match result as *reported* by an external data source (TheSportsDB). Not
+/// an official or predicted result — the SPA presents it as a fill-in to
+/// confirm. Provenance-named on purpose (`source`), so #2's live-preview can
+/// reuse it with a non-finished `source_status`.
+#[derive(SimpleObject, Clone, Debug)]
+pub struct ReportedResult {
+    pub game_id: String,
+    pub home_score: i32,
+    pub away_score: i32,
+    /// Which source reported it (currently always `"thesportsdb"`).
+    pub source: String,
+    /// The upstream status string, e.g. `"Match Finished"`.
+    pub source_status: String,
+    /// True for knockout matches: the upstream final score may include extra
+    /// time / penalties, but xpool scores knockouts on the 90-minute result
+    /// (`SCORING.md` §5), so the admin must verify before submitting.
+    pub ninety_minute_uncertain: bool,
+}
