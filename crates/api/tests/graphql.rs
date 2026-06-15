@@ -904,6 +904,51 @@ async fn scoreboard_query_reflects_recompute() {
 }
 
 #[tokio::test]
+async fn scoreboard_omits_non_participants_keeps_zero_scorers() {
+    // Games kicked off 2h ago. ALICE tipped (0-0, wrong → 0 pts); BOB never
+    // tipped. The materialised board scores both (recompute scores everyone),
+    // but only the participant ALICE belongs in the listing.
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    add_pred(&repo, ALICE, GAME_1, 0, 0).await;
+
+    // Result user enters M1 = 2-1 → ALICE scores 0; the submit recomputes.
+    let vars = Variables::from_json(json!({
+        "g": GROUP_A,
+        "p": [{ "gameId": GAME_1, "homeScore": 2, "awayScore": 1 }],
+        "lock": false
+    }));
+    run(&repo, SUBMIT, vars, Some(RESULT_ID)).await;
+
+    let resp = run(
+        &repo,
+        "{ scoreboard { playerId total } }",
+        Variables::default(),
+        None,
+    )
+    .await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let d = data(&resp);
+    let rows = d["scoreboard"].as_array().unwrap();
+    let ids: Vec<&str> = rows
+        .iter()
+        .map(|r| r["playerId"].as_str().unwrap())
+        .collect();
+
+    assert!(
+        ids.contains(&ALICE),
+        "participant who scored 0 is kept: {ids:?}"
+    );
+    assert!(!ids.contains(&BOB), "non-participant is dropped: {ids:?}");
+    assert!(
+        !ids.contains(&RESULT_ID),
+        "result user never listed: {ids:?}"
+    );
+
+    let alice = rows.iter().find(|r| r["playerId"] == "alice").unwrap();
+    assert_eq!(alice["total"], json!(0), "kept with a real 0 total");
+}
+
+#[tokio::test]
 async fn recompute_mutation_runs_for_an_admin() {
     let repo = seeded_repo(Duration::hours(-2)).await;
     {

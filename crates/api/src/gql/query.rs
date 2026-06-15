@@ -111,10 +111,21 @@ impl QueryRoot {
             None => None,
         };
 
+        // Drop non-participants' all-zero rows. The materialised board scores
+        // every player (recompute.rs), but only participants belong in the
+        // listing — the same category of rule as excluding the result-user,
+        // computed by the pure domain selector.
+        let participant_ids: std::collections::HashSet<&str> =
+            domain::participation::participants(&players)
+                .iter()
+                .map(|p| p.id.as_str())
+                .collect();
+
         let mut entries: Vec<ScoreEntry> = board
             .entries
             .iter()
             .filter(|(pid, _)| allowed.as_ref().is_none_or(|m| m.contains(pid)))
+            .filter(|(pid, _)| participant_ids.contains(pid.as_str()))
             .map(|(pid, breakdown)| {
                 let stages: Vec<StageScore> = breakdown
                     .iter()
