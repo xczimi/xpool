@@ -111,10 +111,21 @@ impl QueryRoot {
             None => None,
         };
 
+        // Drop non-participants' all-zero rows. The materialised board scores
+        // every player (recompute.rs), but only participants belong in the
+        // listing — the same category of rule as excluding the result-user,
+        // computed by the pure domain selector.
+        let participant_ids: std::collections::HashSet<&str> =
+            domain::participation::participants(&players)
+                .iter()
+                .map(|p| p.id.as_str())
+                .collect();
+
         let mut entries: Vec<ScoreEntry> = board
             .entries
             .iter()
             .filter(|(pid, _)| allowed.as_ref().is_none_or(|m| m.contains(pid)))
+            .filter(|(pid, _)| participant_ids.contains(pid.as_str()))
             .map(|(pid, breakdown)| {
                 let stages: Vec<StageScore> = breakdown
                     .iter()
@@ -206,6 +217,7 @@ impl QueryRoot {
         let players = repo.list_players().await?;
 
         let games = tournament.games_in(&group_id);
+        let game_ids: Vec<domain::GameId> = games.iter().map(|g| g.id.clone()).collect();
         let deadline = tournament.deadline(&group_id);
         let now = now(ctx);
 
@@ -223,10 +235,7 @@ impl QueryRoot {
         };
 
         let mut tips = Vec::new();
-        for player in &players {
-            if player.is_result_user {
-                continue;
-            }
+        for player in domain::participation::tippers_in(&players, &game_ids) {
             for game in &games {
                 let prediction = player.match_prediction(&game.id);
                 // Own predictions are always visible to the viewer.
@@ -305,6 +314,8 @@ impl QueryRoot {
 
         let mut leaves = Vec::new();
         collect_leaf_groups(&tournament, &group_id, &mut leaves);
+        let leaf_group_ids: Vec<domain::GroupId> = leaves.iter().map(|g| g.id.clone()).collect();
+        let roster = domain::participation::standings_tippers(&players, &leaf_group_ids);
 
         let mut out = Vec::new();
         for group in leaves {
@@ -316,10 +327,7 @@ impl QueryRoot {
                 .deadline(&group.id)
                 .unwrap_or(chrono::DateTime::<chrono::Utc>::MAX_UTC);
             let multiplier = config.multiplier(group.round);
-            for player in &players {
-                if player.is_result_user {
-                    continue;
-                }
+            for player in roster.iter().copied() {
                 if let Some(sb) =
                     standings_score(group, &games, player, result_user, now, deadline, &config)
                 {

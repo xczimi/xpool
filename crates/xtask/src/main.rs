@@ -30,6 +30,23 @@ enum Command {
         /// Path to the tournament JSON (e.g. tournaments/fwc26.json).
         path: PathBuf,
     },
+    /// Export the whole table to a snapshot JSON file (the prod→local data
+    /// pull). Read-only on the source; e-mails are anonymised to
+    /// `<nick>@dev.invalid` by default.
+    Export {
+        /// Output path for the snapshot JSON (e.g. .scratch/prod-snapshot.json).
+        output: PathBuf,
+        /// Keep real e-mails verbatim instead of anonymising. Only for a
+        /// same-environment backup — never write prod e-mails to disk.
+        #[arg(long)]
+        raw_emails: bool,
+    },
+    /// Load a snapshot JSON file into the table named by XPOOL_TABLE
+    /// (unconditional overwrite, idempotent). Creates the table if missing.
+    Load {
+        /// Path to a snapshot JSON produced by `export`.
+        input: PathBuf,
+    },
     /// Seed demo data (result user, demo players, a demo pool).
     Seed,
     /// Bootstrap production: seed only the result-user (no demo data).
@@ -70,6 +87,24 @@ async fn main() -> anyhow::Result<()> {
                 tournament.games.len(),
                 tournament.teams.len()
             );
+        }
+        Command::Export { output, raw_emails } => {
+            let summary = xtask::export::export(&repo, &output, !raw_emails).await?;
+            let mode = if raw_emails {
+                "raw e-mails"
+            } else {
+                "e-mails anonymised"
+            };
+            println!(
+                "exported {} from `{}` to `{}` ({mode})",
+                summary,
+                repo.table,
+                output.display()
+            );
+        }
+        Command::Load { input } => {
+            let summary = xtask::export::load(&repo, &input).await?;
+            println!("loaded {} into `{}`", summary, repo.table);
         }
         Command::Seed => {
             repo.ensure_table().await?;
