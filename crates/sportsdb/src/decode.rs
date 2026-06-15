@@ -79,6 +79,35 @@ pub fn decode_livescore(body: &str) -> anyhow::Result<Vec<Event>> {
         .collect())
 }
 
+#[derive(Deserialize)]
+struct ListEnvelope {
+    list: Option<Vec<RawTeam>>,
+}
+
+#[derive(Deserialize)]
+struct RawTeam {
+    #[serde(rename = "idTeam")]
+    id_team: Option<String>,
+    #[serde(rename = "strTeam")]
+    str_team: Option<String>,
+}
+
+/// Decode a `/list/teams/{leagueId}` body into team rows.
+pub fn decode_teams(body: &str) -> anyhow::Result<Vec<crate::model::TeamRow>> {
+    let env: ListEnvelope = serde_json::from_str(body)?;
+    Ok(env
+        .list
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|t| {
+            Some(crate::model::TeamRow {
+                id_team: t.id_team?,
+                str_team: t.str_team.unwrap_or_default(),
+            })
+        })
+        .collect())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -109,5 +138,14 @@ mod tests {
         let events = decode_livescore(body).unwrap();
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].str_status, "HT");
+    }
+
+    #[test]
+    fn decodes_teams_list() {
+        let body = r#"{"list":[{"idTeam":"133","strTeam":"Sweden"}]}"#;
+        let teams = decode_teams(body).unwrap();
+        assert_eq!(teams.len(), 1);
+        assert_eq!(teams[0].id_team, "133");
+        assert_eq!(teams[0].str_team, "Sweden");
     }
 }

@@ -12,6 +12,13 @@ pub struct Event {
     pub str_status: String,
 }
 
+/// A team row from `/list/teams/{leagueId}` — id + name for matching.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TeamRow {
+    pub id_team: String,
+    pub str_team: String,
+}
+
 impl Event {
     /// A match TheSportsDB considers played out (final score available).
     /// `strStatus` is free-form upstream; treat the documented finished
