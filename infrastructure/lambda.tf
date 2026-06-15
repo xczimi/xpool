@@ -1,3 +1,10 @@
+# The premium TheSportsDB key, set out-of-band in SSM (see ssm.tf). Read at
+# deploy time and injected as the Lambda env var the api reads (THESPORTSDB_API_KEY).
+data "aws_ssm_parameter" "thesportsdb_key" {
+  name            = aws_ssm_parameter.thesportsdb_key.name
+  with_decryption = true
+}
+
 module "api_lambda" {
   source  = "terraform-aws-modules/lambda/aws"
   version = "~> 7.0"
@@ -49,6 +56,11 @@ module "api_lambda" {
     # Origin used by createInvite to build share links — derived from the
     # CloudFront-fronted domain so links match what the SPA is served at.
     XPOOL_PUBLIC_ORIGIN = "https://${var.domain_name}"
+
+    # TheSportsDB premium API key — read from SSM at deploy time (see ssm.tf).
+    # The out-of-band value is preserved by `ignore_changes = [value]` on the
+    # resource; this data source decrypts and injects it at apply time.
+    THESPORTSDB_API_KEY = data.aws_ssm_parameter.thesportsdb_key.value
   }
 
   attach_policy_statements = true
