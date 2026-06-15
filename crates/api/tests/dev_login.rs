@@ -96,6 +96,50 @@ async fn dev_login_for_result_user_uses_configured_email_and_resolves() {
 }
 
 #[tokio::test]
+async fn dev_login_for_player_with_google_identity_resolves() {
+    // A pulled prod player whose only Identity is a Google sub (no e-mail key).
+    // dev-login must mint a "google" connection keyed by that sub, otherwise the
+    // e-mail path can never reach the player and `me` is an UnclaimedViewer —
+    // the exact failure seen logging in as a pulled player.
+    std::env::set_var("LOCAL_AUTH_ISSUER", "1");
+    let (app, repo) = common::test_app_with_local_auth().await;
+    common::seed_google_identity_for(
+        &repo,
+        common::ALICE,
+        "google-oauth2|117314600276331892532",
+        "alice@dev.invalid",
+    )
+    .await;
+
+    let req = Request::post("/api/dev/login")
+        .header("content-type", "application/json")
+        .body(Body::from(format!(r#"{{"player":"{}"}}"#, common::ALICE)))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let body = res.into_body().collect().await.unwrap().to_bytes();
+    let token = serde_json::from_slice::<serde_json::Value>(&body).unwrap()["token"]
+        .as_str()
+        .unwrap()
+        .to_owned();
+
+    // The minted token carries the google connection keyed by the sub.
+    let claims = api::auth::local_issuer::verify_local(&token).unwrap();
+    assert_eq!(claims.connection.as_deref(), Some("google"));
+    assert_eq!(claims.sub, "google-oauth2|117314600276331892532");
+
+    // …and it resolves to the Player, not an UnclaimedViewer.
+    let me = common::query_with_bearer(
+        &app,
+        &token,
+        r#"{"query":"{ me { __typename ... on Player { id } } }"}"#,
+    )
+    .await;
+    assert_eq!(me["data"]["me"]["__typename"], "Player");
+    assert_eq!(me["data"]["me"]["id"], common::ALICE);
+}
+
+#[tokio::test]
 async fn dev_login_rejects_a_request_with_neither_or_both_modes() {
     let (app, _repo) = common::test_app_with_local_auth().await;
 
