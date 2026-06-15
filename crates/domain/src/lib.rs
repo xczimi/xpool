@@ -2,6 +2,7 @@
 
 pub mod invite;
 pub mod model;
+pub mod participation;
 pub mod pool;
 pub mod scoring;
 
