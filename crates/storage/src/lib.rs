@@ -11,7 +11,7 @@ use std::collections::HashMap;
 pub mod dynamo;
 pub mod memory;
 
-pub use dynamo::DynamoRepository;
+pub use dynamo::{DynamoRepository, RawItem};
 pub use memory::InMemoryRepository;
 
 /// Materialized scoreboard — `playerId → {round → points}` (`SCORING.md` §8).
@@ -84,4 +84,12 @@ pub trait Repository: Send + Sync {
     /// link them to the same `Person`.
     async fn find_identities_by_verified_email(&self, email: &str)
         -> anyhow::Result<Vec<Identity>>;
+
+    /// Return every `Identity` linked to a `Person` (i.e. whose `person_id`
+    /// matches).
+    ///
+    /// Use case: dev-login mints a token that resolves as a given player, so it
+    /// needs the player's *actual* identity (Google sub or e-mail) rather than
+    /// assuming a seed-convention address.
+    async fn find_identities_by_person(&self, person_id: &str) -> anyhow::Result<Vec<Identity>>;
 }

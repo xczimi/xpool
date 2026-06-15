@@ -26,3 +26,4 @@ name = "xtask"
 path = "src/lib.rs"
 
 [dev-dependencies]
+tempfile = "3"

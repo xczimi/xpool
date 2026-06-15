@@ -1,0 +1,97 @@
+#!/bin/bash
+# xpool data PULL: snapshot a DEPLOYED table and load it into the LOCAL DynamoDB.
+#
+# The mirror of bin/deploy-data — that ships data UP to AWS; this pulls data
+# DOWN to your laptop for realistic local seeding / better tests. E-mails are
+# anonymised on export (`<nick>@dev.invalid`); real names are kept.
+#
+# Usage: bin/pull-data [dev|prod] [snapshot.json] [--reload] [--clean]
+#                                                            # default env: prod
+#
+#   Phase 1 (export)  read xpool-<env> on real AWS (READ-ONLY) -> snapshot JSON
+#   Phase 2 (load)    write that snapshot into the local DynamoDB (:8000),
+#                     into this checkout's branch table (xpool-<branch>)
+#
+#   --reload  skip Phase 1 (no AWS): just (re)load the existing snapshot into
+#             the local table. Use after `bin/local-dev --reseed` wiped it.
+#   --clean   drop the local table before loading, so the result is prod-only
+#             (no leftover demo seed). Without it the load is additive.
+#
+# The snapshot defaults to snapshots/<env>-snapshot.json (gitignored). It keeps
+# real names, so it must never be committed — that path already is ignored.
+#
+# Table name + tournament id are DERIVED (like bin/deploy-data) so they can't
+# drift from the Lambda: XPOOL_TABLE=xpool-<env>, tournament from env/<env>.tfvars.
+set -euo pipefail
+
+SRC_ENV="prod"; SNAPSHOT=""; RELOAD=0; CLEAN=0
+for arg in "$@"; do
+    case "$arg" in
+        dev|prod) SRC_ENV="$arg" ;;
+        --reload) RELOAD=1 ;;
+        --clean)  CLEAN=1 ;;
+        *.json)   SNAPSHOT="$arg" ;;
+        *) echo "Usage: $0 [dev|prod] [snapshot.json] [--reload] [--clean]" >&2; exit 2 ;;
+    esac
+done
+
+PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT"
+# shellcheck source=bin/lib.sh
+source "$PROJECT/bin/lib.sh"
+
+SNAPSHOT="${SNAPSHOT:-snapshots/${SRC_ENV}-snapshot.json}"
+mkdir -p "$(dirname "$SNAPSHOT")"
+
+export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
+export AWS_REGION="${AWS_REGION:-ca-central-1}"
+
+TFVARS="infrastructure/env/${SRC_ENV}.tfvars"
+[[ -f "$TFVARS" ]] || { echo "missing $TFVARS" >&2; exit 1; }
+# current_tournament_id = "fwc26"  ->  fwc26
+TID="$(sed -n 's/.*current_tournament_id[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$TFVARS")"
+[[ -n "$TID" ]] || { echo "could not read current_tournament_id from $TFVARS" >&2; exit 1; }
+
+# ── Phase 1: export from the deployed table (real AWS, read-only) ──────────────
+# Skipped with --reload — that path re-uses the snapshot already on disk.
+if [[ "$RELOAD" == "1" ]]; then
+    [[ -f "$SNAPSHOT" ]] || { echo "--reload: no snapshot at $SNAPSHOT (run a pull first)" >&2; exit 1; }
+    echo "==> reload  reusing existing snapshot $SNAPSHOT (no AWS)"
+else
+    echo "==> export  table=xpool-${SRC_ENV}  tournament=$TID  ->  $SNAPSHOT  (e-mails anonymised)"
+    (
+        # Pre-resolve the profile into static creds so dotenvy's dummy local creds
+        # in .env don't shadow them — same trick as bin/deploy-data.
+        eval "$(aws configure export-credentials --profile "$AWS_PROFILE" --format env 2>/dev/null)" \
+            || { echo "could not resolve AWS credentials for profile $AWS_PROFILE (try: aws sso login --profile $AWS_PROFILE)" >&2; exit 1; }
+        export XPOOL_TABLE="xpool-${SRC_ENV}"
+        export CURRENT_TOURNAMENT_ID="$TID"
+        # Force real AWS. EMPTY, not unset: dotenvy re-injects .env's localhost over
+        # an absent var; empty is "present" so it is left alone (see deploy-data).
+        export DYNAMO_ENDPOINT=""
+        cargo run -q -p xtask -- export "$SNAPSHOT"
+    )
+fi
+
+# ── Phase 2: load into the local DynamoDB ─────────────────────────────────────
+LOCAL_TABLE="$(table_for "$PROJECT")"
+LOCAL_ENDPOINT="${DYNAMO_ENDPOINT_LOCAL:-http://localhost:8000}"
+(
+    export XPOOL_TABLE="$LOCAL_TABLE"
+    export CURRENT_TOURNAMENT_ID="$TID"
+    # Non-empty endpoint -> from_env uses local mode with its own dummy creds,
+    # so any real creds in the environment are ignored. Safe even right after a
+    # real-AWS export.
+    export DYNAMO_ENDPOINT="$LOCAL_ENDPOINT"
+    # --clean: drop first so the result is prod-only (load alone is additive, so
+    # any leftover demo seed would otherwise coexist). `load` recreates the table.
+    if [[ "$CLEAN" == "1" ]]; then
+        echo "==> clean   dropping $LOCAL_TABLE before load"
+        cargo run -q -p xtask -- drop-table
+    fi
+    echo "==> load    table=$LOCAL_TABLE  endpoint=$LOCAL_ENDPOINT  <-  $SNAPSHOT"
+    cargo run -q -p xtask -- load "$SNAPSHOT"
+)
+
+echo "==> done: ${LOCAL_TABLE} now holds '$SRC_ENV' data$([[ "$CLEAN" == "1" ]] && echo " (clean)")"
+echo "    (restart bin/local-dev's api/web if running, or just refresh the SPA)"

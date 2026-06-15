@@ -223,4 +223,14 @@ impl Repository for InMemoryRepository {
             .cloned()
             .collect())
     }
+
+    async fn find_identities_by_person(&self, person_id: &str) -> anyhow::Result<Vec<Identity>> {
+        let inner = self.inner.lock().unwrap();
+        Ok(inner
+            .identities
+            .values()
+            .filter(|i| i.person_id == person_id)
+            .cloned()
+            .collect())
+    }
 }

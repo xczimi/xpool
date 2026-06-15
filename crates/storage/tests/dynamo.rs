@@ -494,6 +494,73 @@ async fn dynamo_person_round_trip() {
 }
 
 #[tokio::test]
+async fn dynamo_scan_all_and_put_raw_round_trip() {
+    if !dynamo_enabled() {
+        return;
+    }
+    // scan_all reads the WHOLE table, so this test needs private tables of its
+    // own — it cannot share `xpool-test` with other tests.
+    let src = unique_table_repo("rawsrc").await;
+    src.ensure_table().await.unwrap();
+
+    // Populate a few different item kinds, including a Player (which carries the
+    // bare `version` attribute) and an Identity.
+    src.put_player(&make_player("raw-1", 0)).await.unwrap();
+    let identity = Identity {
+        id: "id-raw".to_owned(),
+        provider: "email".to_owned(),
+        provider_id: "raw@example.com".to_owned(),
+        person_id: "person-raw".to_owned(),
+        verified_email: Some("raw@example.com".to_owned()),
+    };
+    src.put_identity(&identity).await.unwrap();
+
+    let rows = src.scan_all().await.unwrap();
+    assert_eq!(rows.len(), 2, "two rows written");
+
+    // The Player row preserves its bare version attribute (put_player stored 1).
+    let player_row = rows
+        .iter()
+        .find(|r| r.pk.ends_with("#PLAYER"))
+        .expect("player row present");
+    assert_eq!(player_row.version, Some(1));
+
+    // The Identity row carries no version attribute.
+    let identity_row = rows
+        .iter()
+        .find(|r| r.pk.starts_with("IDENTITY#"))
+        .expect("identity row present");
+    assert_eq!(identity_row.version, None);
+
+    // Load every row verbatim into a fresh table and confirm the snapshot is
+    // identical and the typed entities read back intact.
+    let dst = unique_table_repo("rawdst").await;
+    dst.ensure_table().await.unwrap();
+    for row in &rows {
+        dst.put_raw(row).await.unwrap();
+    }
+
+    let mut got = dst.scan_all().await.unwrap();
+    let mut want = rows.clone();
+    got.sort_by(|a, b| (a.pk.clone(), a.sk.clone()).cmp(&(b.pk.clone(), b.sk.clone())));
+    want.sort_by(|a, b| (a.pk.clone(), a.sk.clone()).cmp(&(b.pk.clone(), b.sk.clone())));
+    assert_eq!(got, want, "round-tripped rows are byte-identical");
+
+    let restored = dst.get_player("raw-1").await.unwrap().expect("player");
+    assert_eq!(restored.version, 1, "version restored from the raw row");
+    assert_eq!(restored.full_name, "Full raw-1");
+    let restored_id = dst
+        .get_identity("email", "raw@example.com")
+        .await
+        .unwrap()
+        .expect("identity");
+    assert_eq!(restored_id.id, "id-raw");
+
+    src.delete_table().await.unwrap();
+    dst.delete_table().await.unwrap();
+}
+
+#[tokio::test]
 async fn dynamo_delete_table_removes_it() {
     if !dynamo_enabled() {
         return;
