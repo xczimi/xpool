@@ -4,6 +4,7 @@ import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import {
   ME_QUERY,
+  REPORTED_RESULTS_QUERY,
   RESULTS_QUERY,
   STANDINGS_QUERY,
   SUBMIT_GROUP_MUTATION,
@@ -15,6 +16,7 @@ import type {
   MatchPrediction,
   Me,
   PointsBreakdown,
+  ReportedResult,
   Round,
   StandingsScore,
   Tip,
@@ -108,6 +110,25 @@ export function MyTipsPage() {
     variables: { groupId: tipsGroupId },
     pause: !label || !tipsGroupId,
   })
+
+  // The result user (official-results admin) gets SportsDB pre-fill: when they
+  // open a group with result-pending games, auto-fetch reported scores. The
+  // query is admin-gated server-side and returns [] when SportsDB is absent, so
+  // this is a no-op for everyone else / when unconfigured.
+  const isResultUser = meRaw?.__typename === 'Player' && meRaw.isResultUser
+  const [reportedResult] = useQuery<{ reportedResults: ReportedResult[] }>({
+    query: REPORTED_RESULTS_QUERY,
+    variables: { groupId: tipsGroupId },
+    pause: !label || !tipsGroupId || !isResultUser,
+  })
+  const reportedByGame = useMemo(() => {
+    const map = new Map<string, ReportedResult>()
+    for (const r of reportedResult.data?.reportedResults ?? []) {
+      map.set(r.gameId, r)
+    }
+    return map
+  }, [reportedResult.data])
+
   const pointsByGame = useMemo(() => {
     const map = new Map<
       string,
@@ -223,6 +244,7 @@ export function MyTipsPage() {
               standings={standingsByGroup.get(group.id) ?? null}
               serverNowMs={serverNowMs}
               onExpire={refetchAll}
+              reported={reportedByGame}
               onSubmit={async (predictions, standings, lock) => {
                 const res = await submitGroup({
                   groupId: group.id,
