@@ -89,6 +89,7 @@ dependencies = [
  "anyhow",
  "async-graphql",
  "async-graphql-axum",
+ "async-trait",
  "axum",
  "base64",
  "chrono",
@@ -104,6 +105,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2 0.10.9",
+ "sportsdb",
  "storage",
  "tokio",
  "tower 0.5.3",
@@ -1158,6 +1160,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2908,6 +2911,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
 
 [[package]]
+name = "sportsdb"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3878,6 +3892,7 @@ dependencies = [
  "rand",
  "serde",
  "serde_json",
+ "sportsdb",
  "storage",
  "tempfile",
  "tokio",
