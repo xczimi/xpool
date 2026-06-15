@@ -246,7 +246,8 @@ pub async fn run_at(
     now: chrono::DateTime<chrono::Utc>,
 ) -> async_graphql::Response {
     use api::auth::CurrentPlayer;
-    let schema = api::gql::build_schema(repo.clone());
+    let schema =
+        api::gql::build_schema(repo.clone(), std::sync::Arc::new(api::reported::NullSource));
 
     let current = match as_player {
         Some(id) => match repo.get_player(id).await.unwrap() {
@@ -272,7 +273,8 @@ pub async fn run_with_snapshot(
     snapshot: Player,
 ) -> async_graphql::Response {
     use api::auth::CurrentPlayer;
-    let schema = api::gql::build_schema(repo.clone());
+    let schema =
+        api::gql::build_schema(repo.clone(), std::sync::Arc::new(api::reported::NullSource));
     let req = Request::new(query)
         .variables(vars)
         .data(CurrentPlayer::Player(Box::new(snapshot)))

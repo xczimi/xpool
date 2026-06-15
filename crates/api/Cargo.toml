@@ -24,6 +24,8 @@ lambda = ["dep:lambda_http", "dep:lambda_runtime"]
 domain.workspace = true
 fwc26.workspace = true
 storage.workspace = true
+sportsdb = { path = "../sportsdb" }
+async-trait.workspace = true
 anyhow.workspace = true
 tokio.workspace = true
 chrono.workspace = true
