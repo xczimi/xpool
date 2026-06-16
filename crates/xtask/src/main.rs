@@ -148,24 +148,22 @@ async fn main() -> anyhow::Result<()> {
             let events = client.season_schedule().await?;
             let team_rows = client.teams().await?;
 
-            // Team external_ids: prefer those already committed on the teams,
-            // else fall back to exact-name match against SportsDB.
-            let names = xtask::reconcile::team_ids_by_name(&team_rows);
-            let mut team_ext = std::collections::HashMap::new();
-            for team in tournament.teams.values() {
-                if let Some(ext) = &team.external_id {
-                    team_ext.insert(team.id.clone(), ext.clone());
-                } else if let Some(id) = names.get(&team.name.to_lowercase()) {
-                    team_ext.insert(team.id.clone(), id.clone());
-                }
-            }
+            // Build our_teams: (our_team_id, our_name, committed_external_id)
+            let our_teams: Vec<(String, String, Option<String>)> = tournament
+                .teams
+                .values()
+                .map(|t| (t.id.clone(), t.name.clone(), t.external_id.clone()))
+                .collect();
+
+            let (team_ext, unresolved_teams) =
+                xtask::reconcile::resolve_team_ids(&our_teams, &team_rows);
 
             let games: Vec<xtask::reconcile::GameStub> = tournament
                 .games
                 .values()
                 .map(|g| xtask::reconcile::GameStub {
                     game_id: g.id.clone(),
-                    date: g.kickoff.format("%Y-%m-%d").to_string(),
+                    kickoff: g.kickoff,
                     home_team_id: g.home.team_id.clone(),
                     away_team_id: g.away.team_id.clone(),
                 })
@@ -186,6 +184,11 @@ async fn main() -> anyhow::Result<()> {
                 un.sort();
                 eprintln!("# Unmatched ({}): {}", un.len(), un.join(", "));
             }
+            eprintln!(
+                "# Unresolved teams ({}): {}",
+                unresolved_teams.len(),
+                unresolved_teams.join(", ")
+            );
             println!("# Review, then set each game's `external_id` in tournaments/fwc26.json.");
         }
     }

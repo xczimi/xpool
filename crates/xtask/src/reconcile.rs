@@ -1,7 +1,8 @@
 //! Pure matcher for `reconcile-events`: align xpool games to TheSportsDB events
-//! by (date, home team, away team) and propose `M# → idEvent` mappings for
-//! human review. No I/O — the subcommand (main.rs) does the fetching + writing.
+//! by unordered team-id pair + kickoff time. No I/O — the subcommand (main.rs)
+//! does the fetching + writing.
 
+use chrono::{DateTime, Utc};
 use sportsdb::{Event, TeamRow};
 use std::collections::HashMap;
 
@@ -19,42 +20,124 @@ pub struct Report {
     pub unmatched_games: Vec<String>,
 }
 
-/// A game projected for reconciliation. `date` MUST be formatted `YYYY-MM-DD`
-/// (UTC) to match `Event::date_event` from TheSportsDB, or the key match fails.
+/// A game projected for reconciliation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameStub {
     pub game_id: String,
-    pub date: String,
+    pub kickoff: DateTime<Utc>,
     pub home_team_id: Option<String>,
     pub away_team_id: Option<String>,
 }
 
-/// Match games to events. `team_external_id` maps our team id → SportsDB idTeam
-/// (from a prior team reconcile or the committed `external_id`s). A game matches
-/// an event when the kickoff date (UTC `YYYY-MM-DD`) and both team ids agree.
+/// Fold a single (possibly accented) char to its ASCII equivalent.
+/// Covers Latin diacritics used in tournament team names.
+fn fold_char(c: char) -> Vec<char> {
+    let s = match c {
+        'á' | 'à' | 'â' | 'ã' | 'ä' | 'å' | 'Á' | 'À' | 'Â' | 'Ã' | 'Ä' | 'Å' => "a",
+        'ç' | 'Ç' => "c",
+        'é' | 'è' | 'ê' | 'ë' | 'É' | 'È' | 'Ê' | 'Ë' => "e",
+        'í' | 'ì' | 'î' | 'ï' | 'Í' | 'Ì' | 'Î' | 'Ï' => "i",
+        'ñ' | 'Ñ' => "n",
+        'ó' | 'ò' | 'ô' | 'õ' | 'ö' | 'Ó' | 'Ò' | 'Ô' | 'Õ' | 'Ö' => "o",
+        'ú' | 'ù' | 'û' | 'ü' | 'Ú' | 'Ù' | 'Û' | 'Ü' => "u",
+        other => return vec![other],
+    };
+    s.chars().collect()
+}
+
+/// Fold a team name to a comparison key: lowercase, strip diacritics, keep
+/// ASCII alphanumerics only. So "Curaçao" and "Curacao" both become "curacao".
+fn normalize(name: &str) -> String {
+    name.chars()
+        .flat_map(fold_char)
+        .filter(|c| c.is_ascii_alphanumeric())
+        .collect::<String>()
+        .to_lowercase()
+}
+
+/// Map known aliases after normalization (our spelling → SportsDB spelling, or
+/// a shared canonical form). Keep this tiny and obvious.
+fn alias(normalized: &str) -> &str {
+    match normalized {
+        "turkiye" => "turkey",
+        "czechia" => "czechrepublic",
+        "bosniaandherzegovina" => "bosniaherzegovina",
+        other => other,
+    }
+}
+
+fn team_key(name: &str) -> String {
+    alias(&normalize(name)).to_string()
+}
+
+/// Resolve our team ids → SportsDB idTeam. Prefers a committed external_id;
+/// else matches by normalized+aliased name.
+/// `our_teams` is `(our_team_id, our_name, committed_external_id)`.
+pub fn resolve_team_ids(
+    our_teams: &[(String, String, Option<String>)],
+    rows: &[TeamRow],
+) -> (HashMap<String, String>, Vec<String>) {
+    let by_key: HashMap<String, String> = rows
+        .iter()
+        .map(|r| (team_key(&r.str_team), r.id_team.clone()))
+        .collect();
+    let mut resolved = HashMap::new();
+    let mut unresolved = Vec::new();
+    for (id, name, ext) in our_teams {
+        if let Some(e) = ext {
+            resolved.insert(id.clone(), e.clone());
+        } else if let Some(idt) = by_key.get(&team_key(name)) {
+            resolved.insert(id.clone(), idt.clone());
+        } else {
+            unresolved.push(id.clone());
+        }
+    }
+    (resolved, unresolved)
+}
+
+type PairIndex<'a> = HashMap<(String, String), Vec<(&'a Event, Option<DateTime<Utc>>)>>;
+
+/// Match games to events by unordered team-id pair + kickoff (within 2-day tolerance).
+/// `team_external_id` maps our team id → SportsDB idTeam.
 pub fn reconcile(
     games: &[GameStub],
     team_external_id: &HashMap<String, String>,
     events: &[Event],
 ) -> Report {
-    // Index events by (date, home idTeam, away idTeam).
-    let mut by_key: HashMap<(String, String, String), &Event> = HashMap::new();
-    for e in events {
-        if let Some(prev) = by_key.insert(
-            (
-                e.date_event.clone(),
-                e.id_home_team.clone(),
-                e.id_away_team.clone(),
-            ),
-            e,
-        ) {
-            eprintln!(
-                "WARN: duplicate SportsDB event key ({} {} v {}): {} overwritten by {}",
-                e.date_event, e.id_home_team, e.id_away_team, prev.id_event, e.id_event
-            );
+    fn event_kickoff(e: &Event) -> Option<DateTime<Utc>> {
+        if let Some(ts) = &e.str_timestamp {
+            if let Ok(dt) = DateTime::parse_from_rfc3339(ts) {
+                return Some(dt.with_timezone(&Utc));
+            }
+        }
+        chrono::NaiveDate::parse_from_str(&e.date_event, "%Y-%m-%d")
+            .ok()
+            .map(|d| {
+                DateTime::<Utc>::from_naive_utc_and_offset(d.and_hms_opt(0, 0, 0).unwrap(), Utc)
+            })
+    }
+
+    fn pair(a: &str, b: &str) -> (String, String) {
+        if a <= b {
+            (a.to_string(), b.to_string())
+        } else {
+            (b.to_string(), a.to_string())
         }
     }
 
+    // Index events by unordered idTeam pair.
+    let mut by_pair: PairIndex<'_> = HashMap::new();
+    for e in events {
+        if e.id_home_team.is_empty() || e.id_away_team.is_empty() {
+            continue;
+        }
+        by_pair
+            .entry(pair(&e.id_home_team, &e.id_away_team))
+            .or_default()
+            .push((e, event_kickoff(e)));
+    }
+
+    const TOLERANCE: chrono::Duration = chrono::Duration::days(2);
     let mut report = Report::default();
     for g in games {
         let resolved = g
@@ -66,9 +149,18 @@ pub fn reconcile(
                     .as_ref()
                     .and_then(|a| team_external_id.get(a)),
             );
-        let hit = resolved.and_then(|(h, a)| by_key.get(&(g.date.clone(), h.clone(), a.clone())));
+        let hit = resolved
+            .and_then(|(h, a)| by_pair.get(&pair(h, a)))
+            .and_then(|cands| {
+                cands
+                    .iter()
+                    .filter(|(_, k)| k.is_none_or(|k| (k - g.kickoff).abs() <= TOLERANCE))
+                    .min_by_key(|(_, k)| {
+                        k.map_or(i64::MAX, |k| (k - g.kickoff).num_seconds().abs())
+                    })
+            });
         match hit {
-            Some(e) => report.matched.push(Match {
+            Some((e, _)) => report.matched.push(Match {
                 game_id: g.game_id.clone(),
                 id_event: e.id_event.clone(),
             }),
@@ -76,14 +168,6 @@ pub fn reconcile(
         }
     }
     report
-}
-
-/// Resolve `idTeam` for every SportsDB team name we can match by exact name —
-/// a helper for first-time team reconcile (case-insensitive exact match).
-pub fn team_ids_by_name(rows: &[TeamRow]) -> HashMap<String, String> {
-    rows.iter()
-        .map(|r| (r.str_team.to_lowercase(), r.id_team.clone()))
-        .collect()
 }
 
 #[cfg(test)]
@@ -99,11 +183,16 @@ mod tests {
             int_home_score: None,
             int_away_score: None,
             str_status: "Not Started".into(),
+            str_timestamp: None,
         }
     }
 
+    fn kickoff(s: &str) -> DateTime<Utc> {
+        s.parse().unwrap()
+    }
+
     #[test]
-    fn matches_by_date_and_team_ids() {
+    fn matches_by_team_ids_and_kickoff() {
         let events = vec![ev("2461106", "2026-06-15", "133", "999")];
         let team_ext: HashMap<String, String> = [
             ("SWE".to_string(), "133".to_string()),
@@ -113,7 +202,7 @@ mod tests {
         .collect();
         let games = vec![GameStub {
             game_id: "M5".into(),
-            date: "2026-06-15".into(),
+            kickoff: kickoff("2026-06-15T02:00:00+00:00"),
             home_team_id: Some("SWE".into()),
             away_team_id: Some("TUN".into()),
         }];
@@ -131,10 +220,10 @@ mod tests {
     #[test]
     fn reports_unmatched_when_team_id_missing() {
         let events = vec![ev("2461106", "2026-06-15", "133", "999")];
-        let team_ext = HashMap::new(); // no team mapping yet
+        let team_ext = HashMap::new();
         let games = vec![GameStub {
             game_id: "M5".into(),
-            date: "2026-06-15".into(),
+            kickoff: kickoff("2026-06-15T02:00:00+00:00"),
             home_team_id: Some("SWE".into()),
             away_team_id: Some("TUN".into()),
         }];
@@ -145,7 +234,6 @@ mod tests {
 
     #[test]
     fn reports_unmatched_when_no_event_matches() {
-        // Team ids resolve, but no event exists for that (date, home, away).
         let events = vec![ev("2461106", "2026-06-15", "133", "999")];
         let team_ext: HashMap<String, String> = [
             ("SWE".to_string(), "133".to_string()),
@@ -153,14 +241,66 @@ mod tests {
         ]
         .into_iter()
         .collect();
+        // kickoff 20 days later — outside the 2-day tolerance
         let games = vec![GameStub {
             game_id: "M9".into(),
-            date: "2026-06-20".into(), // different date -> no match
+            kickoff: kickoff("2026-07-05T02:00:00+00:00"),
             home_team_id: Some("SWE".into()),
             away_team_id: Some("TUN".into()),
         }];
         let report = reconcile(&games, &team_ext, &events);
         assert!(report.matched.is_empty());
         assert_eq!(report.unmatched_games, vec!["M9".to_string()]);
+    }
+
+    // resolve_team_ids tests
+
+    fn row(id: &str, name: &str) -> TeamRow {
+        TeamRow {
+            id_team: id.into(),
+            str_team: name.into(),
+        }
+    }
+
+    #[test]
+    fn resolves_by_normalized_name_curacao() {
+        // SportsDB has "Curaçao"; our tournament has "Curacao"
+        let rows = vec![row("555", "Curaçao")];
+        let our = vec![("CUR".to_string(), "Curacao".to_string(), None)];
+        let (resolved, unresolved) = resolve_team_ids(&our, &rows);
+        assert_eq!(resolved.get("CUR"), Some(&"555".to_string()));
+        assert!(unresolved.is_empty());
+    }
+
+    #[test]
+    fn resolves_by_alias_czechia() {
+        // SportsDB has "Czech Republic"; we have "Czechia"
+        let rows = vec![row("200", "Czech Republic")];
+        let our = vec![("CZE".to_string(), "Czechia".to_string(), None)];
+        let (resolved, unresolved) = resolve_team_ids(&our, &rows);
+        assert_eq!(resolved.get("CZE"), Some(&"200".to_string()));
+        assert!(unresolved.is_empty());
+    }
+
+    #[test]
+    fn returns_unresolved_when_no_match() {
+        let rows = vec![row("133", "Sweden")];
+        let our = vec![("XYZ".to_string(), "Atlantis".to_string(), None)];
+        let (resolved, unresolved) = resolve_team_ids(&our, &rows);
+        assert!(resolved.get("XYZ").is_none());
+        assert_eq!(unresolved, vec!["XYZ".to_string()]);
+    }
+
+    #[test]
+    fn prefers_committed_external_id_over_name() {
+        // Even if name matches, committed external_id wins
+        let rows = vec![row("133", "Sweden")];
+        let our = vec![(
+            "SWE".to_string(),
+            "Sweden".to_string(),
+            Some("999".to_string()),
+        )];
+        let (resolved, _) = resolve_team_ids(&our, &rows);
+        assert_eq!(resolved.get("SWE"), Some(&"999".to_string()));
     }
 }

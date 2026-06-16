@@ -538,6 +538,7 @@ mod reported_tests {
             int_home_score: Some(h),
             int_away_score: Some(a),
             str_status: "Match Finished".into(),
+            str_timestamp: None,
         }
     }
 

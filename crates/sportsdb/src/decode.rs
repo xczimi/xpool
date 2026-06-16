@@ -32,6 +32,8 @@ struct RawEvent {
     int_away_score: Option<serde_json::Value>,
     #[serde(rename = "strStatus")]
     str_status: Option<String>,
+    #[serde(rename = "strTimestamp")]
+    str_timestamp: Option<String>,
 }
 
 /// Scores arrive as a string ("2"), a number (2), or null. Normalise to i64.
@@ -53,6 +55,7 @@ impl RawEvent {
             int_home_score: score(&self.int_home_score),
             int_away_score: score(&self.int_away_score),
             str_status: self.str_status.unwrap_or_default(),
+            str_timestamp: self.str_timestamp,
         })
     }
 }
@@ -147,5 +150,15 @@ mod tests {
         assert_eq!(teams.len(), 1);
         assert_eq!(teams[0].id_team, "133");
         assert_eq!(teams[0].str_team, "Sweden");
+    }
+
+    #[test]
+    fn decodes_str_timestamp() {
+        let body = r#"{"schedule":[{"idEvent":"1","dateEvent":"2026-06-15","strTimestamp":"2026-06-15T02:00:00+00:00"}]}"#;
+        let events = decode_schedule(body).unwrap();
+        assert_eq!(
+            events[0].str_timestamp,
+            Some("2026-06-15T02:00:00+00:00".to_string())
+        );
     }
 }

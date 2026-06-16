@@ -10,6 +10,7 @@ pub struct Event {
     pub int_home_score: Option<i64>,
     pub int_away_score: Option<i64>,
     pub str_status: String,
+    pub str_timestamp: Option<String>,
 }
 
 /// A team row from `/list/teams/{leagueId}` — id + name for matching.
