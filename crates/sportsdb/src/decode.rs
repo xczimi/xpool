@@ -83,6 +83,26 @@ pub fn decode_livescore(body: &str) -> anyhow::Result<Vec<Event>> {
 }
 
 #[derive(Deserialize)]
+struct LookupEnvelope {
+    lookup: Option<Vec<RawEvent>>,
+    events: Option<Vec<RawEvent>>,
+}
+
+/// Decode a `/lookup/event/{id}` body into events (0 or 1).
+/// The V2 lookup endpoint returns the event under `.lookup`; some responses
+/// use `.events` as a fallback key.
+pub fn decode_lookup(body: &str) -> anyhow::Result<Vec<Event>> {
+    let env: LookupEnvelope = serde_json::from_str(body)?;
+    Ok(env
+        .lookup
+        .or(env.events)
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(RawEvent::into_event)
+        .collect())
+}
+
+#[derive(Deserialize)]
 struct ListEnvelope {
     list: Option<Vec<RawTeam>>,
 }
@@ -160,5 +180,25 @@ mod tests {
             events[0].str_timestamp,
             Some("2026-06-15T02:00:00+00:00".to_string())
         );
+    }
+
+    #[test]
+    fn decodes_lookup_envelope() {
+        let body = r#"{"lookup":[{"idEvent":"2461106","dateEvent":"2026-06-15","idHomeTeam":"H","idAwayTeam":"A","intHomeScore":"2","intAwayScore":"1","strStatus":"FT"}]}"#;
+        let events = decode_lookup(body).unwrap();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].id_event, "2461106");
+        assert_eq!(events[0].int_home_score, Some(2));
+        assert_eq!(events[0].int_away_score, Some(1));
+        assert_eq!(events[0].str_status, "FT");
+    }
+
+    #[test]
+    fn decodes_lookup_envelope_events_fallback() {
+        let body = r#"{"events":[{"idEvent":"2461107","dateEvent":"2026-06-16","idHomeTeam":"X","idAwayTeam":"Y","intHomeScore":0,"intAwayScore":0,"strStatus":"Match Finished"}]}"#;
+        let events = decode_lookup(body).unwrap();
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].id_event, "2461107");
+        assert_eq!(events[0].str_status, "Match Finished");
     }
 }

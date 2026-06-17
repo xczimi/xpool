@@ -480,15 +480,18 @@ impl QueryRoot {
             return Ok(Vec::new());
         }
 
-        // Fetch reported results; any error degrades to empty.
+        // Look up each candidate event individually — per-event lookup has
+        // accurate status/score while the bulk feed lags. Any error degrades
+        // to empty so manual entry is never blocked.
+        let ids: Vec<String> = by_event.keys().cloned().collect();
         let source = ctx.data_unchecked::<Arc<dyn crate::reported::ReportedResultSource>>();
-        let events = source.finished_results().await.unwrap_or_default();
+        let events = source.lookup_events(&ids).await.unwrap_or_default();
 
         let mut out = Vec::new();
         for e in events {
-            if !e.is_finished() {
-                continue;
-            }
+            // Suggest the scoreline whenever both scores are present —
+            // do NOT gate on finished-status (status lags in the bulk feed).
+            // The admin confirms before submitting; a deep-stoppage score is acceptable.
             if let Some((game_id, round)) = by_event.get(&e.id_event) {
                 if let (Some(h), Some(a)) = (e.int_home_score, e.int_away_score) {
                     out.push(ReportedResult {
@@ -524,12 +527,17 @@ mod reported_tests {
     struct StubSource(Vec<Event>);
     #[async_trait]
     impl ReportedResultSource for StubSource {
-        async fn finished_results(&self) -> anyhow::Result<Vec<Event>> {
-            Ok(self.0.clone())
+        async fn lookup_events(&self, ids: &[String]) -> anyhow::Result<Vec<Event>> {
+            Ok(self
+                .0
+                .iter()
+                .filter(|e| ids.contains(&e.id_event))
+                .cloned()
+                .collect())
         }
     }
 
-    fn finished(id_event: &str, h: i64, a: i64) -> Event {
+    fn event_with_status(id_event: &str, h: i64, a: i64, status: &str) -> Event {
         Event {
             id_event: id_event.into(),
             date_event: "2026-06-11".into(),
@@ -537,9 +545,13 @@ mod reported_tests {
             id_away_team: "A".into(),
             int_home_score: Some(h),
             int_away_score: Some(a),
-            str_status: "Match Finished".into(),
+            str_status: status.into(),
             str_timestamp: None,
         }
+    }
+
+    fn finished(id_event: &str, h: i64, a: i64) -> Event {
+        event_with_status(id_event, h, a, "Match Finished")
     }
 
     // An authenticated, ordinary player (NOT the result user).
@@ -670,5 +682,57 @@ mod reported_tests {
             ));
         let resp = schema.execute(req).await;
         assert!(!resp.errors.is_empty());
+    }
+
+    #[tokio::test]
+    async fn suggests_in_progress_scoreline_when_status_not_final() {
+        // An event with status "2H" (in-progress) but both scores present IS
+        // suggested — we no longer gate on finished-status.
+        let repo = repo_with_pending_m1().await;
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![event_with_status("E1", 3, 0, "2H")]));
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(
+            r#"{ reportedResults(groupId:"A"){ gameId homeScore awayScore sourceStatus } }"#,
+        )
+        .data(CurrentPlayer::Player(Box::new(result_user())))
+        .data(crate::clock::RequestNow(
+            "2026-06-12T12:00:00Z".parse().unwrap(),
+        ));
+        let resp = schema.execute(req).await;
+        assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+        let json = resp.data.into_json().unwrap();
+        let row = &json["reportedResults"][0];
+        assert_eq!(row["gameId"], "M1");
+        assert_eq!(row["homeScore"], 3);
+        assert_eq!(row["awayScore"], 0);
+        assert_eq!(row["sourceStatus"], "2H");
+    }
+
+    #[tokio::test]
+    async fn event_without_scores_is_not_suggested() {
+        // An event with no scores (null int_home_score) must NOT appear in results.
+        let repo = repo_with_pending_m1().await;
+        let no_score_event = Event {
+            id_event: "E1".into(),
+            date_event: "2026-06-11".into(),
+            id_home_team: "H".into(),
+            id_away_team: "A".into(),
+            int_home_score: None,
+            int_away_score: None,
+            str_status: "NS".into(),
+            str_timestamp: None,
+        };
+        let source: Arc<dyn ReportedResultSource> = Arc::new(StubSource(vec![no_score_event]));
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(r#"{ reportedResults(groupId:"A"){ gameId } }"#)
+            .data(CurrentPlayer::Player(Box::new(result_user())))
+            .data(crate::clock::RequestNow(
+                "2026-06-12T12:00:00Z".parse().unwrap(),
+            ));
+        let resp = schema.execute(req).await;
+        assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+        let json = resp.data.into_json().unwrap();
+        assert_eq!(json["reportedResults"].as_array().unwrap().len(), 0);
     }
 }

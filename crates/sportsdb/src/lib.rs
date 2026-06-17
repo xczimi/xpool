@@ -11,5 +11,5 @@ mod decode;
 mod model;
 
 pub use client::SportsDb;
-pub use decode::{decode_livescore, decode_schedule, decode_teams};
+pub use decode::{decode_livescore, decode_lookup, decode_schedule, decode_teams};
 pub use model::{Event, TeamRow};

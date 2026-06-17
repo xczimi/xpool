@@ -3,7 +3,7 @@
 //! `.specs/THESPORTSDB_API.md` §3). Always pulls *league-wide* endpoints in one
 //! call and lets callers filter locally — never loops per-event (§2 rate limits).
 
-use crate::decode::{decode_schedule, decode_teams};
+use crate::decode::{decode_lookup, decode_schedule, decode_teams};
 use crate::model::{Event, TeamRow};
 use std::time::Duration;
 
@@ -40,6 +40,12 @@ impl SportsDb {
     pub async fn finished_results(&self) -> anyhow::Result<Vec<Event>> {
         let url = format!("{BASE}/schedule/previous/league/{LEAGUE_ID}");
         decode_schedule(&self.get(&url).await?)
+    }
+
+    /// Look up a single event by idEvent — accurate status/score (the bulk feed lags).
+    pub async fn lookup_event(&self, id_event: &str) -> anyhow::Result<Option<Event>> {
+        let url = format!("{BASE}/lookup/event/{id_event}");
+        Ok(decode_lookup(&self.get(&url).await?)?.into_iter().next())
     }
 
     /// All teams in the league — the reconcile team-id source.
