@@ -15,14 +15,21 @@ use query::QueryRoot;
 use std::sync::Arc;
 use storage::Repository;
 
+use crate::reported::ReportedResultSource;
+
 /// The xpool GraphQL schema type.
 pub type XpoolSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 
-/// Build the schema, injecting the repository as shared schema data. The
-/// per-request `CurrentPlayer` is added per request in the router.
-pub fn build_schema(repo: Arc<dyn Repository>) -> XpoolSchema {
+/// Build the schema, injecting the repository and reported-results source as
+/// shared schema data. The per-request `CurrentPlayer` is added per request in
+/// the router.
+pub fn build_schema(
+    repo: Arc<dyn Repository>,
+    reported: Arc<dyn ReportedResultSource>,
+) -> XpoolSchema {
     Schema::build(QueryRoot, MutationRoot, EmptySubscription)
         .data(repo)
+        .data(reported)
         // Simple query-depth cap (API.md §2). Must stay above the standard
         // GraphQL introspection query (`__schema → types → fields → args →
         // type → ofType ×7`, depth ~13) or GraphiQL cannot load the schema.

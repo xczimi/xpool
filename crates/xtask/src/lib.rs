@@ -6,6 +6,7 @@
 pub mod dto;
 pub mod export;
 pub mod migrate_gh;
+pub mod reconcile;
 pub mod scenario;
 pub mod seed;
 pub mod snapshot;

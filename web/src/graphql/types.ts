@@ -183,3 +183,13 @@ export interface PlayerSummary {
   fullName: string
   isResultUser: boolean
 }
+
+/** One game's score as reported by SportsDB (admin-gated, pre-fill only). */
+export interface ReportedResult {
+  gameId: string
+  homeScore: number
+  awayScore: number
+  source: string
+  sourceStatus: string
+  ninetyMinuteUncertain: boolean
+}

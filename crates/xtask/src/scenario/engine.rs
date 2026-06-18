@@ -223,6 +223,7 @@ mod tests {
                 team_id: Some("AWAY".into()),
                 description: "A2".into(),
             },
+            external_id: None,
         };
         let group = GroupGame {
             id: "A".into(),

@@ -40,6 +40,10 @@ pub struct SingleGame {
     pub group_id: GroupId,
     pub home: TeamSlot,
     pub away: TeamSlot,
+    /// TheSportsDB `idEvent`, backfilled by `xtask reconcile-events`. `None`
+    /// until reconciled (e.g. knockout fixtures not yet published upstream).
+    #[serde(default)]
+    pub external_id: Option<String>,
 }
 
 /// Tournament round. Drives the scoring multiplier (`SCORING.md` §6).
@@ -191,6 +195,48 @@ impl Player {
         self.standings_predictions
             .iter()
             .find(|p| p.group_id == group_id)
+    }
+}
+
+#[cfg(test)]
+mod external_id_tests {
+    use super::*;
+
+    #[test]
+    fn single_game_external_id_defaults_to_none_when_absent() {
+        // Old data (no external_id key) must still deserialize.
+        let json = r#"{
+            "id": "M1",
+            "kickoff": "2026-06-11T19:00:00Z",
+            "venue": null,
+            "group_id": "A",
+            "home": { "team_id": "MEX", "description": "A1" },
+            "away": { "team_id": "RSA", "description": "A2" }
+        }"#;
+        let g: SingleGame = serde_json::from_str(json).unwrap();
+        assert_eq!(g.external_id, None);
+    }
+
+    #[test]
+    fn single_game_external_id_round_trips() {
+        let g = SingleGame {
+            id: "M1".into(),
+            kickoff: "2026-06-11T19:00:00Z".parse().unwrap(),
+            venue: None,
+            group_id: "A".into(),
+            home: TeamSlot {
+                team_id: Some("MEX".into()),
+                description: "A1".into(),
+            },
+            away: TeamSlot {
+                team_id: Some("RSA".into()),
+                description: "A2".into(),
+            },
+            external_id: Some("2461106".into()),
+        };
+        let s = serde_json::to_string(&g).unwrap();
+        let back: SingleGame = serde_json::from_str(&s).unwrap();
+        assert_eq!(back.external_id, Some("2461106".into()));
     }
 }
 

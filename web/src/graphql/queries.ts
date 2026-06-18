@@ -209,3 +209,20 @@ export const REMATERIALIZE_MUTATION = `
   }
 `
 
+/**
+ * Admin-gated: fetch SportsDB reported scores for result-pending games in a
+ * group. Returns [] for non-admins and when SportsDB is unconfigured.
+ */
+export const REPORTED_RESULTS_QUERY = `
+  query ReportedResults($groupId: String!) {
+    reportedResults(groupId: $groupId) {
+      gameId
+      homeScore
+      awayScore
+      source
+      sourceStatus
+      ninetyMinuteUncertain
+    }
+  }
+`
+

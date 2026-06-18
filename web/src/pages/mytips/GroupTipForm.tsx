@@ -6,6 +6,7 @@ import type {
   MatchPrediction,
   Player,
   PointsBreakdown,
+  ReportedResult,
   StandingsScore,
   Tournament,
 } from '../../graphql/types'
@@ -54,6 +55,7 @@ export function GroupTipForm({
   serverNowMs,
   onExpire,
   onSubmit,
+  reported,
 }: {
   tournament: Tournament
   group: GroupGame
@@ -76,6 +78,8 @@ export function GroupTipForm({
     standings: StandingsInput | null,
     lock: boolean,
   ) => Promise<OperationResult>
+  /** SportsDB reported scores to pre-fill empty inputs (result user only). */
+  reported?: Map<string, ReportedResult>
 }) {
   const { t, locale } = useI18n()
   const teams = useMemo(() => teamIndex(tournament.teams, locale), [tournament, locale])
@@ -97,18 +101,29 @@ export function GroupTipForm({
   }, [results])
 
   // Seed the form from the player's existing predictions for this group.
+  // If there is no existing prediction and a reported score is available
+  // (result user only), pre-fill from it.
   const initialMatches = useMemo(() => {
     const map: Record<string, DraftMatch> = {}
     for (const game of games) {
       const existing = me.matchPredictions.find((p) => p.gameId === game.id)
+      const fill = !existing ? reported?.get(game.id) : undefined
       map[game.id] = {
-        homeScore: existing ? String(existing.homeScore) : '',
-        awayScore: existing ? String(existing.awayScore) : '',
+        homeScore: existing
+          ? String(existing.homeScore)
+          : fill
+            ? String(fill.homeScore)
+            : '',
+        awayScore: existing
+          ? String(existing.awayScore)
+          : fill
+            ? String(fill.awayScore)
+            : '',
         locked: existing?.locked ?? false,
       }
     }
     return map
-  }, [games, me])
+  }, [games, me, reported])
 
   const initialDrawOrder = useMemo(
     () =>
@@ -123,6 +138,22 @@ export function GroupTipForm({
   const [drawOrder, setDrawOrder] = useState<string[]>(initialDrawOrder)
   const [flash, setFlash] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+
+  // Merge reported pre-fills into the visible match state without touching the
+  // stored `matches` state. Reported fills are shown only for games where the
+  // admin has not yet typed anything and the slot is not locked — so the admin
+  // always remains in control of what they see and submit.
+  const displayMatches = useMemo(() => {
+    const merged: Record<string, DraftMatch> = { ...matches }
+    for (const game of games) {
+      const cur = matches[game.id]
+      const r = reported?.get(game.id)
+      if (r && cur && cur.homeScore === '' && cur.awayScore === '' && !cur.locked) {
+        merged[game.id] = { homeScore: String(r.homeScore), awayScore: String(r.awayScore), locked: false }
+      }
+    }
+    return merged
+  }, [matches, reported, games])
 
   // The result user enters official results and is never locked out — not by
   // the deadline (results arrive after kickoff) nor by a prior lock (they can
@@ -148,12 +179,12 @@ export function GroupTipForm({
   // Predicted standings derived from the current draft scores.
   const predicted = useMemo(() => {
     const ranked = computeStandings(games, (gameId) => {
-      const m = matches[gameId]
+      const m = displayMatches[gameId]
       if (!m || m.homeScore === '' || m.awayScore === '') return null
       return { home: Number(m.homeScore), away: Number(m.awayScore) }
     })
     return applyDrawOrder(ranked, drawOrder)
-  }, [games, matches, drawOrder])
+  }, [games, displayMatches, drawOrder])
 
   // Actual standings from official results.
   const actual = useMemo(
@@ -166,20 +197,20 @@ export function GroupTipForm({
   )
 
   const allComplete = games.every((g) => {
-    const m = matches[g.id]
+    const m = displayMatches[g.id]
     return m && m.homeScore !== '' && m.awayScore !== ''
   })
 
   const toPredictionInputs = (): PredictionInput[] =>
     games
       .filter((g) => {
-        const m = matches[g.id]
+        const m = displayMatches[g.id]
         return m && m.homeScore !== '' && m.awayScore !== ''
       })
       .map((g) => ({
         gameId: g.id,
-        homeScore: Number(matches[g.id].homeScore),
-        awayScore: Number(matches[g.id].awayScore),
+        homeScore: Number(displayMatches[g.id].homeScore),
+        awayScore: Number(displayMatches[g.id].awayScore),
       }))
 
   const submit = async (lock: boolean) => {
@@ -244,7 +275,7 @@ export function GroupTipForm({
         </thead>
         <tbody>
           {games.map((game) => {
-            const m = matches[game.id]
+            const m = displayMatches[game.id]
             const matchLocked = readOnly || (m.locked && !isResultUser)
             return (
               <tr key={game.id}>

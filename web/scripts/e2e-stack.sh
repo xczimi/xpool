@@ -43,6 +43,9 @@ export XPOOL_NOW="${XPOOL_NOW:-2026-06-20T12:00:00Z}"
 export LOCAL_AUTH_ISSUER="${LOCAL_AUTH_ISSUER:-1}"
 export INVITE_CODE_SECRET="${INVITE_CODE_SECRET:-test-secret-must-be-32-bytes-long}"
 
+# Keep e2e hermetic: force the SportsDB source to NullSource (no live calls).
+export THESPORTSDB_API_KEY=""
+
 PID_FILE="$REPO_ROOT/web/.e2e-api.pid"
 API_LOG="$REPO_ROOT/web/.e2e-api.log"
 log() { echo "[e2e-stack] $*"; }

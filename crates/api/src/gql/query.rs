@@ -424,4 +424,315 @@ impl QueryRoot {
         });
         Ok(out)
     }
+
+    /// External (TheSportsDB) reported results for a group's result-pending
+    /// games — the admin pre-fill source. Admin-only (the result user). Returns
+    /// only finished, mapped, not-yet-entered games; `[]` if the source is
+    /// absent or errors (manual entry is never blocked).
+    async fn reported_results(
+        &self,
+        ctx: &Context<'_>,
+        group_id: String,
+    ) -> async_graphql::Result<Vec<ReportedResult>> {
+        // Gate: only the result user (the official-results admin).
+        CurrentPlayer::require_admin(ctx)?;
+
+        let repo = repo(ctx);
+        let now = now(ctx);
+        let Some(tournament) = repo.get_tournament().await? else {
+            return Ok(Vec::new());
+        };
+        let players = repo.list_players().await?;
+        let entered: std::collections::HashSet<String> = players
+            .iter()
+            .find(|p| p.is_result_user)
+            .map(|r| {
+                r.match_predictions
+                    .iter()
+                    .map(|p| p.game_id.clone())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        // Games in this group that are result-pending and have an idEvent.
+        // event idEvent -> (game_id, round) for O(1) join below.
+        let mut by_event: std::collections::HashMap<String, (String, domain::Round)> =
+            std::collections::HashMap::new();
+        for game in tournament.games_in(&group_id) {
+            let round = tournament
+                .groups
+                .get(&game.group_id)
+                .map(|g| g.round)
+                .unwrap_or(domain::Round::GroupStage);
+            let pending = crate::timeflags::result_pending(
+                game.kickoff,
+                round,
+                entered.contains(&game.id),
+                now,
+            );
+            if pending {
+                if let Some(ext) = &game.external_id {
+                    by_event.insert(ext.clone(), (game.id.clone(), round));
+                }
+            }
+        }
+        if by_event.is_empty() {
+            return Ok(Vec::new());
+        }
+
+        // Look up each candidate event individually — per-event lookup has
+        // accurate status/score while the bulk feed lags. Any error degrades
+        // to empty so manual entry is never blocked.
+        let ids: Vec<String> = by_event.keys().cloned().collect();
+        let source = ctx.data_unchecked::<Arc<dyn crate::reported::ReportedResultSource>>();
+        let events = source.lookup_events(&ids).await.unwrap_or_default();
+
+        let mut out = Vec::new();
+        for e in events {
+            // Suggest the scoreline whenever both scores are present —
+            // do NOT gate on finished-status (status lags in the bulk feed).
+            // The admin confirms before submitting; a deep-stoppage score is acceptable.
+            if let Some((game_id, round)) = by_event.get(&e.id_event) {
+                if let (Some(h), Some(a)) = (e.int_home_score, e.int_away_score) {
+                    out.push(ReportedResult {
+                        game_id: game_id.clone(),
+                        home_score: h as i32,
+                        away_score: a as i32,
+                        source: "thesportsdb".to_string(),
+                        source_status: e.str_status.clone(),
+                        ninety_minute_uncertain: *round != domain::Round::GroupStage,
+                    });
+                }
+            }
+        }
+        out.sort_by(|a, b| a.game_id.cmp(&b.game_id));
+        Ok(out)
+    }
+}
+
+#[cfg(test)]
+mod reported_tests {
+    use crate::auth::CurrentPlayer;
+    use crate::reported::ReportedResultSource;
+    use async_trait::async_trait;
+    use chrono::{TimeZone, Utc};
+    use domain::{
+        GroupChildren, GroupGame, LockMode, Player, Round, SingleGame, Team, TeamSlot, Tournament,
+    };
+    use sportsdb::Event;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use storage::{InMemoryRepository, Repository};
+
+    struct StubSource(Vec<Event>);
+    #[async_trait]
+    impl ReportedResultSource for StubSource {
+        async fn lookup_events(&self, ids: &[String]) -> anyhow::Result<Vec<Event>> {
+            Ok(self
+                .0
+                .iter()
+                .filter(|e| ids.contains(&e.id_event))
+                .cloned()
+                .collect())
+        }
+    }
+
+    fn event_with_status(id_event: &str, h: i64, a: i64, status: &str) -> Event {
+        Event {
+            id_event: id_event.into(),
+            date_event: "2026-06-11".into(),
+            id_home_team: "H".into(),
+            id_away_team: "A".into(),
+            int_home_score: Some(h),
+            int_away_score: Some(a),
+            str_status: status.into(),
+            str_timestamp: None,
+        }
+    }
+
+    fn finished(id_event: &str, h: i64, a: i64) -> Event {
+        event_with_status(id_event, h, a, "Match Finished")
+    }
+
+    // An authenticated, ordinary player (NOT the result user).
+    fn regular_player() -> Player {
+        Player {
+            id: "demo-ada".into(),
+            person_id: "pa".into(),
+            nick: "ada".into(),
+            full_name: "Ada".into(),
+            referrer: None,
+            is_result_user: false,
+            version: 0,
+            match_predictions: vec![],
+            standings_predictions: vec![],
+        }
+    }
+
+    // Result user with NO prediction for M1 -> M1 is result-pending.
+    fn result_user() -> Player {
+        Player {
+            id: "result-user".into(),
+            person_id: "p".into(),
+            nick: "official".into(),
+            full_name: "Official".into(),
+            referrer: None,
+            is_result_user: true,
+            version: 0,
+            match_predictions: vec![],
+            standings_predictions: vec![],
+        }
+    }
+
+    async fn repo_with_pending_m1() -> Arc<dyn Repository> {
+        let team = |id: &str| Team {
+            id: id.into(),
+            name: id.into(),
+            short_code: id.into(),
+            flag: None,
+            external_id: None,
+        };
+        let g1 = SingleGame {
+            id: "M1".into(),
+            kickoff: Utc.with_ymd_and_hms(2026, 6, 11, 19, 0, 0).unwrap(),
+            venue: None,
+            group_id: "A".into(),
+            home: TeamSlot {
+                team_id: Some("AAA".into()),
+                description: "A1".into(),
+            },
+            away: TeamSlot {
+                team_id: Some("BBB".into()),
+                description: "A2".into(),
+            },
+            external_id: Some("E1".into()),
+        };
+        let group = GroupGame {
+            id: "A".into(),
+            name: "A".into(),
+            parent: None,
+            round: Round::GroupStage,
+            lock_mode: LockMode::LockTogether,
+            carries_standings: true,
+            children: GroupChildren::Games(vec!["M1".into()]),
+        };
+        let t = Tournament {
+            root: "A".into(),
+            groups: HashMap::from([("A".to_string(), group)]),
+            games: HashMap::from([("M1".to_string(), g1)]),
+            teams: HashMap::from([
+                ("AAA".to_string(), team("AAA")),
+                ("BBB".to_string(), team("BBB")),
+            ]),
+        };
+        let repo = InMemoryRepository::new();
+        repo.put_tournament(&t).await.unwrap();
+        repo.put_player(&result_user()).await.unwrap();
+        Arc::new(repo)
+    }
+
+    #[tokio::test]
+    async fn maps_finished_event_to_pending_game_for_result_user() {
+        let repo = repo_with_pending_m1().await;
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![finished("E1", 2, 1)]));
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(
+            r#"{ reportedResults(groupId:"A"){ gameId homeScore awayScore source sourceStatus ninetyMinuteUncertain } }"#,
+        )
+        .data(CurrentPlayer::Player(Box::new(result_user())))
+        // kickoff 19:00 + 105min buffer -> pending after 20:45; noon next day is pending.
+        .data(crate::clock::RequestNow("2026-06-12T12:00:00Z".parse().unwrap()));
+        let resp = schema.execute(req).await;
+        assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+        let json = resp.data.into_json().unwrap();
+        let row = &json["reportedResults"][0];
+        assert_eq!(row["gameId"], "M1");
+        assert_eq!(row["homeScore"], 2);
+        assert_eq!(row["awayScore"], 1);
+        assert_eq!(row["source"], "thesportsdb");
+        assert_eq!(row["ninetyMinuteUncertain"], false);
+    }
+
+    #[tokio::test]
+    async fn non_result_user_is_rejected() {
+        let repo = repo_with_pending_m1().await;
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![finished("E1", 2, 1)]));
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(r#"{ reportedResults(groupId:"A"){ gameId } }"#)
+            .data(CurrentPlayer::Visitor)
+            .data(crate::clock::RequestNow(
+                "2026-06-12T12:00:00Z".parse().unwrap(),
+            ));
+        let resp = schema.execute(req).await;
+        assert!(!resp.errors.is_empty());
+    }
+
+    #[tokio::test]
+    async fn authenticated_non_admin_is_rejected() {
+        let repo = repo_with_pending_m1().await;
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![finished("E1", 2, 1)]));
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(r#"{ reportedResults(groupId:"A"){ gameId } }"#)
+            .data(CurrentPlayer::Player(Box::new(regular_player())))
+            .data(crate::clock::RequestNow(
+                "2026-06-12T12:00:00Z".parse().unwrap(),
+            ));
+        let resp = schema.execute(req).await;
+        assert!(!resp.errors.is_empty());
+    }
+
+    #[tokio::test]
+    async fn suggests_in_progress_scoreline_when_status_not_final() {
+        // An event with status "2H" (in-progress) but both scores present IS
+        // suggested — we no longer gate on finished-status.
+        let repo = repo_with_pending_m1().await;
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![event_with_status("E1", 3, 0, "2H")]));
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(
+            r#"{ reportedResults(groupId:"A"){ gameId homeScore awayScore sourceStatus } }"#,
+        )
+        .data(CurrentPlayer::Player(Box::new(result_user())))
+        .data(crate::clock::RequestNow(
+            "2026-06-12T12:00:00Z".parse().unwrap(),
+        ));
+        let resp = schema.execute(req).await;
+        assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+        let json = resp.data.into_json().unwrap();
+        let row = &json["reportedResults"][0];
+        assert_eq!(row["gameId"], "M1");
+        assert_eq!(row["homeScore"], 3);
+        assert_eq!(row["awayScore"], 0);
+        assert_eq!(row["sourceStatus"], "2H");
+    }
+
+    #[tokio::test]
+    async fn event_without_scores_is_not_suggested() {
+        // An event with no scores (null int_home_score) must NOT appear in results.
+        let repo = repo_with_pending_m1().await;
+        let no_score_event = Event {
+            id_event: "E1".into(),
+            date_event: "2026-06-11".into(),
+            id_home_team: "H".into(),
+            id_away_team: "A".into(),
+            int_home_score: None,
+            int_away_score: None,
+            str_status: "NS".into(),
+            str_timestamp: None,
+        };
+        let source: Arc<dyn ReportedResultSource> = Arc::new(StubSource(vec![no_score_event]));
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(r#"{ reportedResults(groupId:"A"){ gameId } }"#)
+            .data(CurrentPlayer::Player(Box::new(result_user())))
+            .data(crate::clock::RequestNow(
+                "2026-06-12T12:00:00Z".parse().unwrap(),
+            ));
+        let resp = schema.execute(req).await;
+        assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+        let json = resp.data.into_json().unwrap();
+        assert_eq!(json["reportedResults"].as_array().unwrap().len(), 0);
+    }
 }

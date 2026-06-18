@@ -11,6 +11,7 @@ pub mod cloudfront_auth;
 pub mod gql;
 pub mod listen;
 pub mod recompute;
+pub mod reported;
 pub mod router;
 pub mod timeflags;
 
@@ -29,6 +30,11 @@ pub fn build_app(
     cors: bool,
     cloudfront_secret: Option<String>,
 ) -> axum::Router {
-    let schema = gql::build_schema(repo.clone());
+    use crate::reported::{CachingSource, NullSource, ReportedResultSource, SportsDbSource};
+    let reported: Arc<dyn ReportedResultSource> = match sportsdb::SportsDb::from_env() {
+        Some(client) => Arc::new(CachingSource::new(SportsDbSource(client))),
+        None => Arc::new(NullSource),
+    };
+    let schema = gql::build_schema(repo.clone(), reported);
     router::build_router(schema, repo, cors, cloudfront_secret)
 }

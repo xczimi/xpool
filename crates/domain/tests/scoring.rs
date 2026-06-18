@@ -329,6 +329,7 @@ fn make_single_game(id: &str, group_id: &str, home_team: &str, away_team: &str) 
             team_id: Some(away_team.to_string()),
             description: away_team.to_string(),
         },
+        external_id: None,
     }
 }
 
