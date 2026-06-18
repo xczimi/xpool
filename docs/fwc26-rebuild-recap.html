@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#0a0a14" />
+<title>xPool — FWC26 Rebuild · Stats Scoreboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+<style>
+  /* ===== xPool arcade-scoreboard palette (mirrors web/src/index.css) ===== */
+  :root {
+    --bg-deep:        #07070d;
+    --bg-card:        #0e0e1a;
+    --bg-bar:         #0a0a14;
+    --bg-input:       #050508;
+    --border:         #2a1a08;
+    --accent:         #33ff66;
+    --accent-bright:  #8effb0;
+    --accent-dim:     #14a33d;
+    --led-green:      #33ff66;
+    --led-red:        #ff3366;
+    --led-blue:       #21d4fd;
+    --led-violet:     #9d6bff;
+    --ink:            #d8d0b8;
+    --muted:          #6a5a3a;
+
+    --font-display: 'Press Start 2P', monospace;
+    --font-body:    'VT323', monospace;
+    --font-meta:    'Share Tech Mono', monospace;
+  }
+
+  /* Dark + green only — no light-mode override. */
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg-deep);
+    background-image:
+      radial-gradient(ellipse at 50% -10%, rgba(51,255,102,0.10) 0%, transparent 55%),
+      radial-gradient(ellipse at 100% 100%, rgba(33,212,253,0.06) 0%, transparent 45%);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 20px;
+    line-height: 1.35;
+    padding: 32px 20px 64px;
+    min-height: 100vh;
+    position: relative;
+  }
+
+  /* CRT scanline overlay — 1px stripe every 4px */
+  body::after {
+    content: '';
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 9999;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(0,0,0,0.22) 0px, rgba(0,0,0,0.22) 1px,
+      transparent 1px, transparent 4px);
+    mix-blend-mode: multiply;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  @keyframes fadeUp { from { opacity:0; transform:translateY(10px);} to {opacity:1;transform:none;} }
+  .anim { animation: fadeUp .4s ease-out both; animation-delay: calc(var(--i,0) * .05s); }
+  @media (prefers-reduced-motion: reduce){ .anim{animation:none} body::after{display:none} }
+
+  /* ===== Header / marquee ===== */
+  .marquee {
+    border: 2px solid var(--accent-dim);
+    background: var(--bg-bar);
+    border-radius: 8px;
+    padding: 22px 22px 20px;
+    margin-bottom: 26px;
+    box-shadow: 0 0 0 1px #000 inset, 0 0 24px rgba(51,255,102,0.14);
+  }
+  .marquee .kicker {
+    font-family: var(--font-meta);
+    font-size: 13px;
+    color: var(--led-green);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: 26px;
+    line-height: 1.5;
+    color: var(--accent-bright);
+    margin: 14px 0 12px;
+    text-shadow: 0 0 12px rgba(51,255,102,0.45);
+  }
+  .marquee p {
+    font-size: 21px;
+    color: var(--ink);
+    max-width: 70ch;
+  }
+  .marquee .dates {
+    font-family: var(--font-meta);
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 12px;
+    letter-spacing: 1px;
+  }
+
+  /* ===== Section titles ===== */
+  h2 {
+    font-family: var(--font-display);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 1px;
+    margin: 34px 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+  }
+  h2::before { content: '▸ '; color: var(--led-green); }
+
+  /* ===== KPI scoreboard ===== */
+  .kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 14px;
+  }
+  .kpi {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 16px 16px;
+    text-align: center;
+    box-shadow: 0 0 18px rgba(0,0,0,0.4) inset;
+  }
+  .kpi .num {
+    font-family: var(--font-display);
+    font-size: 26px;
+    line-height: 1.2;
+    color: var(--accent-bright);
+    text-shadow: 0 0 10px rgba(51,255,102,0.4);
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi .num.green  { color: var(--led-green);  text-shadow: 0 0 10px rgba(51,255,102,0.4);}
+  .kpi .num.blue   { color: var(--led-blue);   text-shadow: 0 0 10px rgba(33,212,253,0.4);}
+  .kpi .num.red    { color: var(--led-red);    text-shadow: 0 0 10px rgba(255,51,102,0.4);}
+  .kpi .num.violet { color: var(--led-violet); text-shadow: 0 0 10px rgba(157,107,255,0.4);}
+  .kpi .lbl {
+    font-family: var(--font-meta);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+
+  /* ===== Bar chart (per-day hours) ===== */
+  .chart {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 22px 20px 14px;
+  }
+  .bar-row {
+    display: grid;
+    grid-template-columns: 96px 1fr 56px;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    font-family: var(--font-meta);
+    font-size: 14px;
+  }
+  .bar-row .day { color: var(--muted); }
+  .bar-track { background: var(--bg-input); border-radius: 3px; height: 20px; overflow: hidden; border: 1px solid var(--border); }
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-dim), var(--accent));
+    box-shadow: 0 0 10px rgba(51,255,102,0.5);
+    border-radius: 2px;
+  }
+  .bar-fill.peak { background: linear-gradient(90deg, var(--accent), var(--accent-bright)); }
+  .bar-row .val { color: var(--accent-bright); text-align: right; }
+  .bar-row .val .note { display:block; font-size: 11px; color: var(--led-green); }
+
+  /* ===== Tables ===== */
+  table { width: 100%; border-collapse: collapse; background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  thead th {
+    background: var(--bg-bar);
+    font-family: var(--font-meta);
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted); text-align: left; padding: 12px 14px;
+    border-bottom: 2px solid var(--border); white-space: nowrap;
+  }
+  tbody td { padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 18px; vertical-align: top; }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(even) { background: rgba(51,255,102,0.04); }
+  td .era { font-family: var(--font-meta); font-size: 13px; color: var(--accent-bright); }
+  td small { display:block; color: var(--muted); font-family: var(--font-meta); font-size: 12px; margin-top: 3px; }
+  .badge {
+    font-family: var(--font-meta); font-size: 12px; padding: 2px 9px; border-radius: 5px;
+    border: 1px solid var(--accent-dim); color: var(--accent-bright); white-space: nowrap;
+  }
+  .badge.now { border-color: var(--led-green); color: var(--led-green); box-shadow: 0 0 10px rgba(51,255,102,0.25); }
+  .num-cell { font-family: var(--font-meta); color: var(--accent-bright); text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ===== Tool-call mini bars ===== */
+  .tool-grid { display: grid; gap: 9px; }
+  .tool {
+    display: grid; grid-template-columns: 92px 1fr 60px; align-items: center; gap: 12px;
+    font-family: var(--font-meta); font-size: 14px;
+  }
+  .tool .name { color: var(--ink); }
+  .tool .tt { background: var(--bg-input); height: 14px; border-radius: 3px; border: 1px solid var(--border); overflow: hidden; }
+  .tool .tf { height: 100%; background: var(--led-blue); box-shadow: 0 0 8px rgba(33,212,253,0.5); }
+  .tool .tv { text-align: right; color: var(--led-blue); }
+
+  /* ===== Pills row (commit types) ===== */
+  .pills { display:flex; flex-wrap: wrap; gap: 10px; }
+  .pill {
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 13px; font-family: var(--font-meta); font-size: 14px; color: var(--ink);
+  }
+  .pill b { color: var(--accent-bright); font-weight: normal; }
+
+  /* ===== Headline callout ===== */
+  .headline {
+    border: 2px solid var(--accent-dim);
+    border-left: 6px solid var(--accent);
+    background: var(--bg-bar);
+    border-radius: 8px;
+    padding: 20px 22px;
+    font-size: 22px;
+    line-height: 1.5;
+    margin-top: 8px;
+  }
+  .headline b { color: var(--accent-bright); }
+
+  .foot {
+    font-family: var(--font-meta);
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-top: 30px;
+    border-top: 1px dashed var(--border);
+    padding-top: 16px;
+  }
+
+  @media (max-width: 640px) {
+    h1 { font-size: 18px; }
+    .kpi .num { font-size: 20px; }
+    .bar-row { grid-template-columns: 70px 1fr 48px; font-size: 12px; }
+    .tool { grid-template-columns: 76px 1fr 50px; }
+    tbody td { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="marquee anim" style="--i:0">
+    <div class="kicker">● INSERT COIN · PROJECT RECAP</div>
+    <h1>xPool — FWC26 Rebuild</h1>
+    <p>A 15-year-old Python / Google App Engine soccer pool, torn down and rebuilt in Rust + React for the FIFA World Cup 2026.</p>
+    <div class="dates">SEASON 2026 · MAY 16 → JUN 10 · 11 ACTIVE DAYS OVER A 26-DAY WINDOW</div>
+  </div>
+
+  <h2 class="anim" style="--i:1">High Score</h2>
+  <div class="kpis anim" style="--i:2">
+    <div class="kpi"><div class="num">~55<span style="font-size:14px">h</span></div><div class="lbl">Active Hours</div></div>
+    <div class="kpi"><div class="num green">330</div><div class="lbl">Commits</div></div>
+    <div class="kpi"><div class="num blue">521</div><div class="lbl">Sessions</div></div>
+    <div class="kpi"><div class="num">+66.9<span style="font-size:14px">k</span></div><div class="lbl">Net Lines</div></div>
+    <div class="kpi"><div class="num violet">30</div><div class="lbl">Worktrees</div></div>
+    <div class="kpi"><div class="num red">12.2<span style="font-size:14px">k</span></div><div class="lbl">Tool Calls</div></div>
+  </div>
+
+  <h2 class="anim" style="--i:3">Time On The Pitch — Active Hours / Day</h2>
+  <div class="chart anim" style="--i:4">
+    <div class="bar-row"><span class="day">05-16</span><div class="bar-track"><div class="bar-fill" style="width:50%"></div></div><span class="val">5.0h</span></div>
+    <div class="bar-row"><span class="day">05-17</span><div class="bar-track"><div class="bar-fill" style="width:56%"></div></div><span class="val">5.7h</span></div>
+    <div class="bar-row"><span class="day">05-18</span><div class="bar-track"><div class="bar-fill" style="width:30%"></div></div><span class="val">3.0h</span></div>
+    <div class="bar-row"><span class="day">05-19</span><div class="bar-track"><div class="bar-fill" style="width:11%"></div></div><span class="val">1.1h</span></div>
+    <div class="bar-row"><span class="day">05-30</span><div class="bar-track"><div class="bar-fill" style="width:49%"></div></div><span class="val">4.9h</span></div>
+    <div class="bar-row"><span class="day">05-31</span><div class="bar-track"><div class="bar-fill" style="width:20%"></div></div><span class="val">2.0h</span></div>
+    <div class="bar-row"><span class="day">06-06</span><div class="bar-track"><div class="bar-fill" style="width:50%"></div></div><span class="val">5.0h</span></div>
+    <div class="bar-row"><span class="day">06-07</span><div class="bar-track"><div class="bar-fill peak" style="width:100%"></div></div><span class="val">10.1h<span class="note">83 commits!</span></span></div>
+    <div class="bar-row"><span class="day">06-08</span><div class="bar-track"><div class="bar-fill" style="width:48%"></div></div><span class="val">4.8h</span></div>
+    <div class="bar-row"><span class="day">06-09</span><div class="bar-track"><div class="bar-fill" style="width:51%"></div></div><span class="val">5.2h</span></div>
+    <div class="bar-row"><span class="day">06-10</span><div class="bar-track"><div class="bar-fill" style="width:32%"></div></div><span class="val">3.2h</span></div>
+  </div>
+
+  <h2 class="anim" style="--i:5">The Lineage — 4th Incarnation</h2>
+  <table class="anim" style="--i:6">
+    <thead><tr><th>Tournament</th><th>Stack</th><th>Evidence in <code>archive/</code></th><th></th></tr></thead>
+    <tbody>
+      <tr><td><span class="era">2010 World Cup</span></td><td>Python / GAE</td><td><small>fifa2010.py · fifa.py.2010</small></td><td></td></tr>
+      <tr><td><span class="era">2012 Euro</span></td><td>Python / GAE</td><td><small>uefa2012.py</small></td><td></td></tr>
+      <tr><td><span class="era">2014 World Cup</span></td><td>Python / GAE</td><td><small>fifa2014.py · index2014.html</small></td><td></td></tr>
+      <tr><td><span class="era">2026 World Cup</span></td><td>Rust + React / TS</td><td><small>5-crate workspace · Auth0</small></td><td><span class="badge now">● THIS BUILD</span></td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="anim" style="--i:7">Fun Stats</h2>
+  <table class="anim" style="--i:8">
+    <tbody>
+      <tr><td>🦀 Rust source lines (current)</td><td class="num-cell">17,275</td></tr>
+      <tr><td>📦 Tracked lines, all languages</td><td class="num-cell">~63,000</td></tr>
+      <tr><td>➕ Lines added during rebuild</td><td class="num-cell">73,659</td></tr>
+      <tr><td>➖ Lines deleted</td><td class="num-cell">6,740</td></tr>
+      <tr><td>💬 Prompts you actually typed</td><td class="num-cell">1,145</td></tr>
+      <tr><td>🤖 Sub-agents dispatched</td><td class="num-cell">299</td></tr>
+      <tr><td>🌳 Parallel git worktrees</td><td class="num-cell">30</td></tr>
+      <tr><td>📝 Markdown / spec files in tree</td><td class="num-cell">110</td></tr>
+    </tbody>
+  </table>
+
+  <h2 class="anim" style="--i:9">Claude's Busywork — Tool Calls</h2>
+  <div class="chart anim" style="--i:10">
+    <div class="tool-grid">
+      <div class="tool"><span class="name">Bash</span><div class="tt"><div class="tf" style="width:100%"></div></div><span class="tv">5,705</span></div>
+      <div class="tool"><span class="name">Read</span><div class="tt"><div class="tf" style="width:55%"></div></div><span class="tv">3,114</span></div>
+      <div class="tool"><span class="name">Edit</span><div class="tt"><div class="tf" style="width:28%"></div></div><span class="tv">1,604</span></div>
+      <div class="tool"><span class="name">Write</span><div class="tt"><div class="tf" style="width:9%"></div></div><span class="tv">496</span></div>
+      <div class="tool"><span class="name">Agent</span><div class="tt"><div class="tf" style="width:5%"></div></div><span class="tv">299</span></div>
+      <div class="tool"><span class="name">Grep</span><div class="tt"><div class="tf" style="width:3%"></div></div><span class="tv">180</span></div>
+      <div class="tool"><span class="name">Skill</span><div class="tt"><div class="tf" style="width:2%"></div></div><span class="tv">95</span></div>
+    </div>
+  </div>
+
+  <h2 class="anim" style="--i:11">Commit DNA</h2>
+  <div class="pills anim" style="--i:12">
+    <span class="pill">feat <b>134</b></span>
+    <span class="pill">docs <b>91</b></span>
+    <span class="pill">fix <b>37</b></span>
+    <span class="pill">test <b>19</b></span>
+    <span class="pill">chore <b>14</b></span>
+    <span class="pill">refactor <b>9</b></span>
+    <span class="pill">style <b>4</b></span>
+  </div>
+
+  <h2 class="anim" style="--i:13">Final Whistle</h2>
+  <div class="headline anim" style="--i:14">
+    Rebuilt a 15-year-old Python pool into a <b>Rust + React</b> app for World Cup 2026 in roughly
+    <b>50–60 hours</b> across <b>11 days</b> — <b>330 commits</b>, <b>~67k net new lines</b>,
+    <b>17k lines of Rust</b> — orchestrating Claude across <b>30 parallel worktrees</b> and
+    <b>12,000+ tool calls</b>, all from about <b>1,145 prompts</b>.
+  </div>
+
+  <p class="foot anim" style="--i:15">
+    METHODOLOGY · Hours derive from gaps between Claude session event timestamps with idle stretches capped
+    (5-min cap = 50.1h conservative · 15-min = 58.9h · 30-min = 68.8h), merged across all parallel sessions so
+    simultaneous worktrees never double-count — a realistic floor, not wall-clock elapsed. Commits, lines, tool
+    calls and prompts are counted directly from the xpool git repo and ~/.claude session logs. soccer-pool excluded.
+    Scope: 2026-05-16 → 2026-06-10.
+  </p>
+
+</div>
+</body>
+</html>
