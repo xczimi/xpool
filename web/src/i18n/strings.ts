@@ -305,7 +305,6 @@ const en = {
   refreshFailed: 'Could not refresh — the screen may be out of date.',
 
   // match page (#2 live preview)
-  matchPageTitle: 'Match',
   provisionalLabel: 'Provisional — if it ended now',
   liveLabel: 'Live',
   awaitingResult: 'Awaiting official result',
@@ -586,7 +585,6 @@ const hu: Record<StringKey, string> = {
   refreshFailed: 'A frissítés nem sikerült — a képernyő elavult lehet.',
 
   // match page (#2 live preview)
-  matchPageTitle: 'Meccs',
   provisionalLabel: 'Ideiglenes — ha most érne véget',
   liveLabel: 'Élő',
   awaitingResult: 'Hivatalos eredményre várunk',
