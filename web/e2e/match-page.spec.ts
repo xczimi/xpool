@@ -8,7 +8,7 @@ import { devLogin, expectNoErrorView, watchNetwork } from './helpers'
  * `match.actual` is always null here. The live/provisional path (score overlay,
  * polling) is covered by the Rust resolver tests, not e2e. What we exercise is:
  *   1. Navigation: Schedule → click a matchup link → URL becomes /match/:id.
- *   2. Grid: `table.tips-grid` renders with at least one player row after a
+ *   2. Grid: `table.match-grid` renders with at least one player row after a
  *      prediction is entered.
  *   3. Own prediction: the logged-in player's nick and score appear in the grid.
  *   4. Official result / finished state: after the result user enters a result
@@ -30,12 +30,23 @@ const FIRST_GAME = 'M4'
 // Pin before the tournament so group-stage deadlines have not passed.
 const PRE_TOURNAMENT = '2026-01-01T12:00:00Z'
 
-/** Pick a game + phase in the auth-bar dev clock; it applies and reloads. */
+/**
+ * Pick a game + phase in the auth-bar dev clock. Selecting the phase applies the
+ * clock and triggers a full page reload; we tag the current document first and
+ * wait for the tag to disappear, so the reload is fully complete before the
+ * caller interacts (otherwise a following nav click races the reload and is lost).
+ */
 async function setPreset(page: Page, gameId: string, phase: 'before' | 'during' | 'after') {
   const selects = page.locator('.dev-clock select')
   await selects.nth(0).selectOption(gameId)
   await expect(selects.nth(1)).toBeEnabled()
+  await page.evaluate(() =>
+    document.documentElement.setAttribute('data-pre-reload', '1'),
+  )
   await selects.nth(1).selectOption(phase)
+  await page.waitForFunction(
+    () => !document.documentElement.hasAttribute('data-pre-reload'),
+  )
 }
 
 /** Open TEST_GROUP in the My Tips sub-navigation. */
@@ -96,12 +107,12 @@ test('match page: navigate from Schedule and tip grid shows player after predict
   await expect(page).toHaveURL(/\/match\//)
 
   // ── 3. The tip grid renders with at least one player row ───────────────────
-  const grid = page.locator('table.tips-grid')
+  const grid = page.locator('table.match-grid')
   await expect(grid).toBeVisible()
   const rows = grid.locator('tbody tr')
   await expect(rows.first()).toBeVisible()
   const rowCount = await rows.count()
-  expect(rowCount, 'tips-grid has at least one player row').toBeGreaterThan(0)
+  expect(rowCount, 'match-grid has at least one player row').toBeGreaterThan(0)
 
   // Each row has .nick, .pred, and .pts cells.
   const firstRow = rows.first()
@@ -127,8 +138,8 @@ test('match page: shows official score and no provisional marker after result is
   // covered by Rust resolver tests, not e2e — the e2e stack uses NullSource so
   // `actual` is always either official (result-user draft) or null. This test
   // covers the official (finished) state: result user enters a result via My
-  // Tips → match page shows the score block with `.score-final` and no
-  // `.score-live` / `.provisional-note`.
+  // Tips → match page shows the score block with `.match-scoreline.is-final`
+  // and no `.is-live` / `.match-provisional`.
   //
   // We use the dev-clock UI preset (no localStorage override) so the clock
   // survives all navigations without being reset by addInitScript.
@@ -162,20 +173,20 @@ test('match page: shows official score and no provisional marker after result is
   await expect(page).toHaveURL(new RegExp(`/match/${FIRST_GAME}`))
 
   // ── 4. The official score block is visible (no provisional marker) ─────────
-  const scoreFinal = page.locator('.score.score-final')
+  const scoreFinal = page.locator('.match-scoreline.is-final')
   await expect(scoreFinal).toBeVisible()
-  await expect(scoreFinal.locator('.score-value')).toContainText('2')
+  await expect(scoreFinal.locator('.match-scoreline-value')).toContainText('2')
 
   // No live/provisional markers — this is a final result.
-  await expect(page.locator('.score-live')).toHaveCount(0)
-  await expect(page.locator('.provisional-note')).toHaveCount(0)
+  await expect(page.locator('.match-scoreline.is-live')).toHaveCount(0)
+  await expect(page.locator('.match-provisional')).toHaveCount(0)
 
   // ── 5. The tip grid renders with at least one row ──────────────────────────
-  const grid = page.locator('table.tips-grid')
+  const grid = page.locator('table.match-grid')
   await expect(grid).toBeVisible()
   const gridRows = grid.locator('tbody tr')
   const rowCount = await gridRows.count()
-  expect(rowCount, 'tips-grid has at least one row post-result').toBeGreaterThan(0)
+  expect(rowCount, 'match-grid has at least one row post-result').toBeGreaterThan(0)
 
   // ── 6. grace's row shows a PointsBadge (points are scored post-kickoff) ────
   // The viewer is result-user; time_open = true → all tippers' predictions are
