@@ -101,18 +101,19 @@ export function PlayerPage() {
     <section className="page player-page">
       <h2>{entry.nick}</h2>
       <PlayerHeader entry={entry} rank={rank} perfects={perfects} />
-      {entry.total === 0 && perfects.length === 0 ? (
-        <p>{t('playerNoPredictions')}</p>
-      ) : (
-        <PlayerRounds
-          playerId={id}
-          isOwn={isOwn}
-          entry={entry}
-          tournament={tournament}
-          resultByGame={resultByGame}
-          locale={locale}
-        />
-      )}
+      <PlayerRounds
+        playerId={id}
+        isOwn={isOwn}
+        entry={entry}
+        tournament={tournament}
+        resultByGame={resultByGame}
+        locale={locale}
+      />
+      {/* Per-round detail shows '—' for any match without a pick, so a
+          participant who never predicted reads honestly without a special
+          empty state. A reliable "no predictions" signal isn't available from
+          the materialised totals alone (every participant scores 0 before any
+          result), so there is deliberately no zero-total short-circuit here. */}
     </section>
   )
 }

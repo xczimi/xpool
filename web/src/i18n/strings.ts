@@ -188,7 +188,6 @@ const en = {
 
   // player-detail page
   playerNotInPool: 'This player is not in your pool.',
-  playerNoPredictions: 'No predictions yet.',
   playerPageOwnLink: 'My player page',
   playerPerfectsHeading: 'Perfect predictions',
 
@@ -472,7 +471,6 @@ const hu: Record<StringKey, string> = {
 
   // player-detail page
   playerNotInPool: 'Ez a játékos nincs a ligádban.',
-  playerNoPredictions: 'Még nincs tipp.',
   playerPageOwnLink: 'Saját oldalam',
   playerPerfectsHeading: 'Telitalálatok',
 
