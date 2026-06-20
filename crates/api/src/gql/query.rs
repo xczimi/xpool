@@ -46,6 +46,60 @@ fn collect_leaf_groups<'a>(
     }
 }
 
+/// Build one `(player, game)` tip row: apply the mutual-commitment visibility
+/// gate (legacy `AllTipsHandler`) and, when the prediction is visible and an
+/// `actual` exists, score it. `actual` is the result-user's prediction for the
+/// official path, or a synthesized live score for the provisional path — the
+/// scoring is identical. Shared by `tips` and `match`.
+#[allow(clippy::too_many_arguments)]
+fn scored_tip(
+    viewer_id: &str,
+    viewer_prediction: Option<&domain::MatchPrediction>,
+    player: &domain::Player,
+    game: &domain::SingleGame,
+    deadline: Option<chrono::DateTime<chrono::Utc>>,
+    now: chrono::DateTime<chrono::Utc>,
+    actual: Option<&domain::MatchPrediction>,
+    multiplier: i64,
+    config: &ScoringConfig,
+) -> Tip {
+    let prediction = player.match_prediction(&game.id);
+    let is_own = player.id == viewer_id;
+    // Match kickoff or group-deadline opens every tip for the game to everyone.
+    let time_open = now >= game.kickoff || deadline.is_some_and(|d| now > d);
+    // Mutual commitment: another player's tip shows only once the viewer has
+    // effective-locked this match; we keep the target's lock so an un-locked
+    // draft is never exposed before the deadline.
+    let viewer_committed = time_open || viewer_prediction.is_some_and(|p| p.locked);
+    let visible =
+        is_own || (viewer_committed && prediction.is_some_and(|p| p.locked || time_open));
+    let breakdown = match (visible, prediction, actual) {
+        (true, Some(pred), Some(res)) => Some(PointsBreakdown::build(
+            score_match_parts(pred, res, config),
+            multiplier,
+            config,
+        )),
+        _ => None,
+    };
+    let points = breakdown.as_ref().map(|b| b.points);
+    let is_perfect_tip = breakdown
+        .as_ref()
+        .is_some_and(|b| b.base >= config.perfect_threshold);
+    Tip {
+        player_id: player.id.clone(),
+        nick: player.nick.clone(),
+        game_id: game.id.clone(),
+        prediction: if visible {
+            prediction.map(MatchPrediction::from)
+        } else {
+            None
+        },
+        points,
+        is_perfect: is_perfect_tip,
+        breakdown,
+    }
+}
+
 #[Object]
 impl QueryRoot {
     /// The `<t>#TOURNAMENT` structure with time-derived flags (`TESTING.md` §3.3).
@@ -237,51 +291,18 @@ impl QueryRoot {
         let mut tips = Vec::new();
         for player in domain::participation::tippers_in(&players, &game_ids) {
             for game in &games {
-                let prediction = player.match_prediction(&game.id);
-                // Own predictions are always visible to the viewer.
-                let is_own = player.id == viewer.id;
-                // Once the match kicks off (or the group deadline passes) the
-                // game is open to everyone — viewer and target are both then
-                // effective-locked regardless of their explicit lock flags.
-                let time_open = now >= game.kickoff || deadline.is_some_and(|d| now > d);
-                // Mutual commitment (legacy `AllTipsHandler`): another player's
-                // tip is revealed only once the *viewer* has effective-locked
-                // this match — so you can't peek at others' tips for a game you
-                // can still change. We also keep the target's lock in the gate
-                // so an un-locked draft is never exposed before the deadline.
-                let viewer_committed =
-                    time_open || viewer.match_prediction(&game.id).is_some_and(|p| p.locked);
-                let visible = is_own
-                    || (viewer_committed && prediction.is_some_and(|p| p.locked || time_open));
-                // Score a visible prediction once the game has a result. By the
-                // time a result exists the match has kicked off, so a scored
-                // tip is always already visible — no hidden info is revealed.
                 let result = result_user.and_then(|r| r.match_prediction(&game.id));
-                let breakdown = match (visible, prediction, result) {
-                    (true, Some(pred), Some(res)) => Some(PointsBreakdown::build(
-                        score_match_parts(pred, res, &config),
-                        config.multiplier(round_of(game)),
-                        &config,
-                    )),
-                    _ => None,
-                };
-                let points = breakdown.as_ref().map(|b| b.points);
-                let is_perfect_tip = breakdown
-                    .as_ref()
-                    .is_some_and(|b| b.base >= config.perfect_threshold);
-                tips.push(Tip {
-                    player_id: player.id.clone(),
-                    nick: player.nick.clone(),
-                    game_id: game.id.clone(),
-                    prediction: if visible {
-                        prediction.map(MatchPrediction::from)
-                    } else {
-                        None
-                    },
-                    points,
-                    is_perfect: is_perfect_tip,
-                    breakdown,
-                });
+                tips.push(scored_tip(
+                    &viewer.id,
+                    viewer.match_prediction(&game.id),
+                    player,
+                    game,
+                    deadline,
+                    now,
+                    result,
+                    config.multiplier(round_of(game)),
+                    &config,
+                ));
             }
         }
         Ok(tips)
