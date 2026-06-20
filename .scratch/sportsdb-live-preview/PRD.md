@@ -1,6 +1,8 @@
 # Live match preview — provisional points during a game
 
-Status: ready-for-agent
+Status: done (PR #16, 2026-06-20) — match page at `/match/:gameId` (official/live/none
+score, all-players tip grid, pool selector); live/provisional scoring covered by
+Rust resolver tests. Live scoreboard remains the **#2b** follow-on (see the spec).
 
 ## Summary
 
