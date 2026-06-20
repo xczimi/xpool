@@ -7,6 +7,7 @@ import { SchedulePage } from './pages/SchedulePage'
 import { MyTipsPage } from './pages/MyTipsPage'
 import { AllTipsPage } from './pages/AllTipsPage'
 import { ScoreboardPage } from './pages/ScoreboardPage'
+import { PlayerPage } from './pages/PlayerPage'
 import { PerfectPage } from './pages/PerfectPage'
 import { PoolsPage } from './pages/PoolsPage'
 import { ProfilePage } from './pages/ProfilePage'
@@ -28,6 +29,7 @@ export function App() {
         <Route path="mytips" element={<MyTipsPage />} />
         <Route path="alltips" element={<AllTipsPage />} />
         <Route path="scoreboard" element={<ScoreboardPage />} />
+        <Route path="player/:id" element={<PlayerPage />} />
         <Route path="perfect" element={<PerfectPage />} />
         <Route path="pools" element={<PoolsPage />} />
         <Route path="profile" element={<ProfilePage />} />
