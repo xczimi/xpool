@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -159,7 +160,9 @@ export function AllTipsPage() {
             <tbody>
               {players.map(([pid, nick]) => (
                 <tr key={pid}>
-                  <td>{nick}</td>
+                  <td>
+                    <Link to={`/player/${pid}`}>{nick}</Link>
+                  </td>
                   {games.map((g) => {
                     const tip = tipMap.get(tipKey(pid, g.id))
                     return (

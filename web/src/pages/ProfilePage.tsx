@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -30,6 +31,9 @@ export function ProfilePage() {
     <section className="page">
       <h2>{t('profileTitle')}</h2>
       <ProfileForm key={me.id} me={me} />
+      <p>
+        <Link to={`/player/${me.id}`}>{t('playerPageOwnLink')}</Link>
+      </p>
     </section>
   )
 }

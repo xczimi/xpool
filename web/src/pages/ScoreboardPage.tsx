@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -116,7 +117,9 @@ export function ScoreboardPage() {
             return (
               <tr key={entry.playerId}>
                 <td>{i + 1}</td>
-                <td>{entry.nick}</td>
+                <td>
+                  <Link to={`/player/${entry.playerId}`}>{entry.nick}</Link>
+                </td>
                 {visibleRounds.map((r) => (
                   <td key={r}>{byRound.get(r) ?? 0}</td>
                 ))}

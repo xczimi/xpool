@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useI18n } from '../i18n/useI18n'
 import { PERFECTS_QUERY, RESULTS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
@@ -90,7 +91,9 @@ export function PerfectPage() {
               const r = resultByGame.get(p.gameId)
               return (
                 <tr key={`${p.playerId}-${p.gameId}-${i}`}>
-                  <td>{p.nick}</td>
+                  <td>
+                    <Link to={`/player/${p.playerId}`}>{p.nick}</Link>
+                  </td>
                   <td>{gameLabel.get(p.gameId) ?? p.gameId}</td>
                   <td>{r ? `${r.homeScore}–${r.awayScore}` : '—'}</td>
                   <td>
