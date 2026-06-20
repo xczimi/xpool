@@ -569,6 +569,97 @@ a:hover { color: var(--amber); }
 .standings-bonus strong { color: var(--amber-bright); }
 
 /* ============================================================================
+   PLAYER-DETAIL PAGE (one participant's complete view)
+   ============================================================================ */
+
+.player-header { margin: 12px 0 20px; }
+
+/* Total + rank as chunky stat cards (label over value). */
+.player-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.player-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 16px;
+  min-width: 88px;
+  background: var(--bg-card);
+  border: 2px solid var(--bg-card-border);
+}
+.player-stat-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.player-stat-value {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 16px;
+  color: var(--amber-bright);
+}
+
+.player-perfects { margin: 16px 0; }
+
+/* Per-round drill-down: collapsed rows that expand to a lazily-fetched detail. */
+.player-rounds {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.player-round-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--bg-card-border);
+  color: var(--text-on-dark);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.08s;
+}
+.player-round-row:hover {
+  border-color: var(--amber);
+  color: var(--amber-bright);
+}
+.player-round-row[aria-expanded='true'] { border-color: var(--amber); }
+.player-round-label::before { content: '▸ '; color: var(--amber); }
+.player-round-row[aria-expanded='true'] .player-round-label::before {
+  content: '▾ ';
+}
+.player-round-points { font-size: 12px; color: var(--amber-bright); }
+
+.player-round-detail {
+  padding: 8px 0 8px 12px;
+  margin-left: 6px;
+  border-left: 2px solid var(--bg-card-border);
+}
+.player-round-standings {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 4px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ============================================================================
    SCORE CELLS / INPUTS (the tip-entry mini-display)
    ============================================================================ */
 

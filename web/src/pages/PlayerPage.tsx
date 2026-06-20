@@ -100,7 +100,14 @@ export function PlayerPage() {
   return (
     <section className="page player-page">
       <h2>{entry.nick}</h2>
-      <PlayerHeader entry={entry} rank={rank} perfects={perfects} />
+      <PlayerHeader
+        entry={entry}
+        rank={rank}
+        perfects={perfects}
+        tournament={tournament}
+        resultByGame={resultByGame}
+        locale={locale}
+      />
       <PlayerRounds
         playerId={id}
         isOwn={isOwn}

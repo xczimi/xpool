@@ -58,9 +58,7 @@ test.beforeAll(() => {
   })
 })
 
-test('own page shows totals, a per-round strip, and drill-down with points', async ({
-  page,
-}) => {
+test('own page shows totals and drill-down with points', async ({ page }) => {
   const net = watchNetwork(page)
   await page.goto('/')
   await devLogin(page, 'demo-ada')
@@ -68,9 +66,9 @@ test('own page shows totals, a per-round strip, and drill-down with points', asy
   await setClock(page, await lastGameIndex(page), 'after')
   await page.goto('/player/demo-ada')
 
-  // Header: total + per-round strip rendered.
-  await expect(page.locator('.player-header')).toBeVisible()
-  await expect(page.locator('.player-round-strip li').first()).toBeVisible()
+  // Header: total + rank stat cards rendered.
+  await expect(page.locator('.player-stats')).toBeVisible()
+  await expect(page.locator('.player-stat-value').first()).toBeVisible()
 
   // Rounds start collapsed; expanding the Group Stage row reveals its detail
   // (lazy fetch), with a group sub-nav and scored predictions.
