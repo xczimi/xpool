@@ -1,6 +1,6 @@
 # Player-detail page — one participant's complete view
 
-Status: needs-triage
+Status: ready-for-human (implemented on branch worktree-player-detail-page)
 
 ## Summary
 
