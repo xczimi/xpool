@@ -186,6 +186,12 @@ const en = {
   perfectIntro: 'Players who scored the maximum 4 points on a match.',
   perfectEmpty: 'No perfect predictions yet.',
 
+  // player-detail page
+  playerNotInPool: 'This player is not in your pool.',
+  playerNoPredictions: 'No predictions yet.',
+  playerPageOwnLink: 'My player page',
+  playerPerfectsHeading: 'Perfect predictions',
+
   // pools
   poolsTitle: 'Pools',
   poolsIntro:
@@ -463,6 +469,12 @@ const hu: Record<StringKey, string> = {
   perfectTitle: 'Telitalálatok',
   perfectIntro: 'Játékosok, akik maximum megszerezhető 4 pontot értek el egy meccsen.',
   perfectEmpty: 'Még nincs telitalálat.',
+
+  // player-detail page
+  playerNotInPool: 'Ez a játékos nincs a ligádban.',
+  playerNoPredictions: 'Még nincs tipp.',
+  playerPageOwnLink: 'Saját oldalam',
+  playerPerfectsHeading: 'Telitalálatok',
 
   poolsTitle: 'Ligák',
   poolsIntro:
