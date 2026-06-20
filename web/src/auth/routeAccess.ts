@@ -17,6 +17,7 @@ export function accessFor(pathname: string): Access {
   const path = pathname.replace(/\/+$/, '') || '/'
   if (path === '/admin' || path.startsWith('/admin/')) return 'admin'
   if (path === '/invite' || path.startsWith('/invite/')) return 'public'
+  if (path.startsWith('/player/')) return 'player'
   if (PLAYER_PATHS.has(path)) return 'player'
   return 'public'
 }
