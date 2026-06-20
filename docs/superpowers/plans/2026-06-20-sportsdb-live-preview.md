@@ -1041,6 +1041,6 @@ git commit -m "test(web): e2e — match page navigation + official score (#2)"
 - §8 testing (resolver stub + e2e) → Tasks 4 & 10, with the live-path e2e gap logged. ✓
 - §9 out of scope (no live scoreboard, no `sportsdb` method) → honored. ✓
 
-**Placeholder scan:** Task 4 Step 2 and Task 10 require reconciling against the real `test_schema`/e2e helpers (their exact signatures can't be known without running) — each is an explicit "inspect then match" instruction, not a hidden TODO. All code steps carry full code.
+**Placeholder scan:** Task 4 uses the same `build_schema`/`CurrentPlayer`/`RequestNow` constructs `reported_tests` already uses (Step 2 says to reconcile names if they differ). Task 10's e2e helper names are illustrative and explicitly require reconciling against `web/e2e/helpers.ts` (Step 1). Both are "inspect then match" instructions, not hidden TODOs. All code steps carry full code.
 
 **Type consistency:** `scored_tip` signature is identical in Tasks 2 and 3. `MatchScore`/`MatchDetail` field names match across Rust (Task 1) and TS (Task 5) under async-graphql camelCasing (`home_score`→`homeScore`, etc.). `match(gameId)` field name set once via `#[graphql(name = "match")]` (Task 3) and queried as `match(gameId:)` (Tasks 5, 10).
