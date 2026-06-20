@@ -109,15 +109,18 @@ drift. `tips` keeps iterating a group's games; `match` calls it for one game.
 match(gameId: ID!): MatchDetail
 
 type MatchDetail {
-  gameId: ID!
-  homeTeam: Team!
-  awayTeam: Team!
-  kickoff: DateTime!
-  deadlinePassed: Boolean!     # server-derived (timeflags), reused
-  resultPending: Boolean!      # server-derived (timeflags), reused
+  game: Game!                  # embeds the existing Game type (home/away as
+                               # TeamSlot, kickoff, groupId, resultPending, today
+                               # flags). Reused rather than re-deriving flat
+                               # homeTeam/awayTeam/kickoff fields — DRY.
   actual: MatchScore           # null until there is a score to show
   rows: [Tip!]!                # reuses the existing Tip + PointsBreakdown
 }
+# Deadline state (deadlinePassed / the deadline itself) lives on the group, not
+# the game; the SPA already loads the `tournament` query for team names and reads
+# the group's server-derived `deadlinePassed` there — so it is NOT duplicated onto
+# MatchDetail. (Earlier sketches listed flat homeTeam/deadlinePassed fields; the
+# implementation embeds Game instead — this block is authoritative.)
 
 type MatchScore {
   homeScore: Int!
