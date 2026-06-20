@@ -81,6 +81,10 @@ test('All Tips shows earned points once a match is played', async ({ page }) => 
   await page.goto('/alltips')
   await expect(page.locator('main.content')).toContainText('All Tips')
 
+  // All Tips has a pool picker mirroring the scoreboard (defaults to the
+  // viewer's pool); the demo roster all share pool-demo, so tips still show.
+  await expect(page.locator('.pool-selector')).toBeVisible()
+
   // Once all deadlines pass the page falls back to the Group Stage round; its
   // matches are played, so visible tips carry an earned-points badge with the
   // three component marks visible inline.

@@ -79,8 +79,8 @@ export const POOLS_QUERY = `
 `
 
 export const TIPS_QUERY = `
-  query Tips($groupId: ID!) {
-    tips(groupId: $groupId) {
+  query Tips($groupId: ID!, $pool: ID) {
+    tips(groupId: $groupId, pool: $pool) {
       playerId nick gameId
       prediction { gameId homeScore awayScore locked }
       points isPerfect

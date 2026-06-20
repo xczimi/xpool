@@ -3,8 +3,13 @@ import { Link } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
-import { STANDINGS_QUERY, TIPS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
-import type { Round, StandingsScore, Tip, Tournament } from '../graphql/types'
+import {
+  POOLS_QUERY,
+  STANDINGS_QUERY,
+  TIPS_QUERY,
+  TOURNAMENT_QUERY,
+} from '../graphql/queries'
+import type { Pool, Round, StandingsScore, Tip, Tournament } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { RoundNav } from '../components/RoundNav'
 import { byKickoff, teamIndex } from '../lib/format'
@@ -27,6 +32,19 @@ export function AllTipsPage() {
   const { label } = useAuth()
   const [selectedRound, setSelectedRound] = useState<Round | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  // Pool scoping mirrors the scoreboard: `undefined` = not chosen → default to
+  // the viewer's first pool; `null` = the explicit "everyone" grid; a string =
+  // a specific pool.
+  const [poolId, setPoolId] = useState<string | null | undefined>(undefined)
+
+  // Pools require auth; the grid itself is login-gated, so this always runs for
+  // a viewer who can see tips.
+  const [poolsResult] = useQuery<{ pools: Pool[] }>({
+    query: POOLS_QUERY,
+    pause: !label,
+  })
+  const pools = poolsResult.data?.pools ?? []
+  const effectivePool = poolId === undefined ? (pools[0]?.id ?? null) : poolId
 
   const [tournamentResult] = useQuery<{
     tournament: Tournament | null
@@ -63,7 +81,7 @@ export function AllTipsPage() {
 
   const [tipsResult, refetchTips] = useQuery<{ tips: Tip[] }>({
     query: TIPS_QUERY,
-    variables: { groupId: tipsGroupId },
+    variables: { groupId: tipsGroupId, pool: effectivePool },
     pause: !label || !tipsGroupId,
   })
   const [standingsResult] = useQuery<{ standings: StandingsScore[] }>({
@@ -123,6 +141,22 @@ export function AllTipsPage() {
   return (
     <section className="page">
       <h2>{t('allTipsTitle')}</h2>
+
+      <label className="pool-selector">
+        {t('pool')}:{' '}
+        <select
+          value={effectivePool ?? ''}
+          onChange={(e) => setPoolId(e.target.value || null)}
+        >
+          <option value="">{t('everyone')}</option>
+          {pools.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
       <RoundNav
         groups={tournament.groups}
         games={tournament.games}

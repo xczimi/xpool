@@ -207,7 +207,12 @@ impl QueryRoot {
     /// viewer only once *both* have effective-locked that match (the viewer
     /// can't peek at a game they can still change, and an un-locked draft is
     /// never exposed); the deadline/kickoff opens every tip for that match.
-    async fn tips(&self, ctx: &Context<'_>, group_id: String) -> async_graphql::Result<Vec<Tip>> {
+    async fn tips(
+        &self,
+        ctx: &Context<'_>,
+        group_id: String,
+        pool: Option<String>,
+    ) -> async_graphql::Result<Vec<Tip>> {
         let viewer = CurrentPlayer::require(ctx)?;
         let repo = repo(ctx);
         let tournament = repo
@@ -215,6 +220,26 @@ impl QueryRoot {
             .await?
             .ok_or_else(|| async_graphql::Error::new("no tournament loaded"))?;
         let players = repo.list_players().await?;
+
+        // Optional pool scoping — mirrors `scoreboard`. A pool filter is private:
+        // it requires the viewer to be a member (or owner) of that pool, and
+        // restricts the grid to that pool's members. `None` = the global grid.
+        let allowed: Option<Vec<String>> = match &pool {
+            Some(pool_id) => {
+                let pools = repo.list_pools().await?;
+                let p = pools
+                    .into_iter()
+                    .find(|p| &p.id == pool_id)
+                    .ok_or_else(|| async_graphql::Error::new("pool not found"))?;
+                if !p.members.contains(&viewer.id) && p.owner != viewer.id {
+                    return Err(async_graphql::Error::new(
+                        "you are not a member of this pool",
+                    ));
+                }
+                Some(p.members)
+            }
+            None => None,
+        };
 
         let games = tournament.games_in(&group_id);
         let game_ids: Vec<domain::GameId> = games.iter().map(|g| g.id.clone()).collect();
@@ -235,7 +260,10 @@ impl QueryRoot {
         };
 
         let mut tips = Vec::new();
-        for player in domain::participation::tippers_in(&players, &game_ids) {
+        for player in domain::participation::tippers_in(&players, &game_ids)
+            .into_iter()
+            .filter(|p| allowed.as_ref().is_none_or(|m| m.contains(&p.id)))
+        {
             for game in &games {
                 let prediction = player.match_prediction(&game.id);
                 // Own predictions are always visible to the viewer.

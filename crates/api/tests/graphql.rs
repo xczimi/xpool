@@ -720,6 +720,73 @@ async fn tips_omits_players_with_no_tip_in_the_group() {
     );
 }
 
+const TIPS_POOL: &str = r#"
+query($g: ID!, $pool: ID) {
+  tips(groupId: $g, pool: $pool) {
+    playerId gameId prediction { homeScore awayScore }
+  }
+}"#;
+
+#[tokio::test]
+async fn tips_scoped_to_pool_members() {
+    // Kickoff 2h ago → every tip is visible, so pool scoping is the only filter
+    // in play. ALICE and BOB both tip M1; a pool `p1` has ALICE as its only
+    // member. The pooled query must drop BOB (a non-member), mirroring the
+    // scoreboard's pool scoping.
+    let repo = seeded_repo(Duration::hours(-2)).await;
+    add_pred(&repo, ALICE, GAME_1, 1, 0).await;
+    add_pred(&repo, BOB, GAME_1, 2, 2).await;
+    repo.put_pool(&domain::Pool {
+        id: "p1".into(),
+        name: "Pool One".into(),
+        owner: ALICE.into(),
+        members: vec![ALICE.into()],
+        prefix: "P1".into(),
+    })
+    .await
+    .unwrap();
+
+    let players_of = |resp: &async_graphql::Response| -> std::collections::HashSet<String> {
+        data(resp)["tips"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|t| t["playerId"].as_str().unwrap().to_owned())
+            .collect()
+    };
+
+    // Unscoped (pool = null): everyone with a tip appears.
+    let all = run(
+        &repo,
+        TIPS_POOL,
+        Variables::from_json(json!({ "g": GROUP_A, "pool": null })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(all.errors.is_empty(), "{:?}", all.errors);
+    let all_players = players_of(&all);
+    assert!(
+        all_players.contains("alice") && all_players.contains("bob"),
+        "unscoped lists everyone: {all_players:?}"
+    );
+
+    // Scoped to p1: only the member (ALICE) remains.
+    let scoped = run(
+        &repo,
+        TIPS_POOL,
+        Variables::from_json(json!({ "g": GROUP_A, "pool": "p1" })),
+        Some(ALICE),
+    )
+    .await;
+    assert!(scoped.errors.is_empty(), "{:?}", scoped.errors);
+    let scoped_players = players_of(&scoped);
+    assert!(scoped_players.contains("alice"), "member kept: {scoped_players:?}");
+    assert!(
+        !scoped_players.contains("bob"),
+        "non-member dropped: {scoped_players:?}"
+    );
+}
+
 #[tokio::test]
 async fn tips_keeps_a_tipper_whose_prediction_is_still_hidden() {
     // Before kickoff. BOB locked a tip; viewer ALICE has not committed, so BOB's
