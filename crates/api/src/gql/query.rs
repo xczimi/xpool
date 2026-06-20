@@ -14,6 +14,12 @@ use storage::Repository;
 
 pub struct QueryRoot;
 
+/// Only consult the live source while a match could plausibly be in progress
+/// (covers a knockout's extra time), so SportsDB is never queried for
+/// long-finished or far-future games. Also caps live calls to genuinely-live
+/// matches.
+const LIVE_WINDOW: chrono::Duration = chrono::Duration::hours(3);
+
 /// Pull the `Repository` out of the GraphQL context.
 fn repo<'a>(ctx: &'a Context<'_>) -> &'a dyn Repository {
     ctx.data_unchecked::<std::sync::Arc<dyn Repository>>()
@@ -43,6 +49,59 @@ fn collect_leaf_groups<'a>(
                 collect_leaf_groups(t, id, out);
             }
         }
+    }
+}
+
+/// Build one `(player, game)` tip row: apply the mutual-commitment visibility
+/// gate (legacy `AllTipsHandler`) and, when the prediction is visible and an
+/// `actual` exists, score it. `actual` is the result-user's prediction for the
+/// official path, or a synthesized live score for the provisional path — the
+/// scoring is identical. Shared by `tips` and `match`.
+#[allow(clippy::too_many_arguments)]
+fn scored_tip(
+    viewer_id: &str,
+    viewer_prediction: Option<&domain::MatchPrediction>,
+    player: &domain::Player,
+    game: &domain::SingleGame,
+    deadline: Option<chrono::DateTime<chrono::Utc>>,
+    now: chrono::DateTime<chrono::Utc>,
+    actual: Option<&domain::MatchPrediction>,
+    multiplier: i64,
+    config: &ScoringConfig,
+) -> Tip {
+    let prediction = player.match_prediction(&game.id);
+    let is_own = player.id == viewer_id;
+    // Match kickoff or group-deadline opens every tip for the game to everyone.
+    let time_open = now >= game.kickoff || deadline.is_some_and(|d| now > d);
+    // Mutual commitment: another player's tip shows only once the viewer has
+    // effective-locked this match; we keep the target's lock so an un-locked
+    // draft is never exposed before the deadline.
+    let viewer_committed = time_open || viewer_prediction.is_some_and(|p| p.locked);
+    let visible = is_own || (viewer_committed && prediction.is_some_and(|p| p.locked || time_open));
+    let breakdown = match (visible, prediction, actual) {
+        (true, Some(pred), Some(res)) => Some(PointsBreakdown::build(
+            score_match_parts(pred, res, config),
+            multiplier,
+            config,
+        )),
+        _ => None,
+    };
+    let points = breakdown.as_ref().map(|b| b.points);
+    let is_perfect_tip = breakdown
+        .as_ref()
+        .is_some_and(|b| b.base >= config.perfect_threshold);
+    Tip {
+        player_id: player.id.clone(),
+        nick: player.nick.clone(),
+        game_id: game.id.clone(),
+        prediction: if visible {
+            prediction.map(MatchPrediction::from)
+        } else {
+            None
+        },
+        points,
+        is_perfect: is_perfect_tip,
+        breakdown,
     }
 }
 
@@ -237,51 +296,18 @@ impl QueryRoot {
         let mut tips = Vec::new();
         for player in domain::participation::tippers_in(&players, &game_ids) {
             for game in &games {
-                let prediction = player.match_prediction(&game.id);
-                // Own predictions are always visible to the viewer.
-                let is_own = player.id == viewer.id;
-                // Once the match kicks off (or the group deadline passes) the
-                // game is open to everyone — viewer and target are both then
-                // effective-locked regardless of their explicit lock flags.
-                let time_open = now >= game.kickoff || deadline.is_some_and(|d| now > d);
-                // Mutual commitment (legacy `AllTipsHandler`): another player's
-                // tip is revealed only once the *viewer* has effective-locked
-                // this match — so you can't peek at others' tips for a game you
-                // can still change. We also keep the target's lock in the gate
-                // so an un-locked draft is never exposed before the deadline.
-                let viewer_committed =
-                    time_open || viewer.match_prediction(&game.id).is_some_and(|p| p.locked);
-                let visible = is_own
-                    || (viewer_committed && prediction.is_some_and(|p| p.locked || time_open));
-                // Score a visible prediction once the game has a result. By the
-                // time a result exists the match has kicked off, so a scored
-                // tip is always already visible — no hidden info is revealed.
                 let result = result_user.and_then(|r| r.match_prediction(&game.id));
-                let breakdown = match (visible, prediction, result) {
-                    (true, Some(pred), Some(res)) => Some(PointsBreakdown::build(
-                        score_match_parts(pred, res, &config),
-                        config.multiplier(round_of(game)),
-                        &config,
-                    )),
-                    _ => None,
-                };
-                let points = breakdown.as_ref().map(|b| b.points);
-                let is_perfect_tip = breakdown
-                    .as_ref()
-                    .is_some_and(|b| b.base >= config.perfect_threshold);
-                tips.push(Tip {
-                    player_id: player.id.clone(),
-                    nick: player.nick.clone(),
-                    game_id: game.id.clone(),
-                    prediction: if visible {
-                        prediction.map(MatchPrediction::from)
-                    } else {
-                        None
-                    },
-                    points,
-                    is_perfect: is_perfect_tip,
-                    breakdown,
-                });
+                tips.push(scored_tip(
+                    &viewer.id,
+                    viewer.match_prediction(&game.id),
+                    player,
+                    game,
+                    deadline,
+                    now,
+                    result,
+                    config.multiplier(round_of(game)),
+                    &config,
+                ));
             }
         }
         Ok(tips)
@@ -507,6 +533,153 @@ impl QueryRoot {
         }
         out.sort_by(|a, b| a.game_id.cmp(&b.game_id));
         Ok(out)
+    }
+
+    /// One match's detail (`#2`): the all-players tip grid plus the best
+    /// available actual score — official if entered, else the live score
+    /// during the match (provisional), else none. Read-only and ephemeral:
+    /// it never writes, and never calls recompute()/put_scoreboard().
+    #[graphql(name = "match")]
+    async fn match_detail(
+        &self,
+        ctx: &Context<'_>,
+        game_id: String,
+        pool: Option<String>,
+    ) -> async_graphql::Result<Option<MatchDetail>> {
+        let viewer = CurrentPlayer::require(ctx)?;
+        let repo = repo(ctx);
+        let now = now(ctx);
+        let Some(tournament) = repo.get_tournament().await? else {
+            return Ok(None);
+        };
+        let Some(game) = tournament.games.get(&game_id) else {
+            return Ok(None);
+        };
+        let round = tournament
+            .groups
+            .get(&game.group_id)
+            .map(|g| g.round)
+            .unwrap_or(domain::Round::GroupStage);
+        let players = repo.list_players().await?;
+        let config = ScoringConfig::default();
+        let result_user = players.iter().find(|p| p.is_result_user);
+
+        // entered-result game ids → for Game::build's resultPending flag.
+        let entered: std::collections::HashSet<String> = result_user
+            .map(|r| {
+                r.match_predictions
+                    .iter()
+                    .map(|p| p.game_id.clone())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        // Resolve the one actual to score against: official → live → none.
+        let official = result_user.and_then(|r| r.match_prediction(&game_id));
+        let (actual_pred, actual_score): (Option<domain::MatchPrediction>, Option<MatchScore>) =
+            if let Some(off) = official {
+                (
+                    Some(off.clone()),
+                    Some(MatchScore {
+                        home_score: off.home_score as i32,
+                        away_score: off.away_score as i32,
+                        provisional: false,
+                        source: None,
+                        source_status: None,
+                        ninety_minute_uncertain: false,
+                    }),
+                )
+            } else if now >= game.kickoff
+                && now <= game.kickoff + LIVE_WINDOW
+                && game.external_id.is_some()
+            {
+                // Live window, no official result yet → consult the source.
+                // Any error/absence degrades to "no score" (page still works).
+                let ext = game.external_id.clone().unwrap();
+                let source = ctx.data_unchecked::<Arc<dyn crate::reported::ReportedResultSource>>();
+                let events = source.lookup_events(&[ext]).await.unwrap_or_default();
+                let live =
+                    events
+                        .into_iter()
+                        .find_map(|e| match (e.int_home_score, e.int_away_score) {
+                            (Some(h), Some(a))
+                                if (0..=255).contains(&h) && (0..=255).contains(&a) =>
+                            {
+                                Some((h as u8, a as u8, e.str_status))
+                            }
+                            _ => None,
+                        });
+                match live {
+                    Some((h, a, status)) => (
+                        Some(domain::MatchPrediction {
+                            game_id: game_id.clone(),
+                            home_score: h,
+                            away_score: a,
+                            locked: true,
+                        }),
+                        Some(MatchScore {
+                            home_score: h as i32,
+                            away_score: a as i32,
+                            provisional: true,
+                            source: Some("thesportsdb".to_string()),
+                            source_status: Some(status),
+                            ninety_minute_uncertain: round != domain::Round::GroupStage,
+                        }),
+                    ),
+                    None => (None, None),
+                }
+            } else {
+                (None, None)
+            };
+
+        // Optional pool scoping — same rule as the scoreboard (Issue 04): pool
+        // membership is private, so a pool filter requires the viewer to be a
+        // member (or owner) of that pool. `None` → every tipper (global).
+        let allowed: Option<Vec<String>> = match &pool {
+            Some(pool_id) => {
+                let pools = repo.list_pools().await?;
+                let p = pools
+                    .into_iter()
+                    .find(|p| &p.id == pool_id)
+                    .ok_or_else(|| async_graphql::Error::new("pool not found"))?;
+                if !p.members.contains(&viewer.id) && p.owner != viewer.id {
+                    return Err(async_graphql::Error::new(
+                        "you are not a member of this pool",
+                    ));
+                }
+                Some(p.members)
+            }
+            None => None,
+        };
+
+        // The all-players grid — same gate as `tips`, restricted to the pool.
+        let deadline = tournament.deadline(&game.group_id);
+        let multiplier = config.multiplier(round);
+        let viewer_pred = viewer.match_prediction(&game_id);
+        let game_ids = [game_id.clone()];
+        let rows: Vec<Tip> = domain::participation::tippers_in(&players, &game_ids)
+            .into_iter()
+            .filter(|player| allowed.as_ref().is_none_or(|m| m.contains(&player.id)))
+            .map(|player| {
+                scored_tip(
+                    &viewer.id,
+                    viewer_pred,
+                    player,
+                    game,
+                    deadline,
+                    now,
+                    actual_pred.as_ref(),
+                    multiplier,
+                    &config,
+                )
+            })
+            .collect();
+
+        Ok(Some(MatchDetail {
+            game: Game::build(game, round, now, &entered),
+            actual: actual_score,
+            rows,
+        }))
     }
 }
 
@@ -734,5 +907,345 @@ mod reported_tests {
         assert!(resp.errors.is_empty(), "{:?}", resp.errors);
         let json = resp.data.into_json().unwrap();
         assert_eq!(json["reportedResults"].as_array().unwrap().len(), 0);
+    }
+}
+
+#[cfg(test)]
+mod match_tests {
+    use crate::auth::CurrentPlayer;
+    use crate::reported::ReportedResultSource;
+    use async_trait::async_trait;
+    use chrono::{DateTime, TimeZone, Utc};
+    use domain::{
+        GroupChildren, GroupGame, LockMode, MatchPrediction, Player, Pool, Round, SingleGame, Team,
+        TeamSlot, Tournament,
+    };
+    use sportsdb::Event;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use storage::{InMemoryRepository, Repository};
+
+    struct StubSource(Vec<Event>);
+    #[async_trait]
+    impl ReportedResultSource for StubSource {
+        async fn lookup_events(&self, ids: &[String]) -> anyhow::Result<Vec<Event>> {
+            Ok(self
+                .0
+                .iter()
+                .filter(|e| ids.contains(&e.id_event))
+                .cloned()
+                .collect())
+        }
+    }
+
+    fn live_event(id_event: &str, h: i64, a: i64, status: &str) -> Event {
+        Event {
+            id_event: id_event.into(),
+            date_event: "2026-06-11".into(),
+            id_home_team: "AAA".into(),
+            id_away_team: "BBB".into(),
+            int_home_score: Some(h),
+            int_away_score: Some(a),
+            str_status: status.into(),
+            str_timestamp: None,
+        }
+    }
+
+    fn team(id: &str) -> Team {
+        Team {
+            id: id.into(),
+            name: id.into(),
+            short_code: id.into(),
+            flag: None,
+            external_id: None,
+        }
+    }
+
+    /// A full ordinary player with one prediction for `M1` (mirrors the field
+    /// set used by `reported_tests` — there is no `Player::new`).
+    fn player(id: &str, h: u8, a: u8, locked: bool) -> Player {
+        Player {
+            id: id.into(),
+            person_id: format!("p-{id}"),
+            nick: id.into(),
+            full_name: id.into(),
+            referrer: None,
+            is_result_user: false,
+            version: 0,
+            match_predictions: vec![MatchPrediction {
+                game_id: "M1".into(),
+                home_score: h,
+                away_score: a,
+                locked,
+            }],
+            standings_predictions: vec![],
+        }
+    }
+
+    /// One group-stage game `M1` (idEvent `E1`) kicking off at `kickoff`.
+    async fn repo_with_m1(kickoff: DateTime<Utc>) -> InMemoryRepository {
+        let game = SingleGame {
+            id: "M1".into(),
+            kickoff,
+            venue: None,
+            group_id: "A".into(),
+            home: TeamSlot {
+                team_id: Some("AAA".into()),
+                description: "A1".into(),
+            },
+            away: TeamSlot {
+                team_id: Some("BBB".into()),
+                description: "A2".into(),
+            },
+            external_id: Some("E1".into()),
+        };
+        let group = GroupGame {
+            id: "A".into(),
+            name: "A".into(),
+            parent: None,
+            round: Round::GroupStage,
+            lock_mode: LockMode::LockTogether,
+            carries_standings: true,
+            children: GroupChildren::Games(vec!["M1".into()]),
+        };
+        let t = Tournament {
+            root: "A".into(),
+            groups: HashMap::from([("A".to_string(), group)]),
+            games: HashMap::from([("M1".to_string(), game)]),
+            teams: HashMap::from([
+                ("AAA".to_string(), team("AAA")),
+                ("BBB".to_string(), team("BBB")),
+            ]),
+        };
+        let repo = InMemoryRepository::new();
+        repo.put_tournament(&t).await.unwrap();
+        repo
+    }
+
+    fn kickoff() -> DateTime<Utc> {
+        Utc.with_ymd_and_hms(2026, 6, 11, 18, 0, 0).unwrap()
+    }
+
+    /// Like `repo_with_m1` but `M1` sits in a knockout one-match group, so the
+    /// resolver flags provisional points 90-minute-uncertain.
+    async fn repo_with_knockout_m1(kickoff: DateTime<Utc>) -> InMemoryRepository {
+        let game = SingleGame {
+            id: "M1".into(),
+            kickoff,
+            venue: None,
+            group_id: "K".into(),
+            home: TeamSlot {
+                team_id: Some("AAA".into()),
+                description: "1A".into(),
+            },
+            away: TeamSlot {
+                team_id: Some("BBB".into()),
+                description: "2B".into(),
+            },
+            external_id: Some("E1".into()),
+        };
+        let group = GroupGame {
+            id: "K".into(),
+            name: "Knockout — match 1".into(),
+            parent: None,
+            round: Round::R32,
+            lock_mode: LockMode::LockPerMatch,
+            carries_standings: false,
+            children: GroupChildren::Games(vec!["M1".into()]),
+        };
+        let t = Tournament {
+            root: "K".into(),
+            groups: HashMap::from([("K".to_string(), group)]),
+            games: HashMap::from([("M1".to_string(), game)]),
+            teams: HashMap::from([
+                ("AAA".to_string(), team("AAA")),
+                ("BBB".to_string(), team("BBB")),
+            ]),
+        };
+        let repo = InMemoryRepository::new();
+        repo.put_tournament(&t).await.unwrap();
+        repo
+    }
+
+    /// Execute `query` as `viewer` at `now`, returning the JSON `data`. Mirrors
+    /// the `reported_tests` pattern: `build_schema` + a `Request` with the
+    /// `CurrentPlayer` and `RequestNow` injected as context data.
+    async fn exec(
+        repo: InMemoryRepository,
+        source: Arc<dyn ReportedResultSource>,
+        viewer: Player,
+        now: DateTime<Utc>,
+        query: &str,
+    ) -> serde_json::Value {
+        let repo: Arc<dyn Repository> = Arc::new(repo);
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(query)
+            .data(CurrentPlayer::Player(Box::new(viewer)))
+            .data(crate::clock::RequestNow(now));
+        let resp = schema.execute(req).await;
+        assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+        resp.data.into_json().unwrap()
+    }
+
+    #[tokio::test]
+    async fn live_score_yields_provisional_points() {
+        let repo = repo_with_m1(kickoff()).await;
+        // viewer predicted 1–0; live score is 1–0 → provisional, scored.
+        let alice = player("alice", 1, 0, true);
+        repo.put_player(&alice).await.unwrap();
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![live_event("E1", 1, 0, "2H")]));
+        let now = kickoff() + chrono::Duration::minutes(67); // in-play
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1"){ actual{ homeScore awayScore provisional sourceStatus ninetyMinuteUncertain } rows{ playerId points } } }"#,
+        )
+        .await;
+        let m = &data["match"];
+        assert_eq!(m["actual"]["provisional"], true);
+        assert_eq!(m["actual"]["sourceStatus"], "2H");
+        assert_eq!(m["actual"]["ninetyMinuteUncertain"], false);
+        // alice's 1–0 vs live 1–0 scores > 0.
+        let row = m["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["playerId"] == "alice")
+            .unwrap();
+        assert!(row["points"].as_i64().unwrap() > 0);
+    }
+
+    #[tokio::test]
+    async fn official_result_takes_priority_over_live() {
+        let repo = repo_with_m1(kickoff()).await;
+        // result user entered 2–2 (official); the stub says 1–0 but must be ignored.
+        let mut ru = player("result-user", 2, 2, true);
+        ru.is_result_user = true;
+        repo.put_player(&ru).await.unwrap();
+        let alice = player("alice", 2, 2, true);
+        repo.put_player(&alice).await.unwrap();
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![live_event("E1", 1, 0, "2H")]));
+        let now = kickoff() + chrono::Duration::minutes(67);
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1"){ actual{ homeScore awayScore provisional source } } }"#,
+        )
+        .await;
+        let a = &data["match"]["actual"];
+        assert_eq!(a["homeScore"], 2);
+        assert_eq!(a["provisional"], false);
+        assert_eq!(a["source"], serde_json::Value::Null);
+    }
+
+    #[tokio::test]
+    async fn no_score_before_kickoff_and_others_hidden() {
+        let repo = repo_with_m1(kickoff()).await;
+        // alice has NOT locked her tip — she hasn't committed, so mutual-commitment
+        // gate keeps bob's prediction hidden even though bob has locked.
+        let alice = player("alice", 1, 0, false);
+        repo.put_player(&alice).await.unwrap();
+        repo.put_player(&player("bob", 3, 1, true)).await.unwrap();
+        let source: Arc<dyn ReportedResultSource> = Arc::new(StubSource(vec![]));
+        let now = kickoff() - chrono::Duration::hours(2); // before kickoff
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1"){ actual{ homeScore } rows{ playerId prediction{ homeScore } } } }"#,
+        )
+        .await;
+        assert_eq!(data["match"]["actual"], serde_json::Value::Null);
+        // bob's prediction is hidden: alice hasn't committed (unlocked draft).
+        let rows = data["match"]["rows"].as_array().unwrap();
+        let bob = rows.iter().find(|r| r["playerId"] == "bob").unwrap();
+        assert!(bob["prediction"].is_null());
+    }
+
+    #[tokio::test]
+    async fn knockout_live_score_is_ninety_minute_uncertain() {
+        let repo = repo_with_knockout_m1(kickoff()).await;
+        let alice = player("alice", 1, 0, true);
+        repo.put_player(&alice).await.unwrap();
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![live_event("E1", 1, 0, "2H")]));
+        let now = kickoff() + chrono::Duration::minutes(67); // in live window
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1"){ actual{ provisional ninetyMinuteUncertain } } }"#,
+        )
+        .await;
+        let a = &data["match"]["actual"];
+        assert_eq!(a["provisional"], true);
+        assert_eq!(a["ninetyMinuteUncertain"], true);
+    }
+
+    #[tokio::test]
+    async fn live_window_with_empty_source_yields_no_score() {
+        let repo = repo_with_m1(kickoff()).await;
+        let alice = player("alice", 1, 0, true);
+        repo.put_player(&alice).await.unwrap();
+        // Inside the live window (post-kickoff), but the source returns nothing →
+        // graceful no score. Distinct from the pre-kickoff case (source not consulted).
+        let source: Arc<dyn ReportedResultSource> = Arc::new(StubSource(vec![]));
+        let now = kickoff() + chrono::Duration::minutes(30);
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1"){ actual{ homeScore } rows{ playerId } } }"#,
+        )
+        .await;
+        assert_eq!(data["match"]["actual"], serde_json::Value::Null);
+        // The grid still renders — degradation never blocks the page.
+        assert!(!data["match"]["rows"].as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn pool_filter_restricts_rows_to_members() {
+        let repo = repo_with_m1(kickoff()).await;
+        let alice = player("alice", 1, 0, true);
+        let bob = player("bob", 2, 0, true);
+        repo.put_player(&alice).await.unwrap();
+        repo.put_player(&bob).await.unwrap();
+        // Pool P1 contains only alice (the viewer) — bob is excluded from her view.
+        repo.put_pool(&Pool {
+            id: "P1".into(),
+            name: "Pool 1".into(),
+            owner: "alice".into(),
+            members: vec!["alice".into()],
+            prefix: "P1".into(),
+        })
+        .await
+        .unwrap();
+        let source: Arc<dyn ReportedResultSource> = Arc::new(StubSource(vec![]));
+        let now = kickoff() + chrono::Duration::minutes(30);
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1", pool:"P1"){ rows{ playerId } } }"#,
+        )
+        .await;
+        let ids: Vec<String> = data["match"]["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["playerId"].as_str().unwrap().to_string())
+            .collect();
+        assert!(ids.contains(&"alice".to_string()), "alice (member) shown");
+        assert!(!ids.contains(&"bob".to_string()), "bob (non-member) hidden");
     }
 }

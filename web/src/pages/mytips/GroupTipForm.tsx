@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { OperationResult } from 'urql'
 import { useI18n } from '../../i18n/useI18n'
 import type {
@@ -280,7 +281,9 @@ export function GroupTipForm({
             return (
               <tr key={game.id}>
                 <td>
-                  <Matchup home={game.home} away={game.away} teams={teams} />
+                  <Link to={`/match/${game.id}`}>
+                    <Matchup home={game.home} away={game.away} teams={teams} />
+                  </Link>
                 </td>
                 <td className="score-cell">
                   {matchLocked ? (

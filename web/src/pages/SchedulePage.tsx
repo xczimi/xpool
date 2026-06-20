@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useI18n } from '../i18n/useI18n'
 import { RESULTS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
@@ -81,7 +82,9 @@ export function SchedulePage() {
                     <tr key={m.id}>
                       <td>{formatKickoff(m.kickoff, locale)}</td>
                       <td>
-                        <Matchup home={m.home} away={m.away} teams={teams} />
+                        <Link to={`/match/${m.id}`}>
+                          <Matchup home={m.home} away={m.away} teams={teams} />
+                        </Link>
                       </td>
                       <td>{m.venue ?? '—'}</td>
                       <td>{r ? `${r.homeScore}–${r.awayScore}` : '—'}</td>

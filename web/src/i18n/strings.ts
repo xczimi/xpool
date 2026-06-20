@@ -303,6 +303,14 @@ const en = {
   adminTeams: 'Teams',
   adminPlayers: 'Players',
   refreshFailed: 'Could not refresh — the screen may be out of date.',
+
+  // match page (#2 live preview)
+  provisionalLabel: 'Provisional — if it ended now',
+  liveLabel: 'Live',
+  finalLabel: 'Final',
+  awaitingResult: 'Awaiting official result',
+  ninetyMinuteNote:
+    'Knockout — provisional points use the 90-minute rule; extra time may change the official result.',
 } as const
 
 const hu: Record<StringKey, string> = {
@@ -576,6 +584,14 @@ const hu: Record<StringKey, string> = {
   adminTeams: 'Csapatok',
   adminPlayers: 'Játékosok',
   refreshFailed: 'A frissítés nem sikerült — a képernyő elavult lehet.',
+
+  // match page (#2 live preview)
+  provisionalLabel: 'Ideiglenes — ha most érne véget',
+  liveLabel: 'Élő',
+  finalLabel: 'Vége',
+  awaitingResult: 'Hivatalos eredményre várunk',
+  ninetyMinuteNote:
+    'Kieséses szakasz — az ideiglenes pontok a 90 perces szabály szerint számolnak; a hosszabbítás módosíthatja a hivatalos eredményt.',
 }
 
 export const catalogues: Record<Locale, Record<StringKey, string>> = {
