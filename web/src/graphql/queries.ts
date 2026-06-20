@@ -226,3 +226,25 @@ export const REPORTED_RESULTS_QUERY = `
   }
 `
 
+export const MATCH_QUERY = `
+  query Match($gameId: ID!) {
+    match(gameId: $gameId) {
+      game {
+        id kickoff venue groupId
+        home { teamId description }
+        away { teamId description }
+        resultPending withinTodayWindow isToday
+      }
+      actual {
+        homeScore awayScore provisional source sourceStatus ninetyMinuteUncertain
+      }
+      rows {
+        playerId nick gameId
+        prediction { gameId homeScore awayScore locked }
+        points isPerfect
+        breakdown { exactHome exactAway outcome base multiplier points }
+      }
+    }
+  }
+`
+
