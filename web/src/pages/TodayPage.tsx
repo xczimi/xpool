@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -115,7 +116,9 @@ export function TodayPage() {
                 <tr key={m.id} className={m.isToday ? 'is-today' : undefined}>
                   <td>{formatKickoff(m.kickoff, locale)}</td>
                   <td>
-                    <Matchup home={m.home} away={m.away} teams={teams} />
+                    <Link to={`/match/${m.id}`}>
+                      <Matchup home={m.home} away={m.away} teams={teams} />
+                    </Link>
                   </td>
                   <td>
                     {(() => {
