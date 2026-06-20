@@ -1313,3 +1313,78 @@ button.danger:hover:not(:disabled) {
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* ============================================================================
+   MATCH DETAIL PAGE (#2 live preview)
+   The all-players tip grid is the spine; a header card carries the matchup and
+   the live/official score. Reuses .data-table / .tip-cell for the grid.
+   ============================================================================ */
+.match-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+  padding: 20px 16px;
+  margin: 0 0 4px;
+  background: var(--bg-card);
+  border: 2px solid var(--bg-card-border);
+}
+/* Matchup sized for a hero header — NOT a heading, so it inherits the readable
+   VT323 body font (an <h1> would force the giant Press Start 2P face). */
+.match-card-teams {
+  font-family: 'VT323', monospace;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--ink);
+}
+.match-card-teams .matchup {
+  gap: 14px;
+}
+.match-card-kickoff {
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  color: var(--muted);
+}
+.match-scoreline {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.match-scoreline-value {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 26px;
+  letter-spacing: 2px;
+  color: var(--amber-bright);
+}
+.match-scoreline-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 5px 8px;
+  border: 1px solid currentColor;
+}
+.match-scoreline.is-live .match-scoreline-label {
+  color: var(--led-green);
+  animation: match-live-pulse 1.4s ease-in-out infinite;
+}
+.match-scoreline.is-final .match-scoreline-label {
+  color: var(--muted);
+}
+@keyframes match-live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.match-note {
+  margin: 0;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+  max-width: 38ch;
+  color: var(--ink);
+}
+.match-note.match-muted { color: var(--muted); }
+.match-note.match-warn { color: var(--amber); }
+.match-grid td.pred { font-size: 16px; }
+.match-grid .match-hidden { color: var(--muted); }

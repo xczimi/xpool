@@ -193,3 +193,22 @@ export interface ReportedResult {
   sourceStatus: string
   ninetyMinuteUncertain: boolean
 }
+
+export interface MatchScore {
+  homeScore: number
+  awayScore: number
+  /** true = live "if it ended now"; false = official entered result. */
+  provisional: boolean
+  /** "thesportsdb" when provisional; null for an official result. */
+  source: string | null
+  /** SportsDB status (e.g. "2H") when provisional; null otherwise. */
+  sourceStatus: string | null
+  ninetyMinuteUncertain: boolean
+}
+
+export interface MatchDetail {
+  game: SingleGame
+  /** Null until there is a score to show (upcoming, or source absent). */
+  actual: MatchScore | null
+  rows: Tip[]
+}

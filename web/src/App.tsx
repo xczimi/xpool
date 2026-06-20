@@ -16,6 +16,7 @@ import { NeedsInvite } from './components/NeedsInvite'
 import { RulesPage } from './pages/RulesPage'
 import { PrivacyPage } from './pages/PrivacyPage'
 import { AdminPage } from './pages/AdminPage'
+import { MatchPage } from './pages/MatchPage'
 
 export function App() {
   return (
@@ -26,6 +27,7 @@ export function App() {
         <Route index element={<HomePage />} />
         <Route path="today" element={<TodayPage />} />
         <Route path="games" element={<SchedulePage />} />
+        <Route path="match/:gameId" element={<MatchPage />} />
         <Route path="mytips" element={<MyTipsPage />} />
         <Route path="alltips" element={<AllTipsPage />} />
         <Route path="scoreboard" element={<ScoreboardPage />} />

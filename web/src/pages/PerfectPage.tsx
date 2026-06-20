@@ -30,7 +30,12 @@ export function PerfectPage() {
   const gameLabel = useMemo(() => {
     const map = new Map<string, ReactNode>()
     for (const g of tournament?.games ?? []) {
-      map.set(g.id, <Matchup home={g.home} away={g.away} teams={teams} />)
+      map.set(
+        g.id,
+        <Link to={`/match/${g.id}`}>
+          <Matchup home={g.home} away={g.away} teams={teams} />
+        </Link>,
+      )
     }
     return map
   }, [tournament, teams])
