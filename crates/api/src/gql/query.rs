@@ -14,6 +14,12 @@ use storage::Repository;
 
 pub struct QueryRoot;
 
+/// Only consult the live source while a match could plausibly be in progress
+/// (covers a knockout's extra time), so SportsDB is never queried for
+/// long-finished or far-future games. Also caps live calls to genuinely-live
+/// matches.
+const LIVE_WINDOW: chrono::Duration = chrono::Duration::hours(3);
+
 /// Pull the `Repository` out of the GraphQL context.
 fn repo<'a>(ctx: &'a Context<'_>) -> &'a dyn Repository {
     ctx.data_unchecked::<std::sync::Arc<dyn Repository>>()
@@ -528,6 +534,131 @@ impl QueryRoot {
         }
         out.sort_by(|a, b| a.game_id.cmp(&b.game_id));
         Ok(out)
+    }
+
+    /// One match's detail (`#2`): the all-players tip grid plus the best
+    /// available actual score — official if entered, else the live score
+    /// during the match (provisional), else none. Read-only and ephemeral:
+    /// it never writes, and never calls recompute()/put_scoreboard().
+    #[graphql(name = "match")]
+    async fn match_detail(
+        &self,
+        ctx: &Context<'_>,
+        game_id: String,
+    ) -> async_graphql::Result<Option<MatchDetail>> {
+        let viewer = CurrentPlayer::require(ctx)?;
+        let repo = repo(ctx);
+        let now = now(ctx);
+        let Some(tournament) = repo.get_tournament().await? else {
+            return Ok(None);
+        };
+        let Some(game) = tournament.games.get(&game_id) else {
+            return Ok(None);
+        };
+        let round = tournament
+            .groups
+            .get(&game.group_id)
+            .map(|g| g.round)
+            .unwrap_or(domain::Round::GroupStage);
+        let players = repo.list_players().await?;
+        let config = ScoringConfig::default();
+        let result_user = players.iter().find(|p| p.is_result_user);
+
+        // entered-result game ids → for Game::build's resultPending flag.
+        let entered: std::collections::HashSet<String> = result_user
+            .map(|r| {
+                r.match_predictions
+                    .iter()
+                    .map(|p| p.game_id.clone())
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        // Resolve the one actual to score against: official → live → none.
+        let official = result_user.and_then(|r| r.match_prediction(&game_id));
+        let (actual_pred, actual_score): (Option<domain::MatchPrediction>, Option<MatchScore>) =
+            if let Some(off) = official {
+                (
+                    Some(off.clone()),
+                    Some(MatchScore {
+                        home_score: off.home_score as i32,
+                        away_score: off.away_score as i32,
+                        provisional: false,
+                        source: None,
+                        source_status: None,
+                        ninety_minute_uncertain: false,
+                    }),
+                )
+            } else if now >= game.kickoff
+                && now <= game.kickoff + LIVE_WINDOW
+                && game.external_id.is_some()
+            {
+                // Live window, no official result yet → consult the source.
+                // Any error/absence degrades to "no score" (page still works).
+                let ext = game.external_id.clone().unwrap();
+                let source =
+                    ctx.data_unchecked::<Arc<dyn crate::reported::ReportedResultSource>>();
+                let events = source.lookup_events(&[ext]).await.unwrap_or_default();
+                let live = events.into_iter().find_map(|e| {
+                    match (e.int_home_score, e.int_away_score) {
+                        (Some(h), Some(a))
+                            if (0..=255).contains(&h) && (0..=255).contains(&a) =>
+                        {
+                            Some((h as u8, a as u8, e.str_status))
+                        }
+                        _ => None,
+                    }
+                });
+                match live {
+                    Some((h, a, status)) => (
+                        Some(domain::MatchPrediction {
+                            game_id: game_id.clone(),
+                            home_score: h,
+                            away_score: a,
+                            locked: true,
+                        }),
+                        Some(MatchScore {
+                            home_score: h as i32,
+                            away_score: a as i32,
+                            provisional: true,
+                            source: Some("thesportsdb".to_string()),
+                            source_status: Some(status),
+                            ninety_minute_uncertain: round != domain::Round::GroupStage,
+                        }),
+                    ),
+                    None => (None, None),
+                }
+            } else {
+                (None, None)
+            };
+
+        // The all-players grid — same gate as `tips`.
+        let deadline = tournament.deadline(&game.group_id);
+        let multiplier = config.multiplier(round);
+        let viewer_pred = viewer.match_prediction(&game_id);
+        let game_ids = [game_id.clone()];
+        let rows: Vec<Tip> = domain::participation::tippers_in(&players, &game_ids)
+            .into_iter()
+            .map(|player| {
+                scored_tip(
+                    &viewer.id,
+                    viewer_pred,
+                    player,
+                    game,
+                    deadline,
+                    now,
+                    actual_pred.as_ref(),
+                    multiplier,
+                    &config,
+                )
+            })
+            .collect();
+
+        Ok(Some(MatchDetail {
+            game: Game::build(game, round, now, &entered),
+            actual: actual_score,
+            rows,
+        }))
     }
 }
 
