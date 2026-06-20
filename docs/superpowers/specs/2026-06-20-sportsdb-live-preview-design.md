@@ -80,6 +80,12 @@ score every prediction against, in priority order:
    finished-but-not-yet-entered after the live window) → no score; the page shows
    predictions only and, for a just-finished game, "awaiting official result."
 
+**Ephemeral invariant.** The provisional path is read-time only and **never
+persists**. It must never call `recompute()` / `put_scoreboard()` and must never
+write a prediction onto the stored result-user — otherwise a live score would
+leak into the official materialised scoreboard. The live score lives solely in
+the 60s in-process cache; provisional points are recomputed on demand.
+
 It then builds one row per participating player using the **identical visibility
 gate as `tips`** (mutual commitment / `time_open`): a prediction is scored and
 revealed only when the existing rules already expose it. Since a match in its
@@ -176,6 +182,14 @@ the live status (`2H`, etc.) is the whole point, so the page **does** show it.
 - Adding the bulk `/livescore/4429` feed or any new `sportsdb` method.
 - Venue / stats / lineups on the match page (a possible later use of the route).
 - The player-detail page (#3) — separate PRD.
+- **A provisional "live" scoreboard (#2b — natural follow-on, deferred).** The
+  mechanism falls out for nearly free and is recorded here so it isn't lost:
+  the real scoreboard is `score_tournament(tournament, player, result_user, …)`
+  per player (`recompute.rs`); a provisional standings overlay is the *same call*
+  with the result-user's predictions **augmented in memory** by the ≤2 live
+  scores (never persisted — see the Ephemeral invariant), surfaced as a "live"
+  toggle/highlight on the scoreboard. No new scoring code. Out of scope for #2;
+  this match-page work proves the per-game provisional core it would build on.
 
 ## 10. Deployment delta
 
