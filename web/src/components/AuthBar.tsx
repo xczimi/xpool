@@ -1,4 +1,5 @@
 import { useQuery } from 'urql'
+import { Link } from 'react-router-dom'
 import { useAuth0 } from '@auth0/auth0-react'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -56,7 +57,16 @@ function ProdAuthBar() {
   }
   return (
     <div className="auth-bar">
-      <span>Logged in as {me?.nick ?? user?.email ?? 'player'}</span>{' '}
+      <span>
+        Logged in as{' '}
+        {me && !me.isResultUser ? (
+          <Link to={`/player/${me.id}`} className="auth-player-link">
+            {me.nick}
+          </Link>
+        ) : (
+          (me?.nick ?? user?.email ?? 'player')
+        )}
+      </span>{' '}
       <button onClick={() => {
         // Belt-and-suspenders: drop the localStorage JWT before the Auth0
         // redirect, in case TokenBridge's effect-driven cleanup races with
@@ -98,7 +108,14 @@ function DevAuthBar() {
     return (
       <div className="auth-bar">
         <span>
-          {t('loggedInAs')} <strong>{me?.nick ?? label}</strong>
+          {t('loggedInAs')}{' '}
+          {me && !me.isResultUser ? (
+            <Link to={`/player/${me.id}`} className="auth-player-link">
+              <strong>{me.nick}</strong>
+            </Link>
+          ) : (
+            <strong>{me?.nick ?? label}</strong>
+          )}
           {me?.isResultUser ? ' (admin)' : ''}
           {unknown && (
             <em className="auth-warn"> — unknown player id, pick one below</em>

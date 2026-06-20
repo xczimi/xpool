@@ -63,8 +63,12 @@ test('own page shows totals and drill-down with points', async ({ page }) => {
   await page.goto('/')
   await devLogin(page, 'demo-ada')
   // Clock past the Final → every match scored; board materialised as-of it.
+  // setClock reloads back to '/', where the auth-bar name is now a link.
   await setClock(page, await lastGameIndex(page), 'after')
-  await page.goto('/player/demo-ada')
+
+  // Reach the own page via the auth-bar name link (the primary self entry point).
+  await page.locator('.auth-player-link').click()
+  await expect(page).toHaveURL(/\/player\/demo-ada$/)
 
   // Header: total + rank stat cards rendered.
   await expect(page.locator('.player-stats')).toBeVisible()
