@@ -609,6 +609,9 @@ a:hover { color: var(--amber); }
 
 .player-perfects { margin: 16px 0; }
 
+/* The "around now" slice — a thin window of recent + upcoming matches. */
+.player-today { margin: 0 0 20px; }
+
 /* Per-round drill-down: collapsed rows that expand to a lazily-fetched detail. */
 .player-rounds {
   list-style: none;

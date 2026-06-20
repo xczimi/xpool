@@ -190,6 +190,8 @@ const en = {
   playerNotInPool: 'This player is not in your pool.',
   playerPageOwnLink: 'My player page',
   playerPerfectsHeading: 'Perfect predictions',
+  playerNowHeading: 'Around now',
+  tipCol: 'Tip',
 
   // pools
   poolsTitle: 'Pools',
@@ -473,6 +475,8 @@ const hu: Record<StringKey, string> = {
   playerNotInPool: 'Ez a játékos nincs a ligádban.',
   playerPageOwnLink: 'Saját oldalam',
   playerPerfectsHeading: 'Telitalálatok',
+  playerNowHeading: 'Épp most',
+  tipCol: 'Tipp',
 
   poolsTitle: 'Ligák',
   poolsIntro:

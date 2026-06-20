@@ -22,6 +22,7 @@ import type {
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { perfectsOf, playerEntry, playerRank } from '../lib/playerPage'
 import { PlayerHeader } from './player/PlayerHeader'
+import { PlayerTodaySlice } from './player/PlayerTodaySlice'
 import { PlayerRounds } from './player/PlayerRounds'
 
 /**
@@ -61,7 +62,10 @@ export function PlayerPage() {
   const [resultsResult] = useQuery<{ results: MatchPrediction[] }>({
     query: RESULTS_QUERY,
   })
-  const [tournamentResult] = useQuery<{ tournament: Tournament | null }>({
+  const [tournamentResult] = useQuery<{
+    tournament: Tournament | null
+    now: string
+  }>({
     query: TOURNAMENT_QUERY,
   })
 
@@ -76,6 +80,7 @@ export function PlayerPage() {
     [perfectsResult.data, id],
   )
   const tournament = tournamentResult.data?.tournament ?? null
+  const now = tournamentResult.data?.now ?? ''
   const resultByGame = useMemo(() => {
     const map = new Map<string, MatchPrediction>()
     for (const r of resultsResult.data?.results ?? []) map.set(r.gameId, r)
@@ -106,6 +111,13 @@ export function PlayerPage() {
         perfects={perfects}
         tournament={tournament}
         resultByGame={resultByGame}
+        locale={locale}
+      />
+      <PlayerTodaySlice
+        playerId={id}
+        tournament={tournament}
+        resultByGame={resultByGame}
+        now={now}
         locale={locale}
       />
       <PlayerRounds

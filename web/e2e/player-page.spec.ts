@@ -74,6 +74,10 @@ test('own page shows totals and drill-down with points', async ({ page }) => {
   await expect(page.locator('.player-stats')).toBeVisible()
   await expect(page.locator('.player-stat-value').first()).toBeVisible()
 
+  // The "around now" slice renders for the window around the (just-played) Final.
+  await expect(page.locator('.player-today')).toBeVisible()
+  await expect(page.locator('.player-today .data-table tbody tr').first()).toBeVisible()
+
   // Rounds start collapsed; expanding the Group Stage row reveals its detail
   // (lazy fetch), with a group sub-nav and scored predictions.
   const firstRow = page.locator('.player-round-row').first()
