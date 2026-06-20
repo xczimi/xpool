@@ -1,10 +1,10 @@
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
-import { MATCH_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
-import type { MatchDetail, Tournament } from '../graphql/types'
+import { MATCH_QUERY, POOLS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
+import type { MatchDetail, Pool, Tournament } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { Matchup } from '../components/TeamLabel'
 import { PointsBadge } from '../components/PointsBadge'
@@ -20,12 +20,22 @@ export function MatchPage() {
   const { t, locale } = useI18n()
   const { label } = useAuth()
 
+  // Pool scoping mirrors the scoreboard: `undefined` = default to the player's
+  // first pool, `null` = the explicit "everyone" global view, a string = a pool.
+  const [poolId, setPoolId] = useState<string | null | undefined>(undefined)
+  const [poolsResult] = useQuery<{ pools: Pool[] }>({
+    query: POOLS_QUERY,
+    pause: !label,
+  })
+  const pools = poolsResult.data?.pools ?? []
+  const effectivePool = poolId === undefined ? (pools[0]?.id ?? null) : poolId
+
   const [tournamentResult] = useQuery<{ tournament: Tournament | null }>({
     query: TOURNAMENT_QUERY,
   })
   const [matchResult, reexecuteMatch] = useQuery<{ match: MatchDetail | null }>({
     query: MATCH_QUERY,
-    variables: { gameId },
+    variables: { gameId, pool: effectivePool },
     pause: !gameId,
   })
 
@@ -64,6 +74,23 @@ export function MatchPage() {
   return (
     <section className="page match-page">
       <h2>{t('match')}</h2>
+
+      {pools.length > 0 && (
+        <label className="pool-selector">
+          {t('pool')}:{' '}
+          <select
+            value={effectivePool ?? ''}
+            onChange={(e) => setPoolId(e.target.value || null)}
+          >
+            <option value="">{t('everyone')}</option>
+            {pools.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <div className="match-card">
         <div className="match-card-teams">

@@ -120,6 +120,10 @@ test('match page: navigate from Schedule and tip grid shows player after predict
   await expect(firstRow.locator('.pred')).toBeVisible()
   await expect(firstRow.locator('.pts')).toBeVisible()
 
+  // The pool selector renders (grace belongs to the seeded Demo Pool); the grid
+  // is scoped to that pool by default and grace (a member) is shown.
+  await expect(page.locator('.pool-selector')).toBeVisible()
+
   // ── 4. demo-grace's nick appears in the grid with the entered prediction ───
   const graceRow = grid.locator('tbody tr').filter({ hasText: 'grace' })
   await expect(graceRow).toBeVisible()

@@ -227,8 +227,8 @@ export const REPORTED_RESULTS_QUERY = `
 `
 
 export const MATCH_QUERY = `
-  query Match($gameId: ID!) {
-    match(gameId: $gameId) {
+  query Match($gameId: ID!, $pool: ID) {
+    match(gameId: $gameId, pool: $pool) {
       game {
         id kickoff venue groupId
         home { teamId description }
