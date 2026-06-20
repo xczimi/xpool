@@ -144,14 +144,21 @@ the live status (`2H`, etc.) is the whole point, so the page **does** show it.
 
 ## 7. Frontend
 
+- **The all-players tip grid is the spine of the page in every state** (live or
+  not) — the same per-player prediction grid the AllTips page shows, gated by the
+  **identical** mutual-commitment visibility rule (own tip always; others' once
+  that match is open). It is not a live-only element; the live score and
+  provisional points are an overlay *on top of* this grid.
 - **Route:** `/match/:gameId` → `MatchPage`, rendering the three states from
   `match(gameId)`:
-  - **Upcoming** — teams, kickoff, deadline countdown; predictions appear under
-    the same visibility rules (own always; others once open).
-  - **Live** — the live score + `sourceStatus`, and each player's provisional
-    points/breakdown, visibly marked provisional ("if it ended now").
-  - **Finished** — the official score + final points (same grid, `provisional:
-    false`).
+  - **Upcoming** — teams, kickoff, deadline countdown; the tip grid under the
+    standard visibility rules (own always; others appear only once the match is
+    open — no early reveal, same as AllTips today).
+  - **Live** — the tip grid (now fully open, since kickoff has passed) + the live
+    score + `sourceStatus` + each player's provisional points/breakdown, visibly
+    marked provisional ("if it ended now").
+  - **Finished** — the tip grid + the official score + final points (same grid,
+    `provisional: false`).
 - **Polling:** the page refetches `match(gameId)` every **60s only while
   `actual.provisional == true`**; no polling in other states. (Server cache floor
   means this never raises the SportsDB call rate above one hit / match / 60s /
