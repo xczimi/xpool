@@ -101,7 +101,7 @@ pub struct Game {
 }
 
 impl Game {
-    fn build(
+    pub(crate) fn build(
         g: &domain::SingleGame,
         round: domain::Round,
         now: chrono::DateTime<chrono::Utc>,
@@ -483,4 +483,34 @@ pub struct ReportedResult {
     /// time / penalties, but xpool scores knockouts on the 90-minute result
     /// (`SCORING.md` §5), so the admin must verify before submitting.
     pub ninety_minute_uncertain: bool,
+}
+
+/// The actual score shown on a match page: either the official entered result
+/// (`provisional: false`, no source) or a live SportsDB score during the match
+/// (`provisional: true`). Ephemeral — never persisted.
+#[derive(SimpleObject, Clone, Debug)]
+pub struct MatchScore {
+    pub home_score: i32,
+    pub away_score: i32,
+    /// `true` = live "if it ended now"; `false` = official entered result.
+    pub provisional: bool,
+    /// `"thesportsdb"` when provisional; `None` for an official result.
+    pub source: Option<String>,
+    /// SportsDB `strStatus` (e.g. `"2H"`) when provisional; `None` otherwise.
+    pub source_status: Option<String>,
+    /// `true` for a knockout (extra-time/penalties ambiguity vs the 90' rule).
+    pub ninety_minute_uncertain: bool,
+}
+
+/// One match's detail (`#2`): the all-players tip grid plus the best-available
+/// actual score. Read-only and ephemeral.
+#[derive(SimpleObject, Clone, Debug)]
+pub struct MatchDetail {
+    /// The match itself (reuses the existing `Game` type — teams, kickoff,
+    /// time flags). The web resolves team names from the `tournament` query.
+    pub game: Game,
+    /// `None` until there is a score to show (upcoming, or source absent).
+    pub actual: Option<MatchScore>,
+    /// Every participating player's tip for this game, gated exactly as `tips`.
+    pub rows: Vec<Tip>,
 }
