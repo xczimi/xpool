@@ -544,6 +544,7 @@ impl QueryRoot {
         &self,
         ctx: &Context<'_>,
         game_id: String,
+        pool: Option<String>,
     ) -> async_graphql::Result<Option<MatchDetail>> {
         let viewer = CurrentPlayer::require(ctx)?;
         let repo = repo(ctx);
@@ -631,13 +632,34 @@ impl QueryRoot {
                 (None, None)
             };
 
-        // The all-players grid — same gate as `tips`.
+        // Optional pool scoping — same rule as the scoreboard (Issue 04): pool
+        // membership is private, so a pool filter requires the viewer to be a
+        // member (or owner) of that pool. `None` → every tipper (global).
+        let allowed: Option<Vec<String>> = match &pool {
+            Some(pool_id) => {
+                let pools = repo.list_pools().await?;
+                let p = pools
+                    .into_iter()
+                    .find(|p| &p.id == pool_id)
+                    .ok_or_else(|| async_graphql::Error::new("pool not found"))?;
+                if !p.members.contains(&viewer.id) && p.owner != viewer.id {
+                    return Err(async_graphql::Error::new(
+                        "you are not a member of this pool",
+                    ));
+                }
+                Some(p.members)
+            }
+            None => None,
+        };
+
+        // The all-players grid — same gate as `tips`, restricted to the pool.
         let deadline = tournament.deadline(&game.group_id);
         let multiplier = config.multiplier(round);
         let viewer_pred = viewer.match_prediction(&game_id);
         let game_ids = [game_id.clone()];
         let rows: Vec<Tip> = domain::participation::tippers_in(&players, &game_ids)
             .into_iter()
+            .filter(|player| allowed.as_ref().is_none_or(|m| m.contains(&player.id)))
             .map(|player| {
                 scored_tip(
                     &viewer.id,
@@ -895,7 +917,7 @@ mod match_tests {
     use async_trait::async_trait;
     use chrono::{DateTime, TimeZone, Utc};
     use domain::{
-        GroupChildren, GroupGame, LockMode, MatchPrediction, Player, Round, SingleGame, Team,
+        GroupChildren, GroupGame, LockMode, MatchPrediction, Player, Pool, Round, SingleGame, Team,
         TeamSlot, Tournament,
     };
     use sportsdb::Event;
@@ -1188,5 +1210,42 @@ mod match_tests {
         assert_eq!(data["match"]["actual"], serde_json::Value::Null);
         // The grid still renders — degradation never blocks the page.
         assert!(!data["match"]["rows"].as_array().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn pool_filter_restricts_rows_to_members() {
+        let repo = repo_with_m1(kickoff()).await;
+        let alice = player("alice", 1, 0, true);
+        let bob = player("bob", 2, 0, true);
+        repo.put_player(&alice).await.unwrap();
+        repo.put_player(&bob).await.unwrap();
+        // Pool P1 contains only alice (the viewer) — bob is excluded from her view.
+        repo.put_pool(&Pool {
+            id: "P1".into(),
+            name: "Pool 1".into(),
+            owner: "alice".into(),
+            members: vec!["alice".into()],
+            prefix: "P1".into(),
+        })
+        .await
+        .unwrap();
+        let source: Arc<dyn ReportedResultSource> = Arc::new(StubSource(vec![]));
+        let now = kickoff() + chrono::Duration::minutes(30);
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1", pool:"P1"){ rows{ playerId } } }"#,
+        )
+        .await;
+        let ids: Vec<String> = data["match"]["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["playerId"].as_str().unwrap().to_string())
+            .collect();
+        assert!(ids.contains(&"alice".to_string()), "alice (member) shown");
+        assert!(!ids.contains(&"bob".to_string()), "bob (non-member) hidden");
     }
 }
