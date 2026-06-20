@@ -23,6 +23,7 @@ import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { perfectsOf, playerEntry, playerRank } from '../lib/playerPage'
 import { PlayerHeader } from './player/PlayerHeader'
 import { PlayerTodaySlice } from './player/PlayerTodaySlice'
+import { PlayerPerfects } from './player/PlayerPerfects'
 import { PlayerRounds } from './player/PlayerRounds'
 
 /**
@@ -105,19 +106,18 @@ export function PlayerPage() {
   return (
     <section className="page player-page">
       <h2>{entry.nick}</h2>
-      <PlayerHeader
-        entry={entry}
-        rank={rank}
-        perfects={perfects}
-        tournament={tournament}
-        resultByGame={resultByGame}
-        locale={locale}
-      />
+      <PlayerHeader entry={entry} rank={rank} />
       <PlayerTodaySlice
         playerId={id}
         tournament={tournament}
         resultByGame={resultByGame}
         now={now}
+        locale={locale}
+      />
+      <PlayerPerfects
+        perfects={perfects}
+        tournament={tournament}
+        resultByGame={resultByGame}
         locale={locale}
       />
       <PlayerRounds
