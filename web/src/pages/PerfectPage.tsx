@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useI18n } from '../i18n/useI18n'
 import { PERFECTS_QUERY, RESULTS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
@@ -29,7 +30,12 @@ export function PerfectPage() {
   const gameLabel = useMemo(() => {
     const map = new Map<string, ReactNode>()
     for (const g of tournament?.games ?? []) {
-      map.set(g.id, <Matchup home={g.home} away={g.away} teams={teams} />)
+      map.set(
+        g.id,
+        <Link to={`/match/${g.id}`}>
+          <Matchup home={g.home} away={g.away} teams={teams} />
+        </Link>,
+      )
     }
     return map
   }, [tournament, teams])
