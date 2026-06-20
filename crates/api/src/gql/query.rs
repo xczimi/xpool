@@ -1004,6 +1004,47 @@ mod match_tests {
         Utc.with_ymd_and_hms(2026, 6, 11, 18, 0, 0).unwrap()
     }
 
+    /// Like `repo_with_m1` but `M1` sits in a knockout one-match group, so the
+    /// resolver flags provisional points 90-minute-uncertain.
+    async fn repo_with_knockout_m1(kickoff: DateTime<Utc>) -> InMemoryRepository {
+        let game = SingleGame {
+            id: "M1".into(),
+            kickoff,
+            venue: None,
+            group_id: "K".into(),
+            home: TeamSlot {
+                team_id: Some("AAA".into()),
+                description: "1A".into(),
+            },
+            away: TeamSlot {
+                team_id: Some("BBB".into()),
+                description: "2B".into(),
+            },
+            external_id: Some("E1".into()),
+        };
+        let group = GroupGame {
+            id: "K".into(),
+            name: "Knockout — match 1".into(),
+            parent: None,
+            round: Round::R32,
+            lock_mode: LockMode::LockPerMatch,
+            carries_standings: false,
+            children: GroupChildren::Games(vec!["M1".into()]),
+        };
+        let t = Tournament {
+            root: "K".into(),
+            groups: HashMap::from([("K".to_string(), group)]),
+            games: HashMap::from([("M1".to_string(), game)]),
+            teams: HashMap::from([
+                ("AAA".to_string(), team("AAA")),
+                ("BBB".to_string(), team("BBB")),
+            ]),
+        };
+        let repo = InMemoryRepository::new();
+        repo.put_tournament(&t).await.unwrap();
+        repo
+    }
+
     /// Execute `query` as `viewer` at `now`, returning the JSON `data`. Mirrors
     /// the `reported_tests` pattern: `build_schema` + a `Request` with the
     /// `CurrentPlayer` and `RequestNow` injected as context data.
@@ -1104,5 +1145,48 @@ mod match_tests {
         let rows = data["match"]["rows"].as_array().unwrap();
         let bob = rows.iter().find(|r| r["playerId"] == "bob").unwrap();
         assert!(bob["prediction"].is_null());
+    }
+
+    #[tokio::test]
+    async fn knockout_live_score_is_ninety_minute_uncertain() {
+        let repo = repo_with_knockout_m1(kickoff()).await;
+        let alice = player("alice", 1, 0, true);
+        repo.put_player(&alice).await.unwrap();
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![live_event("E1", 1, 0, "2H")]));
+        let now = kickoff() + chrono::Duration::minutes(67); // in live window
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1"){ actual{ provisional ninetyMinuteUncertain } } }"#,
+        )
+        .await;
+        let a = &data["match"]["actual"];
+        assert_eq!(a["provisional"], true);
+        assert_eq!(a["ninetyMinuteUncertain"], true);
+    }
+
+    #[tokio::test]
+    async fn live_window_with_empty_source_yields_no_score() {
+        let repo = repo_with_m1(kickoff()).await;
+        let alice = player("alice", 1, 0, true);
+        repo.put_player(&alice).await.unwrap();
+        // Inside the live window (post-kickoff), but the source returns nothing →
+        // graceful no score. Distinct from the pre-kickoff case (source not consulted).
+        let source: Arc<dyn ReportedResultSource> = Arc::new(StubSource(vec![]));
+        let now = kickoff() + chrono::Duration::minutes(30);
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1"){ actual{ homeScore } rows{ playerId } } }"#,
+        )
+        .await;
+        assert_eq!(data["match"]["actual"], serde_json::Value::Null);
+        // The grid still renders — degradation never blocks the page.
+        assert!(!data["match"]["rows"].as_array().unwrap().is_empty());
     }
 }
