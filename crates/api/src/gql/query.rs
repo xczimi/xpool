@@ -77,8 +77,7 @@ fn scored_tip(
     // effective-locked this match; we keep the target's lock so an un-locked
     // draft is never exposed before the deadline.
     let viewer_committed = time_open || viewer_prediction.is_some_and(|p| p.locked);
-    let visible =
-        is_own || (viewer_committed && prediction.is_some_and(|p| p.locked || time_open));
+    let visible = is_own || (viewer_committed && prediction.is_some_and(|p| p.locked || time_open));
     let breakdown = match (visible, prediction, actual) {
         (true, Some(pred), Some(res)) => Some(PointsBreakdown::build(
             score_match_parts(pred, res, config),
@@ -596,19 +595,19 @@ impl QueryRoot {
                 // Live window, no official result yet → consult the source.
                 // Any error/absence degrades to "no score" (page still works).
                 let ext = game.external_id.clone().unwrap();
-                let source =
-                    ctx.data_unchecked::<Arc<dyn crate::reported::ReportedResultSource>>();
+                let source = ctx.data_unchecked::<Arc<dyn crate::reported::ReportedResultSource>>();
                 let events = source.lookup_events(&[ext]).await.unwrap_or_default();
-                let live = events.into_iter().find_map(|e| {
-                    match (e.int_home_score, e.int_away_score) {
-                        (Some(h), Some(a))
-                            if (0..=255).contains(&h) && (0..=255).contains(&a) =>
-                        {
-                            Some((h as u8, a as u8, e.str_status))
-                        }
-                        _ => None,
-                    }
-                });
+                let live =
+                    events
+                        .into_iter()
+                        .find_map(|e| match (e.int_home_score, e.int_away_score) {
+                            (Some(h), Some(a))
+                                if (0..=255).contains(&h) && (0..=255).contains(&a) =>
+                            {
+                                Some((h as u8, a as u8, e.str_status))
+                            }
+                            _ => None,
+                        });
                 match live {
                     Some((h, a, status)) => (
                         Some(domain::MatchPrediction {
@@ -886,5 +885,224 @@ mod reported_tests {
         assert!(resp.errors.is_empty(), "{:?}", resp.errors);
         let json = resp.data.into_json().unwrap();
         assert_eq!(json["reportedResults"].as_array().unwrap().len(), 0);
+    }
+}
+
+#[cfg(test)]
+mod match_tests {
+    use crate::auth::CurrentPlayer;
+    use crate::reported::ReportedResultSource;
+    use async_trait::async_trait;
+    use chrono::{DateTime, TimeZone, Utc};
+    use domain::{
+        GroupChildren, GroupGame, LockMode, MatchPrediction, Player, Round, SingleGame, Team,
+        TeamSlot, Tournament,
+    };
+    use sportsdb::Event;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use storage::{InMemoryRepository, Repository};
+
+    struct StubSource(Vec<Event>);
+    #[async_trait]
+    impl ReportedResultSource for StubSource {
+        async fn lookup_events(&self, ids: &[String]) -> anyhow::Result<Vec<Event>> {
+            Ok(self
+                .0
+                .iter()
+                .filter(|e| ids.contains(&e.id_event))
+                .cloned()
+                .collect())
+        }
+    }
+
+    fn live_event(id_event: &str, h: i64, a: i64, status: &str) -> Event {
+        Event {
+            id_event: id_event.into(),
+            date_event: "2026-06-11".into(),
+            id_home_team: "AAA".into(),
+            id_away_team: "BBB".into(),
+            int_home_score: Some(h),
+            int_away_score: Some(a),
+            str_status: status.into(),
+            str_timestamp: None,
+        }
+    }
+
+    fn team(id: &str) -> Team {
+        Team {
+            id: id.into(),
+            name: id.into(),
+            short_code: id.into(),
+            flag: None,
+            external_id: None,
+        }
+    }
+
+    /// A full ordinary player with one prediction for `M1` (mirrors the field
+    /// set used by `reported_tests` — there is no `Player::new`).
+    fn player(id: &str, h: u8, a: u8, locked: bool) -> Player {
+        Player {
+            id: id.into(),
+            person_id: format!("p-{id}"),
+            nick: id.into(),
+            full_name: id.into(),
+            referrer: None,
+            is_result_user: false,
+            version: 0,
+            match_predictions: vec![MatchPrediction {
+                game_id: "M1".into(),
+                home_score: h,
+                away_score: a,
+                locked,
+            }],
+            standings_predictions: vec![],
+        }
+    }
+
+    /// One group-stage game `M1` (idEvent `E1`) kicking off at `kickoff`.
+    async fn repo_with_m1(kickoff: DateTime<Utc>) -> InMemoryRepository {
+        let game = SingleGame {
+            id: "M1".into(),
+            kickoff,
+            venue: None,
+            group_id: "A".into(),
+            home: TeamSlot {
+                team_id: Some("AAA".into()),
+                description: "A1".into(),
+            },
+            away: TeamSlot {
+                team_id: Some("BBB".into()),
+                description: "A2".into(),
+            },
+            external_id: Some("E1".into()),
+        };
+        let group = GroupGame {
+            id: "A".into(),
+            name: "A".into(),
+            parent: None,
+            round: Round::GroupStage,
+            lock_mode: LockMode::LockTogether,
+            carries_standings: true,
+            children: GroupChildren::Games(vec!["M1".into()]),
+        };
+        let t = Tournament {
+            root: "A".into(),
+            groups: HashMap::from([("A".to_string(), group)]),
+            games: HashMap::from([("M1".to_string(), game)]),
+            teams: HashMap::from([
+                ("AAA".to_string(), team("AAA")),
+                ("BBB".to_string(), team("BBB")),
+            ]),
+        };
+        let repo = InMemoryRepository::new();
+        repo.put_tournament(&t).await.unwrap();
+        repo
+    }
+
+    fn kickoff() -> DateTime<Utc> {
+        Utc.with_ymd_and_hms(2026, 6, 11, 18, 0, 0).unwrap()
+    }
+
+    /// Execute `query` as `viewer` at `now`, returning the JSON `data`. Mirrors
+    /// the `reported_tests` pattern: `build_schema` + a `Request` with the
+    /// `CurrentPlayer` and `RequestNow` injected as context data.
+    async fn exec(
+        repo: InMemoryRepository,
+        source: Arc<dyn ReportedResultSource>,
+        viewer: Player,
+        now: DateTime<Utc>,
+        query: &str,
+    ) -> serde_json::Value {
+        let repo: Arc<dyn Repository> = Arc::new(repo);
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(query)
+            .data(CurrentPlayer::Player(Box::new(viewer)))
+            .data(crate::clock::RequestNow(now));
+        let resp = schema.execute(req).await;
+        assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+        resp.data.into_json().unwrap()
+    }
+
+    #[tokio::test]
+    async fn live_score_yields_provisional_points() {
+        let repo = repo_with_m1(kickoff()).await;
+        // viewer predicted 1–0; live score is 1–0 → provisional, scored.
+        let alice = player("alice", 1, 0, true);
+        repo.put_player(&alice).await.unwrap();
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![live_event("E1", 1, 0, "2H")]));
+        let now = kickoff() + chrono::Duration::minutes(67); // in-play
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1"){ actual{ homeScore awayScore provisional sourceStatus ninetyMinuteUncertain } rows{ playerId points } } }"#,
+        )
+        .await;
+        let m = &data["match"];
+        assert_eq!(m["actual"]["provisional"], true);
+        assert_eq!(m["actual"]["sourceStatus"], "2H");
+        assert_eq!(m["actual"]["ninetyMinuteUncertain"], false);
+        // alice's 1–0 vs live 1–0 scores > 0.
+        let row = m["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["playerId"] == "alice")
+            .unwrap();
+        assert!(row["points"].as_i64().unwrap() > 0);
+    }
+
+    #[tokio::test]
+    async fn official_result_takes_priority_over_live() {
+        let repo = repo_with_m1(kickoff()).await;
+        // result user entered 2–2 (official); the stub says 1–0 but must be ignored.
+        let mut ru = player("result-user", 2, 2, true);
+        ru.is_result_user = true;
+        repo.put_player(&ru).await.unwrap();
+        let alice = player("alice", 2, 2, true);
+        repo.put_player(&alice).await.unwrap();
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![live_event("E1", 1, 0, "2H")]));
+        let now = kickoff() + chrono::Duration::minutes(67);
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1"){ actual{ homeScore awayScore provisional source } } }"#,
+        )
+        .await;
+        let a = &data["match"]["actual"];
+        assert_eq!(a["homeScore"], 2);
+        assert_eq!(a["provisional"], false);
+        assert_eq!(a["source"], serde_json::Value::Null);
+    }
+
+    #[tokio::test]
+    async fn no_score_before_kickoff_and_others_hidden() {
+        let repo = repo_with_m1(kickoff()).await;
+        // alice has NOT locked her tip — she hasn't committed, so mutual-commitment
+        // gate keeps bob's prediction hidden even though bob has locked.
+        let alice = player("alice", 1, 0, false);
+        repo.put_player(&alice).await.unwrap();
+        repo.put_player(&player("bob", 3, 1, true)).await.unwrap();
+        let source: Arc<dyn ReportedResultSource> = Arc::new(StubSource(vec![]));
+        let now = kickoff() - chrono::Duration::hours(2); // before kickoff
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1"){ actual{ homeScore } rows{ playerId prediction{ homeScore } } } }"#,
+        )
+        .await;
+        assert_eq!(data["match"]["actual"], serde_json::Value::Null);
+        // bob's prediction is hidden: alice hasn't committed (unlocked draft).
+        let rows = data["match"]["rows"].as_array().unwrap();
+        let bob = rows.iter().find(|r| r["playerId"] == "bob").unwrap();
+        assert!(bob["prediction"].is_null());
     }
 }
