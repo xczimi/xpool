@@ -307,6 +307,7 @@ const en = {
   // match page (#2 live preview)
   provisionalLabel: 'Provisional — if it ended now',
   liveLabel: 'Live',
+  finalLabel: 'Final',
   awaitingResult: 'Awaiting official result',
   ninetyMinuteNote:
     'Knockout — provisional points use the 90-minute rule; extra time may change the official result.',
@@ -587,6 +588,7 @@ const hu: Record<StringKey, string> = {
   // match page (#2 live preview)
   provisionalLabel: 'Ideiglenes — ha most érne véget',
   liveLabel: 'Élő',
+  finalLabel: 'Vége',
   awaitingResult: 'Hivatalos eredményre várunk',
   ninetyMinuteNote:
     'Kieséses szakasz — az ideiglenes pontok a 90 perces szabály szerint számolnak; a hosszabbítás módosíthatja a hivatalos eredményt.',

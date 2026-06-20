@@ -50,55 +50,86 @@ export function MatchPage() {
 
   if (!label) return <NeedsLogin />
   if (matchResult.fetching || tournamentResult.fetching) return <Loading />
-  if (matchResult.error) return <ErrorView message={matchResult.error.message} />
+  if (matchResult.error)
+    return (
+      <ErrorView
+        message={matchResult.error.message}
+        onRetry={() => reexecuteMatch({ requestPolicy: 'network-only' })}
+      />
+    )
   if (!match) return <ErrorView message="match not found" />
 
   const { game, actual, rows } = match
 
   return (
-    <section className="match-page">
-      <header className="match-head">
-        <h1>
-          <Matchup home={game.home} away={game.away} teams={teams} />
-        </h1>
-        <p className="kickoff">{formatKickoff(game.kickoff, locale)}</p>
-        {actual ? (
-          <p className={`score ${actual.provisional ? 'score-live' : 'score-final'}`}>
-            <span className="score-value">
-              {actual.homeScore}–{actual.awayScore}
-            </span>
-            {actual.provisional && (
-              <span className="score-status">
-                {t('liveLabel')}
-                {actual.sourceStatus ? ` · ${actual.sourceStatus}` : ''}
-              </span>
-            )}
-            {actual.provisional && <span className="provisional-note">{t('provisionalLabel')}</span>}
-          </p>
-        ) : (
-          game.resultPending && <p className="awaiting">{t('awaitingResult')}</p>
-        )}
-        {actual?.ninetyMinuteUncertain && actual.provisional && (
-          <p className="ninety-note">{t('ninetyMinuteNote')}</p>
-        )}
-      </header>
+    <section className="page match-page">
+      <h2>{t('match')}</h2>
 
-      <table className="tips-grid">
+      <div className="match-card">
+        <div className="match-card-teams">
+          <Matchup home={game.home} away={game.away} teams={teams} />
+        </div>
+        <div className="match-card-kickoff">
+          {formatKickoff(game.kickoff, locale)}
+        </div>
+
+        {actual ? (
+          <>
+            <div
+              className={`match-scoreline ${actual.provisional ? 'is-live' : 'is-final'}`}
+            >
+              <span className="match-scoreline-value">
+                {actual.homeScore}–{actual.awayScore}
+              </span>
+              <span className="match-scoreline-label">
+                {actual.provisional
+                  ? `${t('liveLabel')}${actual.sourceStatus ? ` · ${actual.sourceStatus}` : ''}`
+                  : t('finalLabel')}
+              </span>
+            </div>
+            {actual.provisional && (
+              <p className="match-note match-provisional">{t('provisionalLabel')}</p>
+            )}
+            {actual.provisional && actual.ninetyMinuteUncertain && (
+              <p className="match-note match-warn">{t('ninetyMinuteNote')}</p>
+            )}
+          </>
+        ) : (
+          game.resultPending && (
+            <p className="match-note match-muted">{t('awaitingResult')}</p>
+          )
+        )}
+      </div>
+
+      <table className="data-table compact match-grid">
+        <thead>
+          <tr>
+            <th>{t('player')}</th>
+            <th>{t('prediction')}</th>
+            <th className="num">{t('points')}</th>
+          </tr>
+        </thead>
         <tbody>
           {rows.map((row) => (
             <tr key={row.playerId}>
               <td className="nick">{row.nick}</td>
               <td className="pred">
-                {row.prediction
-                  ? `${row.prediction.homeScore}–${row.prediction.awayScore}`
-                  : '—'}
+                {row.prediction ? (
+                  `${row.prediction.homeScore}–${row.prediction.awayScore}`
+                ) : (
+                  <span className="match-hidden">{t('hiddenTip')}</span>
+                )}
               </td>
-              <td className="pts">
-                <PointsBadge
-                  breakdown={row.breakdown}
-                  points={row.points}
-                  isPerfect={row.isPerfect}
-                />
+              <td className="pts num">
+                {row.points != null ? (
+                  <PointsBadge
+                    breakdown={row.breakdown}
+                    points={row.points}
+                    isPerfect={row.isPerfect}
+                  />
+                ) : (
+                  '—'
+                )}
               </td>
             </tr>
           ))}
