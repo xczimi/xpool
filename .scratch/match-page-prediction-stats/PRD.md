@@ -33,3 +33,14 @@ there.
 - Pool-scoped (this pool only) or tournament-wide aggregate?
 - Compute server-side (new resolver) or client-side from the existing grid?
 - Show before kickoff (counts only, no scorelines) or strictly after the gate?
+
+## Resolved decisions (grilled 2026-06-21)
+
+- **Client-side, pool-scoped.** Compute aggregates (most common scoreline,
+  home/draw/away split, 'N nailed it' once result is in) in MatchPage from the
+  already-loaded, visibility-gated `rows`, scoped to the sticky selected pool.
+- **Hide the stats panel until the visibility gate opens** (deadline passed /
+  kickoff). Before the gate the gated rows carry no other tips, so nothing to
+  leak — show nothing (or a 'hidden until kickoff' note).
+- No backend change required; relies on existing gating in `scored_tip`.
+- Reads the sticky pool from [[perfect-page-pool-picker]]'s context.

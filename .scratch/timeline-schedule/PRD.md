@@ -32,3 +32,14 @@ existing Today view and with [[timezone-clarity]]'s relative-deadline idea.
 - Persist the chosen view (per-user setting) or default fresh each visit?
 - Day boundaries in user-local or stadium-local time? (ties to [[timezone-clarity]])
 - Does this subsume the separate Today page, or stay distinct?
+
+## Resolved decisions (grilled 2026-06-21)
+
+- **View toggle: By group (current) ⇄ By date.** By-date sorts matches
+  chronologically, sectioned by calendar day, reusing the existing match rows /
+  /match/:gameId links.
+- **Persist chosen view per-user in localStorage.**
+- **Day boundary = viewer's local day** (browser tz, same basis as the existing
+  formatKickoff display). No venue-tz data needed; no Date.now() branching —
+  day grouping is pure client-side formatting of the ISO kickoff.
+- **Today page stays distinct** (keeps its live polling + tip columns).

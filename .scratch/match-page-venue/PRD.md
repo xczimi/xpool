@@ -26,3 +26,10 @@ local time is the natural "secondary" time in [[timezone-clarity]].
 
 - Just the stadium name, or stadium + city/country?
 - Any link-out (map) or purely informational?
+
+## Resolved decisions (grilled 2026-06-21)
+
+- **Informational text only** — render the `venue` string near the kickoff
+  time; no map link-out. Hide gracefully when null.
+- `venue` is already selected in MATCH_QUERY and exposed on the GraphQL Game
+  type — **frontend-only render change** on MatchPage. i18n the label (en+hu).

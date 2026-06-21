@@ -26,3 +26,15 @@ pages is confusing.
 
 - Share the selected-pool state across pages (sticky) or per-page?
 - Does the perfects resolver already accept a pool arg, or is one needed?
+
+## Resolved decisions (grilled 2026-06-21)
+
+- **Pool state is sticky & shared across pages** (not per-page). Introduce a
+  shared pool-selection primitive (React context backed by localStorage) and
+  migrate ScoreboardPage + AllTipsPage onto it; PerfectPage reads the same
+  sticky selection. Default remains 'your first pool' on first load.
+- The perfects resolver does **not** yet accept a pool arg — add a `pool: ID`
+  argument to the `perfects` query + resolver (mirror the scoreboard/tips
+  pool-membership filtering already in query.rs).
+- Cross-cluster note: the sticky pool context is consumed by match-page
+  prediction-stats and live max-achievable too; this cluster owns building it.

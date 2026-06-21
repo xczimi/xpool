@@ -29,3 +29,12 @@ perfects already appear there).
 - Sort (reorder a flat list) or true grouping (sectioned headers)?
 - Order players by perfect-count, by standings, or alphabetically?
 - Persist the chosen grouping per user?
+
+## Resolved decisions (grilled 2026-06-21)
+
+- **Sort only (flat list)**, not sectioned grouping. A toggle reorders the flat
+  list so each player's perfects are adjacent.
+- **Order players by perfect-count (most first)** — self-contained, no
+  scoreboard dependency.
+- **Persist the chosen view mode per-user in localStorage** (by-match default).
+- Reuses the sticky pool picker from [[perfect-page-pool-picker]].

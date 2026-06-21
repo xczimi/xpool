@@ -29,3 +29,14 @@ now" gives immediate certainty and is reassuring when something looks wrong.
 - Bypass the server cache or just re-issue the GraphQL query?
 - Pair with an auto-refresh interval while a match is live, with the button as
   an override?
+
+## Resolved decisions (grilled 2026-06-21)
+
+- **Everyone can refresh** (no admin gate).
+- **Button just re-issues the GraphQL query** — no `forceRefresh` cache-bypass
+  arg. The existing 45s server-side CachingSource stays as the SportsDB quota
+  guard, so 'everyone' is safe (no bypass to abuse).
+- **Add auto-poll on the match page while a match is live** (server-driven
+  interval, like TodayPage), with the button as a manual 'refresh now' override.
+- Net: **frontend-only** — match-page refresh button + polling; no API change.
+- Show a last-updated indicator + spinner feedback on refresh.

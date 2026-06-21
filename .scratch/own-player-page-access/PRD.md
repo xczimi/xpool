@@ -28,3 +28,15 @@ predictable route in the chrome/nav, not just a link buried in a table cell.
 - Top-nav item, AuthBar avatar/name, or both?
 - Wording — "My page", "My tips", "Me"? (i18n EN + HU)
 - Does it replace or complement the existing Profile link?
+
+## Resolved decisions (grilled 2026-06-21)
+
+- **Add a top-nav item** ('My player page') in NavBar pointing at
+  /player/<my id>, player-gated (hidden for visitor / unclaimed / result-user).
+  Keep the existing AuthBar name→/player/:id link too.
+- **Reuse the existing `playerPageOwnLink` i18n string** ('My player page' /
+  'Az én játékos oldalam').
+- **Replace the Profile nav link** with My-player-page. The Profile/settings
+  page still exists (route /profile) but is now reached **from** the player
+  page (add a Profile/settings link on the own player-detail view), not the nav.
+- Current player id comes from ME_QUERY (`__typename === 'Player'`).

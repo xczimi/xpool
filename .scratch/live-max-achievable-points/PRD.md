@@ -35,3 +35,17 @@ scoreboard into a live race rather than a static tally, and builds on the
   live score + time remaining (we likely only know the score, not minute)?
 - Server-computed (new resolver) vs client-side from live scores + predictions?
 - Show only during live windows, or always (= current + remaining fixtures)?
+
+## Resolved decisions (grilled 2026-06-21)
+
+- **Ceiling = best mathematically-reachable score.** For a live match at H–A,
+  enumerate finals >= the live score (goals only go up) and take the max points
+  the prediction could still earn via `domain::score_match`. Honest about
+  partially-lost outcomes (e.g. predicted 1–0 but it's 0–2).
+- **Total scope = settled + live best-case only**, pool/scoreboard-scoped.
+  Not-yet-started fixtures contribute 0 (no full-season theoretical ceiling).
+- **Shown only while at least one match is live**, as a secondary number
+  clearly marked provisional; otherwise the scoreboard looks as today.
+- **Computed server-side in the scoreboard resolver**, fetching live scores for
+  live games via the existing SportsDB CachingSource. Client can't get live
+  scores directly. Reuses pure `domain` scoring.
