@@ -26,7 +26,11 @@ async function setPreset(page: Page, phase: 'before' | 'during' | 'after') {
 /** Open Group A in the My Tips sub-navigation. */
 async function openGroupA(page: Page) {
   await page.locator('.nav-bar').getByRole('link', { name: 'My Tips' }).click()
-  await expect(page).toHaveURL(/\/mytips$/)
+  // My Tips groups are deep-linkable (`/mytips/:groupId`), and a deep link
+  // survives the dev-clock reload — so after this nav click the URL may be the
+  // bare `/mytips` or carry a leftover group segment. Both mean "on My Tips";
+  // the round-tab + group-pill clicks below re-establish Group A regardless.
+  await expect(page).toHaveURL(/\/mytips(\/|$)/)
   // Row 1: pick the Group Stage round — only then do the group pills appear.
   await page
     .locator('.round-tabs button', { hasText: /^Group Stage$/ })
