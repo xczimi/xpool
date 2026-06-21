@@ -335,7 +335,7 @@ const en = {
   lastUpdated: 'Updated',
 
   // match page (#2) — prediction stats panel
-  predictionStatsTitle: 'What everyone tipped',
+  predictionStatsTitle: 'What everyone predicted',
   predictionStatsHidden: 'Other players’ tips appear once the match opens.',
   mostCommonScore: 'Most common score',
   mostCommonScorePlural: 'Most common scores',

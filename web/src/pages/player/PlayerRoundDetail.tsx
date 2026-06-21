@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useI18n } from '../../i18n/useI18n'
 import { STANDINGS_QUERY, TIPS_QUERY } from '../../graphql/queries'
@@ -131,7 +132,9 @@ export function PlayerRoundDetail({
               return (
                 <tr key={g.id}>
                   <td>
-                    <Matchup home={g.home} away={g.away} teams={teams} compact />
+                    <Link to={`/match/${g.id}`}>
+                      <Matchup home={g.home} away={g.away} teams={teams} compact />
+                    </Link>
                   </td>
                   <td>
                     {tip?.prediction

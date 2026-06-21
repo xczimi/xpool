@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useI18n } from '../../i18n/useI18n'
 import { TIPS_QUERY } from '../../graphql/queries'
@@ -121,7 +122,9 @@ export function PlayerTodaySlice({
               return (
                 <tr key={g.id} className={g.isToday ? 'is-today' : undefined}>
                   <td>
-                    <Matchup home={g.home} away={g.away} teams={teams} compact />
+                    <Link to={`/match/${g.id}`}>
+                      <Matchup home={g.home} away={g.away} teams={teams} compact />
+                    </Link>
                   </td>
                   <td>
                     {tip?.prediction

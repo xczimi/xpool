@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { useI18n } from '../../i18n/useI18n'
 import type { MatchPrediction, Perfect, Tournament } from '../../graphql/types'
 import type { Locale } from '../../i18n/strings'
@@ -55,16 +56,18 @@ export function PlayerPerfects({
               return (
                 <tr key={p.gameId}>
                   <td>
-                    {g ? (
-                      <Matchup
-                        home={g.home}
-                        away={g.away}
-                        teams={teams}
-                        compact
-                      />
-                    ) : (
-                      p.gameId
-                    )}
+                    <Link to={`/match/${p.gameId}`}>
+                      {g ? (
+                        <Matchup
+                          home={g.home}
+                          away={g.away}
+                          teams={teams}
+                          compact
+                        />
+                      ) : (
+                        p.gameId
+                      )}
+                    </Link>
                   </td>
                   <td>{r ? `${r.homeScore}–${r.awayScore}` : '—'}</td>
                   <td>
