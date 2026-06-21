@@ -1,8 +1,22 @@
-import type { Perfect, Round, ScoreEntry } from '../graphql/types'
+import type { Perfect, Pool, Round, ScoreEntry } from '../graphql/types'
 
 /** Scoreboard entries ranked by total points, descending. Returns a new array. */
 export function rankedScoreboard(scoreboard: ScoreEntry[]): ScoreEntry[] {
   return [...scoreboard].sort((a, b) => b.total - a.total)
+}
+
+/**
+ * The first pool the viewer shares with `playerId`. The `pools` query returns
+ * only the viewer's own pools, so a hit means both belong to that pool. Checks
+ * EVERY pool the viewer is in, not just the first — the gate for viewing a
+ * player's detail page is "you share at least one pool with them". `undefined`
+ * when they share none.
+ */
+export function sharedPoolWith(
+  pools: Pool[],
+  playerId: string,
+): Pool | undefined {
+  return pools.find((p) => p.members.includes(playerId))
 }
 
 /** A player's scoreboard entry, or null if absent (e.g. not a pool-mate). */

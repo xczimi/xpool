@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import type { Perfect, ScoreEntry } from '../graphql/types'
+import type { Perfect, Pool, ScoreEntry } from '../graphql/types'
 import {
   perfectsOf,
   playerEntry,
   playerRank,
   rankedScoreboard,
   roundPointsOf,
+  sharedPoolWith,
 } from './playerPage'
 
 const board: ScoreEntry[] = [
@@ -58,5 +59,28 @@ describe('perfectsOf', () => {
       { playerId: 'b', nick: 'Bob', gameId: 'g1', points: 4, breakdown: { exactHome: true, exactAway: true, outcome: true, base: 4, multiplier: 1, points: 4 } },
     ]
     expect(perfectsOf(perfects, 'a').map((p) => p.playerId)).toEqual(['a'])
+  })
+})
+
+describe('sharedPoolWith', () => {
+  const pools: Pool[] = [
+    { id: 'p1', name: 'One', owner: 'me', members: ['me', 'a'], prefix: 'p1' },
+    { id: 'p2', name: 'Two', owner: 'me', members: ['me', 'b', 'c'], prefix: 'p2' },
+  ]
+
+  it('finds a pool shared with the target', () => {
+    expect(sharedPoolWith(pools, 'a')?.id).toBe('p1')
+  })
+
+  it('checks every pool, not just the first — target only in the second', () => {
+    expect(sharedPoolWith(pools, 'c')?.id).toBe('p2')
+  })
+
+  it('returns undefined when no pool is shared', () => {
+    expect(sharedPoolWith(pools, 'z')).toBeUndefined()
+  })
+
+  it('returns undefined when the viewer has no pools', () => {
+    expect(sharedPoolWith([], 'a')).toBeUndefined()
   })
 })

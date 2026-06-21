@@ -191,7 +191,7 @@ const en = {
   perfectByPlayer: 'By player',
 
   // player-detail page
-  playerNotInPool: 'This player is not in your pool.',
+  playerNotInPool: "You don't share a pool with this player.",
   playerPageOwnLink: 'My player page',
   playerProfileLink: 'Profile & settings',
   playerPerfectsHeading: 'Perfect predictions',
@@ -511,7 +511,7 @@ const hu: Record<StringKey, string> = {
   perfectByPlayer: 'Játékos szerint',
 
   // player-detail page
-  playerNotInPool: 'Ez a játékos nincs a ligádban.',
+  playerNotInPool: 'Nincs közös ligátok ezzel a játékossal.',
   playerPageOwnLink: 'Saját oldalam',
   playerProfileLink: 'Adatok és beállítások',
   playerPerfectsHeading: 'Telitalálatok',

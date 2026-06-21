@@ -20,7 +20,12 @@ import type {
   Tournament,
 } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
-import { perfectsOf, playerEntry, playerRank } from '../lib/playerPage'
+import {
+  perfectsOf,
+  playerEntry,
+  playerRank,
+  sharedPoolWith,
+} from '../lib/playerPage'
 import { PlayerHeader } from './player/PlayerHeader'
 import { PlayerTodaySlice } from './player/PlayerTodaySlice'
 import { PlayerPerfects } from './player/PlayerPerfects'
@@ -39,13 +44,21 @@ export function PlayerPage() {
   const { t, locale } = useI18n()
   const { label } = useAuth()
 
-  // Viewer's default pool (first pool they belong to); `null` = global board.
-  // Mirrors ScoreboardPage's default-pool logic but without the picker.
+  // The viewer's pools (they are a member of each). You may view a player's
+  // page if you share AT LEAST ONE pool with them — checked across every pool
+  // you belong to, not just the first. The header standing is scoped to that
+  // shared pool (your common context); your own page resolves to your first
+  // pool, and a pool-less viewer falls back to the global board.
   const [poolsResult] = useQuery<{ pools: Pool[] }>({
     query: POOLS_QUERY,
     pause: !label,
   })
-  const effectivePool = poolsResult.data?.pools?.[0]?.id ?? null
+  const pools = useMemo(
+    () => poolsResult.data?.pools ?? [],
+    [poolsResult.data],
+  )
+  const sharedPool = useMemo(() => sharedPoolWith(pools, id), [pools, id])
+  const effectivePool = sharedPool?.id ?? null
 
   const [meResult] = useQuery<{ me: Me }>({ query: ME_QUERY, pause: !label })
   const meRaw = meResult.data?.me ?? null
@@ -89,13 +102,22 @@ export function PlayerPage() {
   }, [resultsResult.data])
 
   if (!label) return <NeedsLogin />
-  if (scoreboardResult.fetching || tournamentResult.fetching) return <Loading />
+  if (
+    poolsResult.fetching ||
+    meResult.fetching ||
+    scoreboardResult.fetching ||
+    tournamentResult.fetching
+  )
+    return <Loading />
   if (scoreboardResult.error)
     return <ErrorView message={scoreboardResult.error.message} />
   if (!tournament) return <ErrorView />
 
-  // Soft pool-mate gate: not the viewer and not present in their pool board.
-  if (!entry) {
+  // Soft pool-mate gate: you may view a player's page if it's your own or you
+  // share at least one pool with them. A shared pool-mate who has not yet
+  // predicted has no scoreboard entry either — both fall through to the same
+  // notice rather than crash on a missing entry.
+  if ((!isOwn && !sharedPool) || !entry) {
     return (
       <section className="page">
         <p>{t('playerNotInPool')}</p>
