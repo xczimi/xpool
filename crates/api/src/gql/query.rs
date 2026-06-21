@@ -401,11 +401,37 @@ impl QueryRoot {
         Ok(out)
     }
 
-    /// Every "perfect" (maximum-scoring) prediction across all players (UC-10).
-    async fn perfects(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<Perfect>> {
+    /// Every "perfect" (maximum-scoring) prediction across all players (UC-10),
+    /// optionally scoped to a pool's members. A pool filter is private — it
+    /// requires the viewer to be a member (or owner) of that pool, mirroring
+    /// `scoreboard` / `tips` (Issue 04). `None` = the global listing (public).
+    async fn perfects(
+        &self,
+        ctx: &Context<'_>,
+        pool: Option<String>,
+    ) -> async_graphql::Result<Vec<Perfect>> {
         let repo = repo(ctx);
         let players = repo.list_players().await?;
         let config = ScoringConfig::default();
+
+        // Optional pool scoping — same private-membership rule as `scoreboard`.
+        let allowed: Option<Vec<String>> = match &pool {
+            Some(pool_id) => {
+                let viewer = CurrentPlayer::require(ctx)?;
+                let pools = repo.list_pools().await?;
+                let p = pools
+                    .into_iter()
+                    .find(|p| &p.id == pool_id)
+                    .ok_or_else(|| async_graphql::Error::new("pool not found"))?;
+                if !p.members.contains(&viewer.id) && p.owner != viewer.id {
+                    return Err(async_graphql::Error::new(
+                        "you are not a member of this pool",
+                    ));
+                }
+                Some(p.members)
+            }
+            None => None,
+        };
 
         // The tournament gives each game's round, for the points multiplier.
         let tournament = repo.get_tournament().await?;
@@ -425,6 +451,9 @@ impl QueryRoot {
         let mut perfects = Vec::new();
         for player in &players {
             if player.is_result_user {
+                continue;
+            }
+            if allowed.as_ref().is_some_and(|m| !m.contains(&player.id)) {
                 continue;
             }
             for prediction in &player.match_predictions {
@@ -1275,5 +1304,194 @@ mod match_tests {
             .collect();
         assert!(ids.contains(&"alice".to_string()), "alice (member) shown");
         assert!(!ids.contains(&"bob".to_string()), "bob (non-member) hidden");
+    }
+}
+
+#[cfg(test)]
+mod perfects_tests {
+    use crate::auth::CurrentPlayer;
+    use crate::reported::ReportedResultSource;
+    use async_trait::async_trait;
+    use chrono::{TimeZone, Utc};
+    use domain::{
+        GroupChildren, GroupGame, LockMode, MatchPrediction, Player, Pool, Round, SingleGame,
+        Team, TeamSlot, Tournament,
+    };
+    use sportsdb::Event;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use storage::{InMemoryRepository, Repository};
+
+    struct NoSource;
+    #[async_trait]
+    impl ReportedResultSource for NoSource {
+        async fn lookup_events(&self, _ids: &[String]) -> anyhow::Result<Vec<Event>> {
+            Ok(vec![])
+        }
+    }
+
+    fn team(id: &str) -> Team {
+        Team {
+            id: id.into(),
+            name: id.into(),
+            short_code: id.into(),
+            flag: None,
+            external_id: None,
+        }
+    }
+
+    fn player_with(id: &str, h: u8, a: u8, is_result_user: bool) -> Player {
+        Player {
+            id: id.into(),
+            person_id: format!("p-{id}"),
+            nick: id.into(),
+            full_name: id.into(),
+            referrer: None,
+            is_result_user,
+            version: 0,
+            match_predictions: vec![MatchPrediction {
+                game_id: "M1".into(),
+                home_score: h,
+                away_score: a,
+                locked: true,
+            }],
+            standings_predictions: vec![],
+        }
+    }
+
+    async fn repo_with_two_perfects() -> InMemoryRepository {
+        let game = SingleGame {
+            id: "M1".into(),
+            kickoff: Utc.with_ymd_and_hms(2026, 6, 11, 18, 0, 0).unwrap(),
+            venue: None,
+            group_id: "A".into(),
+            home: TeamSlot {
+                team_id: Some("AAA".into()),
+                description: "A1".into(),
+            },
+            away: TeamSlot {
+                team_id: Some("BBB".into()),
+                description: "A2".into(),
+            },
+            external_id: None,
+        };
+        let group = GroupGame {
+            id: "A".into(),
+            name: "A".into(),
+            parent: None,
+            round: Round::GroupStage,
+            lock_mode: LockMode::LockTogether,
+            carries_standings: true,
+            children: GroupChildren::Games(vec!["M1".into()]),
+        };
+        let t = Tournament {
+            root: "A".into(),
+            groups: HashMap::from([("A".to_string(), group)]),
+            games: HashMap::from([("M1".to_string(), game)]),
+            teams: HashMap::from([
+                ("AAA".to_string(), team("AAA")),
+                ("BBB".to_string(), team("BBB")),
+            ]),
+        };
+        let repo = InMemoryRepository::new();
+        repo.put_tournament(&t).await.unwrap();
+        // Official result 2–1; both players predicted 2–1 → both perfect.
+        repo.put_player(&player_with("result-user", 2, 1, true))
+            .await
+            .unwrap();
+        repo.put_player(&player_with("alice", 2, 1, false))
+            .await
+            .unwrap();
+        repo.put_player(&player_with("bob", 2, 1, false))
+            .await
+            .unwrap();
+        repo
+    }
+
+    async fn exec(repo: InMemoryRepository, viewer: Player, query: &str) -> serde_json::Value {
+        let repo: Arc<dyn Repository> = Arc::new(repo);
+        let source: Arc<dyn ReportedResultSource> = Arc::new(NoSource);
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(query)
+            .data(CurrentPlayer::Player(Box::new(viewer)))
+            .data(crate::clock::RequestNow(
+                "2026-06-12T12:00:00Z".parse().unwrap(),
+            ));
+        let resp = schema.execute(req).await;
+        assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+        resp.data.into_json().unwrap()
+    }
+
+    #[tokio::test]
+    async fn no_pool_returns_every_perfect() {
+        let repo = repo_with_two_perfects().await;
+        let data = exec(
+            repo,
+            player_with("alice", 2, 1, false),
+            r#"{ perfects { playerId gameId } }"#,
+        )
+        .await;
+        let ids: Vec<String> = data["perfects"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["playerId"].as_str().unwrap().to_string())
+            .collect();
+        assert!(ids.contains(&"alice".to_string()));
+        assert!(ids.contains(&"bob".to_string()));
+    }
+
+    #[tokio::test]
+    async fn pool_filter_restricts_perfects_to_members() {
+        let repo = repo_with_two_perfects().await;
+        // Pool P1 contains only alice (the viewer); bob is excluded.
+        repo.put_pool(&Pool {
+            id: "P1".into(),
+            name: "Pool 1".into(),
+            owner: "alice".into(),
+            members: vec!["alice".into()],
+            prefix: "P1".into(),
+        })
+        .await
+        .unwrap();
+        let data = exec(
+            repo,
+            player_with("alice", 2, 1, false),
+            r#"{ perfects(pool:"P1") { playerId gameId } }"#,
+        )
+        .await;
+        let ids: Vec<String> = data["perfects"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["playerId"].as_str().unwrap().to_string())
+            .collect();
+        assert!(ids.contains(&"alice".to_string()), "alice (member) shown");
+        assert!(!ids.contains(&"bob".to_string()), "bob (non-member) hidden");
+    }
+
+    #[tokio::test]
+    async fn pool_filter_requires_membership() {
+        let repo = repo_with_two_perfects().await;
+        // Pool P2 does NOT contain bob — bob asking to scope to it is rejected.
+        repo.put_pool(&Pool {
+            id: "P2".into(),
+            name: "Pool 2".into(),
+            owner: "alice".into(),
+            members: vec!["alice".into()],
+            prefix: "P2".into(),
+        })
+        .await
+        .unwrap();
+        let repo: Arc<dyn Repository> = Arc::new(repo);
+        let source: Arc<dyn ReportedResultSource> = Arc::new(NoSource);
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(r#"{ perfects(pool:"P2") { playerId } }"#)
+            .data(CurrentPlayer::Player(Box::new(player_with("bob", 2, 1, false))))
+            .data(crate::clock::RequestNow(
+                "2026-06-12T12:00:00Z".parse().unwrap(),
+            ));
+        let resp = schema.execute(req).await;
+        assert!(!resp.errors.is_empty(), "non-member must be rejected");
     }
 }
