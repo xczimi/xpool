@@ -139,6 +139,8 @@ const en = {
 
   // schedule
   scheduleTitle: 'Schedule',
+  scheduleViewByGroup: 'By group',
+  scheduleViewByDate: 'By date',
 
   // my tips
   myTipsTitle: 'My Tips',
@@ -189,6 +191,7 @@ const en = {
   // player-detail page
   playerNotInPool: 'This player is not in your pool.',
   playerPageOwnLink: 'My player page',
+  playerProfileLink: 'Profile & settings',
   playerPerfectsHeading: 'Perfect predictions',
   playerNowHeading: 'Around now',
   tipCol: 'Tip',
@@ -437,6 +440,8 @@ const hu: Record<StringKey, string> = {
   yourPoints: 'Pontjaid',
 
   scheduleTitle: 'Menetrend',
+  scheduleViewByGroup: 'Csoport szerint',
+  scheduleViewByDate: 'Dátum szerint',
 
   myTipsTitle: 'Tippjeim',
   selectGroup: 'Válassz csoportot',
@@ -482,6 +487,7 @@ const hu: Record<StringKey, string> = {
   // player-detail page
   playerNotInPool: 'Ez a játékos nincs a ligádban.',
   playerPageOwnLink: 'Saját oldalam',
+  playerProfileLink: 'Adatok és beállítások',
   playerPerfectsHeading: 'Telitalálatok',
   playerNowHeading: 'Épp most',
   tipCol: 'Tipp',
