@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
@@ -17,15 +17,18 @@ import { ErrorView, Loading } from '../components/StatusViews'
 import { usePolledQuery } from '../lib/usePolledQuery'
 import { pollIntervalMs } from '../lib/polling'
 import { readyRounds, roundLabel, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
+import { PoolSelector } from '../pools/PoolSelector'
+import { useSelectedPool } from '../pools/useSelectedPool'
+import { effectiveSelectedPool } from '../lib/selectedPool'
 
 /** Ranked leaderboard, overall + per stage, with pool selector (UC-8). */
 export function ScoreboardPage() {
   const { t } = useI18n()
   const { label } = useAuth()
-  // `undefined` = the user has not chosen yet → default to their first pool
-  // (the pool board is the default view); `null` = the explicit "everyone"
-  // global board; a string = a specific pool.
-  const [poolId, setPoolId] = useState<string | null | undefined>(undefined)
+  // Sticky, cross-page pool selection (see SelectedPoolProvider): `undefined`
+  // = not chosen → default to the first pool; `null` = explicit "everyone";
+  // a string = a specific pool.
+  const { selected } = useSelectedPool()
 
   // `pools` requires authentication (API.md §8) — the scoreboard itself is
   // public, so the pool selector is only populated for a logged-in player.
@@ -36,7 +39,10 @@ export function ScoreboardPage() {
   })
   const pools = poolsResult.data?.pools ?? []
   // Default to the first pool the player belongs to; global stays reachable.
-  const effectivePool = poolId === undefined ? (pools[0]?.id ?? null) : poolId
+  const effectivePool = effectiveSelectedPool(
+    selected,
+    pools.map((p) => p.id),
+  )
 
   const [probe] = useQuery<{
     tournament: Tournament | null
@@ -77,20 +83,7 @@ export function ScoreboardPage() {
       <h2>{t('scoreboardTitle')}</h2>
       {interval > 0 && <p className="poll-note">● live</p>}
 
-      <label className="pool-selector">
-        {t('pool')}:{' '}
-        <select
-          value={effectivePool ?? ''}
-          onChange={(e) => setPoolId(e.target.value || null)}
-        >
-          <option value="">{t('everyone')}</option>
-          {pools.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      <PoolSelector pools={pools} />
 
       <table className="data-table">
         <thead>
