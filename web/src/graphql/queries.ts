@@ -66,7 +66,7 @@ export const RESULTS_QUERY = `
 export const SCOREBOARD_QUERY = `
   query Scoreboard($pool: ID) {
     scoreboard(pool: $pool) {
-      playerId nick total
+      playerId nick total maxAchievable
       stages { round points }
     }
   }

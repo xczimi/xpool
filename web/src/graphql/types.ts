@@ -109,6 +109,8 @@ export interface ScoreEntry {
   playerId: string
   nick: string
   total: number
+  /** Best still-reachable total while ≥1 match is live; null otherwise. */
+  maxAchievable: number | null
   /** Per-round point breakdown (multipliers already applied server-side). */
   stages: StageScore[]
 }

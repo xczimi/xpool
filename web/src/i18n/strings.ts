@@ -318,6 +318,16 @@ const en = {
   awaitingResult: 'Awaiting official result',
   ninetyMinuteNote:
     'Knockout — provisional points use the 90-minute rule; extra time may change the official result.',
+
+  // scoreboard live ceiling (live-scoring cluster)
+  ceilingLabel: 'Max',
+  ceilingTooltip: 'Best still-reachable total — provisional while matches are live',
+  liveBoardNote: 'Live — “Max” shows each player’s best still-reachable total',
+
+  // match page force-refresh (live-scoring cluster)
+  refreshNow: 'Refresh now',
+  refreshing: 'Refreshing…',
+  lastUpdated: 'Updated',
 } as const
 
 const hu: Record<StringKey, string> = {
@@ -606,6 +616,16 @@ const hu: Record<StringKey, string> = {
   awaitingResult: 'Hivatalos eredményre várunk',
   ninetyMinuteNote:
     'Kieséses szakasz — az ideiglenes pontok a 90 perces szabály szerint számolnak; a hosszabbítás módosíthatja a hivatalos eredményt.',
+
+  // scoreboard live ceiling (live-scoring cluster)
+  ceilingLabel: 'Max',
+  ceilingTooltip: 'Elérhető legjobb összpontszám — ideiglenes, amíg meccsek élnek',
+  liveBoardNote: 'Élő — a „Max” mutatja kinek mennyi a még elérhető pontja',
+
+  // match page force-refresh (live-scoring cluster)
+  refreshNow: 'Frissítés most',
+  refreshing: 'Frissítés…',
+  lastUpdated: 'Frissítve',
 }
 
 export const catalogues: Record<Locale, Record<StringKey, string>> = {

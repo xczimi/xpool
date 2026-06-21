@@ -71,11 +71,16 @@ export function ScoreboardPage() {
   if (!scoreboard) return <ErrorView />
 
   const ranked = [...scoreboard].sort((a, b) => b.total - a.total)
+  // Show the "Max" (still-reachable) column only while at least one player has
+  // a live ceiling — the server returns null for everyone when nothing is live.
+  const showCeiling = ranked.some((e) => e.maxAchievable != null)
 
   return (
     <section className="page">
       <h2>{t('scoreboardTitle')}</h2>
-      {interval > 0 && <p className="poll-note">● live</p>}
+      {interval > 0 && (
+        <p className="poll-note">● {showCeiling ? t('liveBoardNote') : 'live'}</p>
+      )}
 
       <label className="pool-selector">
         {t('pool')}:{' '}
@@ -107,6 +112,7 @@ export function ScoreboardPage() {
               </th>
             ))}
             <th>{t('total')}</th>
+            {showCeiling && <th title={t('ceilingTooltip')}>{t('ceilingLabel')}</th>}
           </tr>
         </thead>
         <tbody>
@@ -126,6 +132,17 @@ export function ScoreboardPage() {
                 <td>
                   <strong>{entry.total}</strong>
                 </td>
+                {showCeiling && (
+                  <td className="score-ceiling">
+                    {entry.maxAchievable != null ? (
+                      <span className="ceiling-value" title={t('ceilingTooltip')}>
+                        ≤ {entry.maxAchievable}
+                      </span>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                )}
               </tr>
             )
           })}
