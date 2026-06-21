@@ -63,7 +63,7 @@ export function Layout() {
       </header>
 
       <AuthBar />
-      <NavBar isPlayer={showPlayerNav} isAdmin={Boolean(me?.isResultUser)} />
+      <NavBar isPlayer={showPlayerNav} isAdmin={Boolean(me?.isResultUser)} me={me} />
 
       <main className="content">
         {deadEnd ? <NeedsInvite /> : <Outlet />}
