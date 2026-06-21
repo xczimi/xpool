@@ -3,11 +3,12 @@ import { useParams } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
-import { MATCH_QUERY, POOLS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
-import type { MatchDetail, Pool, Tournament } from '../graphql/types'
+import { MATCH_QUERY, ME_QUERY, POOLS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
+import type { MatchDetail, Me, Pool, Tournament } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { Matchup } from '../components/TeamLabel'
 import { PointsBadge } from '../components/PointsBadge'
+import { PredictionStats } from '../components/PredictionStats'
 import { teamIndex, formatKickoff } from '../lib/format'
 
 /**
@@ -28,7 +29,15 @@ export function MatchPage() {
     pause: !label,
   })
   const pools = poolsResult.data?.pools ?? []
+  // integration: swap for shared sticky pool context
   const effectivePool = poolId === undefined ? (pools[0]?.id ?? null) : poolId
+
+  // The viewer's own player id — needed to exclude the always-visible own row
+  // from the stats visibility gate. Sourced from `me` (useAuth exposes only a
+  // display label, not the player id).
+  const [meResult] = useQuery<{ me: Me }>({ query: ME_QUERY, pause: !label })
+  const meRaw = meResult.data?.me ?? null
+  const viewerId = meRaw?.__typename === 'Player' ? meRaw.id : null
 
   const [tournamentResult] = useQuery<{ tournament: Tournament | null }>({
     query: TOURNAMENT_QUERY,
@@ -89,6 +98,14 @@ export function MatchPage() {
 
   const { game, actual, rows } = match
 
+  // The stats gate mirrors the server: a NON-own row with a visible prediction
+  // means the server has revealed others' tips (deadline passed / kickoff). The
+  // viewer's own prediction is always visible, so it is excluded here. No
+  // Date.now() — the gate is entirely server-derived (the row's `prediction`).
+  const gateOpen = rows.some(
+    (r) => r.playerId !== viewerId && r.prediction != null,
+  )
+
   return (
     <section className="page match-page">
       <h2>{t('match')}</h2>
@@ -117,6 +134,11 @@ export function MatchPage() {
         <div className="match-card-kickoff">
           {formatKickoff(game.kickoff, locale)}
         </div>
+        {game.venue && (
+          <div className="match-card-venue">
+            {t('venue')}: {game.venue}
+          </div>
+        )}
 
         <div className="match-refresh">
           <button
@@ -164,6 +186,14 @@ export function MatchPage() {
           )
         )}
       </div>
+
+      {gateOpen ? (
+        <PredictionStats rows={rows} actual={actual} />
+      ) : (
+        <p className="match-note match-muted prediction-stats-hidden">
+          {t('predictionStatsHidden')}
+        </p>
+      )}
 
       <table className="data-table compact match-grid">
         <thead>

@@ -330,6 +330,18 @@ const en = {
   refreshNow: 'Refresh now',
   refreshing: 'Refreshing…',
   lastUpdated: 'Updated',
+
+  // match page (#2) — prediction stats panel
+  predictionStatsTitle: 'What everyone tipped',
+  predictionStatsHidden: 'Other players’ tips appear once the match opens.',
+  mostCommonScore: 'Most common score',
+  mostCommonScorePlural: 'Most common scores',
+  outcomeSplitLabel: 'Outcome',
+  outcomeHome: 'Home win',
+  outcomeDraw: 'Draw',
+  outcomeAway: 'Away win',
+  nailedItLabel: 'Nailed the exact score',
+  statsTipCount: 'tips',
 } as const
 
 const hu: Record<StringKey, string> = {
@@ -630,6 +642,18 @@ const hu: Record<StringKey, string> = {
   refreshNow: 'Frissítés most',
   refreshing: 'Frissítés…',
   lastUpdated: 'Frissítve',
+
+  // match page (#2) — prediction stats panel
+  predictionStatsTitle: 'Mit tippeltek a többiek',
+  predictionStatsHidden: 'A többiek tippjei a meccs kezdetekor jelennek meg.',
+  mostCommonScore: 'Leggyakoribb eredmény',
+  mostCommonScorePlural: 'Leggyakoribb eredmények',
+  outcomeSplitLabel: 'Kimenetel',
+  outcomeHome: 'Hazai győzelem',
+  outcomeDraw: 'Döntetlen',
+  outcomeAway: 'Vendég győzelem',
+  nailedItLabel: 'Eltalálta a pontos eredményt',
+  statsTipCount: 'tipp',
 }
 
 export const catalogues: Record<Locale, Record<StringKey, string>> = {

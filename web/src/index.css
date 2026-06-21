@@ -1355,6 +1355,66 @@ button.danger:hover:not(:disabled) {
   font-size: 16px;
   color: var(--muted);
 }
+.match-card-venue {
+  font-family: 'VT323', monospace;
+  font-size: 15px;
+  color: var(--muted);
+}
+.prediction-stats {
+  margin: 12px 0 4px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 2px solid var(--bg-card-border);
+}
+.prediction-stats-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin: 0 0 10px;
+  color: var(--amber-bright);
+}
+.prediction-stats-list {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.prediction-stats-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'VT323', monospace;
+  font-size: 16px;
+}
+.prediction-stats-row dt {
+  color: var(--muted);
+}
+.prediction-stats-row dd {
+  margin: 0;
+  color: var(--ink);
+}
+.stats-scoreline {
+  margin-right: 10px;
+}
+.stats-count {
+  color: var(--muted);
+}
+.stats-outcome-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.prediction-stats-total {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  color: var(--muted);
+  margin: 10px 0 0;
+  text-align: right;
+}
+.prediction-stats-hidden {
+  text-align: center;
+}
 .match-scoreline {
   display: inline-flex;
   align-items: center;
