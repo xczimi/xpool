@@ -47,6 +47,24 @@ export function MatchPage() {
   const match = matchResult.data?.match ?? null
   const isLive = match?.actual?.provisional ?? false
 
+  // Last-updated stamp — display only (formatting is allowed to read the wall
+  // clock per .specs/TESTING.md §3.3; no behavioural branch reads Date.now()).
+  // Adjust-during-render (React's "storing previous value" pattern) so we stamp
+  // a fresh time whenever a new `match` response settles, without a setState in
+  // an effect. The stamp tracks the data object identity from urql.
+  const [lastSeen, setLastSeen] = useState<{
+    data: typeof matchResult.data
+    at: Date
+  } | null>(null)
+  if (
+    matchResult.data &&
+    !matchResult.fetching &&
+    matchResult.data !== lastSeen?.data
+  ) {
+    setLastSeen({ data: matchResult.data, at: new Date() })
+  }
+  const lastUpdated = lastSeen?.at ?? null
+
   // Poll only while live. 60s matches the server cache floor — polling faster
   // would only re-read the cache, never hit SportsDB more often.
   useEffect(() => {
@@ -98,6 +116,25 @@ export function MatchPage() {
         </div>
         <div className="match-card-kickoff">
           {formatKickoff(game.kickoff, locale)}
+        </div>
+
+        <div className="match-refresh">
+          <button
+            type="button"
+            className="refresh-btn"
+            onClick={() => reexecuteMatch({ requestPolicy: 'network-only' })}
+            disabled={matchResult.fetching}
+          >
+            {matchResult.fetching ? t('refreshing') : t('refreshNow')}
+          </button>
+          {matchResult.fetching && (
+            <span className="refresh-spinner" aria-hidden="true" />
+          )}
+          {lastUpdated && (
+            <span className="last-updated">
+              {t('lastUpdated')} {lastUpdated.toLocaleTimeString(locale)}
+            </span>
+          )}
         </div>
 
         {actual ? (
