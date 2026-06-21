@@ -97,7 +97,7 @@ test('match page: venue renders and prediction stats are gated by visibility', a
   // both ada and grace tipped it) and the hidden note is gone.
   const stats = page.locator('.prediction-stats')
   await expect(stats).toBeVisible()
-  await expect(stats).toContainText('What everyone tipped')
+  await expect(stats).toContainText('What everyone predicted')
   await expect(stats.locator('.stats-scoreline').first()).toContainText('2')
   await expect(page.locator('.prediction-stats-hidden')).toHaveCount(0)
 
