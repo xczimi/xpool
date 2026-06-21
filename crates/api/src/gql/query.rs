@@ -31,75 +31,6 @@ fn now(ctx: &Context<'_>) -> chrono::DateTime<chrono::Utc> {
     ctx.data_unchecked::<crate::clock::RequestNow>().0
 }
 
-/// A live match the scoreboard can credit best-case points for: the game's
-/// round (for the multiplier) and the synthesized live score. Only games that
-/// are in the live window, have an `external_id`, have NO entered official
-/// result, and whose source returns a usable score appear here.
-struct LiveMatch {
-    game_id: domain::GameId,
-    round: domain::Round,
-    live: domain::MatchPrediction,
-}
-
-/// Collect every currently-live match for the whole tournament by consulting the
-/// reported source once for all candidate external ids. Empty when nothing is
-/// live — the caller uses that to leave `maxAchievable` `None`.
-async fn live_matches(
-    ctx: &Context<'_>,
-    t: &domain::Tournament,
-    entered: &std::collections::HashSet<String>,
-    now: chrono::DateTime<chrono::Utc>,
-) -> Vec<LiveMatch> {
-    // Candidate games: in the live window, mapped to an external id, no official
-    // result yet. event id -> (game_id, round).
-    let mut by_event: HashMap<String, (domain::GameId, domain::Round)> = HashMap::new();
-    for game in t.games.values() {
-        if entered.contains(&game.id) {
-            continue;
-        }
-        let in_window = now >= game.kickoff && now <= game.kickoff + LIVE_WINDOW;
-        if !in_window {
-            continue;
-        }
-        if let Some(ext) = &game.external_id {
-            let round = t
-                .groups
-                .get(&game.group_id)
-                .map(|g| g.round)
-                .unwrap_or(domain::Round::GroupStage);
-            by_event.insert(ext.clone(), (game.id.clone(), round));
-        }
-    }
-    if by_event.is_empty() {
-        return Vec::new();
-    }
-
-    let ids: Vec<String> = by_event.keys().cloned().collect();
-    let source = ctx.data_unchecked::<Arc<dyn crate::reported::ReportedResultSource>>();
-    let events = source.lookup_events(&ids).await.unwrap_or_default();
-
-    let mut out = Vec::new();
-    for e in events {
-        if let Some((game_id, round)) = by_event.get(&e.id_event) {
-            if let (Some(h), Some(a)) = (e.int_home_score, e.int_away_score) {
-                if (0..=255).contains(&h) && (0..=255).contains(&a) {
-                    out.push(LiveMatch {
-                        game_id: game_id.clone(),
-                        round: *round,
-                        live: domain::MatchPrediction {
-                            game_id: game_id.clone(),
-                            home_score: h as u8,
-                            away_score: a as u8,
-                            locked: true,
-                        },
-                    });
-                }
-            }
-        }
-    }
-    out
-}
-
 /// Collect the leaf groups (those that directly hold games) in the subtree
 /// rooted at `node_id`, in tree order. A leaf group passed directly returns
 /// itself; a round node returns its one-match leaf groups.
@@ -135,6 +66,7 @@ fn scored_tip(
     deadline: Option<chrono::DateTime<chrono::Utc>>,
     now: chrono::DateTime<chrono::Utc>,
     actual: Option<&domain::MatchPrediction>,
+    result_is_live: bool,
     multiplier: i64,
     config: &ScoringConfig,
 ) -> Tip {
@@ -159,6 +91,15 @@ fn scored_tip(
     let is_perfect_tip = breakdown
         .as_ref()
         .is_some_and(|b| b.base >= config.perfect_threshold);
+    // Best points still reachable IN THIS match while it is live (provisional).
+    // `actual` carries the live provisional score during a live match; null
+    // otherwise (pre-kickoff or once an official result is entered).
+    let max_reachable = match (result_is_live, visible, prediction, actual) {
+        (true, true, Some(pred), Some(res)) => {
+            Some(domain::scoring::max_reachable_score(pred, res, config, multiplier))
+        }
+        _ => None,
+    };
     Tip {
         player_id: player.id.clone(),
         nick: player.nick.clone(),
@@ -171,6 +112,7 @@ fn scored_tip(
         points,
         is_perfect: is_perfect_tip,
         breakdown,
+        max_reachable,
     }
 }
 
@@ -218,33 +160,6 @@ impl QueryRoot {
             .map(|p| (p.id.as_str(), p.nick.as_str()))
             .collect();
 
-        // Live max-achievable add-on (live-scoring cluster). Only computed while
-        // ≥1 match is live; otherwise `maxAchievable` stays `None` and the board
-        // renders exactly as before. Server-only: the live score comes from the
-        // reported source (the client cannot fetch it).
-        let now = now(ctx);
-        let config = ScoringConfig::default();
-        let tournament = repo.get_tournament().await?;
-        let live: Vec<LiveMatch> = if let Some(t) = &tournament {
-            let entered: std::collections::HashSet<String> = players
-                .iter()
-                .find(|p| p.is_result_user)
-                .map(|r| {
-                    r.match_predictions
-                        .iter()
-                        .map(|p| p.game_id.clone())
-                        .collect()
-                })
-                .unwrap_or_default();
-            live_matches(ctx, t, &entered, now).await
-        } else {
-            Vec::new()
-        };
-        let any_live = !live.is_empty();
-        // player id -> their Player (for live predictions). Cheap clone-free map.
-        let player_by_id: HashMap<&str, &domain::Player> =
-            players.iter().map(|p| (p.id.as_str(), p)).collect();
-
         // Restrict to a pool's members if requested. Issue 04 — pool
         // membership is private: a pool filter requires authentication and the
         // caller must be a member (or owner) of that pool.
@@ -290,30 +205,6 @@ impl QueryRoot {
                     })
                     .collect();
                 let total: i64 = breakdown.values().sum();
-                // While anything is live, the ceiling = settled total + the best
-                // still-reachable points from each live match this player tipped.
-                let max_achievable = if any_live {
-                    let player = player_by_id.get(pid.as_str());
-                    let live_best: i64 = live
-                        .iter()
-                        .map(|lm| {
-                            player
-                                .and_then(|p| p.match_prediction(&lm.game_id))
-                                .map(|pred| {
-                                    domain::scoring::max_reachable_score(
-                                        pred,
-                                        &lm.live,
-                                        &config,
-                                        config.multiplier(lm.round),
-                                    )
-                                })
-                                .unwrap_or(0)
-                        })
-                        .sum();
-                    Some(total + live_best)
-                } else {
-                    None
-                };
                 ScoreEntry {
                     player_id: pid.clone(),
                     nick: nick_by_id
@@ -322,7 +213,6 @@ impl QueryRoot {
                         .unwrap_or("")
                         .to_owned(),
                     total,
-                    max_achievable,
                     stages,
                 }
             })
@@ -454,6 +344,7 @@ impl QueryRoot {
                     deadline,
                     now,
                     result,
+                    false, // the all-tips grid never shows the live-match ceiling
                     config.multiplier(round_of(game)),
                     &config,
                 ));
@@ -834,6 +725,9 @@ impl QueryRoot {
         let deadline = tournament.deadline(&game.group_id);
         let multiplier = config.multiplier(round);
         let viewer_pred = viewer.match_prediction(&game_id);
+        // A live provisional score drives the per-player max-reachable ceiling;
+        // an official (final) result or no score yet leaves it null.
+        let result_is_live = actual_score.as_ref().map(|s| s.provisional).unwrap_or(false);
         let game_ids = [game_id.clone()];
         let rows: Vec<Tip> = domain::participation::tippers_in(&players, &game_ids)
             .into_iter()
@@ -847,6 +741,7 @@ impl QueryRoot {
                     deadline,
                     now,
                     actual_pred.as_ref(),
+                    result_is_live,
                     multiplier,
                     &config,
                 )
@@ -1297,6 +1192,91 @@ mod match_tests {
     }
 
     #[tokio::test]
+    async fn live_match_row_exposes_per_player_max_reachable() {
+        let repo = repo_with_m1(kickoff()).await;
+        // alice predicted 1–0; live score is 1–0 → still perfect-reachable.
+        // max_reachable_score(1–0, live 1–0, group ×1) = 4 (domain-verified).
+        let alice = player("alice", 1, 0, true);
+        repo.put_player(&alice).await.unwrap();
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![live_event("E1", 1, 0, "2H")]));
+        let now = kickoff() + chrono::Duration::minutes(67); // in the live window
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1"){ rows{ playerId maxReachable } } }"#,
+        )
+        .await;
+        let row = data["match"]["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["playerId"] == "alice")
+            .unwrap();
+        assert_eq!(row["maxReachable"], 4);
+    }
+
+    #[tokio::test]
+    async fn max_reachable_is_null_when_match_not_live() {
+        // Before kickoff there is no provisional score, so the per-match ceiling
+        // is null — it only ever appears while the match is live.
+        let repo = repo_with_m1(kickoff()).await;
+        let alice = player("alice", 1, 0, true);
+        repo.put_player(&alice).await.unwrap();
+        let source: Arc<dyn ReportedResultSource> =
+            Arc::new(StubSource(vec![live_event("E1", 1, 0, "2H")]));
+        let now = kickoff() - chrono::Duration::hours(1); // pre-kickoff: not live
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1"){ rows{ playerId maxReachable } } }"#,
+        )
+        .await;
+        let row = data["match"]["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["playerId"] == "alice")
+            .unwrap();
+        assert_eq!(row["maxReachable"], serde_json::Value::Null);
+    }
+
+    #[tokio::test]
+    async fn max_reachable_is_null_for_official_final_result() {
+        // An official (final) entered result is not "live" — no ceiling.
+        let repo = repo_with_m1(kickoff()).await;
+        let mut ru = player("result-user", 1, 0, true);
+        ru.is_result_user = true;
+        repo.put_player(&ru).await.unwrap();
+        let alice = player("alice", 1, 0, true);
+        repo.put_player(&alice).await.unwrap();
+        let source: Arc<dyn ReportedResultSource> = Arc::new(StubSource(vec![]));
+        let now = kickoff() + chrono::Duration::minutes(67);
+        let data = exec(
+            repo,
+            source,
+            alice,
+            now,
+            r#"{ match(gameId:"M1"){ actual{ provisional } rows{ playerId maxReachable points } } }"#,
+        )
+        .await;
+        assert_eq!(data["match"]["actual"]["provisional"], false);
+        let row = data["match"]["rows"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["playerId"] == "alice")
+            .unwrap();
+        // Official result is scored, but the live ceiling is null (not live).
+        assert!(row["points"].as_i64().unwrap() > 0);
+        assert_eq!(row["maxReachable"], serde_json::Value::Null);
+    }
+
+    #[tokio::test]
     async fn official_result_takes_priority_over_live() {
         let repo = repo_with_m1(kickoff()).await;
         // result user entered 2–2 (official); the stub says 1–0 but must be ignored.
@@ -1616,231 +1596,5 @@ mod perfects_tests {
             ));
         let resp = schema.execute(req).await;
         assert!(!resp.errors.is_empty(), "non-member must be rejected");
-    }
-}
-
-#[cfg(test)]
-mod scoreboard_live_tests {
-    use crate::auth::CurrentPlayer;
-    use crate::reported::ReportedResultSource;
-    use async_trait::async_trait;
-    use chrono::{DateTime, TimeZone, Utc};
-    use domain::{
-        GroupChildren, GroupGame, LockMode, MatchPrediction, Player, Round, SingleGame, Team,
-        TeamSlot, Tournament,
-    };
-    use sportsdb::Event;
-    use std::collections::HashMap;
-    use std::sync::Arc;
-    use storage::{InMemoryRepository, Repository, Scoreboard};
-
-    struct StubSource(Vec<Event>);
-    #[async_trait]
-    impl ReportedResultSource for StubSource {
-        async fn lookup_events(&self, ids: &[String]) -> anyhow::Result<Vec<Event>> {
-            Ok(self
-                .0
-                .iter()
-                .filter(|e| ids.contains(&e.id_event))
-                .cloned()
-                .collect())
-        }
-    }
-
-    fn live_event(id: &str, h: i64, a: i64) -> Event {
-        Event {
-            id_event: id.into(),
-            date_event: "2026-06-11".into(),
-            id_home_team: "AAA".into(),
-            id_away_team: "BBB".into(),
-            int_home_score: Some(h),
-            int_away_score: Some(a),
-            str_status: "2H".into(),
-            str_timestamp: None,
-        }
-    }
-
-    fn team(id: &str) -> Team {
-        Team {
-            id: id.into(),
-            name: id.into(),
-            short_code: id.into(),
-            flag: None,
-            external_id: None,
-        }
-    }
-
-    fn player(id: &str, h: u8, a: u8) -> Player {
-        Player {
-            id: id.into(),
-            person_id: format!("p-{id}"),
-            nick: id.into(),
-            full_name: id.into(),
-            referrer: None,
-            is_result_user: false,
-            version: 0,
-            match_predictions: vec![MatchPrediction {
-                game_id: "M1".into(),
-                home_score: h,
-                away_score: a,
-                locked: true,
-            }],
-            standings_predictions: vec![],
-        }
-    }
-
-    fn result_user() -> Player {
-        Player {
-            id: "result-user".into(),
-            person_id: "p-ru".into(),
-            nick: "official".into(),
-            full_name: "Official".into(),
-            referrer: None,
-            is_result_user: true,
-            version: 0,
-            match_predictions: vec![],
-            standings_predictions: vec![],
-        }
-    }
-
-    fn kickoff() -> DateTime<Utc> {
-        Utc.with_ymd_and_hms(2026, 6, 11, 18, 0, 0).unwrap()
-    }
-
-    /// One group-stage game M1 (idEvent E1), plus a materialised scoreboard that
-    /// already credits `alice` 0 (M1 not yet entered as an official result).
-    async fn repo() -> InMemoryRepository {
-        let game = SingleGame {
-            id: "M1".into(),
-            kickoff: kickoff(),
-            venue: None,
-            group_id: "A".into(),
-            home: TeamSlot {
-                team_id: Some("AAA".into()),
-                description: "A1".into(),
-            },
-            away: TeamSlot {
-                team_id: Some("BBB".into()),
-                description: "A2".into(),
-            },
-            external_id: Some("E1".into()),
-        };
-        let group = GroupGame {
-            id: "A".into(),
-            name: "A".into(),
-            parent: None,
-            round: Round::GroupStage,
-            lock_mode: LockMode::LockTogether,
-            carries_standings: false,
-            children: GroupChildren::Games(vec!["M1".into()]),
-        };
-        let t = Tournament {
-            root: "A".into(),
-            groups: HashMap::from([("A".to_string(), group)]),
-            games: HashMap::from([("M1".to_string(), game)]),
-            teams: HashMap::from([
-                ("AAA".to_string(), team("AAA")),
-                ("BBB".to_string(), team("BBB")),
-            ]),
-        };
-        let repo = InMemoryRepository::new();
-        repo.put_tournament(&t).await.unwrap();
-        repo.put_player(&result_user()).await.unwrap();
-        // alice's stored board: 0 settled points (M1 has no official result yet).
-        let mut board = Scoreboard::default();
-        board.entries.insert("alice".into(), HashMap::new());
-        repo.put_scoreboard(&board).await.unwrap();
-        repo
-    }
-
-    async fn exec(
-        repo: InMemoryRepository,
-        source: Arc<dyn ReportedResultSource>,
-        now: DateTime<Utc>,
-        query: &str,
-    ) -> serde_json::Value {
-        let repo: Arc<dyn Repository> = Arc::new(repo);
-        let schema = crate::gql::build_schema(repo, source);
-        let req = async_graphql::Request::new(query)
-            .data(CurrentPlayer::Visitor)
-            .data(crate::clock::RequestNow(now));
-        let resp = schema.execute(req).await;
-        assert!(resp.errors.is_empty(), "{:?}", resp.errors);
-        resp.data.into_json().unwrap()
-    }
-
-    #[tokio::test]
-    async fn max_achievable_present_and_above_total_while_live() {
-        let repo = repo().await;
-        let alice = player("alice", 1, 0);
-        repo.put_player(&alice).await.unwrap();
-        // Live 1–0; alice predicted 1–0 → best reachable base 4 (group ×1).
-        let source: Arc<dyn ReportedResultSource> =
-            Arc::new(StubSource(vec![live_event("E1", 1, 0)]));
-        let now = kickoff() + chrono::Duration::minutes(67); // in live window
-        let data = exec(
-            repo,
-            source,
-            now,
-            r#"{ scoreboard { playerId total maxAchievable } }"#,
-        )
-        .await;
-        let row = data["scoreboard"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|r| r["playerId"] == "alice")
-            .unwrap();
-        assert_eq!(row["total"], 0);
-        assert_eq!(row["maxAchievable"], 4); // 0 settled + best-case live 4
-    }
-
-    #[tokio::test]
-    async fn max_achievable_null_when_no_match_is_live() {
-        let repo = repo().await;
-        let alice = player("alice", 1, 0);
-        repo.put_player(&alice).await.unwrap();
-        // Source returns nothing → no live match → maxAchievable null.
-        let source: Arc<dyn ReportedResultSource> = Arc::new(StubSource(vec![]));
-        let now = kickoff() + chrono::Duration::minutes(30);
-        let data = exec(
-            repo,
-            source,
-            now,
-            r#"{ scoreboard { playerId total maxAchievable } }"#,
-        )
-        .await;
-        let row = data["scoreboard"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|r| r["playerId"] == "alice")
-            .unwrap();
-        assert_eq!(row["maxAchievable"], serde_json::Value::Null);
-    }
-
-    #[tokio::test]
-    async fn max_achievable_null_before_kickoff() {
-        let repo = repo().await;
-        let alice = player("alice", 1, 0);
-        repo.put_player(&alice).await.unwrap();
-        // Even if the source had data, before kickoff the game is not live.
-        let source: Arc<dyn ReportedResultSource> =
-            Arc::new(StubSource(vec![live_event("E1", 1, 0)]));
-        let now = kickoff() - chrono::Duration::hours(1);
-        let data = exec(
-            repo,
-            source,
-            now,
-            r#"{ scoreboard { playerId maxAchievable } }"#,
-        )
-        .await;
-        let row = data["scoreboard"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .find(|r| r["playerId"] == "alice")
-            .unwrap();
-        assert_eq!(row["maxAchievable"], serde_json::Value::Null);
     }
 }
