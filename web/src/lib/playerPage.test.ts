@@ -9,9 +9,9 @@ import {
 } from './playerPage'
 
 const board: ScoreEntry[] = [
-  { playerId: 'a', nick: 'Ada', total: 10, maxAchievable: null, stages: [{ round: 'GROUP_STAGE', points: 6 }, { round: 'R16', points: 4 }] },
-  { playerId: 'b', nick: 'Bob', total: 25, maxAchievable: null, stages: [{ round: 'GROUP_STAGE', points: 25 }] },
-  { playerId: 'c', nick: 'Cy', total: 25, maxAchievable: null, stages: [] },
+  { playerId: 'a', nick: 'Ada', total: 10, stages: [{ round: 'GROUP_STAGE', points: 6 }, { round: 'R16', points: 4 }] },
+  { playerId: 'b', nick: 'Bob', total: 25, stages: [{ round: 'GROUP_STAGE', points: 25 }] },
+  { playerId: 'c', nick: 'Cy', total: 25, stages: [] },
 ]
 
 describe('rankedScoreboard', () => {

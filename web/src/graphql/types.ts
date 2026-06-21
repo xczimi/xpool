@@ -109,8 +109,6 @@ export interface ScoreEntry {
   playerId: string
   nick: string
   total: number
-  /** Best still-reachable total while ≥1 match is live; null otherwise. */
-  maxAchievable: number | null
   /** Per-round point breakdown (multipliers already applied server-side). */
   stages: StageScore[]
 }
@@ -153,6 +151,8 @@ export interface Tip {
   isPerfect: boolean
   /** Component breakdown of `points` — null whenever `points` is. */
   breakdown: PointsBreakdown | null
+  /** Best still-reachable points for THIS match while it is live; null otherwise. */
+  maxReachable: number | null
 }
 
 export interface Perfect {

@@ -8,8 +8,9 @@ import { devLogin, expectNoErrorView, watchNetwork } from './helpers'
  *   A. Match page during the live window shows the live (provisional) score,
  *      a working "Refresh now" button (re-issues the match query on the wire),
  *      and a last-updated indicator.
- *   B. Scoreboard shows the "Max" (still-reachable) column while M8 is live,
- *      with grace's ceiling reflecting her 1–0 tip vs the 1–0 live score.
+ *   B. The live match page shows each player's per-match still-reachable
+ *      ceiling while M8 is live — grace's row reflects her 1–0 tip vs the 1–0
+ *      live score (best reachable base 4, group ×1).
  *
  * M8 is the live game (Group D's second game — distinct from M4, which
  * match-page.spec.ts uses for its official-result assertions, so the live stub
@@ -122,7 +123,9 @@ test('live match page: provisional score, refresh re-issues query, last-updated 
   net.assertNoPageErrors()
 })
 
-test('scoreboard: Max column appears with grace ceiling while M8 is live', async ({ page }) => {
+test('live match page: per-player max-reachable shows grace ceiling while M8 is live', async ({
+  page,
+}) => {
   const net = watchNetwork(page)
   await page.goto('/')
   await devLogin(page, 'demo-grace')
@@ -135,20 +138,22 @@ test('scoreboard: Max column appears with grace ceiling while M8 is live', async
   await page.getByRole('button', { name: 'Save draft' }).click()
   await expect(page.locator('.flash-bar')).toContainText('Saved')
 
-  // Move into M8's live window so the server sees a live match.
+  // Move into M8's live window so the server sees a live (provisional) score.
   await setPreset(page, LIVE_GAME, 'during')
 
-  await page.locator('.nav-bar').getByRole('link', { name: 'Scoreboard' }).click()
-  await expect(page).toHaveURL(/\/scoreboard$/)
+  await page.goto(`/match/${LIVE_GAME}`)
+  await expect(page).toHaveURL(new RegExp(`/match/${LIVE_GAME}`))
 
-  // The "Max" column appears only while something is live.
-  const ceiling = page.locator('.score-ceiling').first()
+  // The per-match still-reachable ceiling appears only while the match is live.
+  const ceiling = page.locator('.max-reachable').first()
   await expect(ceiling).toBeVisible()
 
-  // grace's row shows a ceiling of ≤ 4 (1–0 vs live 1–0 → base 4, group ×1).
-  const graceRow = page.locator('table.data-table tbody tr').filter({ hasText: 'grace' })
+  // grace's row shows a ceiling of ≤ 4 (her 1–0 tip vs live 1–0 → base 4, ×1).
+  const graceRow = page
+    .locator('table.match-grid tbody tr')
+    .filter({ hasText: 'grace' })
   await expect(graceRow).toBeVisible()
-  await expect(graceRow.locator('.score-ceiling')).toContainText('4')
+  await expect(graceRow.locator('.max-reachable')).toContainText('4')
 
   await expectNoErrorView(page)
   await net.assertNoGraphqlErrors()

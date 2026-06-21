@@ -224,6 +224,14 @@ export function MatchPage() {
                 ) : (
                   '—'
                 )}
+                {row.maxReachable != null && (
+                  <span
+                    className="max-reachable"
+                    title={t('maxReachableTooltip')}
+                  >
+                    {t('maxReachableShort')} ≤ {row.maxReachable}
+                  </span>
+                )}
               </td>
             </tr>
           ))}

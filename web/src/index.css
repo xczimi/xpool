@@ -881,13 +881,16 @@ button.danger:hover:not(:disabled) {
   letter-spacing: 0.5px;
 }
 
-/* Scoreboard "Max" (still-reachable) column — muted/provisional look. */
-.score-ceiling {
+/* Per-player still-reachable ceiling on the live match page — muted,
+   provisional look, shown beside the points badge only while the match is live. */
+.max-reachable {
+  display: block;
+  margin-top: 2px;
   color: var(--muted, #777);
-  font-variant-numeric: tabular-nums;
-}
-.ceiling-value {
   font-style: italic;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
 }
 
 .hint {

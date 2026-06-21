@@ -66,7 +66,7 @@ export const RESULTS_QUERY = `
 export const SCOREBOARD_QUERY = `
   query Scoreboard($pool: ID) {
     scoreboard(pool: $pool) {
-      playerId nick total maxAchievable
+      playerId nick total
       stages { round points }
     }
   }
@@ -241,7 +241,7 @@ export const MATCH_QUERY = `
       rows {
         playerId nick gameId
         prediction { gameId homeScore awayScore locked }
-        points isPerfect
+        points isPerfect maxReachable
         breakdown { exactHome exactAway outcome base multiplier points }
       }
     }

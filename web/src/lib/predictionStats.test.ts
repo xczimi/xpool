@@ -12,6 +12,7 @@ function tip(playerId: string, home: number, away: number): Tip {
     points: null,
     isPerfect: false,
     breakdown: null,
+    maxReachable: null,
   }
 }
 
@@ -25,6 +26,7 @@ function hiddenTip(playerId: string): Tip {
     points: null,
     isPerfect: false,
     breakdown: null,
+    maxReachable: null,
   }
 }
 

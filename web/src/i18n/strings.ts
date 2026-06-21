@@ -324,10 +324,10 @@ const en = {
   ninetyMinuteNote:
     'Knockout — provisional points use the 90-minute rule; extra time may change the official result.',
 
-  // scoreboard live ceiling (live-scoring cluster)
-  ceilingLabel: 'Max',
-  ceilingTooltip: 'Best still-reachable total — provisional while matches are live',
-  liveBoardNote: 'Live — “Max” shows each player’s best still-reachable total',
+  // per-player max-reachable on the live match page (live-scoring cluster)
+  maxReachableShort: 'max',
+  maxReachableTooltip:
+    'Best points still reachable in this match — provisional while it is live',
 
   // match page force-refresh (live-scoring cluster)
   refreshNow: 'Refresh now',
@@ -639,10 +639,10 @@ const hu: Record<StringKey, string> = {
   ninetyMinuteNote:
     'Kieséses szakasz — az ideiglenes pontok a 90 perces szabály szerint számolnak; a hosszabbítás módosíthatja a hivatalos eredményt.',
 
-  // scoreboard live ceiling (live-scoring cluster)
-  ceilingLabel: 'Max',
-  ceilingTooltip: 'Elérhető legjobb összpontszám — ideiglenes, amíg meccsek élnek',
-  liveBoardNote: 'Élő — a „Max” mutatja kinek mennyi a még elérhető pontja',
+  // per-player max-reachable on the live match page (live-scoring cluster)
+  maxReachableShort: 'max',
+  maxReachableTooltip:
+    'Ebben a meccsben még elérhető legjobb pont — ideiglenes, amíg él',
 
   // match page force-refresh (live-scoring cluster)
   refreshNow: 'Frissítés most',
