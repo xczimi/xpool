@@ -318,6 +318,11 @@ pub struct ScoreEntry {
     pub nick: String,
     /// Sum across all rounds.
     pub total: i64,
+    /// The best total still mathematically reachable: settled points plus the
+    /// best-case live points for matches in progress. `None` when no match is
+    /// live (the scoreboard then renders exactly as today). Provisional — the
+    /// SPA marks it clearly. Not-yet-started fixtures contribute 0.
+    pub max_achievable: Option<i64>,
     pub stages: Vec<StageScore>,
 }
 

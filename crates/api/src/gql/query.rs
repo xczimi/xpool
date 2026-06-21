@@ -202,6 +202,7 @@ impl QueryRoot {
                         .unwrap_or("")
                         .to_owned(),
                     total,
+                    max_achievable: None,
                     stages,
                 }
             })
