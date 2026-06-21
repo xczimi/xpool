@@ -1094,6 +1094,35 @@ button.danger:hover:not(:disabled) {
   border: 1px solid var(--bg-card-border);
 }
 
+.schedule-day {
+  margin: 16px 0;
+  padding: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--bg-card-border);
+}
+
+.schedule-view-toggle {
+  display: inline-flex;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+.schedule-view-toggle .view-tab {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  font: inherit;
+}
+
+.schedule-view-toggle .view-tab.active {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+
 /* ============================================================================
    MOBILE (<= 640px)
    Reclaim padding, shrink the heaviest Press Start 2P glyphs, drop decoration.
