@@ -20,13 +20,15 @@ const repoRoot = resolve(here, '../..')
 async function scoreboardTotal(page: Page): Promise<number> {
   const totals = page.locator('.data-table tbody strong')
   await expect(totals.first()).toBeVisible()
-  const count = await totals.count()
-  let sum = 0
-  for (let i = 0; i < count; i++) {
-    const n = Number((await totals.nth(i).innerText()).replace(/[^\d-]/g, ''))
-    if (!Number.isNaN(n)) sum += n
-  }
-  return sum
+  // Read every total in ONE atomic snapshot. The scoreboard is a polled,
+  // re-materialising board; a per-element `nth(i).innerText()` loop races a
+  // re-render (an element detaches between count and read → 30s timeout under
+  // full-suite load). `allInnerTexts()` retrieves them in a single call.
+  const texts = await totals.allInnerTexts()
+  return texts.reduce((sum, text) => {
+    const n = Number(text.replace(/[^\d-]/g, ''))
+    return Number.isNaN(n) ? sum : sum + n
+  }, 0)
 }
 
 /**
