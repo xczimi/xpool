@@ -99,8 +99,8 @@ export const STANDINGS_QUERY = `
 `
 
 export const PERFECTS_QUERY = `
-  query Perfects {
-    perfects {
+  query Perfects($pool: ID) {
+    perfects(pool: $pool) {
       playerId nick gameId points
       breakdown { exactHome exactAway outcome base multiplier points }
     }
