@@ -1,19 +1,51 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery } from 'urql'
+import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
-import { PERFECTS_QUERY, RESULTS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
-import type { MatchPrediction, Perfect, Tournament } from '../graphql/types'
+import {
+  PERFECTS_QUERY,
+  POOLS_QUERY,
+  RESULTS_QUERY,
+  TOURNAMENT_QUERY,
+} from '../graphql/queries'
+import type { MatchPrediction, Perfect, Pool, Tournament } from '../graphql/types'
 import { ErrorView, Loading } from '../components/StatusViews'
 import { teamIndex } from '../lib/format'
 import { Matchup } from '../components/TeamLabel'
 import { PointsBadge } from '../components/PointsBadge'
+import { PoolSelector } from '../pools/PoolSelector'
+import { useSelectedPool } from '../pools/useSelectedPool'
+import { effectiveSelectedPool } from '../lib/selectedPool'
+import {
+  orderPerfects,
+  readPerfectView,
+  writePerfectView,
+  type PerfectView,
+} from '../lib/perfectOrder'
 
 /** Players who scored a maximum (4-point) match prediction (UC-10). Public. */
 export function PerfectPage() {
   const { t, locale } = useI18n()
+  const { label } = useAuth()
+  const { selected } = useSelectedPool()
+  const [view, setView] = useState<PerfectView>(readPerfectView)
+
+  // Pools require auth; PerfectPage is public, so pause for visitors — they
+  // see the global list (effectivePool resolves to null with no pools).
+  const [poolsResult] = useQuery<{ pools: Pool[] }>({
+    query: POOLS_QUERY,
+    pause: !label,
+  })
+  const pools = poolsResult.data?.pools ?? []
+  const effectivePool = effectiveSelectedPool(
+    selected,
+    pools.map((p) => p.id),
+  )
+
   const [result, reexecute] = useQuery<{ perfects: Perfect[] }>({
     query: PERFECTS_QUERY,
+    variables: { pool: effectivePool },
   })
   const [tournamentResult] = useQuery<{
     tournament: Tournament | null
@@ -39,7 +71,8 @@ export function PerfectPage() {
     }
     return map
   }, [tournament, teams])
-  // gameId -> kickoff epoch, for sorting perfects by match order (not by name).
+  // gameId -> kickoff epoch, for the ordering helper (server-provided times;
+  // Date.parse is formatting a server timestamp, not a behavioural clock read).
   const kickoffOf = useMemo(() => {
     const map = new Map<string, number>()
     for (const g of tournament?.games ?? []) {
@@ -55,16 +88,15 @@ export function PerfectPage() {
     return map
   }, [resultsResult.data])
 
-  // Order by match kickoff (earliest first), tie-broken by player nick so the
-  // several perfects for one match stay grouped and stable.
-  const perfects = useMemo(() => {
-    const list = result.data?.perfects ?? []
-    return [...list].sort((a, b) => {
-      const ka = kickoffOf.get(a.gameId) ?? Infinity
-      const kb = kickoffOf.get(b.gameId) ?? Infinity
-      return ka - kb || a.nick.localeCompare(b.nick)
-    })
-  }, [result.data, kickoffOf])
+  const perfects = useMemo(
+    () => orderPerfects(result.data?.perfects ?? [], view, kickoffOf),
+    [result.data, view, kickoffOf],
+  )
+
+  const chooseView = (next: PerfectView) => {
+    writePerfectView(next)
+    setView(next)
+  }
 
   if (result.fetching) return <Loading />
   if (result.error)
@@ -79,6 +111,28 @@ export function PerfectPage() {
     <section className="page">
       <h2>{t('perfectTitle')}</h2>
       <p>{t('perfectIntro')}</p>
+
+      <PoolSelector pools={pools} />
+
+      <div className="seg-toggle" role="group" aria-label={t('perfectTitle')}>
+        <button
+          type="button"
+          className={`seg-option${view === 'match' ? ' is-active' : ''}`}
+          aria-pressed={view === 'match'}
+          onClick={() => chooseView('match')}
+        >
+          {t('perfectByMatch')}
+        </button>
+        <button
+          type="button"
+          className={`seg-option${view === 'player' ? ' is-active' : ''}`}
+          aria-pressed={view === 'player'}
+          onClick={() => chooseView('player')}
+        >
+          {t('perfectByPlayer')}
+        </button>
+      </div>
+
       {perfects.length === 0 ? (
         <p>{t('perfectEmpty')}</p>
       ) : (

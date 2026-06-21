@@ -57,3 +57,24 @@ export function orderPerfects(
 ): Perfect[] {
   return view === 'player' ? byPlayer(list, kickoff) : byMatch(list, kickoff)
 }
+
+/** localStorage key for the persisted Perfect-page view mode. */
+export const PERFECT_VIEW_KEY = 'xpool.perfectView'
+
+/** Read the persisted view, defaulting to by-match. Total + failure-safe. */
+export function readPerfectView(): PerfectView {
+  try {
+    return localStorage.getItem(PERFECT_VIEW_KEY) === 'player' ? 'player' : 'match'
+  } catch {
+    return 'match'
+  }
+}
+
+/** Persist the chosen view. Convenience state — failures are swallowed. */
+export function writePerfectView(view: PerfectView): void {
+  try {
+    localStorage.setItem(PERFECT_VIEW_KEY, view)
+  } catch {
+    /* ignore */
+  }
+}

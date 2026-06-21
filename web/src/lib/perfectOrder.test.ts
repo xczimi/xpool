@@ -1,6 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import type { Perfect } from '../graphql/types'
-import { orderPerfects, type PerfectView } from './perfectOrder'
+import {
+  PERFECT_VIEW_KEY,
+  orderPerfects,
+  readPerfectView,
+  writePerfectView,
+  type PerfectView,
+} from './perfectOrder'
 
 const bd = {
   exactHome: true,
@@ -60,3 +66,16 @@ describe('orderPerfects by-player', () => {
 // import is not flagged unused by the linter.
 const _view: PerfectView = 'match'
 void _view
+
+afterEach(() => localStorage.clear())
+
+describe('perfect view persistence', () => {
+  it('defaults to by-match when nothing is stored', () => {
+    expect(readPerfectView()).toBe('match')
+  })
+  it('round-trips by-player', () => {
+    writePerfectView('player')
+    expect(localStorage.getItem(PERFECT_VIEW_KEY)).toBe('player')
+    expect(readPerfectView()).toBe('player')
+  })
+})
