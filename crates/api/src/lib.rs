@@ -30,10 +30,16 @@ pub fn build_app(
     cors: bool,
     cloudfront_secret: Option<String>,
 ) -> axum::Router {
-    use crate::reported::{CachingSource, NullSource, ReportedResultSource, SportsDbSource};
-    let reported: Arc<dyn ReportedResultSource> = match sportsdb::SportsDb::from_env() {
-        Some(client) => Arc::new(CachingSource::new(SportsDbSource(client))),
-        None => Arc::new(NullSource),
+    use crate::reported::{
+        CachingSource, NullSource, ReportedResultSource, SportsDbSource, StubLiveSource,
+    };
+    let reported: Arc<dyn ReportedResultSource> = if let Some(stub) = StubLiveSource::from_env() {
+        // Dev/test stub (e2e). Deterministic; no network. Inert in prod (env unset).
+        Arc::new(stub)
+    } else if let Some(client) = sportsdb::SportsDb::from_env() {
+        Arc::new(CachingSource::new(SportsDbSource(client)))
+    } else {
+        Arc::new(NullSource)
     };
     let schema = gql::build_schema(repo.clone(), reported);
     router::build_router(schema, repo, cors, cloudfront_secret)

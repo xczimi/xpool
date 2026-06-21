@@ -45,6 +45,62 @@ impl ReportedResultSource for NullSource {
     }
 }
 
+/// A **dev/test-only** stub source driven by the `XPOOL_LIVE_SCORES` env var, so
+/// the e2e suite can inject a deterministic live score without touching the
+/// network. Format: comma-separated `idEvent=home:away:status`
+/// (e.g. `"E1=1:0:2H"`). Inert in production — only constructed when the env var
+/// is set (see `build_app`). In the same dev-stub family as `X-Dev-Now`.
+pub struct StubLiveSource {
+    events: Vec<Event>,
+}
+
+impl StubLiveSource {
+    /// Parse the `XPOOL_LIVE_SCORES` value. Malformed entries are skipped.
+    pub fn parse(spec: &str) -> Self {
+        let events = spec
+            .split(',')
+            .filter_map(|entry| {
+                let (id, rest) = entry.split_once('=')?;
+                let mut parts = rest.split(':');
+                let h: i64 = parts.next()?.trim().parse().ok()?;
+                let a: i64 = parts.next()?.trim().parse().ok()?;
+                let status = parts.next().unwrap_or("2H").trim().to_string();
+                Some(Event {
+                    id_event: id.trim().to_string(),
+                    date_event: String::new(),
+                    id_home_team: String::new(),
+                    id_away_team: String::new(),
+                    int_home_score: Some(h),
+                    int_away_score: Some(a),
+                    str_status: status,
+                    str_timestamp: None,
+                })
+            })
+            .collect();
+        Self { events }
+    }
+
+    /// Construct from `XPOOL_LIVE_SCORES`, or `None` when unset/empty.
+    pub fn from_env() -> Option<Self> {
+        std::env::var("XPOOL_LIVE_SCORES")
+            .ok()
+            .filter(|s| !s.is_empty())
+            .map(|s| Self::parse(&s))
+    }
+}
+
+#[async_trait]
+impl ReportedResultSource for StubLiveSource {
+    async fn lookup_events(&self, ids: &[String]) -> anyhow::Result<Vec<Event>> {
+        Ok(self
+            .events
+            .iter()
+            .filter(|e| ids.contains(&e.id_event))
+            .cloned()
+            .collect())
+    }
+}
+
 /// A ~45s in-process TTL cache keyed per event id, so opening several group
 /// screens (or an auto-fetch followed by a manual refresh) doesn't re-hit
 /// SportsDB. In-process is enough — Lambda reuses warm containers and the
@@ -108,5 +164,24 @@ mod tests {
     #[tokio::test]
     async fn null_source_is_empty() {
         assert!(NullSource.lookup_events(&[]).await.unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn stub_live_source_parses_env_and_returns_matching_events() {
+        // Format: "E1=1:0:2H,E2=3:3:FT" — id=home:away:status, comma-separated.
+        let src = StubLiveSource::parse("E1=1:0:2H,E2=3:3:FT");
+        let got = src.lookup_events(&["E1".to_string()]).await.unwrap();
+        assert_eq!(got.len(), 1);
+        assert_eq!(got[0].id_event, "E1");
+        assert_eq!(got[0].int_home_score, Some(1));
+        assert_eq!(got[0].int_away_score, Some(0));
+        assert_eq!(got[0].str_status, "2H");
+    }
+
+    #[tokio::test]
+    async fn stub_live_source_ignores_unknown_ids() {
+        let src = StubLiveSource::parse("E1=1:0:2H");
+        let got = src.lookup_events(&["NOPE".to_string()]).await.unwrap();
+        assert!(got.is_empty());
     }
 }

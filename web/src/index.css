@@ -881,6 +881,15 @@ button.danger:hover:not(:disabled) {
   letter-spacing: 0.5px;
 }
 
+/* Scoreboard "Max" (still-reachable) column — muted/provisional look. */
+.score-ceiling {
+  color: var(--muted, #777);
+  font-variant-numeric: tabular-nums;
+}
+.ceiling-value {
+  font-style: italic;
+}
+
 .hint {
   font-family: 'Share Tech Mono', monospace;
   font-size: 12px;

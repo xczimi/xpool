@@ -103,6 +103,55 @@ pub fn is_perfect(p: &MatchPrediction, r: &MatchPrediction, c: &ScoringConfig) -
     score_match(p, r, c) >= c.perfect_threshold
 }
 
+/// The **best score still mathematically reachable** for a prediction `p` given
+/// a live score `live`, returned **multiplied** by `multiplier`.
+///
+/// Goals only go up, so the final `(h, a)` satisfies `h >= live.home_score`,
+/// `a >= live.away_score`. `score_match` reads only three flags (`exact_home`,
+/// `exact_away`, `outcome`). The `exact` flags saturate once a side passes
+/// `max(predicted, threshold)`, but the **`outcome`** flag couples the two
+/// sides: to reach a draw (or to let the trailing side overtake for a win) a
+/// side may have to climb up to the *other* side's level. So the safe per-axis
+/// bound is the **global** max across *both* predicted scores, *both* live
+/// scores and the threshold, plus one — beyond that point every flag is settled
+/// and pushing further only widens the difference monotonically. (A tighter
+/// per-axis bound that ignores the opposing side is wrong: e.g. `p = 0–0`,
+/// `live = 0–6` needs the home side to reach 6 to match the draw outcome.)
+/// The grid stays tiny (scores are small, threshold is 4), so the brute force is
+/// cheap and exact — verified exhaustively against a far larger ground-truth
+/// grid in tests.
+pub fn max_reachable_score(
+    p: &MatchPrediction,
+    live: &MatchPrediction,
+    c: &ScoringConfig,
+    multiplier: i64,
+) -> i64 {
+    let thr = c.high_scoring_threshold;
+    // One past every "interesting" value on EITHER side — the outcome flag
+    // couples the axes, so each side must be enumerated up to the global max.
+    let hi = p
+        .home_score
+        .max(p.away_score)
+        .max(live.home_score)
+        .max(live.away_score)
+        .max(thr)
+        .saturating_add(1);
+
+    let mut best = 0;
+    for fh in live.home_score..=hi {
+        for fa in live.away_score..=hi {
+            let final_score = MatchPrediction {
+                game_id: p.game_id.clone(),
+                home_score: fh,
+                away_score: fa,
+                locked: true,
+            };
+            best = best.max(score_match(p, &final_score, c));
+        }
+    }
+    best * multiplier
+}
+
 /// Effective-locked (`DATA_MODEL.md` §7): `locked OR (now > deadline AND complete)`.
 pub fn effective_locked(
     locked: bool,
@@ -731,5 +780,137 @@ mod unit_tests {
         let predicted = order(&["A", "C", "B"]);
         assert_eq!(standings_pairs(&predicted, &official), (2, 3));
         assert_eq!(standings_pairs(&official, &official), (3, 3));
+    }
+
+    // ─── max_reachable_score ─────────────────────────────────────────────────
+
+    /// Live score helper: a `MatchPrediction` standing in for "the score now".
+    fn live(h: u8, a: u8) -> MatchPrediction {
+        MatchPrediction {
+            game_id: "x".into(),
+            home_score: h,
+            away_score: a,
+            locked: true,
+        }
+    }
+
+    #[test]
+    fn max_reachable_exact_still_reachable() {
+        let c = ScoringConfig::default();
+        // Predicted 1–0; it's currently 1–0. The exact final 1–0 is reachable.
+        // Best base = 2 exact + outcome = 4. multiplier 1 → 4.
+        assert_eq!(max_reachable_score(&mp(1, 0), &live(1, 0), &c, 1), 4);
+    }
+
+    #[test]
+    fn max_reachable_exact_home_lost_but_outcome_and_away_kept() {
+        let c = ScoringConfig::default();
+        // Predicted 1–0 (home win); it's 2–0. final.home >= 2, so home can never
+        // equal predicted 1 → exact_home lost. final.away == 0 reachable →
+        // exact_away kept. Home win reachable (2–0) → outcome kept.
+        // base = 0 + 1 + 2 = 3.
+        assert_eq!(max_reachable_score(&mp(1, 0), &live(2, 0), &c, 1), 3);
+    }
+
+    #[test]
+    fn max_reachable_predicted_draw_outcome_lost_keeps_only_what_survives() {
+        let c = ScoringConfig::default();
+        // Predicted 0–0 (draw); it's 0–1. A draw needs final.home == final.away
+        // with away >= 1 (e.g. 1–1): exact_home (need 0) lost, exact_away (need 0)
+        // lost, draw outcome reachable. base = outcome only = 2.
+        assert_eq!(max_reachable_score(&mp(0, 0), &live(0, 1), &c, 1), 2);
+    }
+
+    #[test]
+    fn max_reachable_multiplier_is_applied() {
+        let c = ScoringConfig::default();
+        // Same as the exact case but a knockout multiplier (R32 = 2): 4 * 2 = 8.
+        let m = c.multiplier(Round::R32);
+        assert_eq!(max_reachable_score(&mp(1, 0), &live(1, 0), &c, m), 8);
+    }
+
+    #[test]
+    fn max_reachable_four_goal_rule_keeps_high_scoring_exact() {
+        let c = ScoringConfig::default();
+        // Predicted 5–0; it's 4–0. Both home sides >= threshold (4) → exact_home
+        // counts for any final.home >= 4. away 0 reachable → exact_away. home win
+        // reachable → outcome. base = 4.
+        assert_eq!(max_reachable_score(&mp(5, 0), &live(4, 0), &c, 1), 4);
+    }
+
+    #[test]
+    fn max_reachable_high_scoring_draw_both_sides_exact() {
+        let c = ScoringConfig::default();
+        // Predicted 4–4; it's 4–4. Both sides >= threshold for any growth, and a
+        // draw stays reachable (e.g. 5–5). base = 2 exact + draw outcome = 4.
+        assert_eq!(max_reachable_score(&mp(4, 4), &live(4, 4), &c, 1), 4);
+    }
+
+    #[test]
+    fn max_reachable_never_below_current_best() {
+        let c = ScoringConfig::default();
+        // The reachable max must be >= the score the prediction already earns
+        // against the live score treated as if final (a sanity monotonicity guard).
+        let p = mp(2, 1);
+        let l = live(2, 1);
+        let now_score = score_match(&p, &l, &c);
+        assert!(max_reachable_score(&p, &l, &c, 1) >= now_score);
+    }
+
+    #[test]
+    fn max_reachable_outcome_needs_climbing_past_the_other_side() {
+        let c = ScoringConfig::default();
+        // Predicted draw 0–0; it's 0–6. A draw is still reachable (6–6), but the
+        // home side must climb all the way up to 6 — past `max(p, live.home, thr)`.
+        // The bound must account for the opposing side, else this returns 0.
+        // base = draw outcome only = 2.
+        assert_eq!(max_reachable_score(&mp(0, 0), &live(0, 6), &c, 1), 2);
+        // Predicted home win 1–0; it's 0–6. A home win (e.g. 7–6) is reachable →
+        // outcome 2 points (exact_home not reachable: final.home != 1 once > live.away
+        // forces it past 6). The home side climbs well past `max(1, 0, 4)+1`.
+        assert_eq!(max_reachable_score(&mp(1, 0), &live(0, 6), &c, 1), 2);
+    }
+
+    #[test]
+    fn max_reachable_matches_bruteforce_ground_truth() {
+        // Exhaustive check: the bounded grid must equal a far larger brute-force
+        // grid for every reachable prediction/live pair in 0..=10. This is the
+        // guard that the per-axis bound is provably sufficient — the subtle
+        // outcome-coupling bug (a side must climb to the opposing side's level)
+        // would surface here.
+        let c = ScoringConfig::default();
+        let truth = |p: &MatchPrediction, l: &MatchPrediction| -> i64 {
+            let mut best = 0;
+            for fh in l.home_score..=l.home_score.saturating_add(60) {
+                for fa in l.away_score..=l.away_score.saturating_add(60) {
+                    best = best.max(score_match(
+                        p,
+                        &MatchPrediction {
+                            game_id: "x".into(),
+                            home_score: fh,
+                            away_score: fa,
+                            locked: true,
+                        },
+                        &c,
+                    ));
+                }
+            }
+            best
+        };
+        for ph in 0u8..=10 {
+            for pa in 0u8..=10 {
+                for lh in 0u8..=10 {
+                    for la in 0u8..=10 {
+                        let p = mp(ph, pa);
+                        let l = live(lh, la);
+                        assert_eq!(
+                            max_reachable_score(&p, &l, &c, 1),
+                            truth(&p, &l),
+                            "mismatch at p={ph}-{pa} live={lh}-{la}"
+                        );
+                    }
+                }
+            }
+        }
     }
 }
