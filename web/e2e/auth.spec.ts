@@ -13,10 +13,12 @@ test('dev login picks a seeded player and unlocks player-only nav', async ({
   const net = watchNetwork(page)
   await page.goto('/')
 
-  // As a visitor: player-only nav links are absent.
+  // As a visitor: player-only nav links are absent. Profile is no longer a nav
+  // item — it was replaced by the dynamic "My player page" item, which is also
+  // hidden for a visitor.
   await expect(page.locator('.auth-bar')).toContainText('You are outside.')
   await expect(page.getByRole('link', { name: 'My Tips' })).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'Profile' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'My player page' })).toHaveCount(0)
 
   // Pick demo-ada from the auth-bar picker.
   await devLogin(page, 'demo-ada')
@@ -25,9 +27,10 @@ test('dev login picks a seeded player and unlocks player-only nav', async ({
   // Player-only nav becomes usable. Scope to the nav bar: the identity-aware
   // Home also renders action links (My Tips, Pools, …) whose accessible names
   // collide with the nav links, so an unscoped role query would be ambiguous.
+  // Profile moved out of the nav into the "My player page" item (Issue 08).
   const nav = page.locator('.nav-bar')
   await expect(nav.getByRole('link', { name: 'My Tips' })).toBeVisible()
-  await expect(nav.getByRole('link', { name: 'Profile' })).toBeVisible()
+  await expect(nav.getByRole('link', { name: 'My player page' })).toBeVisible()
   await expect(nav.getByRole('link', { name: 'All Tips' })).toBeVisible()
 
   await expectNoErrorView(page)
@@ -42,7 +45,11 @@ test('profile loads for a logged-in player with no auth error', async ({
   await page.goto('/')
   await devLogin(page, 'demo-ada')
 
-  await page.getByRole('link', { name: 'Profile' }).click()
+  // Profile is no longer a nav link (it moved under "My player page"); the
+  // /profile route still exists and is the focus here — that it loads under a
+  // valid session with no auth error. The nav relocation itself is covered by
+  // nav-my-player-page.spec.ts.
+  await page.goto('/profile')
   await expect(page).toHaveURL(/\/profile$/)
   await expect(page.locator('h2')).toHaveText('Profile')
 

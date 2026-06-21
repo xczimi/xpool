@@ -65,14 +65,21 @@ test('selecting a single-member pool scopes the perfects list', async ({ page })
   await page.locator('.nav-bar').getByRole('link', { name: 'Perfect' }).click()
   await expect(page).toHaveURL(/\/perfect$/)
 
-  // Everyone: count the distinct players with perfects.
+  // Everyone: count the distinct players with perfects. Wait for the urql
+  // refetch to settle before reading — selectOption fires a new perfects query
+  // and the table briefly clears; reading too early races the transient empty
+  // state. (PerfectPage is not polled, so networkidle is reachable.)
   await page.locator('.pool-selector select').selectOption('')
+  await expect(page.locator('.pool-selector select')).toHaveValue('')
+  await page.waitForLoadState('networkidle')
   const everyoneNicks = await page
     .locator('.data-table tbody tr td:first-child')
     .allInnerTexts()
 
   // Scope to grace's solo pool: every row must be grace (or the table empty).
+  // Again wait for the scoped refetch to settle before reading.
   await page.locator('.pool-selector select').selectOption({ label: poolName })
+  await page.waitForLoadState('networkidle')
   const scopedNicks = new Set(
     await page.locator('.data-table tbody tr td:first-child').allInnerTexts(),
   )
