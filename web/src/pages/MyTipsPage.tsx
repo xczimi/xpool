@@ -28,6 +28,7 @@ import { RoundNav } from '../components/RoundNav'
 import { Countdown } from '../components/Countdown'
 import { currentRoundNode, leafGroupsOfRound, visibleRoundNodes } from '../lib/rounds'
 import { resolveGroupParam, roundNodeIdFor } from '../lib/groupRoute'
+import { readTipsGroup, writeTipsGroup } from '../lib/tipsGroup'
 import { useServerClock } from '../lib/useServerClock'
 import { GroupTipForm } from './mytips/GroupTipForm'
 
@@ -84,8 +85,20 @@ export function MyTipsPage() {
     [tournament?.groups, groupParam],
   )
 
+  // With no URL group, fall back to the last group the viewer looked at (shared
+  // with All Tips via localStorage) so switching pages lands on the same group.
+  // Honoured only when its round is still visible.
+  const storedResolved = useMemo(() => {
+    const r = resolveGroupParam(
+      tournament?.groups ?? [],
+      readTipsGroup() ?? undefined,
+    )
+    return r && rounds.some((n) => n.round === r.round) ? r : null
+  }, [tournament?.groups, rounds])
+  const effectiveResolved = paramResolved ?? storedResolved
+
   const activeRound =
-    paramResolved?.round ??
+    effectiveResolved?.round ??
     selectedRound ??
     currentRoundNode(rounds)?.round ??
     rounds[0]?.round ??
@@ -115,8 +128,13 @@ export function MyTipsPage() {
   // A leaf-group param pins the group; a round-node param (groupId === null)
   // and the no-param case both fall back to local state then the first leaf.
   const activeGroupId =
-    paramResolved?.groupId ?? selectedGroupId ?? roundLeaves[0]?.id ?? null
+    effectiveResolved?.groupId ?? selectedGroupId ?? roundLeaves[0]?.id ?? null
   const tipsGroupId = isGroupStage ? activeGroupId : (activeRoundNode?.id ?? null)
+
+  // Remember the group across My Tips ⇄ All Tips (and reloads).
+  useEffect(() => {
+    if (tipsGroupId) writeTipsGroup(tipsGroupId)
+  }, [tipsGroupId])
 
   // The server computes per-(player, game) earned points + breakdown on the tip
   // grid, and the per-group standings bonus on the standings query; we reuse

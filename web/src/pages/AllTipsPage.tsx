@@ -17,6 +17,8 @@ import { Matchup } from '../components/TeamLabel'
 import { PointsBadge } from '../components/PointsBadge'
 import { StandingsBadge } from '../components/StandingsBadge'
 import { currentRoundNode, leafGroupsOfRound, visibleRoundNodes } from '../lib/rounds'
+import { resolveGroupParam } from '../lib/groupRoute'
+import { readTipsGroup, writeTipsGroup } from '../lib/tipsGroup'
 import { PoolSelector } from '../pools/PoolSelector'
 import { useSelectedPool } from '../pools/useSelectedPool'
 import { effectiveSelectedPool } from '../lib/selectedPool'
@@ -61,14 +63,30 @@ export function AllTipsPage() {
     () => visibleRoundNodes(tournament?.groups ?? [], tournament?.games ?? []),
     [tournament?.groups, tournament?.games],
   )
+  // Fall back to the last group the viewer looked at (shared with My Tips via
+  // localStorage) so switching pages lands on the same group. Honoured only
+  // when its round is still visible.
+  const storedResolved = useMemo(() => {
+    const r = resolveGroupParam(
+      tournament?.groups ?? [],
+      readTipsGroup() ?? undefined,
+    )
+    return r && rounds.some((n) => n.round === r.round) ? r : null
+  }, [tournament?.groups, rounds])
+
   const activeRound =
-    selectedRound ?? currentRoundNode(rounds)?.round ?? rounds[0]?.round ?? null
+    selectedRound ??
+    storedResolved?.round ??
+    currentRoundNode(rounds)?.round ??
+    rounds[0]?.round ??
+    null
   const activeRoundNode = rounds.find((r) => r.round === activeRound) ?? null
   const roundLeaves = activeRoundNode
     ? leafGroupsOfRound(activeRoundNode, tournament?.groups ?? [])
     : []
   const isGroupStage = activeRound === 'GROUP_STAGE'
-  const activeGroupId = selectedGroupId ?? roundLeaves[0]?.id ?? null
+  const activeGroupId =
+    selectedGroupId ?? storedResolved?.groupId ?? roundLeaves[0]?.id ?? null
 
   // Keep group selection coherent with the active round: if the derived round
   // flips (e.g. a `tournament` refetch moves `currentRoundNode`), a group from
@@ -84,6 +102,11 @@ export function AllTipsPage() {
   // Group Stage queries one leaf group; a knockout round queries the round
   // node — the `tips` resolver walks its subtree.
   const tipsGroupId = isGroupStage ? activeGroupId : (activeRoundNode?.id ?? null)
+
+  // Remember the group across All Tips ⇄ My Tips (and reloads).
+  useEffect(() => {
+    if (tipsGroupId) writeTipsGroup(tipsGroupId)
+  }, [tipsGroupId])
 
   const [tipsResult, refetchTips] = useQuery<{ tips: Tip[] }>({
     query: TIPS_QUERY,

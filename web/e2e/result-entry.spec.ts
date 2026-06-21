@@ -16,7 +16,16 @@ async function setPreset(page: Page, phase: 'before' | 'during' | 'after') {
   const selects = page.locator('.dev-clock select')
   await selects.nth(0).selectOption(GAME)
   await expect(selects.nth(1)).toBeEnabled()
+  // Applying the phase awaits devRematerialize then `location.reload()`s. Tag
+  // the document and wait for the reload to clear it, so a following click does
+  // not race the in-flight reload back to the pre-reload URL.
+  await page.evaluate(() =>
+    document.documentElement.setAttribute('data-pre-reload', '1'),
+  )
   await selects.nth(1).selectOption(phase)
+  await page.waitForFunction(
+    () => !document.documentElement.hasAttribute('data-pre-reload'),
+  )
 }
 
 /** Open Group A in My Tips. */
