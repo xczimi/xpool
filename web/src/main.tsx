@@ -9,6 +9,7 @@ import { I18nProvider } from './i18n/I18nContext'
 import { DisplayModeProvider } from './display/DisplayModeProvider'
 import { Auth0Gate } from './auth/auth0Provider'
 import { ThemeProvider } from './theme/ThemeProvider'
+import { SelectedPoolProvider } from './pools/SelectedPoolProvider'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -18,9 +19,11 @@ createRoot(document.getElementById('root')!).render(
           <DisplayModeProvider>
             <AuthProvider>
               <GraphqlProvider>
-                <BrowserRouter>
-                  <App />
-                </BrowserRouter>
+                <SelectedPoolProvider>
+                  <BrowserRouter>
+                    <App />
+                  </BrowserRouter>
+                </SelectedPoolProvider>
               </GraphqlProvider>
             </AuthProvider>
           </DisplayModeProvider>
