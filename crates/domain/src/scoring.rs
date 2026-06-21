@@ -103,6 +103,45 @@ pub fn is_perfect(p: &MatchPrediction, r: &MatchPrediction, c: &ScoringConfig) -
     score_match(p, r, c) >= c.perfect_threshold
 }
 
+/// The **best score still mathematically reachable** for a prediction `p` given
+/// a live score `live`, returned **multiplied** by `multiplier`.
+///
+/// Goals only go up, so the final `(h, a)` satisfies `h >= live.home_score`,
+/// `a >= live.away_score`. `score_match` reads only three flags (`exact_home`,
+/// `exact_away`, `outcome`), and none of them changes once a side passes
+/// `max(predicted, live) + threshold`: a side that high is already "not equal to
+/// the prediction" and already "≥ threshold", and pushing it further only
+/// widens the goal difference monotonically (never flips a sign that wasn't
+/// already reachable). So enumerating finals up to that bound finds the true
+/// maximum. The candidate grid is tiny (predicted scores are small, threshold
+/// is 4), so the brute force is cheap and exact.
+pub fn max_reachable_score(
+    p: &MatchPrediction,
+    live: &MatchPrediction,
+    c: &ScoringConfig,
+    multiplier: i64,
+) -> i64 {
+    let thr = c.high_scoring_threshold;
+    // One past every "interesting" value on each side — beyond this the flags
+    // are saturated and the difference only grows.
+    let hi_home = p.home_score.max(live.home_score).max(thr).saturating_add(1);
+    let hi_away = p.away_score.max(live.away_score).max(thr).saturating_add(1);
+
+    let mut best = 0;
+    for fh in live.home_score..=hi_home {
+        for fa in live.away_score..=hi_away {
+            let final_score = MatchPrediction {
+                game_id: p.game_id.clone(),
+                home_score: fh,
+                away_score: fa,
+                locked: true,
+            };
+            best = best.max(score_match(p, &final_score, c));
+        }
+    }
+    best * multiplier
+}
+
 /// Effective-locked (`DATA_MODEL.md` §7): `locked OR (now > deadline AND complete)`.
 pub fn effective_locked(
     locked: bool,
@@ -731,5 +770,80 @@ mod unit_tests {
         let predicted = order(&["A", "C", "B"]);
         assert_eq!(standings_pairs(&predicted, &official), (2, 3));
         assert_eq!(standings_pairs(&official, &official), (3, 3));
+    }
+
+    // ─── max_reachable_score ─────────────────────────────────────────────────
+
+    /// Live score helper: a `MatchPrediction` standing in for "the score now".
+    fn live(h: u8, a: u8) -> MatchPrediction {
+        MatchPrediction {
+            game_id: "x".into(),
+            home_score: h,
+            away_score: a,
+            locked: true,
+        }
+    }
+
+    #[test]
+    fn max_reachable_exact_still_reachable() {
+        let c = ScoringConfig::default();
+        // Predicted 1–0; it's currently 1–0. The exact final 1–0 is reachable.
+        // Best base = 2 exact + outcome = 4. multiplier 1 → 4.
+        assert_eq!(max_reachable_score(&mp(1, 0), &live(1, 0), &c, 1), 4);
+    }
+
+    #[test]
+    fn max_reachable_exact_home_lost_but_outcome_and_away_kept() {
+        let c = ScoringConfig::default();
+        // Predicted 1–0 (home win); it's 2–0. final.home >= 2, so home can never
+        // equal predicted 1 → exact_home lost. final.away == 0 reachable →
+        // exact_away kept. Home win reachable (2–0) → outcome kept.
+        // base = 0 + 1 + 2 = 3.
+        assert_eq!(max_reachable_score(&mp(1, 0), &live(2, 0), &c, 1), 3);
+    }
+
+    #[test]
+    fn max_reachable_predicted_draw_outcome_lost_keeps_only_what_survives() {
+        let c = ScoringConfig::default();
+        // Predicted 0–0 (draw); it's 0–1. A draw needs final.home == final.away
+        // with away >= 1 (e.g. 1–1): exact_home (need 0) lost, exact_away (need 0)
+        // lost, draw outcome reachable. base = outcome only = 2.
+        assert_eq!(max_reachable_score(&mp(0, 0), &live(0, 1), &c, 1), 2);
+    }
+
+    #[test]
+    fn max_reachable_multiplier_is_applied() {
+        let c = ScoringConfig::default();
+        // Same as the exact case but a knockout multiplier (R32 = 2): 4 * 2 = 8.
+        let m = c.multiplier(Round::R32);
+        assert_eq!(max_reachable_score(&mp(1, 0), &live(1, 0), &c, m), 8);
+    }
+
+    #[test]
+    fn max_reachable_four_goal_rule_keeps_high_scoring_exact() {
+        let c = ScoringConfig::default();
+        // Predicted 5–0; it's 4–0. Both home sides >= threshold (4) → exact_home
+        // counts for any final.home >= 4. away 0 reachable → exact_away. home win
+        // reachable → outcome. base = 4.
+        assert_eq!(max_reachable_score(&mp(5, 0), &live(4, 0), &c, 1), 4);
+    }
+
+    #[test]
+    fn max_reachable_high_scoring_draw_both_sides_exact() {
+        let c = ScoringConfig::default();
+        // Predicted 4–4; it's 4–4. Both sides >= threshold for any growth, and a
+        // draw stays reachable (e.g. 5–5). base = 2 exact + draw outcome = 4.
+        assert_eq!(max_reachable_score(&mp(4, 4), &live(4, 4), &c, 1), 4);
+    }
+
+    #[test]
+    fn max_reachable_never_below_current_best() {
+        let c = ScoringConfig::default();
+        // The reachable max must be >= the score the prediction already earns
+        // against the live score treated as if final (a sanity monotonicity guard).
+        let p = mp(2, 1);
+        let l = live(2, 1);
+        let now_score = score_match(&p, &l, &c);
+        assert!(max_reachable_score(&p, &l, &c, 1) >= now_score);
     }
 }
