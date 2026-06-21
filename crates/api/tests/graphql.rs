@@ -780,7 +780,10 @@ async fn tips_scoped_to_pool_members() {
     .await;
     assert!(scoped.errors.is_empty(), "{:?}", scoped.errors);
     let scoped_players = players_of(&scoped);
-    assert!(scoped_players.contains("alice"), "member kept: {scoped_players:?}");
+    assert!(
+        scoped_players.contains("alice"),
+        "member kept: {scoped_players:?}"
+    );
     assert!(
         !scoped_players.contains("bob"),
         "non-member dropped: {scoped_players:?}"

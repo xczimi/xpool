@@ -229,7 +229,12 @@ impl QueryRoot {
             let entered: std::collections::HashSet<String> = players
                 .iter()
                 .find(|p| p.is_result_user)
-                .map(|r| r.match_predictions.iter().map(|p| p.game_id.clone()).collect())
+                .map(|r| {
+                    r.match_predictions
+                        .iter()
+                        .map(|p| p.game_id.clone())
+                        .collect()
+                })
                 .unwrap_or_default();
             live_matches(ctx, t, &entered, now).await
         } else {
@@ -1430,8 +1435,8 @@ mod perfects_tests {
     use async_trait::async_trait;
     use chrono::{TimeZone, Utc};
     use domain::{
-        GroupChildren, GroupGame, LockMode, MatchPrediction, Player, Pool, Round, SingleGame,
-        Team, TeamSlot, Tournament,
+        GroupChildren, GroupGame, LockMode, MatchPrediction, Player, Pool, Round, SingleGame, Team,
+        TeamSlot, Tournament,
     };
     use sportsdb::Event;
     use std::collections::HashMap;
@@ -1603,7 +1608,9 @@ mod perfects_tests {
         let source: Arc<dyn ReportedResultSource> = Arc::new(NoSource);
         let schema = crate::gql::build_schema(repo, source);
         let req = async_graphql::Request::new(r#"{ perfects(pool:"P2") { playerId } }"#)
-            .data(CurrentPlayer::Player(Box::new(player_with("bob", 2, 1, false))))
+            .data(CurrentPlayer::Player(Box::new(player_with(
+                "bob", 2, 1, false,
+            ))))
             .data(crate::clock::RequestNow(
                 "2026-06-12T12:00:00Z".parse().unwrap(),
             ));
