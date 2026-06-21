@@ -119,6 +119,13 @@ export function TodayPage() {
                     <Link to={`/match/${m.id}`}>
                       <Matchup home={m.home} away={m.away} teams={teams} />
                     </Link>
+                    {' '}
+                    <Link
+                      to={`/mytips/${m.groupId}`}
+                      className="open-group-link"
+                    >
+                      {t('openGroup')}
+                    </Link>
                   </td>
                   <td>
                     {(() => {

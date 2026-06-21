@@ -1392,6 +1392,17 @@ button.danger:hover:not(:disabled) {
   font-size: 15px;
   color: var(--muted);
 }
+/* "Open this group" deep-link — unobtrusive jump from a match context into
+   that match's group on My Tips. */
+.match-card-open-group {
+  font-family: 'VT323', monospace;
+  font-size: 15px;
+}
+.open-group-link {
+  font-family: 'VT323', monospace;
+  font-size: 14px;
+  white-space: nowrap;
+}
 .prediction-stats {
   margin: 12px 0 4px;
   padding: 14px 16px;

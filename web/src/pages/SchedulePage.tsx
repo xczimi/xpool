@@ -191,6 +191,10 @@ function ScheduleTable({
                 <Link to={`/match/${m.id}`}>
                   <Matchup home={m.home} away={m.away} teams={teams} />
                 </Link>
+                {' '}
+                <Link to={`/mytips/${m.groupId}`} className="open-group-link">
+                  {t('openGroup')}
+                </Link>
               </td>
               <td>{m.venue ?? '—'}</td>
               <td>{r ? `${r.homeScore}–${r.awayScore}` : '—'}</td>

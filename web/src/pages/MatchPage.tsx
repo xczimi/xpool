@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -139,6 +139,9 @@ export function MatchPage() {
             {t('venue')}: {game.venue}
           </div>
         )}
+        <div className="match-card-open-group">
+          <Link to={`/mytips/${game.groupId}`}>{t('openGroup')}</Link>
+        </div>
 
         <div className="match-refresh">
           <button

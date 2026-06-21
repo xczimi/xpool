@@ -144,6 +144,7 @@ const en = {
 
   // my tips
   myTipsTitle: 'My Tips',
+  openGroup: 'Open this group',
   selectGroup: 'Select a group',
   nextToFinalize: 'Next to finalize',
   finalizeBy: 'finalize by',
@@ -468,6 +469,7 @@ const hu: Record<StringKey, string> = {
   scheduleViewByDate: 'Dátum szerint',
 
   myTipsTitle: 'Tippjeim',
+  openGroup: 'Ugrás a csoporthoz',
   selectGroup: 'Válassz csoportot',
   nextToFinalize: 'Következő véglegesítés',
   finalizeBy: 'véglegesítés eddig',
