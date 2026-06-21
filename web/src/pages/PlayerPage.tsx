@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -106,6 +106,11 @@ export function PlayerPage() {
   return (
     <section className="page player-page">
       <h2>{entry.nick}</h2>
+      {isOwn && (
+        <p className="player-profile-link">
+          <Link to="/profile">{t('playerProfileLink')}</Link>
+        </p>
+      )}
       <PlayerHeader entry={entry} rank={rank} />
       <PlayerTodaySlice
         playerId={id}
