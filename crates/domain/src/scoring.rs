@@ -108,13 +108,18 @@ pub fn is_perfect(p: &MatchPrediction, r: &MatchPrediction, c: &ScoringConfig) -
 ///
 /// Goals only go up, so the final `(h, a)` satisfies `h >= live.home_score`,
 /// `a >= live.away_score`. `score_match` reads only three flags (`exact_home`,
-/// `exact_away`, `outcome`), and none of them changes once a side passes
-/// `max(predicted, live) + threshold`: a side that high is already "not equal to
-/// the prediction" and already "≥ threshold", and pushing it further only
-/// widens the goal difference monotonically (never flips a sign that wasn't
-/// already reachable). So enumerating finals up to that bound finds the true
-/// maximum. The candidate grid is tiny (predicted scores are small, threshold
-/// is 4), so the brute force is cheap and exact.
+/// `exact_away`, `outcome`). The `exact` flags saturate once a side passes
+/// `max(predicted, threshold)`, but the **`outcome`** flag couples the two
+/// sides: to reach a draw (or to let the trailing side overtake for a win) a
+/// side may have to climb up to the *other* side's level. So the safe per-axis
+/// bound is the **global** max across *both* predicted scores, *both* live
+/// scores and the threshold, plus one — beyond that point every flag is settled
+/// and pushing further only widens the difference monotonically. (A tighter
+/// per-axis bound that ignores the opposing side is wrong: e.g. `p = 0–0`,
+/// `live = 0–6` needs the home side to reach 6 to match the draw outcome.)
+/// The grid stays tiny (scores are small, threshold is 4), so the brute force is
+/// cheap and exact — verified exhaustively against a far larger ground-truth
+/// grid in tests.
 pub fn max_reachable_score(
     p: &MatchPrediction,
     live: &MatchPrediction,
@@ -122,14 +127,19 @@ pub fn max_reachable_score(
     multiplier: i64,
 ) -> i64 {
     let thr = c.high_scoring_threshold;
-    // One past every "interesting" value on each side — beyond this the flags
-    // are saturated and the difference only grows.
-    let hi_home = p.home_score.max(live.home_score).max(thr).saturating_add(1);
-    let hi_away = p.away_score.max(live.away_score).max(thr).saturating_add(1);
+    // One past every "interesting" value on EITHER side — the outcome flag
+    // couples the axes, so each side must be enumerated up to the global max.
+    let hi = p
+        .home_score
+        .max(p.away_score)
+        .max(live.home_score)
+        .max(live.away_score)
+        .max(thr)
+        .saturating_add(1);
 
     let mut best = 0;
-    for fh in live.home_score..=hi_home {
-        for fa in live.away_score..=hi_away {
+    for fh in live.home_score..=hi {
+        for fa in live.away_score..=hi {
             let final_score = MatchPrediction {
                 game_id: p.game_id.clone(),
                 home_score: fh,
@@ -845,5 +855,62 @@ mod unit_tests {
         let l = live(2, 1);
         let now_score = score_match(&p, &l, &c);
         assert!(max_reachable_score(&p, &l, &c, 1) >= now_score);
+    }
+
+    #[test]
+    fn max_reachable_outcome_needs_climbing_past_the_other_side() {
+        let c = ScoringConfig::default();
+        // Predicted draw 0–0; it's 0–6. A draw is still reachable (6–6), but the
+        // home side must climb all the way up to 6 — past `max(p, live.home, thr)`.
+        // The bound must account for the opposing side, else this returns 0.
+        // base = draw outcome only = 2.
+        assert_eq!(max_reachable_score(&mp(0, 0), &live(0, 6), &c, 1), 2);
+        // Predicted home win 1–0; it's 0–6. A home win (e.g. 7–6) is reachable →
+        // outcome 2 points (exact_home not reachable: final.home != 1 once > live.away
+        // forces it past 6). The home side climbs well past `max(1, 0, 4)+1`.
+        assert_eq!(max_reachable_score(&mp(1, 0), &live(0, 6), &c, 1), 2);
+    }
+
+    #[test]
+    fn max_reachable_matches_bruteforce_ground_truth() {
+        // Exhaustive check: the bounded grid must equal a far larger brute-force
+        // grid for every reachable prediction/live pair in 0..=10. This is the
+        // guard that the per-axis bound is provably sufficient — the subtle
+        // outcome-coupling bug (a side must climb to the opposing side's level)
+        // would surface here.
+        let c = ScoringConfig::default();
+        let truth = |p: &MatchPrediction, l: &MatchPrediction| -> i64 {
+            let mut best = 0;
+            for fh in l.home_score..=l.home_score.saturating_add(60) {
+                for fa in l.away_score..=l.away_score.saturating_add(60) {
+                    best = best.max(score_match(
+                        p,
+                        &MatchPrediction {
+                            game_id: "x".into(),
+                            home_score: fh,
+                            away_score: fa,
+                            locked: true,
+                        },
+                        &c,
+                    ));
+                }
+            }
+            best
+        };
+        for ph in 0u8..=10 {
+            for pa in 0u8..=10 {
+                for lh in 0u8..=10 {
+                    for la in 0u8..=10 {
+                        let p = mp(ph, pa);
+                        let l = live(lh, la);
+                        assert_eq!(
+                            max_reachable_score(&p, &l, &c, 1),
+                            truth(&p, &l),
+                            "mismatch at p={ph}-{pa} live={lh}-{la}"
+                        );
+                    }
+                }
+            }
+        }
     }
 }
