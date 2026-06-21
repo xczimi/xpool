@@ -1,8 +1,8 @@
 # Language picker — replace the dropdown
 
-Status: superseded → `docs/superpowers/specs/2026-06-08-picker-redesign-design.md`
-(redesign now covers both the language picker and the display "show" picker, on
-branch `picker-redesign`)
+Status: done — shipped via the picker-redesign work (merged to master): the
+language picker is now a segmented toggle (`web/src/components/LanguageSelector.tsx`
++ shared `SegToggle.tsx`). Design: `docs/superpowers/specs/2026-06-08-picker-redesign-design.md`.
 Area: web
 
 ## Idea

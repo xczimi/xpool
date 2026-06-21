@@ -1,6 +1,6 @@
 # Player-detail page — one participant's complete view
 
-Status: ready-for-human (implemented on branch worktree-player-detail-page)
+Status: done (merged to master via 67198ad) — `/player/:id` page shipped (`web/src/pages/PlayerPage.tsx`)
 
 ## Summary
 
