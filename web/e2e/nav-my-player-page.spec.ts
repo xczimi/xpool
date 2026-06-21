@@ -2,11 +2,12 @@ import { test, expect } from '@playwright/test'
 import { devLogin, devLogout, expectNoErrorView, watchNetwork } from './helpers'
 
 /**
- * Nav "My player page" (own-player-page-access). For a logged-in demo player a
- * player-gated nav item routes to their /player/:id. The static Profile nav
- * link is removed, but Profile stays reachable from the own player-detail page.
+ * Nav "Me" (own-player-page-access). For a logged-in demo player a player-gated
+ * nav item sits right after Home and routes to the clean `/me` alias (no UUID),
+ * which renders their own player page. The static Profile nav link is removed,
+ * but Profile stays reachable from the own player-detail page.
  */
-test('My player page nav item routes to own /player/:id; Profile moved off the nav', async ({
+test('Me nav item routes to the /me alias; Profile moved off the nav', async ({
   page,
 }) => {
   const net = watchNetwork(page)
@@ -14,7 +15,7 @@ test('My player page nav item routes to own /player/:id; Profile moved off the n
 
   // Visitor (not logged in): the player-gated item is absent.
   await expect(
-    page.locator('.nav-bar').getByRole('link', { name: 'My player page' }),
+    page.locator('.nav-bar').getByRole('link', { name: 'Me', exact: true }),
   ).toHaveCount(0)
 
   await devLogin(page, 'demo-ada')
@@ -24,13 +25,17 @@ test('My player page nav item routes to own /player/:id; Profile moved off the n
     page.locator('.nav-bar').getByRole('link', { name: 'Profile', exact: true }),
   ).toHaveCount(0)
 
-  // The "My player page" nav item is present and routes to demo-ada's page.
+  // "Me" sits right after Home and routes to /me (no UUID), which renders
+  // demo-ada's own player page.
+  const navLinks = page.locator('.nav-bar .nav-link')
+  await expect(navLinks.nth(0)).toHaveText('Home')
+  await expect(navLinks.nth(1)).toHaveText('Me')
   const ownNav = page
     .locator('.nav-bar')
-    .getByRole('link', { name: 'My player page' })
-  await expect(ownNav).toBeVisible()
+    .getByRole('link', { name: 'Me', exact: true })
   await ownNav.click()
-  await expect(page).toHaveURL(/\/player\/demo-ada$/)
+  await expect(page).toHaveURL(/\/me$/)
+  await expect(page.locator('.player-header')).toBeVisible()
   await expectNoErrorView(page)
 
   // Profile is reachable from the own player page via the new link.
@@ -46,7 +51,7 @@ test('My player page nav item routes to own /player/:id; Profile moved off the n
   await devLogout(page)
   await devLogin(page, 'result-user')
   await expect(
-    page.locator('.nav-bar').getByRole('link', { name: 'My player page' }),
+    page.locator('.nav-bar').getByRole('link', { name: 'Me', exact: true }),
   ).toHaveCount(0)
 
   await net.assertNoGraphqlErrors()

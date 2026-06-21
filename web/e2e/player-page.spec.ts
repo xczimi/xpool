@@ -66,9 +66,9 @@ test('own page shows totals and drill-down with points', async ({ page }) => {
   // setClock reloads back to '/', where the auth-bar name is now a link.
   await setClock(page, await lastGameIndex(page), 'after')
 
-  // Reach the own page via the auth-bar name link (the primary self entry point).
+  // Reach the own page via the auth-bar name link → the clean /me alias.
   await page.locator('.auth-player-link').click()
-  await expect(page).toHaveURL(/\/player\/demo-ada$/)
+  await expect(page).toHaveURL(/\/me$/)
 
   // Header: total + rank stat cards rendered.
   await expect(page.locator('.player-stats')).toBeVisible()

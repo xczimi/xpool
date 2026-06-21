@@ -57,6 +57,7 @@ const en = {
 
   // nav
   navHome: 'Home',
+  navMe: 'Me',
   navToday: 'Today',
   navGames: 'Schedule',
   navMyTips: 'My Tips',
@@ -387,6 +388,7 @@ const hu: Record<StringKey, string> = {
   footer: 'xPool — baráti focitippjáték',
 
   navHome: 'Kezdőlap',
+  navMe: 'Én',
   navToday: 'Aktuális',
   navGames: 'Menetrend',
   navMyTips: 'Tippjeim',

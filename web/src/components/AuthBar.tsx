@@ -60,7 +60,7 @@ function ProdAuthBar() {
       <span>
         Logged in as{' '}
         {me && !me.isResultUser ? (
-          <Link to={`/player/${me.id}`} className="auth-player-link">
+          <Link to="/me" className="auth-player-link">
             {me.nick}
           </Link>
         ) : (
@@ -110,7 +110,7 @@ function DevAuthBar() {
         <span>
           {t('loggedInAs')}{' '}
           {me && !me.isResultUser ? (
-            <Link to={`/player/${me.id}`} className="auth-player-link">
+            <Link to="/me" className="auth-player-link">
               <strong>{me.nick}</strong>
             </Link>
           ) : (

@@ -32,6 +32,7 @@ export function App() {
         <Route path="mytips/:groupId" element={<MyTipsPage />} />
         <Route path="alltips" element={<AllTipsPage />} />
         <Route path="scoreboard" element={<ScoreboardPage />} />
+        <Route path="me" element={<PlayerPage />} />
         <Route path="player/:id" element={<PlayerPage />} />
         <Route path="perfect" element={<PerfectPage />} />
         <Route path="pools" element={<PoolsPage />} />

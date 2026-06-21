@@ -10,8 +10,8 @@ interface NavItem {
 }
 
 // Profile is intentionally absent here — it is replaced in the nav by the
-// dynamic "My player page" item below, and remains reachable from the own
-// player-detail page (and its /profile route still exists).
+// dynamic "Me" item (inserted right after Home below), and remains reachable
+// from the own player-detail page (and its /profile route still exists).
 const ITEMS: NavItem[] = [
   { to: '/', label: 'navHome' },
   { to: '/today', label: 'navToday' },
@@ -32,9 +32,9 @@ const ITEMS: NavItem[] = [
  * Access per route comes from the shared `accessFor` map (single source with
  * `Layout`'s dead-end gating).
  *
- * `me` (when present) supplies the id for the dynamic "My player page" item,
- * which targets `/player/<me.id>`. It is shown only for a real Player who is
- * not the result user (the result user has no participant page).
+ * The dynamic "Me" item (shown only for a real Player who is not the result
+ * user) is inserted right after Home and targets the `/me` alias — a clean
+ * route that renders the viewer's own player page without a UUID in the URL.
  */
 export function NavBar({
   isPlayer,
@@ -55,10 +55,16 @@ export function NavBar({
   })
 
   const showOwnPlayer = me !== null && !me.isResultUser
+  // "Me" sits immediately after Home. It is the /me alias, not /player/<uuid>.
+  const links: NavItem[] = showOwnPlayer
+    ? visible.flatMap((item) =>
+        item.to === '/' ? [item, { to: '/me', label: 'navMe' }] : [item],
+      )
+    : visible
 
   return (
     <nav className="nav-bar">
-      {visible.map((item) => (
+      {links.map((item) => (
         <NavLink
           key={item.to}
           to={item.to}
@@ -68,15 +74,6 @@ export function NavBar({
           {t(item.label)}
         </NavLink>
       ))}
-      {showOwnPlayer && (
-        <NavLink
-          key="own-player"
-          to={`/player/${me.id}`}
-          className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
-        >
-          {t('playerPageOwnLink')}
-        </NavLink>
-      )}
     </nav>
   )
 }

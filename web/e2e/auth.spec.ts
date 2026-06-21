@@ -14,11 +14,13 @@ test('dev login picks a seeded player and unlocks player-only nav', async ({
   await page.goto('/')
 
   // As a visitor: player-only nav links are absent. Profile is no longer a nav
-  // item — it was replaced by the dynamic "My player page" item, which is also
-  // hidden for a visitor.
+  // item — it was replaced by the dynamic "Me" item (→ /me), also hidden for a
+  // visitor.
   await expect(page.locator('.auth-bar')).toContainText('You are outside.')
   await expect(page.getByRole('link', { name: 'My Tips' })).toHaveCount(0)
-  await expect(page.getByRole('link', { name: 'My player page' })).toHaveCount(0)
+  await expect(
+    page.getByRole('link', { name: 'Me', exact: true }),
+  ).toHaveCount(0)
 
   // Pick demo-ada from the auth-bar picker.
   await devLogin(page, 'demo-ada')
@@ -27,10 +29,12 @@ test('dev login picks a seeded player and unlocks player-only nav', async ({
   // Player-only nav becomes usable. Scope to the nav bar: the identity-aware
   // Home also renders action links (My Tips, Pools, …) whose accessible names
   // collide with the nav links, so an unscoped role query would be ambiguous.
-  // Profile moved out of the nav into the "My player page" item (Issue 08).
+  // Profile moved out of the nav into the "Me" item (→ /me) (Issue 08).
   const nav = page.locator('.nav-bar')
   await expect(nav.getByRole('link', { name: 'My Tips' })).toBeVisible()
-  await expect(nav.getByRole('link', { name: 'My player page' })).toBeVisible()
+  await expect(
+    nav.getByRole('link', { name: 'Me', exact: true }),
+  ).toBeVisible()
   await expect(nav.getByRole('link', { name: 'All Tips' })).toBeVisible()
 
   await expectNoErrorView(page)

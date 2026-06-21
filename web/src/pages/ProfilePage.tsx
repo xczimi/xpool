@@ -32,7 +32,7 @@ export function ProfilePage() {
       <h2>{t('profileTitle')}</h2>
       <ProfileForm key={me.id} me={me} />
       <p>
-        <Link to={`/player/${me.id}`}>{t('playerPageOwnLink')}</Link>
+        <Link to="/me">{t('playerPageOwnLink')}</Link>
       </p>
     </section>
   )

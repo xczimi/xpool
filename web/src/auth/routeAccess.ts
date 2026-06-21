@@ -1,6 +1,6 @@
 export type Access = 'public' | 'player' | 'admin'
 
-const PLAYER_PATHS = new Set(['/mytips', '/alltips', '/pools', '/profile'])
+const PLAYER_PATHS = new Set(['/me', '/mytips', '/alltips', '/pools', '/profile'])
 
 /**
  * Canonical per-route access level — the single source shared by `NavBar`

@@ -40,9 +40,19 @@ import { PlayerRounds } from './player/PlayerRounds'
  * notice instead of the page.
  */
 export function PlayerPage() {
-  const { id = '' } = useParams<{ id: string }>()
+  // `/player/:id` names a player; the `/me` alias has no param and resolves to
+  // the viewer's own page — a clean URL without a UUID.
+  const { id: paramId } = useParams<{ id?: string }>()
   const { t, locale } = useI18n()
   const { label } = useAuth()
+
+  const [meResult] = useQuery<{ me: Me }>({ query: ME_QUERY, pause: !label })
+  const meRaw = meResult.data?.me ?? null
+  const viewer = meRaw?.__typename === 'Player' ? meRaw : null
+  const myId = viewer?.id ?? null
+  // The player this page is about: the route param, or the viewer at `/me`.
+  const id = paramId ?? myId ?? ''
+  const isOwn = myId !== null && myId === id
 
   // The viewer's pools (they are a member of each). You may view a player's
   // page if you share AT LEAST ONE pool with them — checked across every pool
@@ -59,11 +69,6 @@ export function PlayerPage() {
   )
   const sharedPool = useMemo(() => sharedPoolWith(pools, id), [pools, id])
   const effectivePool = sharedPool?.id ?? null
-
-  const [meResult] = useQuery<{ me: Me }>({ query: ME_QUERY, pause: !label })
-  const meRaw = meResult.data?.me ?? null
-  const myId = meRaw?.__typename === 'Player' ? meRaw.id : null
-  const isOwn = myId !== null && myId === id
 
   const [scoreboardResult] = useQuery<{ scoreboard: ScoreEntry[] }>({
     query: SCOREBOARD_QUERY,
@@ -113,11 +118,26 @@ export function PlayerPage() {
     return <ErrorView message={scoreboardResult.error.message} />
   if (!tournament) return <ErrorView />
 
-  // Soft pool-mate gate: you may view a player's page if it's your own or you
-  // share at least one pool with them. A shared pool-mate who has not yet
-  // predicted has no scoreboard entry either — both fall through to the same
-  // notice rather than crash on a missing entry.
-  if ((!isOwn && !sharedPool) || !entry) {
+  // Pool-mate gate: you may view a player's page only if it's your own or you
+  // share at least one pool with them.
+  if (!isOwn && !sharedPool) {
+    return (
+      <section className="page">
+        <p>{t('playerNotInPool')}</p>
+      </section>
+    )
+  }
+
+  // Your own page must always render — even before you have any scored entry
+  // (no results materialised yet) — so synthesise a zero entry from `me`.
+  // A shared pool-mate who never predicted has no entry and no nick to show, so
+  // they fall through to the notice rather than crash.
+  const shownEntry: ScoreEntry | null =
+    entry ??
+    (isOwn && viewer
+      ? { playerId: id, nick: viewer.nick, total: 0, stages: [] }
+      : null)
+  if (!shownEntry) {
     return (
       <section className="page">
         <p>{t('playerNotInPool')}</p>
@@ -127,13 +147,13 @@ export function PlayerPage() {
 
   return (
     <section className="page player-page">
-      <h2>{entry.nick}</h2>
+      <h2>{shownEntry.nick}</h2>
       {isOwn && (
         <p className="player-profile-link">
           <Link to="/profile">{t('playerProfileLink')}</Link>
         </p>
       )}
-      <PlayerHeader entry={entry} rank={rank} />
+      <PlayerHeader entry={shownEntry} rank={rank} />
       <PlayerTodaySlice
         playerId={id}
         tournament={tournament}
@@ -150,7 +170,7 @@ export function PlayerPage() {
       <PlayerRounds
         playerId={id}
         isOwn={isOwn}
-        entry={entry}
+        entry={shownEntry}
         tournament={tournament}
         resultByGame={resultByGame}
         locale={locale}
