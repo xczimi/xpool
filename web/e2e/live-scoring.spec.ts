@@ -3,7 +3,8 @@ import { devLogin, expectNoErrorView, watchNetwork } from './helpers'
 
 /**
  * Live-scoring cluster e2e. Proves, hermetically (no real SportsDB — the stack
- * injects XPOOL_LIVE_SCORES="E2E1=1:0:2H" and M8 carries externalId E2E1):
+ * injects XPOOL_LIVE_SCORES="2461105=1:0:2H", keyed onto M8's real external id,
+ * so no test sentinel is baked into the shipped fixture):
  *   A. Match page during the live window shows the live (provisional) score,
  *      a working "Refresh now" button (re-issues the match query on the wire),
  *      and a last-updated indicator.
@@ -21,7 +22,7 @@ const TEST_GROUP = 'Group D'
 // Group D's first game — the group's deadline reference; `before` here keeps
 // the whole LockTogether group editable so grace can save her tips.
 const ENTRY_GAME = 'M4'
-// The live game carrying externalId E2E1 (the stub's target).
+// The live game — M8 (external id 2461105), the stub's target.
 const LIVE_GAME = 'M8'
 
 /**

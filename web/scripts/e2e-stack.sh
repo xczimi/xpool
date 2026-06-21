@@ -46,13 +46,15 @@ export INVITE_CODE_SECRET="${INVITE_CODE_SECRET:-test-secret-must-be-32-bytes-lo
 # Keep e2e hermetic: force the SportsDB source to NullSource (no live calls).
 export THESPORTSDB_API_KEY=""
 
-# Deterministic live score for the live-scoring e2e (StubLiveSource). M8 carries
-# externalId E2E1; this makes the scoreboard "Max" column and the match-page
-# live overlay appear when the dev clock is inside M8's live window. The stub
-# wins over THESPORTSDB only when this var is set, and only maps E2E1 → M8 — all
-# other games (real external ids) get nothing from it, so other specs that assert
-# "no live score" under their groups stay green.
-export XPOOL_LIVE_SCORES="${XPOOL_LIVE_SCORES:-E2E1=1:0:2H}"
+# Deterministic live score for the live-scoring e2e (StubLiveSource). The stub is
+# keyed by external id and maps onto M8's REAL SportsDB id (2461105) — we do NOT
+# bake a test sentinel into the shipped tournament fixture (that would cost M8 its
+# real live-score lookup in production). This makes the scoreboard "Max" column and
+# the match-page live overlay appear when the dev clock is inside M8's live window.
+# The stub wins over THESPORTSDB only when this var is set, and only maps this one
+# id → M8 — all other games get nothing from it, so other specs that assert "no
+# live score" under their groups stay green.
+export XPOOL_LIVE_SCORES="${XPOOL_LIVE_SCORES:-2461105=1:0:2H}"
 
 PID_FILE="$REPO_ROOT/web/.e2e-api.pid"
 API_LOG="$REPO_ROOT/web/.e2e-api.log"
