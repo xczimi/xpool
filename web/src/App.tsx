@@ -29,6 +29,7 @@ export function App() {
         <Route path="games" element={<SchedulePage />} />
         <Route path="match/:gameId" element={<MatchPage />} />
         <Route path="mytips" element={<MyTipsPage />} />
+        <Route path="mytips/:groupId" element={<MyTipsPage />} />
         <Route path="alltips" element={<AllTipsPage />} />
         <Route path="scoreboard" element={<ScoreboardPage />} />
         <Route path="player/:id" element={<PlayerPage />} />

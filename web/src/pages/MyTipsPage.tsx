@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -26,6 +27,7 @@ import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { RoundNav } from '../components/RoundNav'
 import { Countdown } from '../components/Countdown'
 import { currentRoundNode, leafGroupsOfRound, visibleRoundNodes } from '../lib/rounds'
+import { resolveGroupParam, roundNodeIdFor } from '../lib/groupRoute'
 import { useServerClock } from '../lib/useServerClock'
 import { GroupTipForm } from './mytips/GroupTipForm'
 
@@ -38,6 +40,11 @@ import { GroupTipForm } from './mytips/GroupTipForm'
 export function MyTipsPage() {
   const { t } = useI18n()
   const { label } = useAuth()
+  // The URL is the source of truth for which round/group is open
+  // (`/mytips/:groupId`). Local state is only the fallback when no param is
+  // present (`/mytips`) — the default-round/group behaviour.
+  const { groupId: groupParam } = useParams<{ groupId?: string }>()
+  const navigate = useNavigate()
   const [selectedRound, setSelectedRound] = useState<Round | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
 
@@ -68,8 +75,21 @@ export function MyTipsPage() {
     () => visibleRoundNodes(tournament?.groups ?? [], tournament?.games ?? []),
     [tournament?.groups, tournament?.games],
   )
+
+  // The URL param, resolved against the loaded group tree, is authoritative
+  // when it names a real group/round node. `/mytips` (no param) → null, which
+  // falls through to the default round/group state below.
+  const paramResolved = useMemo(
+    () => resolveGroupParam(tournament?.groups ?? [], groupParam),
+    [tournament?.groups, groupParam],
+  )
+
   const activeRound =
-    selectedRound ?? currentRoundNode(rounds)?.round ?? rounds[0]?.round ?? null
+    paramResolved?.round ??
+    selectedRound ??
+    currentRoundNode(rounds)?.round ??
+    rounds[0]?.round ??
+    null
 
   // Keep group selection coherent with the active round: if the derived round
   // flips (e.g. a `tournament` refetch moves `currentRoundNode`), a group from
@@ -92,7 +112,10 @@ export function MyTipsPage() {
     ? leafGroupsOfRound(activeRoundNode, tournament?.groups ?? [])
     : []
   const isGroupStage = activeRound === 'GROUP_STAGE'
-  const activeGroupId = selectedGroupId ?? roundLeaves[0]?.id ?? null
+  // A leaf-group param pins the group; a round-node param (groupId === null)
+  // and the no-param case both fall back to local state then the first leaf.
+  const activeGroupId =
+    paramResolved?.groupId ?? selectedGroupId ?? roundLeaves[0]?.id ?? null
   const tipsGroupId = isGroupStage ? activeGroupId : (activeRoundNode?.id ?? null)
 
   // The server computes per-(player, game) earned points + breakdown on the tip
@@ -212,11 +235,20 @@ export function MyTipsPage() {
         games={tournament.games}
         selectedRound={activeRound}
         onSelectRound={(round) => {
+          // Local state for immediate feedback; the URL is authoritative once
+          // the navigation lands. A round tab carries no group, so we navigate
+          // to the round-node id (`/mytips/R32`); group stage falls back to its
+          // first group there.
           setSelectedRound(round)
           setSelectedGroupId(null)
+          const nodeId = roundNodeIdFor(tournament.groups, round)
+          navigate(nodeId ? `/mytips/${nodeId}` : '/mytips')
         }}
         selectedGroupId={activeGroupId}
-        onSelectGroup={setSelectedGroupId}
+        onSelectGroup={(groupId) => {
+          setSelectedGroupId(groupId)
+          navigate(`/mytips/${groupId}`)
+        }}
       />
       {shownGroups.length > 0 ? (
         shownGroups.map((group) => {
