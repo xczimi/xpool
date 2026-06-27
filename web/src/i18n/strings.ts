@@ -182,6 +182,7 @@ const en = {
   drawOrderHint: 'Drag tied teams to set your tiebreak order.',
   saved: 'Saved.',
   lockedNotice: 'This group is locked — predictions are read-only.',
+  teamsNotDetermined: 'Teams not yet determined',
   moveUp: 'Move up',
   moveDown: 'Move down',
 
@@ -527,6 +528,7 @@ const hu: Record<StringKey, string> = {
   drawOrderHint: 'Rendezd a holtversenyes csapatokat a sorrend beállításához.',
   saved: 'Mentve.',
   lockedNotice: 'Tippek véglegesek – csak nézni, ne nyúlj hozzá!',
+  teamsNotDetermined: 'A csapatok még nem dőltek el',
   moveUp: 'Fel',
   moveDown: 'Le',
 
