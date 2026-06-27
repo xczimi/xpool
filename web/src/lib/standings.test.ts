@@ -5,6 +5,7 @@ import {
   computeStandings,
   goalDiff,
   groupGames,
+  isKnockoutMatch,
   predictionScoreMap,
   type TeamStats,
 } from './standings'
@@ -30,6 +31,26 @@ function stats(over: Partial<TeamStats>): TeamStats {
     ...over,
   }
 }
+
+describe('isKnockoutMatch', () => {
+  it('is true for a one-game leaf group (a two-team knockout tie)', () => {
+    expect(isKnockoutMatch([game('g1', 'a', 'b')])).toBe(true)
+  })
+
+  it('is false for a multi-game round-robin group', () => {
+    expect(
+      isKnockoutMatch([
+        game('g1', 'a', 'b'),
+        game('g2', 'a', 'c'),
+        game('g3', 'b', 'c'),
+      ]),
+    ).toBe(false)
+  })
+
+  it('is false for an empty group', () => {
+    expect(isKnockoutMatch([])).toBe(false)
+  })
+})
 
 describe('goalDiff', () => {
   it('is goalsFor minus goalsAgainst', () => {
