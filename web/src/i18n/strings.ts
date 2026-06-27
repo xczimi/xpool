@@ -143,6 +143,19 @@ const en = {
   scheduleViewByGroup: 'By group',
   scheduleViewByDate: 'By date',
 
+  // best third-placed teams table
+  thirdsRank: '#',
+  thirdsGroup: 'Grp',
+  thirdsTeam: 'Team',
+  thirdsPts: 'Pts',
+  thirdsGd: 'GD',
+  thirdsGf: 'GF',
+  thirdsFaces: 'R32 vs',
+  thirdsWinnerPrefix: 'Winner',
+  thirdsQualifies: 'Qualifies',
+  thirdsProvisional: 'Provisional — group stage incomplete.',
+  thirdsPending: 'No third-placed teams decided yet.',
+
   // my tips
   myTipsTitle: 'My Tips',
   openGroup: 'Open this group',
@@ -469,6 +482,19 @@ const hu: Record<StringKey, string> = {
   scheduleTitle: 'Menetrend',
   scheduleViewByGroup: 'Csoport szerint',
   scheduleViewByDate: 'Dátum szerint',
+
+  // best third-placed teams table
+  thirdsRank: '#',
+  thirdsGroup: 'Cs',
+  thirdsTeam: 'Csapat',
+  thirdsPts: 'Pt',
+  thirdsGd: 'Gk',
+  thirdsGf: 'LG',
+  thirdsFaces: 'R32 ell.',
+  thirdsWinnerPrefix: 'Győztes',
+  thirdsQualifies: 'Továbbjut',
+  thirdsProvisional: 'Ideiglenes — a csoportkör még tart.',
+  thirdsPending: 'Még egy harmadik helyezett sem dőlt el.',
 
   myTipsTitle: 'Tippjeim',
   openGroup: 'Ugrás a csoporthoz',
