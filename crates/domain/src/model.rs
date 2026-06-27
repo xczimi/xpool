@@ -58,6 +58,18 @@ pub enum Round {
     Final,
 }
 
+impl Round {
+    /// Every round past the group stage. Drives the knockout-only scoreboard
+    /// (a re-engagement VIEW — `.scratch/knockout-only-scoreboard/PRD.md`): the
+    /// materialised per-round breakdown is re-summed over these rounds only, so
+    /// every player starts the knockout race from zero. This is the single
+    /// piece of group-vs-knockout logic the API delegates to (resolvers carry
+    /// no domain logic).
+    pub fn is_knockout(self) -> bool {
+        !matches!(self, Round::GroupStage)
+    }
+}
+
 /// Lock granularity of a group node (`DATA_MODEL.md` §4).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum LockMode {
@@ -263,5 +275,29 @@ impl Tournament {
     /// (`DATA_MODEL.md` §4).
     pub fn deadline(&self, group_id: &str) -> Option<DateTime<Utc>> {
         self.games_in(group_id).iter().map(|g| g.kickoff).min()
+    }
+}
+
+#[cfg(test)]
+mod round_tests {
+    use super::*;
+
+    #[test]
+    fn group_stage_is_not_knockout() {
+        assert!(!Round::GroupStage.is_knockout());
+    }
+
+    #[test]
+    fn every_post_group_round_is_knockout() {
+        for r in [
+            Round::R32,
+            Round::R16,
+            Round::QF,
+            Round::SF,
+            Round::ThirdPlace,
+            Round::Final,
+        ] {
+            assert!(r.is_knockout(), "{r:?} should count as knockout");
+        }
     }
 }
