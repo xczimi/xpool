@@ -254,8 +254,16 @@ export function MatchPage() {
         </thead>
         <tbody>
           {sortedRows.map((row) => (
-            <tr key={row.playerId}>
-              <td className="nick">{row.nick}</td>
+            <tr
+              key={row.playerId}
+              className={row.playerId === viewerId ? 'is-self' : undefined}
+            >
+              <td className="nick">
+                {row.nick}
+                {row.playerId === viewerId && (
+                  <span className="you-badge">{t('youBadge')}</span>
+                )}
+              </td>
               <td className="pred">
                 {row.prediction ? (
                   `${row.prediction.homeScore}–${row.prediction.awayScore}`
