@@ -9,6 +9,7 @@ import {
   RESULTS_QUERY,
   STANDINGS_QUERY,
   SUBMIT_GROUP_MUTATION,
+  THIRD_PLACE_QUERY,
   TIPS_QUERY,
   TOURNAMENT_QUERY,
 } from '../graphql/queries'
@@ -20,10 +21,13 @@ import type {
   ReportedResult,
   Round,
   StandingsScore,
+  ThirdPlaceRanking,
   Tip,
   Tournament,
 } from '../graphql/types'
+import { teamIndex } from '../lib/format'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
+import { ThirdPlaceTable } from '../components/ThirdPlaceTable'
 import { RoundNav } from '../components/RoundNav'
 import { Countdown } from '../components/Countdown'
 import { currentRoundNode, leafGroupsOfRound, visibleRoundNodes } from '../lib/rounds'
@@ -39,7 +43,7 @@ import { GroupTipForm } from './mytips/GroupTipForm'
  * `submitGroup` (API.md §6).
  */
 export function MyTipsPage() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { label } = useAuth()
   // The URL is the source of truth for which round/group is open
   // (`/mytips/:groupId`). Local state is only the fallback when no param is
@@ -70,7 +74,26 @@ export function MyTipsPage() {
   const tournament = tournamentResult.data?.tournament ?? null
   const meRaw = meResult.data?.me ?? null
   const me = meRaw?.__typename === 'Player' ? meRaw : null
+
+  // Predicted ranking (this player) + official ranking, shown side by side.
+  const [myThirdsResult] = useQuery<{ thirdPlaceRanking: ThirdPlaceRanking }>({
+    query: THIRD_PLACE_QUERY,
+    variables: { player: me?.id ?? null },
+    pause: !me,
+  })
+  const [officialThirdsResult] = useQuery<{ thirdPlaceRanking: ThirdPlaceRanking }>({
+    query: THIRD_PLACE_QUERY,
+    variables: { player: null },
+  })
+  const myThirds = myThirdsResult.data?.thirdPlaceRanking ?? null
+  const officialThirds = officialThirdsResult.data?.thirdPlaceRanking ?? null
+
   const results = resultsResult.data?.results ?? []
+
+  const teams = useMemo(
+    () => teamIndex(tournament?.teams ?? [], locale),
+    [tournament, locale],
+  )
 
   const rounds = useMemo(
     () => visibleRoundNodes(tournament?.groups ?? [], tournament?.games ?? []),
@@ -311,6 +334,14 @@ export function MyTipsPage() {
       ) : (
         <p>{t('selectGroup')}</p>
       )}
+      <div className="tip-form" data-testid="third-place-section">
+        <h3>{t('thirdsTitle')}</h3>
+        <p className="hint">{t('thirdsBlurb')}</p>
+        <div className="standings-pair">
+          <ThirdPlaceTable title={t('thirdsPredicted')} ranking={myThirds} teams={teams} />
+          <ThirdPlaceTable title={t('thirdsOfficial')} ranking={officialThirds} teams={teams} />
+        </div>
+      </div>
     </section>
   )
 }

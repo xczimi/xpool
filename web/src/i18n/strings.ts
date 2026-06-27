@@ -142,6 +142,26 @@ const en = {
   scheduleTitle: 'Schedule',
   scheduleViewByGroup: 'By group',
   scheduleViewByDate: 'By date',
+  thirdsScheduleTitle: 'Best third-placed teams',
+  thirdsOfficial: 'Official ranking',
+
+  // best third-placed teams table
+  thirdsRank: '#',
+  thirdsGroup: 'Grp',
+  thirdsTeam: 'Team',
+  thirdsPts: 'Pts',
+  thirdsGd: 'GD',
+  thirdsGf: 'GF',
+  thirdsFaces: 'R32 vs',
+  thirdsWinnerPrefix: 'Winner',
+  thirdsQualifies: 'Qualifies',
+  thirdsProvisional: 'Provisional — group stage incomplete.',
+  thirdsPending: 'No third-placed teams decided yet.',
+
+  // my tips — best-thirds section
+  thirdsTitle: 'Best third-placed teams',
+  thirdsBlurb: 'How your predicted group results rank the 12 third-placed teams — the top 8 advance.',
+  thirdsPredicted: 'Your prediction',
 
   // my tips
   myTipsTitle: 'My Tips',
@@ -469,6 +489,25 @@ const hu: Record<StringKey, string> = {
   scheduleTitle: 'Menetrend',
   scheduleViewByGroup: 'Csoport szerint',
   scheduleViewByDate: 'Dátum szerint',
+  thirdsScheduleTitle: 'Legjobb harmadik helyezettek',
+  thirdsOfficial: 'Hivatalos rangsor',
+
+  // best third-placed teams table
+  thirdsRank: '#',
+  thirdsGroup: 'Cs',
+  thirdsTeam: 'Csapat',
+  thirdsPts: 'Pt',
+  thirdsGd: 'Gk',
+  thirdsGf: 'LG',
+  thirdsFaces: 'R32 ell.',
+  thirdsWinnerPrefix: 'Győztes',
+  thirdsQualifies: 'Továbbjut',
+  thirdsProvisional: 'Ideiglenes — a csoportkör még tart.',
+  thirdsPending: 'Még egy harmadik helyezett sem dőlt el.',
+
+  thirdsTitle: 'Legjobb harmadik helyezettek',
+  thirdsBlurb: 'A tippelt csoporteredményeid hogyan rangsorolják a 12 harmadik helyezettet — a legjobb 8 továbbjut.',
+  thirdsPredicted: 'A te tipped',
 
   myTipsTitle: 'Tippjeim',
   openGroup: 'Ugrás a csoporthoz',

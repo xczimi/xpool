@@ -827,6 +827,26 @@ button.danger:hover:not(:disabled) {
   letter-spacing: 1px;
 }
 
+.third-place {
+  flex: 1;
+  min-width: 320px;
+}
+.third-place h4 {
+  margin-bottom: 8px;
+  color: var(--amber);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.third-place-table tr.qualifies td {
+  background: rgba(0, 200, 0, 0.08);
+}
+.third-place-table tr.qualifies td:first-child {
+  border-left: 3px solid var(--amber-bright);
+}
+.third-place-table tr.eliminated td {
+  opacity: 0.55;
+}
+
 /* ============================================================================
    STATE INDICATORS (the LED dots in textual form)
    ============================================================================ */

@@ -117,6 +117,120 @@ pub fn best_thirds(thirds: &[(char, TeamStats)]) -> Vec<char> {
     indexed.iter().take(8).map(|(_, g, _)| *g).collect()
 }
 
+/// One row of the best-third-placed-teams ranking (`FWC26_RULES.md` §3), for
+/// display / transparency. Pure: derived from a player's (or the result user's)
+/// predictions. `faces_*` are populated only once the qualifying set of 8 is
+/// known (via Annexe C).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ThirdPlaceRow {
+    /// Group letter (A–L).
+    pub group: char,
+    /// The third-placed team of that group.
+    pub team_id: TeamId,
+    pub points: i32,
+    pub goal_diff: i32,
+    pub goals_for: i32,
+    /// 1-based position in the ranking (best = 1).
+    pub rank: u32,
+    /// Top-8 → advances to the R32.
+    pub qualifies: bool,
+    /// The group-winner this third faces in the R32 (via Annexe C), if known.
+    pub faces_winner_group: Option<char>,
+    /// The R32 game id this third plays in (via Annexe C), if known.
+    pub faces_game: Option<GameId>,
+}
+
+/// Rank the determinable third-placed teams (`FWC26_RULES.md` §3), best first,
+/// flag the top 8, and attach each qualifier's R32 pairing via Annexe C.
+///
+/// Only a group whose 3rd place is determinable (every group game has a result)
+/// contributes a row. When 8+ thirds are known the qualifying set resolves and
+/// Annexe C fills the `faces_*` fields. Shares `best_thirds`' criteria and the
+/// group-letter stable fallback, so this table matches the resolved bracket.
+pub fn third_place_ranking(t: &Tournament, result: &Player) -> Vec<ThirdPlaceRow> {
+    let group_standings = compute_group_standings(t, result);
+
+    // Each determinable group's third-placed team + stats, gathered in A–L
+    // order (the stable last-resort tiebreak, identical to `best_thirds`).
+    let mut thirds: Vec<(char, TeamId, TeamStats)> = Vec::new();
+    for letter in 'A'..='L' {
+        if let Some(gs) = group_standings.get(&letter) {
+            if gs.order.len() >= 3 {
+                let third_id = gs.order[2].clone();
+                let stats = compute_team_stats_in_group(t, result, letter, &third_id);
+                thirds.push((letter, third_id, stats));
+            }
+        }
+    }
+
+    let mut indexed: Vec<(usize, char, TeamId, TeamStats)> = thirds
+        .into_iter()
+        .enumerate()
+        .map(|(i, (g, id, s))| (i, g, id, s))
+        .collect();
+    indexed.sort_by(|a, b| {
+        b.3.points
+            .cmp(&a.3.points)
+            .then_with(|| b.3.goal_diff.cmp(&a.3.goal_diff))
+            .then_with(|| b.3.goals_for.cmp(&a.3.goals_for))
+            .then_with(|| a.0.cmp(&b.0)) // stable: preserve A–L input order
+    });
+
+    let qualifying_set: BTreeSet<char> = indexed.iter().take(8).map(|(_, g, _, _)| *g).collect();
+    let annexe_c_map = if qualifying_set.len() == 8 {
+        annexe_c(&qualifying_set)
+    } else {
+        None
+    };
+
+    indexed
+        .iter()
+        .enumerate()
+        .map(|(rank0, (_, g, id, s))| {
+            let qualifies = rank0 < 8;
+            let (faces_winner_group, faces_game) = match (qualifies, &annexe_c_map) {
+                (true, Some(annex)) => {
+                    let w = annex
+                        .iter()
+                        .find(|(_, third)| **third == *g)
+                        .map(|(w, _)| *w);
+                    let game = w.and_then(|w| game_for_third_slot(t, w));
+                    (w, game)
+                }
+                _ => (None, None),
+            };
+            ThirdPlaceRow {
+                group: *g,
+                team_id: id.clone(),
+                points: s.points,
+                goal_diff: s.goal_diff,
+                goals_for: s.goals_for,
+                rank: rank0 as u32 + 1,
+                qualifies,
+                faces_winner_group,
+                faces_game,
+            }
+        })
+        .collect()
+}
+
+/// The R32 game whose "3…" slot is occupied by the third facing group-winner
+/// `winner`, via the fixed `BEST_THIRD_SLOTS` spelling.
+fn game_for_third_slot(t: &Tournament, winner: char) -> Option<GameId> {
+    let slot = BEST_THIRD_SLOTS
+        .iter()
+        .find(|(_, w)| *w == winner)
+        .map(|(s, _)| *s)?;
+    let needle = format!("3{}", slot);
+    t.games.iter().find_map(|(id, g)| {
+        if g.home.description.trim() == needle || g.away.description.trim() == needle {
+            Some(id.clone())
+        } else {
+            None
+        }
+    })
+}
+
 // ---------------------------------------------------------------------------
 // Bracket resolution
 // ---------------------------------------------------------------------------

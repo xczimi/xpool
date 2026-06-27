@@ -506,6 +506,38 @@ pub struct MatchScore {
     pub ninety_minute_uncertain: bool,
 }
 
+/// One row of the best-third-placed-teams ranking (`thirdPlaceRanking`,
+/// `FWC26_RULES.md` §3). Read-only, for transparency.
+#[derive(SimpleObject, Clone, Debug)]
+pub struct ThirdPlaceEntry {
+    /// Group letter (e.g. `"A"`).
+    pub group: String,
+    /// The third-placed team of that group.
+    pub team: Team,
+    pub points: i32,
+    pub goal_diff: i32,
+    pub goals_for: i32,
+    /// 1-based ranking position (best = 1).
+    pub rank: i32,
+    /// Whether this third advances to the R32 (top 8).
+    pub qualifies: bool,
+    /// The group-winner faced in the R32 (e.g. `"E"`), once the qualifying set
+    /// of 8 is known; `None` while provisional.
+    pub faces_winner_group: Option<String>,
+    /// The R32 game id this third plays in, once known.
+    pub faces_game: Option<String>,
+}
+
+/// The best-third-placed ranking from one perspective (`thirdPlaceRanking`).
+#[derive(SimpleObject, Clone, Debug)]
+pub struct ThirdPlaceRanking {
+    /// All determinable thirds, ranked best-first.
+    pub entries: Vec<ThirdPlaceEntry>,
+    /// True once all 12 groups' thirds are determinable (the qualifying set of
+    /// 8 and its Annexe C pairings are final).
+    pub complete: bool,
+}
+
 /// One match's detail (`#2`): the all-players tip grid plus the best-available
 /// actual score. Read-only and ephemeral.
 #[derive(SimpleObject, Clone, Debug)]

@@ -214,3 +214,25 @@ export interface MatchDetail {
   actual: MatchScore | null
   rows: Tip[]
 }
+
+export interface ThirdPlaceEntry {
+  group: string
+  team: Team
+  points: number
+  goalDiff: number
+  goalsFor: number
+  /** 1-based ranking position (best = 1). */
+  rank: number
+  /** Top-8 → advances to the R32. */
+  qualifies: boolean
+  /** The group-winner faced in the R32 (e.g. "E"), once known. */
+  facesWinnerGroup: string | null
+  /** The R32 game id this third plays in, once known. */
+  facesGame: string | null
+}
+
+export interface ThirdPlaceRanking {
+  entries: ThirdPlaceEntry[]
+  /** True once all 12 groups' thirds are final. */
+  complete: boolean
+}
