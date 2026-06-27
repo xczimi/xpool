@@ -46,14 +46,16 @@ fi
 PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$PROJECT"
 
+# Default to the xczimi profile; override AWS_PROFILE (or export AWS_* keys).
+export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
 export AWS_REGION="${AWS_REGION:-ca-central-1}"
 
-# Pre-resolve the AMBIENT credentials (whatever the standard AWS chain finds:
+# Pre-resolve the credentials (whatever the standard AWS chain finds:
 # exported AWS_* keys, AWS_PROFILE, default profile, SSO, role) into static env
 # vars NOW, so they are *present* before xtask loads `.env` via dotenvy — which
 # ships dummy AWS_ACCESS_KEY_ID=local / AWS_SECRET_ACCESS_KEY=local for DynamoDB
 # Local. Static keys outrank a profile, so without this the deploy authenticates
-# as "local" and fails. No profile is assumed — bring your own credentials.
+# as "local" and fails. Resolves the AWS_PROFILE default above (or your own).
 # Capture first: `eval "$(cmd)"` would mask a resolution failure (eval of empty
 # output still succeeds), so guard on the value being non-empty.
 aws_creds="$(aws configure export-credentials --format env 2>/dev/null)" || aws_creds=""

@@ -42,7 +42,9 @@ TFVARS="infrastructure/env/${ENV}.tfvars"
 TID="$(sed -n 's/.*current_tournament_id[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$TFVARS")"
 [[ -n "$TID" ]] || { echo "could not read current_tournament_id from $TFVARS" >&2; exit 1; }
 
-# xpool's tables live in ca-central-1; override AWS_REGION if that ever changes.
+# Default to the xczimi profile; override AWS_PROFILE (or export AWS_* keys) to
+# use other credentials. xpool's tables live in ca-central-1.
+export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
 export AWS_REGION="${AWS_REGION:-ca-central-1}"
 
 # Pre-resolve the AMBIENT credentials (whatever the standard AWS chain finds:
@@ -50,8 +52,8 @@ export AWS_REGION="${AWS_REGION:-ca-central-1}"
 # vars so they are *present* before dotenvy loads `.env`, which ships dummy
 # AWS_ACCESS_KEY_ID=local / AWS_SECRET_ACCESS_KEY=local (for DynamoDB Local).
 # Static keys outrank a profile, so without this xtask authenticates as "local"
-# and fails (UnrecognizedClientException). No profile is assumed — bring your own
-# credentials in the execution context.
+# and fails (UnrecognizedClientException). Resolves the AWS_PROFILE default above
+# (or your own AWS_PROFILE / exported keys) via the standard chain.
 # Capture first: `eval "$(cmd)"` would mask a credential-resolution failure (eval
 # of empty output still succeeds), so check the resolved value is non-empty.
 aws_creds="$(aws configure export-credentials --format env 2>/dev/null)" || aws_creds=""
