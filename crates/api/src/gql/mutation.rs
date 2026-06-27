@@ -12,7 +12,7 @@ use crate::recompute::recompute;
 use async_graphql::{Context, Object, SimpleObject};
 use domain::invite::{normalize_suffix, parse_code, slugify, CodeInput};
 use domain::{
-    Invite, MatchPrediction, Player as DomainPlayer, Pool as DomainPool,
+    Invite, MatchPrediction, Player as DomainPlayer, Pool as DomainPool, Round,
     StandingsPrediction as DomainStandingsPrediction,
 };
 use std::sync::Arc;
@@ -383,6 +383,28 @@ impl MutationRoot {
                         "group `{group_id}` deadline has passed; predictions are final"
                     )));
                 }
+            }
+        }
+
+        // Best-thirds fix (Part C) — a knockout-round match accepts a prediction
+        // only once BOTH its team slots are concretely placed. Best-third slots
+        // stay `None` until all 12 groups are final (see `resolve_bracket`), so
+        // this blocks blind predictions against not-yet-known opponents. Group
+        // stage games always carry concrete team ids, so they are unaffected.
+        let is_knockout = tournament
+            .groups
+            .get(&group_id)
+            .is_some_and(|g| g.round != Round::GroupStage);
+        if is_knockout {
+            if let Some(unresolved) = tournament
+                .games_in(&group_id)
+                .iter()
+                .find(|g| g.home.team_id.is_none() || g.away.team_id.is_none())
+            {
+                return Err(async_graphql::Error::new(format!(
+                    "match `{}` teams are not yet determined; predictions open once both teams are placed",
+                    unresolved.id
+                )));
             }
         }
 
@@ -864,5 +886,128 @@ mod dev_rematerialize_tests {
         assert!(!dev_stub_enabled_from(None));
         assert!(!dev_stub_enabled_from(Some("")));
         assert!(dev_stub_enabled_from(Some("local-dev")));
+    }
+}
+
+#[cfg(test)]
+mod submit_group_tests {
+    use crate::auth::CurrentPlayer;
+    use async_trait::async_trait;
+    use chrono::{TimeZone, Utc};
+    use domain::{
+        GroupChildren, GroupGame, LockMode, Player, Round, SingleGame, Team, TeamSlot, Tournament,
+    };
+    use sportsdb::Event;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use storage::{InMemoryRepository, Repository};
+
+    struct NoSource;
+    #[async_trait]
+    impl crate::reported::ReportedResultSource for NoSource {
+        async fn lookup_events(&self, _ids: &[String]) -> anyhow::Result<Vec<Event>> {
+            Ok(vec![])
+        }
+    }
+
+    fn team(id: &str) -> Team {
+        Team {
+            id: id.into(),
+            name: id.into(),
+            short_code: id.into(),
+            flag: None,
+            external_id: None,
+        }
+    }
+
+    fn normal_player(id: &str) -> Player {
+        Player {
+            id: id.into(),
+            person_id: format!("p-{id}"),
+            nick: id.into(),
+            full_name: id.into(),
+            referrer: None,
+            is_result_user: false,
+            version: 0,
+            match_predictions: Vec::new(),
+            standings_predictions: Vec::new(),
+        }
+    }
+
+    /// Execute a GraphQL request and return the raw response so tests can
+    /// inspect `.errors` as well as `.data`.
+    async fn exec_raw(
+        repo: InMemoryRepository,
+        viewer: Player,
+        now: chrono::DateTime<Utc>,
+        query: &str,
+    ) -> async_graphql::Response {
+        let repo: Arc<dyn Repository> = Arc::new(repo);
+        let source: Arc<dyn crate::reported::ReportedResultSource> = Arc::new(NoSource);
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(query)
+            .data(CurrentPlayer::Player(Box::new(viewer)))
+            .data(crate::clock::RequestNow(now));
+        schema.execute(req).await
+    }
+
+    #[tokio::test]
+    async fn knockout_submit_blocked_when_slot_unplaced() {
+        // R32 one-match group "r32-m74": game "M74" has one unresolved home slot
+        // (team_id: None) simulating a best-third placeholder not yet determined.
+        let game = SingleGame {
+            id: "M74".into(),
+            kickoff: Utc.with_ymd_and_hms(2026, 7, 1, 18, 0, 0).unwrap(),
+            venue: None,
+            group_id: "r32-m74".into(),
+            home: TeamSlot {
+                team_id: None, // unresolved — e.g. best third of A/B/C/D/E/F
+                description: "3ABCDEF".into(),
+            },
+            away: TeamSlot {
+                team_id: Some("NED".into()),
+                description: "2C".into(),
+            },
+            external_id: None,
+        };
+        let group = GroupGame {
+            id: "r32-m74".into(),
+            name: "Round of 32 — match 74".into(),
+            parent: None,
+            round: Round::R32,
+            lock_mode: LockMode::LockPerMatch,
+            carries_standings: false,
+            children: GroupChildren::Games(vec!["M74".into()]),
+        };
+        let t = Tournament {
+            root: "r32-m74".into(),
+            groups: HashMap::from([("r32-m74".to_string(), group)]),
+            games: HashMap::from([("M74".to_string(), game)]),
+            teams: HashMap::from([("NED".to_string(), team("NED"))]),
+        };
+        let repo = InMemoryRepository::new();
+        repo.put_tournament(&t).await.unwrap();
+        let alice = normal_player("alice");
+        repo.put_player(&alice).await.unwrap();
+
+        // Clock well before kickoff so the deadline gate doesn't fire first.
+        let now = Utc.with_ymd_and_hms(2026, 6, 27, 12, 0, 0).unwrap();
+        let resp = exec_raw(
+            repo,
+            alice,
+            now,
+            r#"mutation { submitGroup(groupId: "r32-m74", predictions: [{ gameId: "M74", homeScore: 1, awayScore: 0 }], lock: false) { id } }"#,
+        )
+        .await;
+
+        assert!(
+            !resp.errors.is_empty(),
+            "expected error: knockout submit must be blocked when a slot is unplaced"
+        );
+        let msg = resp.errors[0].message.as_str();
+        assert!(
+            msg.contains("not yet determined"),
+            "expected 'not yet determined' in error message, got: {msg:?}"
+        );
     }
 }

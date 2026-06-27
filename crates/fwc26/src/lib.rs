@@ -117,6 +117,15 @@ pub fn best_thirds(thirds: &[(char, TeamStats)]) -> Vec<char> {
     indexed.iter().take(8).map(|(_, g, _)| *g).collect()
 }
 
+/// The provisional best-third table plus whether the group stage is fully
+/// resolved. `all_groups_final` is true only once *every* group A–L is complete;
+/// the GraphQL `complete` flag and the Annexe C pairing both gate on it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct RankedThirds {
+    pub rows: Vec<ThirdPlaceRow>,
+    pub all_groups_final: bool,
+}
+
 /// One row of the best-third-placed-teams ranking (`FWC26_RULES.md` §3), for
 /// display / transparency. Pure: derived from a player's (or the result user's)
 /// predictions. `faces_*` are populated only once the qualifying set of 8 is
@@ -140,35 +149,33 @@ pub struct ThirdPlaceRow {
     pub faces_game: Option<GameId>,
 }
 
-/// Rank the determinable third-placed teams (`FWC26_RULES.md` §3), best first,
-/// flag the top 8, and attach each qualifier's R32 pairing via Annexe C.
+/// Rank the third-placed teams for all 12 groups (`FWC26_RULES.md` §3), best
+/// first, flag the top 8, and attach each qualifier's R32 pairing via Annexe C.
 ///
-/// Only a group whose 3rd place is determinable (every group game has a result)
-/// contributes a row. When 8+ thirds are known the qualifying set resolves and
-/// Annexe C fills the `faces_*` fields. Shares `best_thirds`' criteria and the
-/// group-letter stable fallback, so this table matches the resolved bracket.
-pub fn third_place_ranking(t: &Tournament, result: &Player) -> Vec<ThirdPlaceRow> {
-    let group_standings = compute_group_standings(t, result);
+/// Every group A–L always contributes a provisional row, even before all its
+/// games have results — `rank_group` tolerates missing predictions and yields a
+/// positional order from whatever is available. `all_groups_final` is true only
+/// when every group A–L is complete; the Annexe C pairing is gated on it
+/// because the top-8 set can still shift while any group remains undecided.
+pub fn third_place_ranking(t: &Tournament, result: &Player) -> RankedThirds {
+    // "All 12 groups final" ⇔ every group is complete. `compute_group_standings`
+    // holds only groups whose every game has a result, so its size is the count
+    // of final groups.
+    let all_groups_final = compute_group_standings(t, result).len() == 12;
 
-    // Each determinable group's third-placed team + stats, gathered in A–L
-    // order (the stable last-resort tiebreak, identical to `best_thirds`).
-    let mut thirds: Vec<(char, TeamId, TeamStats)> = Vec::new();
-    for letter in 'A'..='L' {
-        if let Some(gs) = group_standings.get(&letter) {
-            if gs.order.len() >= 3 {
-                let third_id = gs.order[2].clone();
-                let stats = compute_team_stats_in_group(t, result, letter, &third_id);
-                thirds.push((letter, third_id, stats));
-            }
+    // Provisional third of every group A–L, from current (possibly partial)
+    // standings. Always emit the positional 3rd, even before a group is decided.
+    let mut thirds: Vec<(usize, char, TeamId, TeamStats)> = Vec::new();
+    for (idx, letter) in ('A'..='L').enumerate() {
+        let order = provisional_group_order(t, result, letter);
+        if order.len() >= 3 {
+            let third_id = order[2].clone();
+            let stats = compute_team_stats_in_group(t, result, letter, &third_id);
+            thirds.push((idx, letter, third_id, stats));
         }
     }
 
-    let mut indexed: Vec<(usize, char, TeamId, TeamStats)> = thirds
-        .into_iter()
-        .enumerate()
-        .map(|(i, (g, id, s))| (i, g, id, s))
-        .collect();
-    indexed.sort_by(|a, b| {
+    thirds.sort_by(|a, b| {
         b.3.points
             .cmp(&a.3.points)
             .then_with(|| b.3.goal_diff.cmp(&a.3.goal_diff))
@@ -176,14 +183,16 @@ pub fn third_place_ranking(t: &Tournament, result: &Player) -> Vec<ThirdPlaceRow
             .then_with(|| a.0.cmp(&b.0)) // stable: preserve A–L input order
     });
 
-    let qualifying_set: BTreeSet<char> = indexed.iter().take(8).map(|(_, g, _, _)| *g).collect();
-    let annexe_c_map = if qualifying_set.len() == 8 {
+    // Annexe C pairing is meaningful only once all 12 groups are final (the top-8
+    // set can still shift). Until then: provisional rank + qualifies, no pairing.
+    let qualifying_set: BTreeSet<char> = thirds.iter().take(8).map(|(_, g, _, _)| *g).collect();
+    let annexe_c_map = if all_groups_final {
         annexe_c(&qualifying_set)
     } else {
         None
     };
 
-    indexed
+    let rows = thirds
         .iter()
         .enumerate()
         .map(|(rank0, (_, g, id, s))| {
@@ -211,7 +220,39 @@ pub fn third_place_ranking(t: &Tournament, result: &Player) -> Vec<ThirdPlaceRow
                 faces_game,
             }
         })
-        .collect()
+        .collect();
+
+    RankedThirds {
+        rows,
+        all_groups_final,
+    }
+}
+
+/// Provisional standings order for one group, ranked from whatever results exist
+/// so far. Unlike `compute_standings_for_group`, this does NOT require every game
+/// to have a result: `rank_group` looks each game's prediction up by id and
+/// ignores the ones not yet entered, so a partially-played (or unplayed) group
+/// still yields a full positional order. Empty only when the group has no games.
+fn provisional_group_order(t: &Tournament, result: &Player, letter: char) -> Vec<TeamId> {
+    let Some(group_id) = find_group_id(t, letter) else {
+        return Vec::new();
+    };
+    let Some(group) = t.groups.get(&group_id) else {
+        return Vec::new();
+    };
+    let games = t.games_in(&group_id);
+    if games.is_empty() {
+        return Vec::new();
+    }
+    let predictions: Vec<&MatchPrediction> = games
+        .iter()
+        .filter_map(|g| result.match_prediction(&g.id))
+        .collect();
+    let draw_order: Vec<TeamId> = result
+        .standings_prediction(&group_id)
+        .map(|sp| sp.draw_order.clone())
+        .unwrap_or_default();
+    rank_group(group, &games, &predictions, &draw_order)
 }
 
 /// The R32 game whose "3…" slot is occupied by the third facing group-winner
@@ -315,7 +356,12 @@ impl ResolutionContext {
             }
         }
 
-        let annexe_c_map = if qualifying_set.len() == 8 {
+        // Best-third placement depends on ALL 12 thirds: the top-8 set can change
+        // when a late group finishes. `group_standings` holds only *complete*
+        // groups (see `compute_standings_for_group`), so `len() == 12` means every
+        // group A–L is final. Resolving earlier persists wrong teams into R32 slots.
+        let all_groups_final = group_standings.len() == 12;
+        let annexe_c_map = if all_groups_final {
             annexe_c(&qualifying_set)
         } else {
             None

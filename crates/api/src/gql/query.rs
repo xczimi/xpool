@@ -789,10 +789,11 @@ impl QueryRoot {
             });
         };
 
-        let rows = fwc26::third_place_ranking(&t, subject);
+        let ranking = fwc26::third_place_ranking(&t, subject);
         // t.teams contains every team_id rank_group can return (import populates both
         // consistently), so the filter_map's None branch is unreachable on valid data.
-        let entries: Vec<ThirdPlaceEntry> = rows
+        let entries: Vec<ThirdPlaceEntry> = ranking
+            .rows
             .iter()
             .filter_map(|r| {
                 t.teams.get(&r.team_id).map(|team| ThirdPlaceEntry {
@@ -808,8 +809,12 @@ impl QueryRoot {
                 })
             })
             .collect();
-        let complete = entries.len() == 12; // FWC26 has 12 groups (A–L)
-        Ok(ThirdPlaceRanking { entries, complete })
+        // `complete` ⇔ all 12 groups final (now always 12 entries, so the old
+        // `entries.len() == 12` is meaningless). Sourced from fwc26.
+        Ok(ThirdPlaceRanking {
+            entries,
+            complete: ranking.all_groups_final,
+        })
     }
 }
 

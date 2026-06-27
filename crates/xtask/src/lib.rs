@@ -3,6 +3,7 @@
 //! Split from `main.rs` so the importer can be exercised by integration tests
 //! without the CLI shell.
 
+pub mod cleanup_thirds;
 pub mod dto;
 pub mod export;
 pub mod migrate_gh;

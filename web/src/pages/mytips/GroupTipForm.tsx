@@ -278,6 +278,7 @@ export function GroupTipForm({
           {games.map((game) => {
             const m = displayMatches[game.id]
             const matchLocked = readOnly || (m.locked && !isResultUser)
+            const teamsPlaced = !!game.home.teamId && !!game.away.teamId
             return (
               <tr key={game.id}>
                 <td>
@@ -286,7 +287,9 @@ export function GroupTipForm({
                   </Link>
                 </td>
                 <td className="score-cell">
-                  {matchLocked ? (
+                  {!teamsPlaced ? (
+                    <span className="hint">{t('teamsNotDetermined')}</span>
+                  ) : matchLocked ? (
                     // A locked prediction is settled — show it as plain text, not
                     // dead form controls.
                     <span className="score-locked">
