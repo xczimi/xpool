@@ -1,0 +1,80 @@
+#!/bin/bash
+# xpool one-off: run `xtask cleanup-best-thirds` against a DEPLOYED env's table.
+#
+# Usage: bin/cleanup-best-thirds [dev|prod] [--apply]   # default: dev, dry-run
+#
+#   (no --apply)  DRY RUN — read-only; prints the slots it would re-null and the
+#                 locked predictions it would unlock. Writes nothing.
+#   --apply       APPLY — force-re-resolves the bracket (re-nulls premature
+#                 best-third R32 slots) and unlocks locked predictions on knockout
+#                 matches whose teams are no longer placed. Idempotent.
+#
+# Wraps the credential/env dance that `deploy-data` uses so xtask talks to real
+# AWS instead of DynamoDB Local. The table + tournament id are DERIVED from the
+# env so they can't drift from the Lambda:
+#   XPOOL_TABLE           = xpool-<env>                     (matches module.dynamodb)
+#   CURRENT_TOURNAMENT_ID = infrastructure/env/<env>.tfvars (matches the Lambda)
+#   DYNAMO_ENDPOINT       = ""  (empty = real AWS; see note below)
+#
+# Run it from a checkout that HAS the placement fix — the command re-resolves the
+# bracket using this checkout's fwc26 code; on unfixed code it would not re-null.
+#
+# Deploy ordering: ship the fixed Lambda (bin/deploy <env> api) BEFORE --apply, so
+# the live recompute uses the all-12-final gate and won't re-place premature teams.
+set -euo pipefail
+
+ENV="dev"; APPLY=0
+for arg in "$@"; do
+    case "$arg" in
+        dev|prod) ENV="$arg" ;;
+        --apply)  APPLY=1 ;;
+        *) echo "Usage: $0 [dev|prod] [--apply]" >&2; exit 2 ;;
+    esac
+done
+
+PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT"
+
+TFVARS="infrastructure/env/${ENV}.tfvars"
+[[ -f "$TFVARS" ]] || { echo "missing $TFVARS" >&2; exit 1; }
+
+# current_tournament_id = "fwc26"  ->  fwc26
+TID="$(sed -n 's/.*current_tournament_id[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$TFVARS")"
+[[ -n "$TID" ]] || { echo "could not read current_tournament_id from $TFVARS" >&2; exit 1; }
+
+export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
+export AWS_REGION="${AWS_REGION:-ca-central-1}"
+
+# Pre-resolve the profile into static creds so they are *present* in the env.
+# xtask loads `.env` via dotenvy, and `.env` ships dummy AWS_ACCESS_KEY_ID=local /
+# AWS_SECRET_ACCESS_KEY=local (for DynamoDB Local). Static keys outrank
+# AWS_PROFILE, so without this xtask authenticates to real AWS as "local" and
+# fails (UnrecognizedClientException). Pre-exporting the resolved creds means
+# dotenvy sees them already set and leaves them alone. (xczimi uses static IAM
+# keys — no SSO login needed.)
+eval "$(aws configure export-credentials --profile "$AWS_PROFILE" --format env 2>/dev/null)" \
+    || { echo "could not resolve AWS credentials for profile $AWS_PROFILE" >&2; exit 1; }
+
+export XPOOL_TABLE="xpool-${ENV}"
+export CURRENT_TOURNAMENT_ID="$TID"
+# Force real AWS, NOT DynamoDB Local. Must be EMPTY, not unset: dotenvy re-injects
+# `.env`'s DYNAMO_ENDPOINT=localhost:8000 over an *absent* var, so a plain unset
+# would silently target local. An empty value is "present", so dotenvy leaves it
+# alone and the storage layer treats empty as real AWS.
+export DYNAMO_ENDPOINT=""
+
+MODE="DRY RUN (read-only)"; [[ "$APPLY" == "1" ]] && MODE="APPLY (writes)"
+echo "==> env=$ENV  table=$XPOOL_TABLE  tournament=$CURRENT_TOURNAMENT_ID  mode=$MODE"
+
+# A prod write has no throwaway table to undo it (no PITR) — require a typed
+# confirm. Dry runs are read-only and need no confirm.
+if [[ "$ENV" == "prod" && "$APPLY" == "1" ]]; then
+    read -r -p "About to MUTATE the PROD table $XPOOL_TABLE (re-null slots + unlock predictions). Type 'prod' to confirm: " reply
+    [[ "$reply" == "prod" ]] || { echo "aborted" >&2; exit 1; }
+fi
+
+if [[ "$APPLY" == "1" ]]; then
+    exec cargo run -q -p xtask -- cleanup-best-thirds --apply
+else
+    exec cargo run -q -p xtask -- cleanup-best-thirds
+fi
