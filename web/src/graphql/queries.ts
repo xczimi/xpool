@@ -248,3 +248,24 @@ export const MATCH_QUERY = `
   }
 `
 
+/** The best third-placed-teams ranking (FWC26_RULES §3). `player: null` →
+ *  official; a player id → that player's predicted ranking. */
+export const THIRD_PLACE_QUERY = `
+  query ThirdPlaceRanking($player: ID) {
+    thirdPlaceRanking(player: $player) {
+      complete
+      entries {
+        group
+        team { id name shortCode flag externalId }
+        points
+        goalDiff
+        goalsFor
+        rank
+        qualifies
+        facesWinnerGroup
+        facesGame
+      }
+    }
+  }
+`
+
