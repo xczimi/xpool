@@ -58,6 +58,7 @@ Queries mirror the coarse storage items, so each is near-zero assembly:
 | `now` | the server's resolved request clock (`DateTime<Utc>`) — the clock seam the SPA renders time-dependent state against |
 | `tournament` | the `<t>#TOURNAMENT` structure (tree, matches, teams) with time-derived flags (see below) |
 | `scoreboard(pool?)` | the materialised `<t>#SCOREBOARD`, filtered to a pool |
+| `knockoutScoreboard(pool?)` | the same materialised board re-summed over knockout rounds only (group-stage points excluded → everyone starts the knockouts from zero); identical shape, pool-scoping and participant rules as `scoreboard` — a re-engagement VIEW, no new materialisation |
 | `me` | the current player + their predictions |
 | `pools` | the player's pools |
 | `tips(groupId)` | all players' *visible* predictions for a group (computed — visibility-filtered) |
