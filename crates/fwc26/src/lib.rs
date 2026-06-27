@@ -315,7 +315,12 @@ impl ResolutionContext {
             }
         }
 
-        let annexe_c_map = if qualifying_set.len() == 8 {
+        // Best-third placement depends on ALL 12 thirds: the top-8 set can change
+        // when a late group finishes. `group_standings` holds only *complete*
+        // groups (see `compute_standings_for_group`), so `len() == 12` means every
+        // group A–L is final. Resolving earlier persists wrong teams into R32 slots.
+        let all_groups_final = group_standings.len() == 12;
+        let annexe_c_map = if all_groups_final {
             annexe_c(&qualifying_set)
         } else {
             None

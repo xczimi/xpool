@@ -671,7 +671,11 @@ fn test_best_third_unresolved_until_all_groups_final() {
     // M74 = 1E vs 3ABCDF. Group E IS complete, so home (1E) resolves, but the
     // best-third away slot must stay None until ALL 12 groups are final.
     let (home, away) = resolved.get("M74").expect("M74 present");
-    assert_eq!(home.as_deref(), Some("E1"), "1E resolves (group E complete)");
+    assert_eq!(
+        home.as_deref(),
+        Some("E1"),
+        "1E resolves (group E complete)"
+    );
     assert!(
         away.is_none(),
         "3ABCDF must NOT resolve with only 9 groups final (got {away:?})"
