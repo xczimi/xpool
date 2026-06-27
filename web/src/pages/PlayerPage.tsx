@@ -151,9 +151,8 @@ export function PlayerPage() {
 
   // x-axis rounds = the canonical order filtered to rounds whose teams are
   // known (server-derived; no Date.now()). `tournament` is non-null here.
-  const timelineRounds = ROUND_ORDER.filter((r) =>
-    readyRounds(tournament.groups, tournament.games).has(r),
-  )
+  const ready = readyRounds(tournament.groups, tournament.games)
+  const timelineRounds = ROUND_ORDER.filter((r) => ready.has(r))
 
   return (
     <section className="page player-page">

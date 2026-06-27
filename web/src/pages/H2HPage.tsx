@@ -105,9 +105,8 @@ export function H2HPage() {
     )
   }
 
-  const rounds = ROUND_ORDER.filter((r) =>
-    readyRounds(tournament.groups, tournament.games).has(r),
-  )
+  const ready = readyRounds(tournament.groups, tournament.games)
+  const rounds = ROUND_ORDER.filter((r) => ready.has(r))
   const series = [
     {
       label: summary.a.nick,
