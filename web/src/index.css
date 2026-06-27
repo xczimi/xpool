@@ -1521,3 +1521,23 @@ button.danger:hover:not(:disabled) {
 .match-note.match-warn { color: var(--amber); }
 .match-grid td.pred { font-size: 16px; }
 .match-grid .match-hidden { color: var(--muted); }
+.match-grid th.sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.match-grid th.sortable.active {
+  color: var(--accent-bright);
+}
+.match-grid th.sortable[aria-sort='ascending']::after {
+  content: ' ▲';
+  font-size: 9px;
+}
+.match-grid th.sortable[aria-sort='descending']::after {
+  content: ' ▼';
+  font-size: 9px;
+}
+.match-grid th.sortable.disabled {
+  cursor: default;
+  opacity: 0.5;
+}

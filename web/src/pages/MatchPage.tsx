@@ -10,6 +10,14 @@ import { Matchup } from '../components/TeamLabel'
 import { PointsBadge } from '../components/PointsBadge'
 import { PredictionStats } from '../components/PredictionStats'
 import { teamIndex, formatKickoff } from '../lib/format'
+import {
+  sortRows,
+  nextSort,
+  readMatchSort,
+  writeMatchSort,
+  type MatchSort,
+  type MatchSortColumn,
+} from '../lib/matchSort'
 
 /**
  * Match page (#2). The all-players tip grid is the spine in every state; the
@@ -24,6 +32,12 @@ export function MatchPage() {
   // Pool scoping mirrors the scoreboard: `undefined` = default to the player's
   // first pool, `null` = the explicit "everyone" global view, a string = a pool.
   const [poolId, setPoolId] = useState<string | null | undefined>(undefined)
+  const [sort, setSort] = useState<MatchSort>(() => readMatchSort())
+  const applySort = (column: MatchSortColumn) => {
+    const next = nextSort(sort, column)
+    setSort(next)
+    writeMatchSort(next)
+  }
   const [poolsResult] = useQuery<{ pools: Pool[] }>({
     query: POOLS_QUERY,
     pause: !label,
@@ -105,6 +119,18 @@ export function MatchPage() {
   const gateOpen = rows.some(
     (r) => r.playerId !== viewerId && r.prediction != null,
   )
+
+  const sortedRows = sortRows(rows, sort)
+  // Points are only sortable once at least one row has been scored.
+  const pointsSortable = rows.some((r) => r.points != null)
+  const ariaSort = (
+    column: MatchSortColumn,
+  ): 'ascending' | 'descending' | 'none' =>
+    sort.column === column
+      ? sort.direction === 'asc'
+        ? 'ascending'
+        : 'descending'
+      : 'none'
 
   return (
     <section className="page match-page">
@@ -201,13 +227,33 @@ export function MatchPage() {
       <table className="data-table compact match-grid">
         <thead>
           <tr>
-            <th>{t('player')}</th>
-            <th>{t('prediction')}</th>
-            <th className="num">{t('points')}</th>
+            <th
+              className={`sortable${sort.column === 'player' ? ' active' : ''}`}
+              aria-sort={ariaSort('player')}
+              onClick={() => applySort('player')}
+            >
+              {t('player')}
+            </th>
+            <th
+              className={`sortable${sort.column === 'prediction' ? ' active' : ''}`}
+              aria-sort={ariaSort('prediction')}
+              onClick={() => applySort('prediction')}
+            >
+              {t('prediction')}
+            </th>
+            <th
+              className={`num sortable${pointsSortable ? '' : ' disabled'}${
+                sort.column === 'points' ? ' active' : ''
+              }`}
+              aria-sort={pointsSortable ? ariaSort('points') : 'none'}
+              onClick={pointsSortable ? () => applySort('points') : undefined}
+            >
+              {t('points')}
+            </th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {sortedRows.map((row) => (
             <tr key={row.playerId}>
               <td className="nick">{row.nick}</td>
               <td className="pred">
