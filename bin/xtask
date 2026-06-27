@@ -16,8 +16,9 @@
 #           Endpoint + dummy creds come from .env, like bin/run-api. Same table
 #           bin/local-dev seeds.
 #   dev|prod  Real AWS. Table = xpool-<env>; tournament id from
-#           infrastructure/env/<env>.tfvars; static creds pre-resolved from
-#           AWS_PROFILE so dotenvy's dummy local creds don't win; DYNAMO_ENDPOINT="".
+#           infrastructure/env/<env>.tfvars; your ambient AWS credentials are
+#           pre-resolved so dotenvy's dummy local creds don't win; DYNAMO_ENDPOINT="".
+#           Bring your own credentials (AWS_PROFILE, exported AWS_* keys, SSO, role…).
 #
 # Examples:
 #   bin/xtask seed                                   # local
@@ -72,14 +73,19 @@ TFVARS="infrastructure/env/${TARGET}.tfvars"
 TID="$(sed -n 's/.*current_tournament_id[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$TFVARS")"
 [[ -n "$TID" ]] || { echo "could not read current_tournament_id from $TFVARS" >&2; exit 1; }
 
-export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
+# xpool's tables live in ca-central-1; override AWS_REGION if that ever changes.
 export AWS_REGION="${AWS_REGION:-ca-central-1}"
-# Pre-resolve the profile into static creds so they are present BEFORE dotenvy
-# loads `.env` (which ships dummy AWS_ACCESS_KEY_ID=local for DynamoDB Local).
-# Static keys outrank AWS_PROFILE, so without this xtask authenticates as "local"
-# and fails. xczimi uses static IAM keys — no SSO login needed.
-eval "$(aws configure export-credentials --profile "$AWS_PROFILE" --format env 2>/dev/null)" \
-    || { echo "could not resolve AWS credentials for profile $AWS_PROFILE" >&2; exit 1; }
+# Pre-resolve the AMBIENT credentials (whatever the standard AWS chain finds:
+# exported AWS_* keys, AWS_PROFILE, default profile, SSO, role) into static env
+# vars BEFORE dotenvy loads `.env` — which ships dummy AWS_ACCESS_KEY_ID=local for
+# DynamoDB Local. Static keys outrank a profile, so without pre-resolving, those
+# dummy creds win and xtask authenticates as "local". No profile is assumed here:
+# bring your own credentials in the execution context.
+# Capture first: `eval "$(cmd)"` would mask a credential-resolution failure (eval
+# of empty output still succeeds), so check the resolved value is non-empty.
+aws_creds="$(aws configure export-credentials --format env 2>/dev/null)" || aws_creds=""
+[[ -n "$aws_creds" ]] || { echo "no AWS credentials in the execution context (set AWS_PROFILE or export AWS_* keys)" >&2; exit 1; }
+eval "$aws_creds"
 
 export XPOOL_TABLE="xpool-${TARGET}"
 export CURRENT_TOURNAMENT_ID="$TID"
