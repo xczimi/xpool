@@ -15,6 +15,7 @@ import { byKickoff, teamIndex } from '../../lib/format'
 import {
   applyDrawOrder,
   computeStandings,
+  isKnockoutMatch,
 } from '../../lib/standings'
 import { Matchup } from '../../components/TeamLabel'
 import { Countdown } from '../../components/Countdown'
@@ -160,7 +161,7 @@ export function GroupTipForm({
   // the deadline (results arrive after kickoff) nor by a prior lock (they can
   // always re-correct). For everyone else the deadline freezes the group (UC-7).
   const isResultUser = me.isResultUser
-  const isKnockout = group.round !== 'GROUP_STAGE'
+  const isKnockout = isKnockoutMatch(games)
   const deadlinePassed = group.deadlinePassed
   const groupLocked =
     deadlinePassed ||

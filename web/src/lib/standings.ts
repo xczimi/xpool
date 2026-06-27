@@ -1,5 +1,18 @@
 import type { GroupGame, MatchPrediction, SingleGame } from '../graphql/types'
 
+/**
+ * Whether a leaf group is a single two-team knockout tie — the only kind of
+ * group that can go to extra time / penalties, and so the one that gets the
+ * "advances ✓" labels instead of a ranked table. Derived from structure, not
+ * the round name: a knockout match is wrapped in its own one-match group, so a
+ * single game means two teams. Keying on the round would misfire on formats
+ * with more than one group stage (a second round-robin phase isn't
+ * `GROUP_STAGE` yet isn't a knockout either).
+ */
+export function isKnockoutMatch(games: SingleGame[]): boolean {
+  return games.length === 1
+}
+
 export interface TeamStats {
   teamId: string
   played: number
