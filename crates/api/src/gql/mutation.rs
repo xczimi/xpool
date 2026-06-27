@@ -12,7 +12,7 @@ use crate::recompute::recompute;
 use async_graphql::{Context, Object, SimpleObject};
 use domain::invite::{normalize_suffix, parse_code, slugify, CodeInput};
 use domain::{
-    Invite, MatchPrediction, Player as DomainPlayer, Pool as DomainPool,
+    Invite, MatchPrediction, Player as DomainPlayer, Pool as DomainPool, Round,
     StandingsPrediction as DomainStandingsPrediction,
 };
 use std::sync::Arc;
@@ -383,6 +383,28 @@ impl MutationRoot {
                         "group `{group_id}` deadline has passed; predictions are final"
                     )));
                 }
+            }
+        }
+
+        // Best-thirds fix (Part C) — a knockout-round match accepts a prediction
+        // only once BOTH its team slots are concretely placed. Best-third slots
+        // stay `None` until all 12 groups are final (see `resolve_bracket`), so
+        // this blocks blind predictions against not-yet-known opponents. Group
+        // stage games always carry concrete team ids, so they are unaffected.
+        let is_knockout = tournament
+            .groups
+            .get(&group_id)
+            .is_some_and(|g| g.round != Round::GroupStage);
+        if is_knockout {
+            if let Some(unresolved) = tournament
+                .games_in(&group_id)
+                .iter()
+                .find(|g| g.home.team_id.is_none() || g.away.team_id.is_none())
+            {
+                return Err(async_graphql::Error::new(format!(
+                    "match `{}` teams are not yet determined; predictions open once both teams are placed",
+                    unresolved.id
+                )));
             }
         }
 
