@@ -1,6 +1,13 @@
 # Revisit the fixed-width display
 
-Status: needs-triage
+Status: deferred — dropped this round (2026-06-27, Peter's call)
+
+## Resolved decisions (2026-06-27 grill)
+
+- **DROPPED this round.** When asked directly (rather than dropped for vagueness),
+  Peter chose to defer — nothing concrete itches yet. Revisit in a later round.
+- If revisited: first do an audit (no code) of each page at mobile / tablet / wide /
+  ultrawide, list concrete pain points, then decide global vs per-view widths.
 Area: web
 
 ## Idea

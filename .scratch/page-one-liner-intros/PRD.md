@@ -27,11 +27,15 @@ title removes that guesswork and sets the tone.
   - Today — "Matches kicking off today and their deadlines."
   - Perfect — "Your spot-on predictions."
 
-## Open questions
+## Resolved decisions (2026-06-27 grill)
 
-- Always visible, or dismissible / first-visit-only to avoid clutter for
-  regulars?
-- Does it double as the page's `<title>` / meta description for shareable links?
+- **Always visible** (not dismissible / not first-visit-only) — a consistent subtitle
+  slot under each page heading.
+- **Does NOT double** as `<title>` / meta description this round (keep it a simple UI
+  subtitle).
+- One shared pattern/component; one i18n'd sentence per page (EN + HU) keyed beside the
+  existing per-page title keys in `web/src/i18n/strings.ts`.
+- Cluster: `cluster/cross-cutting-ux` (Wave 2) — runs after page features settle.
 
 ## Pages to cover
 

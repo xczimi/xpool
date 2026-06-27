@@ -1,7 +1,17 @@
 # Clearer timezones & relative deadlines
 
-Status: needs-triage
+Status: done — core shipped via humane finalize countdown (verified 2026-06-27)
 Area: web (+ api timeflags)
+
+## Resolved decisions (2026-06-27 grill)
+
+- **DONE — no build this round.** The "humane finalize countdown" (commit `1a8a72c`,
+  2026-06-10) shipped the core: absolute deadline in user-local time + scaled-granularity
+  relative hint, server-authoritative clock (no `Date.now()`), EN/HU i18n, and e2e
+  (`web/e2e/mytips-countdown.spec.ts`).
+- **Deferred future polish (not this round):** an explicit timezone label/offset
+  (e.g. "18:00 EDT") via `timeZoneName: 'short'`, and a secondary stadium/match-local
+  time (ties to [[match-page-venue]]). Low priority vs the rest of the backlog.
 
 ## Idea
 

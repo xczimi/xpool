@@ -31,16 +31,18 @@ table squeezed onto a small screen. Friction here directly costs participation.
   (ties to [[timezone-clarity]]'s relative-deadline idea), and make a locked /
   past-deadline group obviously read-only.
 
-## Open questions
+## Resolved decisions (2026-06-27 grill)
 
-- One-group-per-screen with swipe, or a vertical list with sticky per-group
-  headers? (swipe is more "fun", a list is more scannable)
-- Steppers (+/−) vs a big number pad vs tap-to-cycle for score entry — which is
-  fastest with fewest mistakes?
-- Does standings / draw-order entry (knockout, tiebreaks) fit this flow on
-  mobile, or is that a desktop-only affordance?
-- How does this relate to the existing `GroupTipForm` — a mobile-specific view,
-  or one responsive component that adapts?
+- **Swipe one-group-per-screen** (Peter's pick): card per group with progress
+  ("Group C · 3 of 12"), swipe / "Next group" to advance. The fun, focused flow.
+- **Score entry:** big steppers (+/−) replacing the tiny 0–9 `<select>` in `ScoreInput`.
+- **Autosave drafts** as you go; per-group "saved / N of M predicted" state.
+- **Deadline-aware:** locked / past-deadline groups are obviously read-only.
+- **Knockout/draw-order entry:** desktop-only this round (the swipe flow targets the
+  group-stage score-entry case).
+- **Relationship to `GroupTipForm`:** a mobile-specific view/flow, not just a responsive
+  tweak of the desktop table.
+- Cluster: `cluster/mytips-nav` (Wave 2), built AFTER [[knockout-subgroup-anchors]].
 
 ## Related
 
