@@ -205,6 +205,19 @@ const en = {
 
   // scoreboard
   scoreboardTitle: 'Scoreboard',
+
+  // player analytics (head-to-head + points timeline)
+  timelineTitle: 'Points trajectory',
+  h2hTitle: 'Head-to-head',
+  h2hPickTwo: 'Compare two players',
+  h2hPickPrompt: 'Pick a player',
+  h2hCompare: 'Compare',
+  h2hCompareWithMe: 'Compare with me',
+  h2hTotalDelta: 'Total difference',
+  h2hPerMatch: 'Where they differ',
+  h2hRoundLabel: 'Round',
+  h2hMatch: 'Match',
+  h2hNoDiffs: 'No differences in this round',
   pool: 'Pool',
   everyone: 'Everyone',
   overall: 'Overall',
@@ -552,6 +565,19 @@ const hu: Record<StringKey, string> = {
   roundFinal: 'Döntő',
 
   scoreboardTitle: 'Tippverseny',
+
+  // player analytics (head-to-head + points timeline)
+  timelineTitle: 'Pontok alakulása',
+  h2hTitle: 'Párharc',
+  h2hPickTwo: 'Két játékos összevetése',
+  h2hPickPrompt: 'Válassz játékost',
+  h2hCompare: 'Összevetés',
+  h2hCompareWithMe: 'Hasonlítsd hozzám',
+  h2hTotalDelta: 'Összpont-különbség',
+  h2hPerMatch: 'Ahol eltérnek',
+  h2hRoundLabel: 'Forduló',
+  h2hMatch: 'Mérkőzés',
+  h2hNoDiffs: 'Nincs eltérés ebben a fordulóban',
   pool: 'Liga',
   everyone: 'Mindenki',
   overall: 'Összesített',
