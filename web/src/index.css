@@ -1577,3 +1577,17 @@ button.danger:hover:not(:disabled) {
 .h2h-match-table .h2h-hidden { color: var(--muted); }
 .h2h-no-diffs { color: var(--muted); font-family: 'VT323', monospace; }
 /* --- end head-to-head --- */
+
+/* === player-analytics: h2h picker === */
+.h2h-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 16px;
+  flex-wrap: wrap;
+}
+.h2h-picker-label { color: var(--muted); font-family: 'VT323', monospace; }
+.h2h-picker-vs { color: var(--accent); font-family: 'VT323', monospace; }
+.h2h-picker-go { font-family: 'VT323', monospace; }
+.h2h-picker-go:disabled { opacity: 0.5; cursor: not-allowed; }
+/* --- end h2h picker --- */

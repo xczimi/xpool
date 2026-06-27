@@ -163,6 +163,11 @@ export function PlayerPage() {
           <Link to="/profile">{t('playerProfileLink')}</Link>
         </p>
       )}
+      {!isOwn && myId && (
+        <p className="player-profile-link">
+          <Link to={`/h2h/${myId}/${id}`}>{t('h2hCompareWithMe')}</Link>
+        </p>
+      )}
       <PlayerHeader entry={shownEntry} rank={rank} />
       <PointsTimelineChart
         title={t('timelineTitle')}
