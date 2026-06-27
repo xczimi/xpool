@@ -46,31 +46,42 @@ The AWS side is already paved — this is a feature build, not an infra change:
    (`web/src/i18n/strings.ts`, `.specs/LEGACY_I18N.md`).
 4. **No spec** — nothing in `.specs/` covers notifications.
 
-## Resolved decisions (2026-06-27 grill)
+## Resolved decisions (2026-06-27 grill — STATUS: deferred for build, design settled)
 
-- **Trigger model — BOTH:** (a) a manual admin-send mutation ("notify pool X"), and
-  (b) an automated hourly **EventBridge → Lambda** heartbeat. Peter explicitly wants
-  the scheduled path so it can be **tested on dev**.
-- **Recipients:** send to all verified emails of each targeted person; persons with
-  no verified email are skipped, with the skipped count surfaced to the admin.
-- **Targeting:** only players with incomplete/unlocked predictions for the
-  soon-to-lock group (not the whole pool).
-- **Cadence (2026-06-27, revised by Peter):** TWO triggers (the 24h-ahead nudge is dropped):
-  1. **1h last-call** — ~1h before a group/match deadline (the group's deadline = earliest
-     kickoff in its subtree; each knockout match is its own one-match group), remind players
-     still unpredicted/unlocked for that group/match. Dedup by `(pool, group, person, "1h")`.
-     Driven by the hourly EventBridge tick scanning for deadlines ~1h out.
-  2. **Daily matchday digest** — fires once daily at **00:00 America/Los_Angeles**
-     ("midnight PST"; PDT/UTC-7 during the June–July tournament). Reminds players with
-     incomplete/unlocked predictions about that calendar day's matches/groups (deadline
-     falling that LA-day). Dedup by `(pool, person, matchday-date)`. Driven by a daily
-     EventBridge Scheduler rule with `timezone = America/Los_Angeles`.
-- **Recipients (grill):** send to ALL verified emails of each targeted person.
-- **Targeting (grill):** only players with INCOMPLETE/UNLOCKED predictions for the
-  soon-to-lock group (not zero-only, not everyone).
-- **Opt-out / bounce (grill):** NONE this round (small pool) — no unsubscribe system;
-  SES bounce/complaint handling noted as future work.
-- **i18n:** reminder templates must be EN + HU (`web/src/i18n/strings.ts` /
-  `.specs/LEGACY_I18N.md`).
-- Cluster: `cluster/backend-infra` (Wave 1). Touches `crates` mail, `infrastructure/*.tf`
-  (EventBridge/Lambda), and adds one resolver/mutation in `query.rs`.
+> **NOTE:** This cluster is **deferred** from the Wave-1 build (Peter's call at the
+> design-review gate) but its design is now fully settled. Build after the page clusters.
+
+**Predictions are PER-PLAYER and GLOBAL — pools do NOT factor into reminders.**
+A player has a single prediction set for the tournament; pools are only competition
+groupings. So reminders are keyed to the *player*, never the pool. There is **no pool
+dimension** in targeting or dedup. **Only ever send when the player actually has
+something pending** (no empty emails).
+
+- **Trigger model — BOTH:**
+  1. **1h last-call** (automated) — ~1h before a group/match deadline (group deadline =
+     earliest kickoff in its subtree; each knockout match is its own one-match group),
+     email the player if they're still unpredicted/unlocked for that group/match.
+     Dedup by `(person, group, "1h")`. Driven by the hourly EventBridge tick scanning
+     for deadlines ~1h out.
+  2. **Daily matchday digest** (automated) — fires once daily at **00:00
+     America/Los_Angeles** ("midnight PST"; PDT/UTC-7 during the June–July tournament),
+     via an EventBridge Scheduler rule with `timezone = America/Los_Angeles`. Emails the
+     player about that LA-day's groups/matches they still have pending. Dedup by
+     `(person, matchday-date)`.
+  3. **Manual admin send** — an admin-only mutation that runs the same per-player pending
+     sweep on demand (so the path is testable on dev). Same targeting as auto:
+     incomplete/unlocked players only. (The 24h-ahead nudge is dropped.)
+- **Recipients:** send to ALL verified emails of each targeted person; persons with no
+  verified email are skipped, skipped count surfaced to the admin.
+- **Targeting:** only players with INCOMPLETE/UNLOCKED predictions for the relevant
+  group/match (not zero-only, not everyone, not pool-scoped).
+- **Email content:** name the pending group(s)/match(es), the deadline, and a **deep link
+  to the relevant My Tips section** (`/mytips/<round>#<group.id>` — reuses the
+  knockout-subgroup-anchors deep-link work). No empty emails.
+- **Language:** **bilingual — EN then HU stacked** in one email (no per-person language
+  data needed). Templates live with the other i18n copy.
+- **Opt-out / bounce:** NONE this round — no unsubscribe; SES bounce/complaint handling
+  is future work.
+- Cluster: `cluster/backend-infra` (Wave 1 surface, **deferred build**). Touches `crates`
+  mail, `infrastructure/*.tf` (EventBridge/Lambda), and adds an admin mutation in the
+  GraphQL mutation root.
