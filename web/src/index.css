@@ -1547,3 +1547,33 @@ button.danger:hover:not(:disabled) {
 }
 .pt-swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
 /* --- end timeline chart --- */
+
+/* === player-analytics: head-to-head === */
+.h2h-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 12px 0;
+  max-width: 520px;
+}
+.h2h-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.h2h-stat-value {
+  font-family: 'VT323', monospace;
+  font-size: 28px;
+  color: var(--accent-bright);
+}
+.h2h-stat-rank,
+.h2h-stat-label { color: var(--muted); font-family: 'VT323', monospace; }
+.h2h-delta-table td:last-child,
+.h2h-delta-table th:last-child { text-align: right; }
+.h2h-round-select {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin: 8px 0;
+  color: var(--ink);
+}
+.h2h-match-table .h2h-hidden { color: var(--muted); }
+.h2h-no-diffs { color: var(--muted); font-family: 'VT323', monospace; }
+/* --- end head-to-head --- */
