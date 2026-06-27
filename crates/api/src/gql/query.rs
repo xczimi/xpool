@@ -95,9 +95,9 @@ fn scored_tip(
     // `actual` carries the live provisional score during a live match; null
     // otherwise (pre-kickoff or once an official result is entered).
     let max_reachable = match (result_is_live, visible, prediction, actual) {
-        (true, true, Some(pred), Some(res)) => {
-            Some(domain::scoring::max_reachable_score(pred, res, config, multiplier))
-        }
+        (true, true, Some(pred), Some(res)) => Some(domain::scoring::max_reachable_score(
+            pred, res, config, multiplier,
+        )),
         _ => None,
     };
     Tip {
@@ -727,7 +727,10 @@ impl QueryRoot {
         let viewer_pred = viewer.match_prediction(&game_id);
         // A live provisional score drives the per-player max-reachable ceiling;
         // an official (final) result or no score yet leaves it null.
-        let result_is_live = actual_score.as_ref().map(|s| s.provisional).unwrap_or(false);
+        let result_is_live = actual_score
+            .as_ref()
+            .map(|s| s.provisional)
+            .unwrap_or(false);
         let game_ids = [game_id.clone()];
         let rows: Vec<Tip> = domain::participation::tippers_in(&players, &game_ids)
             .into_iter()
@@ -753,6 +756,233 @@ impl QueryRoot {
             actual: actual_score,
             rows,
         }))
+    }
+
+    /// The best third-placed-teams ranking (`FWC26_RULES.md` §3) for visibility
+    /// and transparency. `player: null` → the official result user's ranking; a
+    /// player id → that player's predicted ranking. Public (the schedule shows
+    /// the official ranking without login). Resolves the pure
+    /// `fwc26::third_place_ranking` — no domain logic here.
+    async fn third_place_ranking(
+        &self,
+        ctx: &Context<'_>,
+        player: Option<String>,
+    ) -> async_graphql::Result<ThirdPlaceRanking> {
+        let repo = repo(ctx);
+        let Some(t) = repo.get_tournament().await? else {
+            return Ok(ThirdPlaceRanking {
+                entries: Vec::new(),
+                complete: false,
+            });
+        };
+        let players = repo.list_players().await?;
+
+        // Perspective: an explicit player id, else the official result user.
+        let subject = match &player {
+            Some(pid) => players.iter().find(|p| &p.id == pid),
+            None => players.iter().find(|p| p.is_result_user),
+        };
+        let Some(subject) = subject else {
+            return Ok(ThirdPlaceRanking {
+                entries: Vec::new(),
+                complete: false,
+            });
+        };
+
+        let rows = fwc26::third_place_ranking(&t, subject);
+        let entries: Vec<ThirdPlaceEntry> = rows
+            .iter()
+            .filter_map(|r| {
+                t.teams.get(&r.team_id).map(|team| ThirdPlaceEntry {
+                    group: r.group.to_string(),
+                    team: Team::from(team),
+                    points: r.points,
+                    goal_diff: r.goal_diff,
+                    goals_for: r.goals_for,
+                    rank: r.rank as i32,
+                    qualifies: r.qualifies,
+                    faces_winner_group: r.faces_winner_group.map(|c| c.to_string()),
+                    faces_game: r.faces_game.clone(),
+                })
+            })
+            .collect();
+        let complete = entries.len() == 12;
+        Ok(ThirdPlaceRanking { entries, complete })
+    }
+}
+
+#[cfg(test)]
+mod third_place_tests {
+    use crate::auth::CurrentPlayer;
+    use crate::reported::ReportedResultSource;
+    use async_trait::async_trait;
+    use chrono::{TimeZone, Utc};
+    use domain::{
+        GroupChildren, GroupGame, LockMode, MatchPrediction, Player, Round, SingleGame,
+        StandingsPrediction, Team, TeamSlot, Tournament,
+    };
+    use sportsdb::Event;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use storage::{InMemoryRepository, Repository};
+
+    struct NoSource;
+    #[async_trait]
+    impl ReportedResultSource for NoSource {
+        async fn lookup_events(&self, _ids: &[String]) -> anyhow::Result<Vec<Event>> {
+            Ok(vec![])
+        }
+    }
+
+    fn team(id: &str) -> Team {
+        Team {
+            id: id.into(),
+            name: id.into(),
+            short_code: id.into(),
+            flag: None,
+            external_id: None,
+        }
+    }
+
+    fn slot(team_id: &str) -> TeamSlot {
+        TeamSlot {
+            team_id: Some(team_id.into()),
+            description: team_id.into(),
+        }
+    }
+
+    fn g(id: &str, home: &str, away: &str) -> SingleGame {
+        SingleGame {
+            id: id.into(),
+            kickoff: Utc.with_ymd_and_hms(2026, 6, 11, 18, 0, 0).unwrap(),
+            venue: None,
+            group_id: "group-A".into(),
+            home: slot(home),
+            away: slot(away),
+            external_id: None,
+        }
+    }
+
+    fn preds(p1: u8, p2: u8, p3: u8, p4: u8, p5: u8, p6: u8) -> Vec<MatchPrediction> {
+        vec![
+            MatchPrediction {
+                game_id: "M1".into(),
+                home_score: p1,
+                away_score: p2,
+                locked: true,
+            },
+            MatchPrediction {
+                game_id: "M2".into(),
+                home_score: p3,
+                away_score: p4,
+                locked: true,
+            },
+            MatchPrediction {
+                game_id: "M3".into(),
+                home_score: p5,
+                away_score: p6,
+                locked: true,
+            },
+        ]
+    }
+
+    fn player(id: &str, is_result_user: bool, mp: Vec<MatchPrediction>) -> Player {
+        Player {
+            id: id.into(),
+            person_id: format!("p-{id}"),
+            nick: id.into(),
+            full_name: id.into(),
+            referrer: None,
+            is_result_user,
+            version: 0,
+            match_predictions: mp,
+            standings_predictions: vec![StandingsPrediction {
+                group_id: "group-A".into(),
+                ordering: vec![],
+                draw_order: vec![],
+                locked: true,
+            }],
+        }
+    }
+
+    /// One group A with teams AAA/BBB/CCC, round-robin M1/M2/M3.
+    async fn repo_one_group() -> Arc<dyn Repository> {
+        let group = GroupGame {
+            id: "group-A".into(),
+            name: "Group A".into(),
+            parent: None,
+            round: Round::GroupStage,
+            lock_mode: LockMode::LockTogether,
+            carries_standings: true,
+            children: GroupChildren::Games(vec!["M1".into(), "M2".into(), "M3".into()]),
+        };
+        let t = Tournament {
+            root: "group-A".into(),
+            groups: HashMap::from([("group-A".to_string(), group)]),
+            games: HashMap::from([
+                ("M1".to_string(), g("M1", "AAA", "BBB")),
+                ("M2".to_string(), g("M2", "AAA", "CCC")),
+                ("M3".to_string(), g("M3", "BBB", "CCC")),
+            ]),
+            teams: HashMap::from([
+                ("AAA".to_string(), team("AAA")),
+                ("BBB".to_string(), team("BBB")),
+                ("CCC".to_string(), team("CCC")),
+            ]),
+        };
+        let repo = InMemoryRepository::new();
+        repo.put_tournament(&t).await.unwrap();
+        // Official: AAA wins both, BBB beats CCC -> 3rd = CCC.
+        repo.put_player(&player("result-user", true, preds(2, 0, 2, 0, 1, 0)))
+            .await
+            .unwrap();
+        // demo-ada's results: AAA loses both, CCC wins both -> 3rd = AAA.
+        repo.put_player(&player("demo-ada", false, preds(0, 1, 0, 2, 0, 1)))
+            .await
+            .unwrap();
+        Arc::new(repo)
+    }
+
+    async fn exec(repo: Arc<dyn Repository>, query: &str) -> serde_json::Value {
+        let source: Arc<dyn ReportedResultSource> = Arc::new(NoSource);
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(query)
+            .data(CurrentPlayer::Visitor)
+            .data(crate::clock::RequestNow(
+                "2026-06-20T12:00:00Z".parse().unwrap(),
+            ));
+        let resp = schema.execute(req).await;
+        assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+        resp.data.into_json().unwrap()
+    }
+
+    #[tokio::test]
+    async fn null_player_yields_official_ranking() {
+        let repo = repo_one_group().await;
+        let data = exec(
+            repo,
+            r#"{ thirdPlaceRanking { complete entries { group rank team { id } qualifies facesGame } } }"#,
+        )
+        .await;
+        let r = &data["thirdPlaceRanking"];
+        assert_eq!(r["complete"], false);
+        let entries = r["entries"].as_array().unwrap();
+        assert_eq!(entries.len(), 1, "one determinable third");
+        assert_eq!(entries[0]["team"]["id"], "CCC");
+        assert_eq!(entries[0]["rank"], 1);
+        assert_eq!(entries[0]["facesGame"], serde_json::Value::Null);
+    }
+
+    #[tokio::test]
+    async fn explicit_player_yields_that_players_ranking() {
+        let repo = repo_one_group().await;
+        let data = exec(
+            repo,
+            r#"{ thirdPlaceRanking(player: "demo-ada") { entries { team { id } } } }"#,
+        )
+        .await;
+        let entries = data["thirdPlaceRanking"]["entries"].as_array().unwrap();
+        assert_eq!(entries[0]["team"]["id"], "AAA");
     }
 }
 
