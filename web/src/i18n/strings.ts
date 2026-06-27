@@ -208,6 +208,8 @@ const en = {
   pool: 'Pool',
   everyone: 'Everyone',
   overall: 'Overall',
+  knockoutOnly: 'Knockout only',
+  scoreboardKnockoutTitle: 'Knockout Scoreboard',
   multiplier: 'Multiplier',
 
   // perfect
@@ -555,6 +557,8 @@ const hu: Record<StringKey, string> = {
   pool: 'Liga',
   everyone: 'Mindenki',
   overall: 'Összesített',
+  knockoutOnly: 'Csak kieséses',
+  scoreboardKnockoutTitle: 'Kieséses tippverseny',
   multiplier: 'Szorzó',
 
   perfectTitle: 'Telitalálatok',

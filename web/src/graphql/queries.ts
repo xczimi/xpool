@@ -72,6 +72,20 @@ export const SCOREBOARD_QUERY = `
   }
 `
 
+/**
+ * Knockout-only scoreboard — re-sums points from knockout-stage matches only
+ * (re-engagement view). The field is aliased back to `scoreboard` so the page
+ * reads the same `data.scoreboard` shape in both modes.
+ */
+export const KNOCKOUT_SCOREBOARD_QUERY = `
+  query KnockoutScoreboard($pool: ID) {
+    scoreboard: knockoutScoreboard(pool: $pool) {
+      playerId nick total
+      stages { round points }
+    }
+  }
+`
+
 export const POOLS_QUERY = `
   query Pools {
     pools { id name owner members prefix }

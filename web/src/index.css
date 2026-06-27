@@ -433,6 +433,35 @@ a:hover { color: var(--amber); }
    TABLES (scoreboard data display)
    ============================================================================ */
 
+/* Overall ⇄ Knockout-only scoreboard switch. Segmented look; the active
+   option (current route) gets the amber accent. */
+.scoreboard-toggle {
+  display: inline-flex;
+  gap: 0;
+  margin: 8px 0 4px;
+  border: 2px solid var(--bg-card-border);
+}
+
+.scoreboard-toggle a {
+  padding: 6px 14px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--text-dim);
+  background: var(--bg-card);
+}
+
+.scoreboard-toggle a + a {
+  border-left: 2px solid var(--bg-card-border);
+}
+
+.scoreboard-toggle a.active {
+  color: var(--bg-card);
+  background: var(--amber);
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
