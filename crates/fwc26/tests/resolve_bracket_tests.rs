@@ -644,3 +644,36 @@ fn test_resolve_loser_slot_not_yet_known() {
     assert!(home.is_none(), "M103 home (Loser M101) undetermined");
     assert!(away.is_none(), "M103 away (Loser M102) undetermined");
 }
+
+/// Regression (best-thirds placement bug): with only 9 groups complete (A–I),
+/// the "3ABCDF" best-third slot must NOT resolve — the top-8 selection depends
+/// on all 12 thirds. Mirrors the prod state (J/K/L group games unplayed).
+#[test]
+fn test_best_third_unresolved_until_all_groups_final() {
+    let t = build_test_tournament();
+
+    // Predictions for groups A–I only (9 complete groups); J/K/L have none.
+    let mut match_preds = Vec::new();
+    let mut standings_preds = Vec::new();
+    let mut m = 1u32;
+    for letter in 'A'..='I' {
+        let ids: Vec<String> = (m..m + 3).map(|n| format!("M{}", n)).collect();
+        let id_refs: Vec<&str> = ids.iter().map(|s| s.as_str()).collect();
+        let (mp, sp) = group_predictions(letter, &id_refs);
+        match_preds.extend(mp);
+        standings_preds.extend(sp);
+        m += 3;
+    }
+
+    let result = result_player(match_preds, standings_preds);
+    let resolved = resolve_bracket(&t, &result);
+
+    // M74 = 1E vs 3ABCDF. Group E IS complete, so home (1E) resolves, but the
+    // best-third away slot must stay None until ALL 12 groups are final.
+    let (home, away) = resolved.get("M74").expect("M74 present");
+    assert_eq!(home.as_deref(), Some("E1"), "1E resolves (group E complete)");
+    assert!(
+        away.is_none(),
+        "3ABCDF must NOT resolve with only 9 groups final (got {away:?})"
+    );
+}
