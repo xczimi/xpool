@@ -142,6 +142,8 @@ const en = {
   scheduleTitle: 'Schedule',
   scheduleViewByGroup: 'By group',
   scheduleViewByDate: 'By date',
+  thirdsScheduleTitle: 'Best third-placed teams',
+  thirdsOfficial: 'Official ranking',
 
   // best third-placed teams table
   thirdsRank: '#',
@@ -482,6 +484,8 @@ const hu: Record<StringKey, string> = {
   scheduleTitle: 'Menetrend',
   scheduleViewByGroup: 'Csoport szerint',
   scheduleViewByDate: 'Dátum szerint',
+  thirdsScheduleTitle: 'Legjobb harmadik helyezettek',
+  thirdsOfficial: 'Hivatalos rangsor',
 
   // best third-placed teams table
   thirdsRank: '#',

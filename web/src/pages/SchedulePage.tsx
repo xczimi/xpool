@@ -3,14 +3,16 @@ import { Link } from 'react-router-dom'
 import { useQuery } from 'urql'
 import { useI18n } from '../i18n/useI18n'
 import type { StringKey } from '../i18n/strings'
-import { RESULTS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
+import { RESULTS_QUERY, THIRD_PLACE_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
 import type {
   MatchPrediction,
   SingleGame,
   Team,
+  ThirdPlaceRanking,
   Tournament,
 } from '../graphql/types'
 import { ErrorView, Loading } from '../components/StatusViews'
+import { ThirdPlaceTable } from '../components/ThirdPlaceTable'
 import { byKickoff, formatKickoff, teamIndex } from '../lib/format'
 import { groupByDay } from '../lib/scheduleByDate'
 import { Matchup } from '../components/TeamLabel'
@@ -48,6 +50,11 @@ export function SchedulePage() {
   const [resultsResult] = useQuery<{ results: MatchPrediction[] }>({
     query: RESULTS_QUERY,
   })
+  const [thirdsResult] = useQuery<{ thirdPlaceRanking: ThirdPlaceRanking }>({
+    query: THIRD_PLACE_QUERY,
+    variables: { player: null },
+  })
+  const officialThirds = thirdsResult.data?.thirdPlaceRanking ?? null
 
   const tournament = result.data?.tournament ?? null
   const teams = useMemo(
@@ -153,6 +160,11 @@ export function SchedulePage() {
               />
             </div>
           ))}
+
+      <div className="schedule-group" data-testid="third-place-section">
+        <h3>{t('thirdsScheduleTitle')}</h3>
+        <ThirdPlaceTable title={t('thirdsOfficial')} ranking={officialThirds} />
+      </div>
     </section>
   )
 }
