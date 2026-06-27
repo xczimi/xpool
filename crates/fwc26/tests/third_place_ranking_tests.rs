@@ -267,7 +267,11 @@ fn provisional_shows_all_twelve_even_when_a_group_is_incomplete() {
     let ranking = third_place_ranking(&t, &result);
 
     // Provisional table always shows all 12 groups' third.
-    assert_eq!(ranking.rows.len(), 12, "all 12 groups get a provisional row");
+    assert_eq!(
+        ranking.rows.len(),
+        12,
+        "all 12 groups get a provisional row"
+    );
     assert!(!ranking.all_groups_final, "group L incomplete → not final");
     // Provisional top-8 is still shown (the table's whole point mid-tournament).
     assert_eq!(ranking.rows.iter().filter(|r| r.qualifies).count(), 8);
