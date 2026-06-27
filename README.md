@@ -44,6 +44,11 @@ cd web && npm install && npm run dev
 The SPA proxies `/api` to the server. DynamoDB Local runs in-memory — after a
 container restart, re-run the `import` and `seed` steps.
 
+`bin/xtask <args>` wraps these `xtask` invocations against the current branch's
+table (e.g. `bin/xtask import tournaments/fwc26.json`, `bin/xtask seed`).
+`bin/deploy [dev|prod]` ships code/infra and `bin/deploy-data` / `bin/pull-data`
+move data — see [`.specs/DEPLOYMENT.md`](./.specs/DEPLOYMENT.md) §10.
+
 **One-command session:** `bin/local-dev` is an idempotent, self-healing dev session.
 It brings infra + the per-branch DynamoDB table up, lays out a tmux session
 (`claude` / `api` / `web` / `shell` panes), and re-running it recreates any pane

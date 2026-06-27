@@ -96,6 +96,26 @@ rebuild after an in-place schema change. DynamoDB is shared in-memory state and
 is wiped on container restart — `bin/local-dev` re-seeds the active branch's table
 automatically when it finds it empty.
 
+### Deployed environments & data ops
+
+Code/infra and data ship via separate idempotent `bin/` scripts; each script's
+header is the full reference. `bin/deploy [dev|prod]` orchestrates
+`infra → api → spa` (delegating to `bin/deploy-infra` / `bin/deploy-api` /
+`bin/deploy-spa`); `bin/deploy-data` and `bin/pull-data` move tournament/snapshot
+data; `bin/cleanup-best-thirds [dev|prod] [--apply]` is a one-off repair.
+
+`bin/xtask [--env local|dev|prod] <args>` runs any `xtask` subcommand against the
+right table without hand-assembling env. The env is chosen by `--env`/`-e` or
+`$XPOOL_ENV` — never positionally mixed with the command; `local` (default) is
+branch/worktree-aware (the invoking checkout's `xpool-<branch>` table, via
+`lib.sh`'s `table_for`).
+
+**Credentials:** the `local` path is credential-free (DynamoDB Local). For
+`dev`/`prod` the scripts default `AWS_PROFILE=xczimi` (overridable — set
+`AWS_PROFILE` or export `AWS_*` keys) and pre-resolve it into static env vars,
+because `xtask` loads `.env` (dotenvy) whose dummy `AWS_*=local` creds would
+otherwise shadow a profile. See [`.specs/DEPLOYMENT.md`](.specs/DEPLOYMENT.md) §10.
+
 ## Architecture
 
 A 5-crate Rust workspace (`crates/*`) plus a React SPA (`web/`).

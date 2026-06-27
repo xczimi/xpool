@@ -145,3 +145,44 @@ the realistic threat to an obscure hobby URL is confused humans, not bots.
   that **exists (unrevoked/unexpired) in the invite table**. A random code that
   isn't stored is unforgeable, so no signature is needed (the HMAC token was
   retired). Pull this only on demonstrated abuse.
+
+## 10. Operational scripts (`bin/`)
+
+Code/infra and data are shipped by separate, idempotent scripts (each script's
+header is the full usage reference):
+
+- **`bin/deploy [dev|prod] [steps…]`** — orchestrator; runs `infra → api → spa`
+  in order (opt-in `data`). Delegates to the four siblings below.
+- **`bin/deploy-infra [dev|prod]`** — `tofu apply` (infra only; interactive).
+- **`bin/deploy-api [dev|prod]`** — `cargo lambda build` + `aws lambda
+  update-function-code` (code is decoupled from tofu).
+- **`bin/deploy-spa [dev|prod]`** — Vite build → S3 sync → CloudFront invalidation.
+- **`bin/deploy-data [dev|prod]`** — `xtask import` of the tournament into the
+  live table (non-destructive `put_tournament`; `--bootstrap` seeds only the
+  result-user). Typed `prod` confirm for writes.
+- **`bin/pull-data [dev|prod]`** — read-only export of a deployed table to a
+  snapshot, then load into the local per-branch table.
+- **`bin/xtask [--env local|dev|prod] <args…>`** — run any `xtask` subcommand
+  against the chosen table. `local` (default) targets the invoking checkout's
+  `xpool-<branch>` table (`lib.sh table_for`, worktree-aware); `dev`/`prod`
+  target the deployed table. Env is chosen by `--env`/`-e` or `$XPOOL_ENV`, never
+  positionally mixed with the command.
+- **`bin/cleanup-best-thirds [dev|prod] [--apply]`** — one-off repair for the
+  best-thirds placement bug (re-resolve the bracket + unlock affected
+  predictions). Dry-run by default; idempotent.
+
+### Credentials (operational scripts)
+
+- **Code/infra scripts** (`deploy`, `deploy-api`, `deploy-spa`, `deploy-infra`)
+  call `aws`/`tofu` directly; they read the standard AWS chain via `AWS_PROFILE`.
+- **Scripts that run `xtask`** (`deploy-data`, `pull-data`, `xtask`,
+  `cleanup-best-thirds`, `migrate-standings-gh`) additionally **pre-resolve** the
+  credentials into static env vars before running, because `xtask` loads `.env`
+  via dotenvy and `.env` ships dummy `AWS_*=local` creds (for DynamoDB Local) that
+  would otherwise shadow a profile. The resolution is guarded on a non-empty
+  result, so a credential failure errors fast instead of silently falling through
+  to the dummy creds.
+- **Convention:** `dev`/`prod` default `AWS_PROFILE=xczimi` (overridable — set
+  `AWS_PROFILE` or export `AWS_*` keys; CI uses the GitHub OIDC role with no
+  profile, cf. §5). `AWS_REGION` defaults to `ca-central-1`. The `local` path is
+  **credential-free** (DynamoDB Local needs none).
