@@ -158,6 +158,11 @@ const en = {
   thirdsProvisional: 'Provisional — group stage incomplete.',
   thirdsPending: 'No third-placed teams decided yet.',
 
+  // my tips — best-thirds section
+  thirdsTitle: 'Best third-placed teams',
+  thirdsBlurb: 'How your predicted group results rank the 12 third-placed teams — the top 8 advance.',
+  thirdsPredicted: 'Your prediction',
+
   // my tips
   myTipsTitle: 'My Tips',
   openGroup: 'Open this group',
@@ -499,6 +504,10 @@ const hu: Record<StringKey, string> = {
   thirdsQualifies: 'Továbbjut',
   thirdsProvisional: 'Ideiglenes — a csoportkör még tart.',
   thirdsPending: 'Még egy harmadik helyezett sem dőlt el.',
+
+  thirdsTitle: 'Legjobb harmadik helyezettek',
+  thirdsBlurb: 'A tippelt csoporteredményeid hogyan rangsorolják a 12 harmadik helyezettet — a legjobb 8 továbbjut.',
+  thirdsPredicted: 'A te tipped',
 
   myTipsTitle: 'Tippjeim',
   openGroup: 'Ugrás a csoporthoz',

@@ -9,6 +9,7 @@ import {
   RESULTS_QUERY,
   STANDINGS_QUERY,
   SUBMIT_GROUP_MUTATION,
+  THIRD_PLACE_QUERY,
   TIPS_QUERY,
   TOURNAMENT_QUERY,
 } from '../graphql/queries'
@@ -20,10 +21,12 @@ import type {
   ReportedResult,
   Round,
   StandingsScore,
+  ThirdPlaceRanking,
   Tip,
   Tournament,
 } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
+import { ThirdPlaceTable } from '../components/ThirdPlaceTable'
 import { RoundNav } from '../components/RoundNav'
 import { Countdown } from '../components/Countdown'
 import { currentRoundNode, leafGroupsOfRound, visibleRoundNodes } from '../lib/rounds'
@@ -70,6 +73,20 @@ export function MyTipsPage() {
   const tournament = tournamentResult.data?.tournament ?? null
   const meRaw = meResult.data?.me ?? null
   const me = meRaw?.__typename === 'Player' ? meRaw : null
+
+  // Predicted ranking (this player) + official ranking, shown side by side.
+  const [myThirdsResult] = useQuery<{ thirdPlaceRanking: ThirdPlaceRanking }>({
+    query: THIRD_PLACE_QUERY,
+    variables: { player: me?.id ?? null },
+    pause: !me,
+  })
+  const [officialThirdsResult] = useQuery<{ thirdPlaceRanking: ThirdPlaceRanking }>({
+    query: THIRD_PLACE_QUERY,
+    variables: { player: null },
+  })
+  const myThirds = myThirdsResult.data?.thirdPlaceRanking ?? null
+  const officialThirds = officialThirdsResult.data?.thirdPlaceRanking ?? null
+
   const results = resultsResult.data?.results ?? []
 
   const rounds = useMemo(
@@ -311,6 +328,14 @@ export function MyTipsPage() {
       ) : (
         <p>{t('selectGroup')}</p>
       )}
+      <div className="tip-form" data-testid="third-place-section">
+        <h3>{t('thirdsTitle')}</h3>
+        <p className="hint">{t('thirdsBlurb')}</p>
+        <div className="standings-pair">
+          <ThirdPlaceTable title={t('thirdsPredicted')} ranking={myThirds} />
+          <ThirdPlaceTable title={t('thirdsOfficial')} ranking={officialThirds} />
+        </div>
+      </div>
     </section>
   )
 }
