@@ -212,7 +212,9 @@ fn ranks_all_twelve_thirds_and_flags_top_eight() {
     let (mp, sp) = all_predictions('L');
     let result = result_player(mp, sp);
 
-    let rows = third_place_ranking(&t, &result);
+    let ranking = third_place_ranking(&t, &result);
+    let rows = &ranking.rows;
+    assert!(ranking.all_groups_final, "all 12 groups complete");
 
     // All 12 groups determinable → 12 rows, ranked 1..=12.
     assert_eq!(rows.len(), 12, "one row per group");
@@ -236,7 +238,8 @@ fn attaches_annexe_c_pairing_for_qualifiers() {
     let (mp, sp) = all_predictions('L');
     let result = result_player(mp, sp);
 
-    let rows = third_place_ranking(&t, &result);
+    let ranking = third_place_ranking(&t, &result);
+    let rows = &ranking.rows;
 
     // Annexe C maps winner E to exactly one of the qualifying third-groups.
     // Whichever group it is, that row must point at game M74 (the "3ABCDF" slot).
@@ -255,20 +258,41 @@ fn attaches_annexe_c_pairing_for_qualifiers() {
 }
 
 #[test]
-fn provisional_when_a_group_is_undecided() {
-    // Only 11 groups (A–K) have results → < 12 determinable thirds.
-    let t = build_test_tournament(false);
+fn provisional_shows_all_twelve_even_when_a_group_is_incomplete() {
+    // All 12 groups exist; only A–K have results. Group L is incomplete.
+    let t = build_test_tournament(true);
     let (mp, sp) = all_predictions('K');
     let result = result_player(mp, sp);
 
-    let rows = third_place_ranking(&t, &result);
+    let ranking = third_place_ranking(&t, &result);
 
-    assert_eq!(rows.len(), 11, "only determinable groups produce rows");
-    // With 11 thirds, the top-8 set is still resolvable (8 of 11), so Annexe C
-    // MAY resolve; but the table is not complete (the resolver's `complete`
-    // flag, computed in the GraphQL layer, gates on 12). Here we just assert
-    // ranks are dense and qualifies count is 8.
-    assert_eq!(rows.iter().filter(|r| r.qualifies).count(), 8);
-    assert_eq!(rows[0].rank, 1);
-    assert_eq!(rows[10].rank, 11);
+    // Provisional table always shows all 12 groups' third.
+    assert_eq!(ranking.rows.len(), 12, "all 12 groups get a provisional row");
+    assert!(!ranking.all_groups_final, "group L incomplete → not final");
+    // Provisional top-8 is still shown (the table's whole point mid-tournament).
+    assert_eq!(ranking.rows.iter().filter(|r| r.qualifies).count(), 8);
+    assert_eq!(ranking.rows[0].rank, 1);
+    assert_eq!(ranking.rows[11].rank, 12);
+    // Annexe C pairing is gated until all 12 are final.
+    assert!(
+        ranking.rows.iter().all(|r| r.faces_game.is_none()),
+        "no pairing until all 12 groups final"
+    );
+}
+
+#[test]
+fn provisional_third_for_a_group_with_no_results() {
+    // Group L exists but has zero predictions → rank_group ranks its teams by
+    // the stable fallback, so a positional 3rd is still emitted.
+    let t = build_test_tournament(true);
+    let (mp, sp) = all_predictions('K'); // L gets nothing
+    let result = result_player(mp, sp);
+
+    let ranking = third_place_ranking(&t, &result);
+
+    let l_row = ranking.rows.iter().find(|r| r.group == 'L');
+    assert!(l_row.is_some(), "group L still has a provisional row");
+    // Its 3rd is one of L's three teams (positional, all tied at 0 points).
+    assert!(l_row.unwrap().team_id.starts_with('L'));
+    assert_eq!(l_row.unwrap().points, 0, "no results → 0 points");
 }
