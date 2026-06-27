@@ -52,6 +52,84 @@ fn collect_leaf_groups<'a>(
     }
 }
 
+/// Resolve an optional pool filter to its member-id list, enforcing the
+/// private-membership rule (Issue 04): a pool filter requires the viewer to be
+/// a member or the owner of that pool. `None` pool → `Ok(None)` (the global,
+/// public board). Shared by `scoreboard` and `knockout_scoreboard` so the two
+/// never drift.
+async fn pool_member_filter(
+    ctx: &Context<'_>,
+    repo: &dyn Repository,
+    pool: Option<String>,
+) -> async_graphql::Result<Option<Vec<String>>> {
+    match pool {
+        Some(pool_id) => {
+            let viewer = CurrentPlayer::require(ctx)?;
+            let pools = repo.list_pools().await?;
+            let p = pools
+                .into_iter()
+                .find(|p| p.id == pool_id)
+                .ok_or_else(|| async_graphql::Error::new("pool not found"))?;
+            if !p.members.contains(&viewer.id) && p.owner != viewer.id {
+                return Err(async_graphql::Error::new(
+                    "you are not a member of this pool",
+                ));
+            }
+            Ok(Some(p.members))
+        }
+        None => Ok(None),
+    }
+}
+
+/// Build the sorted scoreboard rows from the materialised board, keeping only
+/// the stages whose round satisfies `keep_round` and re-summing each row's
+/// total over them. `keep_round = |_| true` yields the overall board;
+/// `domain::Round::is_knockout` yields the knockout-only board (group-stage
+/// points excluded, so everyone starts the knockouts from zero). Drops
+/// non-participants and applies the optional pool-member filter. Ordering is the
+/// shared rule: total descending, then player id ascending.
+fn score_entries(
+    board: &storage::Scoreboard,
+    nick_by_id: &HashMap<&str, &str>,
+    allowed: Option<&[String]>,
+    participant_ids: &std::collections::HashSet<&str>,
+    keep_round: impl Fn(domain::Round) -> bool,
+) -> Vec<ScoreEntry> {
+    let mut entries: Vec<ScoreEntry> = board
+        .entries
+        .iter()
+        .filter(|(pid, _)| allowed.is_none_or(|m| m.contains(pid)))
+        .filter(|(pid, _)| participant_ids.contains(pid.as_str()))
+        .map(|(pid, breakdown)| {
+            let stages: Vec<StageScore> = breakdown
+                .iter()
+                .filter(|(round, _)| keep_round(**round))
+                .map(|(round, points)| StageScore {
+                    round: (*round).into(),
+                    points: *points,
+                })
+                .collect();
+            let total: i64 = breakdown
+                .iter()
+                .filter(|(round, _)| keep_round(**round))
+                .map(|(_, points)| *points)
+                .sum();
+            ScoreEntry {
+                player_id: pid.clone(),
+                nick: nick_by_id
+                    .get(pid.as_str())
+                    .copied()
+                    .unwrap_or("")
+                    .to_owned(),
+                total,
+                stages,
+            }
+        })
+        .collect();
+    entries.sort_by(|a, b| b.total.cmp(&a.total).then(a.player_id.cmp(&b.player_id)));
+    entries
+}
+
 /// Build one `(player, game)` tip row: apply the mutual-commitment visibility
 /// gate (legacy `AllTipsHandler`) and, when the prediction is visible and an
 /// `actual` exists, score it. `actual` is the result-user's prediction for the
@@ -160,65 +238,59 @@ impl QueryRoot {
             .map(|p| (p.id.as_str(), p.nick.as_str()))
             .collect();
 
-        // Restrict to a pool's members if requested. Issue 04 — pool
-        // membership is private: a pool filter requires authentication and the
-        // caller must be a member (or owner) of that pool.
-        let allowed: Option<Vec<String>> = match pool {
-            Some(pool_id) => {
-                let viewer = CurrentPlayer::require(ctx)?;
-                let pools = repo.list_pools().await?;
-                let p = pools
-                    .into_iter()
-                    .find(|p| p.id == pool_id)
-                    .ok_or_else(|| async_graphql::Error::new("pool not found"))?;
-                if !p.members.contains(&viewer.id) && p.owner != viewer.id {
-                    return Err(async_graphql::Error::new(
-                        "you are not a member of this pool",
-                    ));
-                }
-                Some(p.members)
-            }
-            None => None,
-        };
-
-        // Drop non-participants' all-zero rows. The materialised board scores
-        // every player (recompute.rs), but only participants belong in the
-        // listing — the same category of rule as excluding the result-user,
-        // computed by the pure domain selector.
+        // Pool scoping (Issue 04) + participant filtering — the same rules the
+        // knockout board re-uses, so the two boards list the same people.
+        let allowed = pool_member_filter(ctx, repo, pool).await?;
         let participant_ids: std::collections::HashSet<&str> =
             domain::participation::participants(&players)
                 .iter()
                 .map(|p| p.id.as_str())
                 .collect();
 
-        let mut entries: Vec<ScoreEntry> = board
-            .entries
+        Ok(score_entries(
+            &board,
+            &nick_by_id,
+            allowed.as_deref(),
+            &participant_ids,
+            |_| true,
+        ))
+    }
+
+    /// The knockout-only scoreboard (`.scratch/knockout-only-scoreboard/PRD.md`).
+    /// A re-engagement VIEW: the same materialised board re-summed over knockout
+    /// rounds only, so every player starts the back half of the tournament from
+    /// zero. Identical shape, pool-scoping and participant rules as `scoreboard`
+    /// — group-stage points are simply excluded. No new materialisation: it
+    /// re-slices the board already built by `recompute.rs`. KO tips are still
+    /// entered normally per each match's own deadline; this changes no entry
+    /// policy.
+    async fn knockout_scoreboard(
+        &self,
+        ctx: &Context<'_>,
+        pool: Option<String>,
+    ) -> async_graphql::Result<Vec<ScoreEntry>> {
+        let repo = repo(ctx);
+        let board = repo.get_scoreboard().await?.unwrap_or_default();
+        let players = repo.list_players().await?;
+        let nick_by_id: HashMap<&str, &str> = players
             .iter()
-            .filter(|(pid, _)| allowed.as_ref().is_none_or(|m| m.contains(pid)))
-            .filter(|(pid, _)| participant_ids.contains(pid.as_str()))
-            .map(|(pid, breakdown)| {
-                let stages: Vec<StageScore> = breakdown
-                    .iter()
-                    .map(|(round, points)| StageScore {
-                        round: (*round).into(),
-                        points: *points,
-                    })
-                    .collect();
-                let total: i64 = breakdown.values().sum();
-                ScoreEntry {
-                    player_id: pid.clone(),
-                    nick: nick_by_id
-                        .get(pid.as_str())
-                        .copied()
-                        .unwrap_or("")
-                        .to_owned(),
-                    total,
-                    stages,
-                }
-            })
+            .map(|p| (p.id.as_str(), p.nick.as_str()))
             .collect();
-        entries.sort_by(|a, b| b.total.cmp(&a.total).then(a.player_id.cmp(&b.player_id)));
-        Ok(entries)
+
+        let allowed = pool_member_filter(ctx, repo, pool).await?;
+        let participant_ids: std::collections::HashSet<&str> =
+            domain::participation::participants(&players)
+                .iter()
+                .map(|p| p.id.as_str())
+                .collect();
+
+        Ok(score_entries(
+            &board,
+            &nick_by_id,
+            allowed.as_deref(),
+            &participant_ids,
+            domain::Round::is_knockout,
+        ))
     }
 
     /// The current viewer — either a resolved `Player` or an `UnclaimedViewer`
@@ -1847,5 +1919,167 @@ mod perfects_tests {
             ));
         let resp = schema.execute(req).await;
         assert!(!resp.errors.is_empty(), "non-member must be rejected");
+    }
+}
+
+#[cfg(test)]
+mod scoreboard_tests {
+    use crate::auth::CurrentPlayer;
+    use crate::reported::ReportedResultSource;
+    use async_trait::async_trait;
+    use domain::{MatchPrediction, Player, Pool, Round};
+    use sportsdb::Event;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use storage::{InMemoryRepository, Repository, Scoreboard};
+
+    struct NoSource;
+    #[async_trait]
+    impl ReportedResultSource for NoSource {
+        async fn lookup_events(&self, _ids: &[String]) -> anyhow::Result<Vec<Event>> {
+            Ok(vec![])
+        }
+    }
+
+    /// A competing player (one dummy locked prediction so `participants()`
+    /// counts them — the actual scores come from the seeded board, not here).
+    fn player(id: &str) -> Player {
+        Player {
+            id: id.into(),
+            person_id: format!("p-{id}"),
+            nick: id.into(),
+            full_name: id.into(),
+            referrer: None,
+            is_result_user: false,
+            version: 0,
+            match_predictions: vec![MatchPrediction {
+                game_id: "M1".into(),
+                home_score: 1,
+                away_score: 0,
+                locked: true,
+            }],
+            standings_predictions: vec![],
+        }
+    }
+
+    fn result_user() -> Player {
+        Player {
+            id: "result-user".into(),
+            person_id: "p".into(),
+            nick: "official".into(),
+            full_name: "Official".into(),
+            referrer: None,
+            is_result_user: true,
+            version: 0,
+            match_predictions: vec![],
+            standings_predictions: vec![],
+        }
+    }
+
+    /// alice: 4 group + 8 R32 = 12 overall, 8 knockout.
+    /// bob:  10 group + 2 R32 = 12 overall, 2 knockout.
+    async fn repo_with_board() -> InMemoryRepository {
+        let repo = InMemoryRepository::new();
+        repo.put_player(&result_user()).await.unwrap();
+        repo.put_player(&player("alice")).await.unwrap();
+        repo.put_player(&player("bob")).await.unwrap();
+        let mut board = Scoreboard::default();
+        board.entries.insert(
+            "alice".into(),
+            HashMap::from([(Round::GroupStage, 4), (Round::R32, 8)]),
+        );
+        board.entries.insert(
+            "bob".into(),
+            HashMap::from([(Round::GroupStage, 10), (Round::R32, 2)]),
+        );
+        repo.put_scoreboard(&board).await.unwrap();
+        repo
+    }
+
+    async fn exec(repo: InMemoryRepository, viewer: CurrentPlayer, query: &str) -> serde_json::Value {
+        let repo: Arc<dyn Repository> = Arc::new(repo);
+        let source: Arc<dyn ReportedResultSource> = Arc::new(NoSource);
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(query)
+            .data(viewer)
+            .data(crate::clock::RequestNow(
+                "2026-07-19T12:00:00Z".parse().unwrap(),
+            ));
+        let resp = schema.execute(req).await;
+        assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+        resp.data.into_json().unwrap()
+    }
+
+    #[tokio::test]
+    async fn knockout_board_resums_knockout_rounds_only() {
+        let repo = repo_with_board().await;
+        let data = exec(
+            repo,
+            CurrentPlayer::Visitor,
+            r#"{ knockoutScoreboard { playerId total stages { round points } } }"#,
+        )
+        .await;
+        let rows = data["knockoutScoreboard"].as_array().unwrap();
+        // alice (8) ranks above bob (2): knockout total desc, then player_id asc.
+        assert_eq!(rows[0]["playerId"], "alice");
+        assert_eq!(rows[0]["total"], 8);
+        assert_eq!(rows[1]["playerId"], "bob");
+        assert_eq!(rows[1]["total"], 2);
+        // The group-stage stage is excluded entirely — only knockout rounds appear.
+        let alice_rounds: Vec<&str> = rows[0]["stages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|s| s["round"].as_str().unwrap())
+            .collect();
+        assert!(alice_rounds.contains(&"R32"));
+        assert!(!alice_rounds.contains(&"GROUP_STAGE"));
+    }
+
+    #[tokio::test]
+    async fn overall_board_still_sums_every_round() {
+        // Regression guard for the shared-helper refactor: overall is unchanged.
+        let repo = repo_with_board().await;
+        let data = exec(
+            repo,
+            CurrentPlayer::Visitor,
+            r#"{ scoreboard { playerId total } }"#,
+        )
+        .await;
+        let rows = data["scoreboard"].as_array().unwrap();
+        // alice & bob both total 12; tie broken by player_id asc → alice first.
+        assert_eq!(rows[0]["playerId"], "alice");
+        assert_eq!(rows[0]["total"], 12);
+        assert_eq!(rows[1]["playerId"], "bob");
+        assert_eq!(rows[1]["total"], 12);
+    }
+
+    #[tokio::test]
+    async fn knockout_board_pool_filter_restricts_to_members() {
+        let repo = repo_with_board().await;
+        // Pool P1 has only alice (the viewer); bob is excluded.
+        repo.put_pool(&Pool {
+            id: "P1".into(),
+            name: "Pool 1".into(),
+            owner: "alice".into(),
+            members: vec!["alice".into()],
+            prefix: "P1".into(),
+        })
+        .await
+        .unwrap();
+        let data = exec(
+            repo,
+            CurrentPlayer::Player(Box::new(player("alice"))),
+            r#"{ knockoutScoreboard(pool: "P1") { playerId } }"#,
+        )
+        .await;
+        let ids: Vec<String> = data["knockoutScoreboard"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|r| r["playerId"].as_str().unwrap().to_string())
+            .collect();
+        assert!(ids.contains(&"alice".to_string()), "alice (member) shown");
+        assert!(!ids.contains(&"bob".to_string()), "bob (non-member) hidden");
     }
 }
