@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# Run an xtask subcommand against a chosen environment's DynamoDB table, with the
+# credentials + endpoint wired up — so you don't reassemble the env by hand.
+#
+# Usage: bin/xtask [--env local|dev|prod] <xtask args...>
+#
+# The target is chosen WITHOUT mixing it into the command. Precedence:
+#   --env / -e <env>   (flag, wins)
+#   $XPOOL_ENV         (environment variable)
+#   local              (default)
+# Everything after the flag is passed verbatim to xtask — the first positional is
+# always an xtask subcommand, never an env name.
+#
+#   local   DynamoDB Local. Table = xpool-<branch> of the INVOKING checkout
+#           (worktree-aware, via lib.sh `table_for`); a pre-set XPOOL_TABLE wins.
+#           Endpoint + dummy creds come from .env, like bin/run-api. Same table
+#           bin/local-dev seeds.
+#   dev|prod  Real AWS. Table = xpool-<env>; tournament id from
+#           infrastructure/env/<env>.tfvars; static creds pre-resolved from
+#           AWS_PROFILE so dotenvy's dummy local creds don't win; DYNAMO_ENDPOINT="".
+#
+# Examples:
+#   bin/xtask seed                                   # local
+#   bin/xtask import tournaments/fwc26.json          # local
+#   bin/xtask --env prod cleanup-best-thirds         # prod dry-run
+#   bin/xtask --env prod cleanup-best-thirds --apply # prod write
+#   XPOOL_ENV=dev bin/xtask export /tmp/dev-snap.json
+#
+# Every `prod` run requires a typed confirm — a generic passthrough can't tell a
+# read from a write. Builds + runs xtask from the invoking checkout.
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$HERE/lib.sh"
+
+TARGET="${XPOOL_ENV:-local}"
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --env|-e) [[ $# -ge 2 ]] || { echo "$1 needs a value (local|dev|prod)" >&2; exit 2; }
+                  TARGET="$2"; shift 2 ;;
+        --env=*)  TARGET="${1#--env=}"; shift ;;
+        --)       shift; break ;;
+        *)        break ;;
+    esac
+done
+
+case "$TARGET" in
+    local|dev|prod) ;;
+    *) echo "bin/xtask: invalid env '$TARGET' (want local|dev|prod)" >&2; exit 2 ;;
+esac
+if [[ $# -eq 0 ]]; then
+    echo "Usage: bin/xtask [--env local|dev|prod] <xtask args...>" >&2
+    exit 2
+fi
+
+# Operate from the invoking checkout (worktree-aware) so cargo builds THAT code
+# and `table_for` reads THAT branch — not wherever this script file lives.
+CHECKOUT="$(git rev-parse --show-toplevel 2>/dev/null)" \
+    || { echo "bin/xtask: not inside a git checkout" >&2; exit 1; }
+cd "$CHECKOUT"
+
+if [[ "$TARGET" == "local" ]]; then
+    # Only override XPOOL_TABLE (per-branch); DYNAMO_ENDPOINT + dummy local creds
+    # come from .env via dotenvy, exactly like bin/run-api.
+    export XPOOL_TABLE="${XPOOL_TABLE:-$(table_for "$CHECKOUT")}"
+    echo "==> local  table=$XPOOL_TABLE  (DynamoDB Local)  | xtask $*"
+    exec cargo run -q -p xtask -- "$@"
+fi
+
+# dev | prod: real AWS.
+TFVARS="infrastructure/env/${TARGET}.tfvars"
+[[ -f "$TFVARS" ]] || { echo "missing $TFVARS" >&2; exit 1; }
+TID="$(sed -n 's/.*current_tournament_id[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' "$TFVARS")"
+[[ -n "$TID" ]] || { echo "could not read current_tournament_id from $TFVARS" >&2; exit 1; }
+
+export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
+export AWS_REGION="${AWS_REGION:-ca-central-1}"
+# Pre-resolve the profile into static creds so they are present BEFORE dotenvy
+# loads `.env` (which ships dummy AWS_ACCESS_KEY_ID=local for DynamoDB Local).
+# Static keys outrank AWS_PROFILE, so without this xtask authenticates as "local"
+# and fails. xczimi uses static IAM keys — no SSO login needed.
+eval "$(aws configure export-credentials --profile "$AWS_PROFILE" --format env 2>/dev/null)" \
+    || { echo "could not resolve AWS credentials for profile $AWS_PROFILE" >&2; exit 1; }
+
+export XPOOL_TABLE="xpool-${TARGET}"
+export CURRENT_TOURNAMENT_ID="$TID"
+# Empty, not unset: dotenvy re-injects .env's localhost endpoint over an *absent*
+# var, so a plain unset would silently target local. Empty = "present" = real AWS.
+export DYNAMO_ENDPOINT=""
+
+echo "==> $TARGET  table=$XPOOL_TABLE  tournament=$CURRENT_TOURNAMENT_ID  (real AWS)  | xtask $*"
+
+# Generic passthrough can't tell a read from a write — guard every prod run.
+if [[ "$TARGET" == "prod" ]]; then
+    read -r -p "About to run against PROD ($XPOOL_TABLE). Type 'prod' to confirm: " reply
+    [[ "$reply" == "prod" ]] || { echo "aborted" >&2; exit 1; }
+fi
+
+exec cargo run -q -p xtask -- "$@"
