@@ -957,7 +957,8 @@ button.danger:hover:not(:disabled) {
   box-shadow: 0 0 6px rgba(255, 140, 0, 0.4);
 }
 
-.tip-form {
+.tip-form,
+.thirds-section {
   margin: 12px 0;
   padding: 16px;
   background: var(--bg-card);

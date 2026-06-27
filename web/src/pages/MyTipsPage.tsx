@@ -334,7 +334,7 @@ export function MyTipsPage() {
       ) : (
         <p>{t('selectGroup')}</p>
       )}
-      <div className="tip-form" data-testid="third-place-section">
+      <div className="thirds-section" data-testid="third-place-section">
         <h3>{t('thirdsTitle')}</h3>
         <p className="hint">{t('thirdsBlurb')}</p>
         <div className="standings-pair">
