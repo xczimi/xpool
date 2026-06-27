@@ -180,6 +180,10 @@ const en = {
   predictedStandings: 'Predicted standings',
   actualStandings: 'Actual standings',
   drawOrderHint: 'Drag tied teams to set your tiebreak order.',
+  koPredictedTitle: 'Your pick',
+  koActualTitle: 'Result',
+  koAdvanceHint:
+    "Predict the score after 90 minutes. If it's a draw, drag to pick who advances on extra time / penalties.",
   saved: 'Saved.',
   lockedNotice: 'This group is locked — predictions are read-only.',
   teamsNotDetermined: 'Teams not yet determined',
@@ -526,6 +530,10 @@ const hu: Record<StringKey, string> = {
   predictedStandings: 'Tippelt sorrend',
   actualStandings: 'Valós sorrend',
   drawOrderHint: 'Rendezd a holtversenyes csapatokat a sorrend beállításához.',
+  koPredictedTitle: 'A tipped',
+  koActualTitle: 'Eredmény',
+  koAdvanceHint:
+    'Tippeld meg a 90 perc utáni eredményt. Döntetlen esetén húzd a sorrendet, hogy eldöntsd, ki jut tovább hosszabbítás / büntetők után.',
   saved: 'Mentve.',
   lockedNotice: 'Tippek véglegesek – csak nézni, ne nyúlj hozzá!',
   teamsNotDetermined: 'A csapatok még nem dőltek el',

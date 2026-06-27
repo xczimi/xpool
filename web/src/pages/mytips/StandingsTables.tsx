@@ -3,15 +3,18 @@ import type { Team } from '../../graphql/types'
 import { type TeamStats, goalDiff } from '../../lib/standings'
 import { TeamLabel } from '../../components/TeamLabel'
 
-/** A read-only standings table. */
+/** A read-only standings table. Knockout one-match groups use a simplified
+ *  two-team layout (✓ advances · team · goals) instead of P/GD/Pts. */
 export function StandingsTable({
   title,
   rows,
   teams,
+  isKnockout = false,
 }: {
   title: string
   rows: TeamStats[]
   teams: Map<string, Team>
+  isKnockout?: boolean
 }) {
   return (
     <div className="standings">
@@ -21,15 +24,21 @@ export function StandingsTable({
           <tr>
             <th>#</th>
             <th>Team</th>
-            <th>P</th>
-            <th>GD</th>
-            <th>Pts</th>
+            {isKnockout ? (
+              <th>Goals</th>
+            ) : (
+              <>
+                <th>P</th>
+                <th>GD</th>
+                <th>Pts</th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
           {rows.map((s, i) => (
             <tr key={s.teamId}>
-              <td>{i + 1}</td>
+              <td>{isKnockout ? (i === 0 ? '✓' : '') : i + 1}</td>
               <td>
                 <TeamLabel
                   slot={{
@@ -39,9 +48,15 @@ export function StandingsTable({
                   teams={teams}
                 />
               </td>
-              <td>{s.played}</td>
-              <td>{goalDiff(s)}</td>
-              <td>{s.points}</td>
+              {isKnockout ? (
+                <td>{s.goalsFor}</td>
+              ) : (
+                <>
+                  <td>{s.played}</td>
+                  <td>{goalDiff(s)}</td>
+                  <td>{s.points}</td>
+                </>
+              )}
             </tr>
           ))}
         </tbody>
@@ -53,17 +68,21 @@ export function StandingsTable({
 /**
  * Editable predicted-standings table — lets the player manually order tied
  * teams (the `draw_order`, UC-6 / SCORING.md §4 step 5). Move up/down buttons.
+ * For knockout one-match groups it reframes as "who advances on ET/penalties"
+ * with a simplified two-team layout.
  */
 export function PredictedStandingsEditor({
   rows,
   teams,
   readOnly,
   onReorder,
+  isKnockout = false,
 }: {
   rows: TeamStats[]
   teams: Map<string, Team>
   readOnly: boolean
   onReorder: (orderedTeamIds: string[]) => void
+  isKnockout?: boolean
 }) {
   const { t } = useI18n()
 
@@ -77,23 +96,31 @@ export function PredictedStandingsEditor({
 
   return (
     <div className="standings">
-      <h4>{t('predictedStandings')}</h4>
-      {!readOnly && <p className="hint">{t('drawOrderHint')}</p>}
+      <h4>{t(isKnockout ? 'koPredictedTitle' : 'predictedStandings')}</h4>
+      {!readOnly && (
+        <p className="hint">{t(isKnockout ? 'koAdvanceHint' : 'drawOrderHint')}</p>
+      )}
       <table className="data-table compact">
         <thead>
           <tr>
             <th>#</th>
             <th>Team</th>
-            <th>P</th>
-            <th>GD</th>
-            <th>Pts</th>
+            {isKnockout ? (
+              <th>Goals</th>
+            ) : (
+              <>
+                <th>P</th>
+                <th>GD</th>
+                <th>Pts</th>
+              </>
+            )}
             {!readOnly && <th />}
           </tr>
         </thead>
         <tbody>
           {rows.map((s, i) => (
             <tr key={s.teamId}>
-              <td>{i + 1}</td>
+              <td>{isKnockout ? (i === 0 ? '✓' : '') : i + 1}</td>
               <td>
                 <TeamLabel
                   slot={{
@@ -103,9 +130,15 @@ export function PredictedStandingsEditor({
                   teams={teams}
                 />
               </td>
-              <td>{s.played}</td>
-              <td>{goalDiff(s)}</td>
-              <td>{s.points}</td>
+              {isKnockout ? (
+                <td>{s.goalsFor}</td>
+              ) : (
+                <>
+                  <td>{s.played}</td>
+                  <td>{goalDiff(s)}</td>
+                  <td>{s.points}</td>
+                </>
+              )}
               {!readOnly && (
                 <td className="reorder">
                   <button

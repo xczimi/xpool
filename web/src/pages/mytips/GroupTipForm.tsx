@@ -160,6 +160,7 @@ export function GroupTipForm({
   // the deadline (results arrive after kickoff) nor by a prior lock (they can
   // always re-correct). For everyone else the deadline freezes the group (UC-7).
   const isResultUser = me.isResultUser
+  const isKnockout = group.round !== 'GROUP_STAGE'
   const deadlinePassed = group.deadlinePassed
   const groupLocked =
     deadlinePassed ||
@@ -342,12 +343,14 @@ export function GroupTipForm({
             teams={teams}
             readOnly={readOnly}
             onReorder={setDrawOrder}
+            isKnockout={isKnockout}
           />
         )}
         <StandingsTable
-          title={t('actualStandings')}
+          title={t(isKnockout ? 'koActualTitle' : 'actualStandings')}
           rows={actual}
           teams={teams}
+          isKnockout={isKnockout}
         />
       </div>
 
