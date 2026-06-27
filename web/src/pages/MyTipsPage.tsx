@@ -25,6 +25,7 @@ import type {
   Tip,
   Tournament,
 } from '../graphql/types'
+import { teamIndex } from '../lib/format'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { ThirdPlaceTable } from '../components/ThirdPlaceTable'
 import { RoundNav } from '../components/RoundNav'
@@ -42,7 +43,7 @@ import { GroupTipForm } from './mytips/GroupTipForm'
  * `submitGroup` (API.md §6).
  */
 export function MyTipsPage() {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { label } = useAuth()
   // The URL is the source of truth for which round/group is open
   // (`/mytips/:groupId`). Local state is only the fallback when no param is
@@ -88,6 +89,11 @@ export function MyTipsPage() {
   const officialThirds = officialThirdsResult.data?.thirdPlaceRanking ?? null
 
   const results = resultsResult.data?.results ?? []
+
+  const teams = useMemo(
+    () => teamIndex(tournament?.teams ?? [], locale),
+    [tournament, locale],
+  )
 
   const rounds = useMemo(
     () => visibleRoundNodes(tournament?.groups ?? [], tournament?.games ?? []),
@@ -332,8 +338,8 @@ export function MyTipsPage() {
         <h3>{t('thirdsTitle')}</h3>
         <p className="hint">{t('thirdsBlurb')}</p>
         <div className="standings-pair">
-          <ThirdPlaceTable title={t('thirdsPredicted')} ranking={myThirds} />
-          <ThirdPlaceTable title={t('thirdsOfficial')} ranking={officialThirds} />
+          <ThirdPlaceTable title={t('thirdsPredicted')} ranking={myThirds} teams={teams} />
+          <ThirdPlaceTable title={t('thirdsOfficial')} ranking={officialThirds} teams={teams} />
         </div>
       </div>
     </section>

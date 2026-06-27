@@ -163,7 +163,7 @@ export function SchedulePage() {
 
       <div className="schedule-group" data-testid="third-place-section">
         <h3>{t('thirdsScheduleTitle')}</h3>
-        <ThirdPlaceTable title={t('thirdsOfficial')} ranking={officialThirds} />
+        <ThirdPlaceTable title={t('thirdsOfficial')} ranking={officialThirds} teams={teams} />
       </div>
     </section>
   )

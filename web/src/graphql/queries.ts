@@ -263,6 +263,7 @@ export const THIRD_PLACE_QUERY = `
         rank
         qualifies
         facesWinnerGroup
+        # facesGame: reserved for a future match-detail link; not yet rendered
         facesGame
       }
     }

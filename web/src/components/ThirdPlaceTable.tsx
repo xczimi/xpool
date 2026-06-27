@@ -1,5 +1,6 @@
 import { useI18n } from '../i18n/useI18n'
-import type { ThirdPlaceRanking } from '../graphql/types'
+import type { ThirdPlaceRanking, Team } from '../graphql/types'
+import { TeamLabel } from './TeamLabel'
 
 /**
  * Read-only best-third-placed-teams table (FWC26_RULES §3). The top-8 rows are
@@ -9,9 +10,11 @@ import type { ThirdPlaceRanking } from '../graphql/types'
 export function ThirdPlaceTable({
   title,
   ranking,
+  teams,
 }: {
   title: string
   ranking: ThirdPlaceRanking | null
+  teams: Map<string, Team>
 }) {
   const { t } = useI18n()
 
@@ -49,8 +52,10 @@ export function ThirdPlaceTable({
               <td>{e.rank}</td>
               <td>{e.group}</td>
               <td>
-                {e.team.flag ? `${e.team.flag} ` : ''}
-                {e.team.name}
+                <TeamLabel
+                  slot={{ teamId: e.team.id, description: e.team.name }}
+                  teams={teams}
+                />
               </td>
               <td className="num">{e.points}</td>
               <td className="num">{e.goalDiff}</td>
