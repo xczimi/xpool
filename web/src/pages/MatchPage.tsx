@@ -18,6 +18,9 @@ import {
   type MatchSort,
   type MatchSortColumn,
 } from '../lib/matchSort'
+import { STAGE_MULTIPLIERS } from '../lib/rounds'
+import { computeWhatIf } from '../lib/whatIf'
+import { WhatIfCell } from '../components/WhatIfCell'
 
 /**
  * Match page (#2). The all-players tip grid is the spine in every state; the
@@ -131,6 +134,15 @@ export function MatchPage() {
         ? 'ascending'
         : 'descending'
       : 'none'
+
+  // What-if is live-only and gated: show it once tips are revealable AND the
+  // match is live (provisional). `liveActual` narrows `actual` to non-null so
+  // the re-scoring below is type-safe.
+  const liveActual = isLive && actual ? actual : null
+  const showWhatIf = liveActual != null && gateOpen
+  // The round multiplier for this match comes from its leaf group's round.
+  const group = tournament?.groups.find((g) => g.id === game.groupId) ?? null
+  const multiplier = group ? STAGE_MULTIPLIERS[group.round] : 1
 
   return (
     <section className="page match-page">
@@ -250,48 +262,82 @@ export function MatchPage() {
             >
               {t('points')}
             </th>
+            {showWhatIf && (
+              <>
+                <th className="num what-if-col" title={t('whatIfHint')}>
+                  {t('ifHomeScores')}
+                </th>
+                <th className="num what-if-col" title={t('whatIfHint')}>
+                  {t('ifAwayScores')}
+                </th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
-          {sortedRows.map((row) => (
-            <tr
-              key={row.playerId}
-              className={row.playerId === viewerId ? 'is-self' : undefined}
-            >
-              <td className="nick">
-                {row.nick}
-                {row.playerId === viewerId && (
-                  <span className="you-badge">{t('youBadge')}</span>
+          {sortedRows.map((row) => {
+            const whatIf =
+              liveActual && row.prediction
+                ? computeWhatIf(row.prediction, liveActual, multiplier)
+                : null
+            return (
+              <tr
+                key={row.playerId}
+                className={row.playerId === viewerId ? 'is-self' : undefined}
+              >
+                <td className="nick">
+                  {row.nick}
+                  {row.playerId === viewerId && (
+                    <span className="you-badge">{t('youBadge')}</span>
+                  )}
+                </td>
+                <td className="pred">
+                  {row.prediction ? (
+                    `${row.prediction.homeScore}–${row.prediction.awayScore}`
+                  ) : (
+                    <span className="match-hidden">{t('hiddenTip')}</span>
+                  )}
+                </td>
+                <td className="pts num">
+                  {row.points != null ? (
+                    <PointsBadge
+                      breakdown={row.breakdown}
+                      points={row.points}
+                      isPerfect={row.isPerfect}
+                    />
+                  ) : (
+                    '—'
+                  )}
+                  {row.maxReachable != null && (
+                    <span
+                      className="max-reachable"
+                      title={t('maxReachableTooltip')}
+                    >
+                      {t('maxReachableShort')} ≤ {row.maxReachable}
+                    </span>
+                  )}
+                </td>
+                {showWhatIf && (
+                  <>
+                    <td className="num what-if-cell">
+                      {whatIf ? (
+                        <WhatIfCell outcome={whatIf.ifHome} />
+                      ) : (
+                        <span className="match-hidden">{t('hiddenTip')}</span>
+                      )}
+                    </td>
+                    <td className="num what-if-cell">
+                      {whatIf ? (
+                        <WhatIfCell outcome={whatIf.ifAway} />
+                      ) : (
+                        <span className="match-hidden">{t('hiddenTip')}</span>
+                      )}
+                    </td>
+                  </>
                 )}
-              </td>
-              <td className="pred">
-                {row.prediction ? (
-                  `${row.prediction.homeScore}–${row.prediction.awayScore}`
-                ) : (
-                  <span className="match-hidden">{t('hiddenTip')}</span>
-                )}
-              </td>
-              <td className="pts num">
-                {row.points != null ? (
-                  <PointsBadge
-                    breakdown={row.breakdown}
-                    points={row.points}
-                    isPerfect={row.isPerfect}
-                  />
-                ) : (
-                  '—'
-                )}
-                {row.maxReachable != null && (
-                  <span
-                    className="max-reachable"
-                    title={t('maxReachableTooltip')}
-                  >
-                    {t('maxReachableShort')} ≤ {row.maxReachable}
-                  </span>
-                )}
-              </td>
-            </tr>
-          ))}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </section>

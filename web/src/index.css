@@ -1556,3 +1556,28 @@ button.danger:hover:not(:disabled) {
   color: var(--accent-ink);
   vertical-align: middle;
 }
+.what-if {
+  display: inline-flex;
+  gap: 5px;
+  align-items: baseline;
+  justify-content: flex-end;
+}
+.what-if-total {
+  font-size: 13px;
+}
+.what-if-delta {
+  font-size: 11px;
+  font-weight: 600;
+}
+.what-if-delta.up {
+  color: #33ff66;
+}
+.what-if-delta.down {
+  color: #ff6b6b;
+}
+.what-if-delta.flat {
+  color: var(--muted);
+}
+.match-grid th.what-if-col {
+  white-space: nowrap;
+}
