@@ -65,6 +65,15 @@ enum Command {
         #[arg(long)]
         apply: bool,
     },
+    /// One-off: clean up the best-thirds placement bug. Re-resolves the bracket
+    /// (re-nulls premature best-third R32 slots) and unlocks locked predictions on
+    /// knockout matches whose teams are no longer placed. Idempotent; a read-only
+    /// report unless `--apply` is given.
+    CleanupBestThirds {
+        /// Write the changes. Without this flag the command reports only.
+        #[arg(long)]
+        apply: bool,
+    },
     /// Reconcile xpool games against TheSportsDB and print proposed
     /// `M# -> idEvent` mappings. Read-only: prints a table for the human to
     /// paste into `tournaments/fwc26.json`. Requires THESPORTSDB_API_KEY.
@@ -136,6 +145,10 @@ async fn main() -> anyhow::Result<()> {
         }
         Command::FixGroupsGh { apply } => {
             let report = xtask::migrate_gh::run(&repo, apply).await?;
+            report.print(apply);
+        }
+        Command::CleanupBestThirds { apply } => {
+            let report = xtask::cleanup_thirds::run(&repo, apply).await?;
             report.print(apply);
         }
         Command::ReconcileEvents => {
