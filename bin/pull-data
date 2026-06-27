@@ -43,7 +43,6 @@ source "$PROJECT/bin/lib.sh"
 SNAPSHOT="${SNAPSHOT:-snapshots/${SRC_ENV}-snapshot.json}"
 mkdir -p "$(dirname "$SNAPSHOT")"
 
-export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
 export AWS_REGION="${AWS_REGION:-ca-central-1}"
 
 TFVARS="infrastructure/env/${SRC_ENV}.tfvars"
@@ -60,10 +59,13 @@ if [[ "$RELOAD" == "1" ]]; then
 else
     echo "==> export  table=xpool-${SRC_ENV}  tournament=$TID  ->  $SNAPSHOT  (e-mails anonymised)"
     (
-        # Pre-resolve the profile into static creds so dotenvy's dummy local creds
-        # in .env don't shadow them — same trick as bin/deploy-data.
-        eval "$(aws configure export-credentials --profile "$AWS_PROFILE" --format env 2>/dev/null)" \
-            || { echo "could not resolve AWS credentials for profile $AWS_PROFILE (try: aws sso login --profile $AWS_PROFILE)" >&2; exit 1; }
+        # Pre-resolve the AMBIENT credentials into static env vars so dotenvy's
+        # dummy local creds in .env don't shadow them (see bin/deploy-data). No
+        # profile assumed — bring your own credentials. Capture first so a
+        # resolution failure isn't masked by eval of empty output.
+        aws_creds="$(aws configure export-credentials --format env 2>/dev/null)" || aws_creds=""
+        [[ -n "$aws_creds" ]] || { echo "no AWS credentials in the execution context (set AWS_PROFILE or export AWS_* keys)" >&2; exit 1; }
+        eval "$aws_creds"
         export XPOOL_TABLE="xpool-${SRC_ENV}"
         export CURRENT_TOURNAMENT_ID="$TID"
         # Force real AWS. EMPTY, not unset: dotenvy re-injects .env's localhost over
