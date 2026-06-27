@@ -790,6 +790,8 @@ impl QueryRoot {
         };
 
         let rows = fwc26::third_place_ranking(&t, subject);
+        // t.teams contains every team_id rank_group can return (import populates both
+        // consistently), so the filter_map's None branch is unreachable on valid data.
         let entries: Vec<ThirdPlaceEntry> = rows
             .iter()
             .filter_map(|r| {
@@ -806,7 +808,7 @@ impl QueryRoot {
                 })
             })
             .collect();
-        let complete = entries.len() == 12;
+        let complete = entries.len() == 12; // FWC26 has 12 groups (A–L)
         Ok(ThirdPlaceRanking { entries, complete })
     }
 }
@@ -970,6 +972,7 @@ mod third_place_tests {
         assert_eq!(entries.len(), 1, "one determinable third");
         assert_eq!(entries[0]["team"]["id"], "CCC");
         assert_eq!(entries[0]["rank"], 1);
+        assert_eq!(entries[0]["qualifies"], true);
         assert_eq!(entries[0]["facesGame"], serde_json::Value::Null);
     }
 
@@ -983,6 +986,19 @@ mod third_place_tests {
         .await;
         let entries = data["thirdPlaceRanking"]["entries"].as_array().unwrap();
         assert_eq!(entries[0]["team"]["id"], "AAA");
+    }
+
+    #[tokio::test]
+    async fn unknown_player_yields_empty_ranking() {
+        let repo = repo_one_group().await;
+        let data = exec(
+            repo,
+            r#"{ thirdPlaceRanking(player: "nobody") { complete entries { group } } }"#,
+        )
+        .await;
+        let r = &data["thirdPlaceRanking"];
+        assert_eq!(r["complete"], false);
+        assert_eq!(r["entries"].as_array().unwrap().len(), 0);
     }
 }
 
