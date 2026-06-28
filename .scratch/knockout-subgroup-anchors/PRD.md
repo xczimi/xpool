@@ -16,6 +16,27 @@ Area: web
 - **Files:** `web/src/pages/MyTipsPage.tsx` (hash `useEffect` + scroll),
   `web/src/pages/mytips/GroupTipForm.tsx` (add `id`), e2e deep-link test.
 
+## Follow-up (2026-06-27, after review): wire the anchor into "Open this group"
+
+**Gap found:** the anchors were built + tested but **no UI link generates the `#hash`**. The
+three "Open this group" links (`MatchPage.tsx:184`, `TodayPage.tsx:124`, `SchedulePage.tsx:207`)
+all point to bare `/mytips/<groupId>`. For group stage that isolates the one group (fine), but
+for **knockout** the round **stacks every match**, so the link lands at the top of the round
+instead of the specific match — exactly the case the anchor solves.
+
+Decisions:
+- **Append `#<group.id>`** to all three "Open this group" links so the target match scrolls
+  into view (essential for knockout; harmless for group stage).
+- **Knockout link text → "Open this KO match"** (derive group-vs-knockout from match arity,
+  consistent with the knockout-tip-labels work). **Group-stage text stays "Open this group"**
+  (no change). EN + HU.
+- **Scope:** all three entry points (Match, Today, Schedule).
+- Files: `web/src/pages/{MatchPage,TodayPage,SchedulePage}.tsx`, `web/src/i18n/strings.ts`,
+  the link/label helper. Extend the anchor e2e to click an "Open this KO match" link and assert
+  it scrolls to that match.
+- **Sequenced AFTER the timeline rework** (same worktree); bundle with the what-if team-labels
+  follow-up since both touch `MatchPage.tsx` + `strings.ts`.
+
 ## Idea
 
 Use URL `#` anchors to jump directly into sub-sections of a knockout round,
