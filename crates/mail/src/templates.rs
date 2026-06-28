@@ -66,7 +66,7 @@ pub fn render_last_call(ctx: &LastCallContext) -> RenderedReminder {
          \n\
          {link}\n\
          \n\
-         And no stress if you can't fill in every group-stage match — we run a \
+         And no stress if you couldn't fill in every group-stage match — we run a \
          knockout-only scoreboard too, so you're still in the running.\n\
          \n\
          Lock them in before kick-off — good luck!\n\
@@ -126,7 +126,7 @@ pub fn render_digest(ctx: &DigestContext) -> RenderedReminder {
          Matches kick off today ({day}) that you still have unlocked or missing tips for:\n\
          \n\
          {lines}\n\
-         And no stress if you can't fill in every group-stage match — we run a \
+         And no stress if you couldn't fill in every group-stage match — we run a \
          knockout-only scoreboard too, so you're still in the running.\n\
          \n\
          Pop in and lock your tips before each deadline — good luck!\n\
