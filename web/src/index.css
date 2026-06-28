@@ -1521,3 +1521,63 @@ button.danger:hover:not(:disabled) {
 .match-note.match-warn { color: var(--amber); }
 .match-grid td.pred { font-size: 16px; }
 .match-grid .match-hidden { color: var(--muted); }
+.match-grid th.sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.match-grid th.sortable.active {
+  color: var(--accent-bright);
+}
+.match-grid th.sortable[aria-sort='ascending']::after {
+  content: ' ▲';
+  font-size: 9px;
+}
+.match-grid th.sortable[aria-sort='descending']::after {
+  content: ' ▼';
+  font-size: 9px;
+}
+.match-grid th.sortable.disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.match-grid tr.is-self {
+  background: var(--bg-bar);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.you-badge {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 8px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--accent);
+  color: var(--accent-ink);
+  vertical-align: middle;
+}
+.what-if {
+  display: inline-flex;
+  gap: 5px;
+  align-items: baseline;
+  justify-content: flex-end;
+}
+.what-if-total {
+  font-size: 13px;
+}
+.what-if-delta {
+  font-size: 11px;
+  font-weight: 600;
+}
+.what-if-delta.up {
+  color: #33ff66;
+}
+.what-if-delta.down {
+  color: #ff6b6b;
+}
+.what-if-delta.flat {
+  color: var(--muted);
+}
+.match-grid th.what-if-col {
+  white-space: nowrap;
+}
