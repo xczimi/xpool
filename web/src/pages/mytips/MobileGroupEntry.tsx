@@ -6,7 +6,6 @@ import type {
   MatchPrediction,
   Player,
   PointsBreakdown,
-  StandingsScore,
   Tournament,
 } from '../../graphql/types'
 import { MobileGroupCard } from './MobileGroupCard'
@@ -27,7 +26,6 @@ export function MobileGroupEntry({
   me,
   results,
   pointsByGame,
-  standingsByGroup,
   serverNowMs,
   onExpire,
   onAutosave,
@@ -44,7 +42,6 @@ export function MobileGroupEntry({
     string,
     { breakdown: PointsBreakdown | null; isPerfect: boolean }
   >
-  standingsByGroup: Map<string, StandingsScore>
   serverNowMs: number
   onExpire?: () => void
   onAutosave: (
@@ -115,7 +112,6 @@ export function MobileGroupEntry({
         me={me}
         results={results}
         pointsByGame={pointsByGame}
-        standings={standingsByGroup.get(active.id) ?? null}
         serverNowMs={serverNowMs}
         onExpire={onExpire}
         onAutosave={onAutosave}

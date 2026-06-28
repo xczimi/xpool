@@ -334,7 +334,6 @@ export function MyTipsPage() {
           me={me}
           results={results}
           pointsByGame={pointsByGame}
-          standingsByGroup={standingsByGroup}
           serverNowMs={serverNowMs}
           onExpire={refetchAll}
           onAutosave={(groupId, predictions, standings) =>

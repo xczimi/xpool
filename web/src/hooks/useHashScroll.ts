@@ -3,7 +3,8 @@ import { hashToId } from '../lib/hashAnchor'
 
 /** Briefly applied to the scrolled-to section (see `.tip-form--anchored`). */
 const ANCHOR_CLASS = 'tip-form--anchored'
-const HIGHLIGHT_MS = 1600
+// Matches the `anchor-pulse` animation duration in index.css (1.4s).
+const HIGHLIGHT_MS = 1400
 
 /**
  * Smooth-scroll the element whose id matches `location.hash` into view and
@@ -20,13 +21,20 @@ export function useHashScroll(hash: string, contentKey: string): void {
   useEffect(() => {
     const id = hashToId(hash)
     if (!id) return
+    let highlightTimer: number | undefined
     const raf = requestAnimationFrame(() => {
       const el = document.getElementById(id)
       if (!el) return
       el.scrollIntoView({ behavior: 'smooth', block: 'start' })
       el.classList.add(ANCHOR_CLASS)
-      window.setTimeout(() => el.classList.remove(ANCHOR_CLASS), HIGHLIGHT_MS)
+      highlightTimer = window.setTimeout(
+        () => el.classList.remove(ANCHOR_CLASS),
+        HIGHLIGHT_MS,
+      )
     })
-    return () => cancelAnimationFrame(raf)
+    return () => {
+      cancelAnimationFrame(raf)
+      if (highlightTimer !== undefined) window.clearTimeout(highlightTimer)
+    }
   }, [hash, contentKey])
 }

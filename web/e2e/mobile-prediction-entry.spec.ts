@@ -30,26 +30,31 @@ test('Mobile My Tips: stepper entry autosaves and persists', async ({ page }) =>
   await expect(entry).toBeVisible()
   await expect(page.locator('.mobile-entry-label')).toContainText('Group G')
 
-  // Tap the first match's HOME + stepper three times → value "3".
+  // Enter a COMPLETE prediction on the first match (both sides). A match with
+  // one side unset cannot be persisted (the server requires both scores), so
+  // only a complete entry survives a reload.
   const firstMatch = page.locator('.mobile-match').first()
   const homeStepper = firstMatch.locator('.score-stepper').first()
+  const awayStepper = firstMatch.locator('.score-stepper').nth(1)
   await homeStepper.locator('.score-stepper-inc').click()
   await homeStepper.locator('.score-stepper-inc').click()
   await homeStepper.locator('.score-stepper-inc').click()
   await expect(homeStepper.locator('.score-stepper-value')).toHaveText('3')
+  await awayStepper.locator('.score-stepper-inc').click()
+  await expect(awayStepper.locator('.score-stepper-value')).toHaveText('0')
 
   // Autosave fires (debounced) → status shows the saved string.
   await expect(page.locator('.mobile-save-status.saved')).toBeVisible()
 
-  // Reload: the autosaved draft re-seeds the stepper.
+  // Reload: the autosaved draft re-seeds both steppers.
   await page.goto('/mytips/G')
-  const reloadedHome = page
-    .locator('.mobile-match')
-    .first()
-    .locator('.score-stepper')
-    .first()
-    .locator('.score-stepper-value')
-  await expect(reloadedHome).toHaveText('3')
+  const reloadedFirst = page.locator('.mobile-match').first()
+  await expect(
+    reloadedFirst.locator('.score-stepper').first().locator('.score-stepper-value'),
+  ).toHaveText('3')
+  await expect(
+    reloadedFirst.locator('.score-stepper').nth(1).locator('.score-stepper-value'),
+  ).toHaveText('0')
 
   // "Next group" advances the progress index.
   const label = page.locator('.mobile-entry-label')

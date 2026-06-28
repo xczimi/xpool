@@ -7,7 +7,6 @@ import type {
   MatchPrediction,
   Player,
   PointsBreakdown,
-  StandingsScore,
   Tournament,
 } from '../../graphql/types'
 import { byKickoff, teamIndex } from '../../lib/format'
@@ -52,8 +51,6 @@ export function MobileGroupCard({
     string,
     { breakdown: PointsBreakdown | null; isPerfect: boolean }
   >
-  /** Reserved for future per-group bonus display; unused for now. */
-  standings?: StandingsScore | null
   serverNowMs: number
   onExpire?: () => void
   onAutosave: (
@@ -93,6 +90,17 @@ export function MobileGroupCard({
     return map
   }, [games, me])
 
+  // Draw-order tie editing stays desktop-only, but the existing manual order
+  // (set on desktop) must be FORWARDED on every mobile autosave — the server
+  // replaces a group's standings prediction wholesale, so submitting `[]` would
+  // silently wipe it.
+  const existingDrawOrder = useMemo(
+    () =>
+      me.standingsPredictions.find((s) => s.groupId === group.id)?.drawOrder ??
+      [],
+    [me, group],
+  )
+
   // Seeded once; the parent keys this card by `group.id`, so switching groups
   // remounts and reseeds from the freshest `me`.
   const [cells, setCells] = useState<Record<string, Cell>>(initial)
@@ -127,20 +135,23 @@ export function MobileGroupCard({
           ? { home: c.home, away: c.away }
           : null
       }),
-      [],
+      existingDrawOrder,
     )
-    return { ordering: ranked.map((s) => s.teamId), drawOrder: [] }
+    return {
+      ordering: ranked.map((s) => s.teamId),
+      drawOrder: existingDrawOrder,
+    }
   }
 
   const persist = useDebouncedCallback((state: Record<string, Cell>) => {
     void (async () => {
       try {
-        const res = await onAutosave(
-          group.id,
-          buildPredictions(state),
-          buildStandings(state),
-        )
-        setStatus(res.error ? 'error' : 'saved')
+        const predictions = buildPredictions(state)
+        const res = await onAutosave(group.id, predictions, buildStandings(state))
+        // Only claim "Saved." when something was actually persisted — a match
+        // with one side still unset cannot be stored (the server requires both
+        // scores), so a wholly-incomplete group falls back to idle.
+        setStatus(res.error ? 'error' : predictions.length > 0 ? 'saved' : 'idle')
       } catch {
         setStatus('error')
       }
@@ -150,11 +161,16 @@ export function MobileGroupCard({
   const setScore = (gameId: string, side: 'home' | 'away', value: number | null) => {
     const next = { ...cells, [gameId]: { ...cells[gameId], [side]: value } }
     setCells(next)
-    setStatus('saving')
-    persist(next)
+    // Show "Saving…" only when the autosave will persist something.
+    setStatus(buildPredictions(next).length > 0 ? 'saving' : 'idle')
+    persist.call(next)
   }
 
   const finalize = async () => {
+    // Drop any pending autosave so a trailing `lock=false` submit can't fire
+    // after the group is finalized (the server would reject it as already
+    // locked, surfacing a spurious "Save failed").
+    persist.cancel()
     setBusy(true)
     try {
       await onFinalize(group.id, buildPredictions(cells), buildStandings(cells))
