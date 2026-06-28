@@ -1091,6 +1091,9 @@ mod send_reminders_tests {
         }
     }
 
+    /// The admin viewer for the mutation. Used **only** as the `CurrentPlayer`
+    /// auth credential (it satisfies `require_admin`); it is intentionally NOT
+    /// seeded into the repo, so the sweep never treats it as a recipient.
     fn admin() -> Player {
         Player {
             id: "ru".into(),
@@ -1105,14 +1108,14 @@ mod send_reminders_tests {
         }
     }
 
-    #[tokio::test]
-    async fn admin_send_last_call_reminders_sends_to_incomplete_member() {
+    /// An in-memory repo with one leaf group "A" (a single game kicking off at
+    /// `kickoff`) and one incomplete player `alice` with a verified email. The
+    /// sweep's only candidate recipient is `alice@dev.invalid`.
+    async fn seeded_repo(kickoff: chrono::DateTime<Utc>) -> InMemoryRepository {
         let repo = InMemoryRepository::new();
-
-        // One leaf group "A" locking ~30min after `now` (17:30 → 18:00 kickoff).
         let game = SingleGame {
             id: "A-g".into(),
-            kickoff: Utc.with_ymd_and_hms(2026, 6, 20, 18, 0, 0).unwrap(),
+            kickoff,
             venue: None,
             group_id: "A".into(),
             home: TeamSlot {
@@ -1170,6 +1173,13 @@ mod send_reminders_tests {
         })
         .await
         .unwrap();
+        repo
+    }
+
+    #[tokio::test]
+    async fn admin_send_last_call_reminders_sends_to_incomplete_member() {
+        // One leaf group "A" locking ~30min after `now` (17:30 → 18:00 kickoff).
+        let repo = seeded_repo(Utc.with_ymd_and_hms(2026, 6, 20, 18, 0, 0).unwrap()).await;
 
         // No pool needed — the sweep is global over players (per-player predictions).
         let mail = CapturingSender::new();
@@ -1192,6 +1202,31 @@ mod send_reminders_tests {
     }
 
     #[tokio::test]
+    async fn admin_send_matchday_digest_sends_to_incomplete_member() {
+        // LA-matchday setup (mirrors the sweep's digest test): kickoff
+        // 2026-06-21 05:00 UTC == 2026-06-20 22:00 LA.
+        let repo = seeded_repo(Utc.with_ymd_and_hms(2026, 6, 21, 5, 0, 0).unwrap()).await;
+
+        let mail = CapturingSender::new();
+        let repo_arc: Arc<dyn Repository> = Arc::new(repo);
+        let source: Arc<dyn crate::reported::ReportedResultSource> = Arc::new(NoSource);
+        let mail_arc: Arc<dyn mail::MailSender> = Arc::new(mail.clone());
+        let schema = crate::gql::build_schema_with_mail(repo_arc, source, mail_arc);
+
+        // Digest tick at LA-midnight of 2026-06-20 (07:00 UTC).
+        let now = Utc.with_ymd_and_hms(2026, 6, 20, 7, 0, 0).unwrap();
+        let req = async_graphql::Request::new(
+            r#"mutation { sendMatchdayDigest { sent skippedNoEmail recipients deduped } }"#,
+        )
+        .data(CurrentPlayer::Player(Box::new(admin())))
+        .data(crate::clock::RequestNow(now));
+        let resp = schema.execute(req).await;
+        assert!(resp.errors.is_empty(), "errors: {:?}", resp.errors);
+        assert_eq!(mail.sent().len(), 1);
+        assert_eq!(mail.sent()[0].to, vec!["alice@dev.invalid".to_string()]);
+    }
+
+    #[tokio::test]
     async fn non_admin_is_rejected() {
         let repo = InMemoryRepository::new();
         let repo_arc: Arc<dyn Repository> = Arc::new(repo);
@@ -1200,9 +1235,13 @@ mod send_reminders_tests {
         let schema = crate::gql::build_schema_with_mail(repo_arc, source, mail_arc);
         let mut nonadmin = admin();
         nonadmin.is_result_user = false;
+        // Clock is pinned for consistency with the other tests; `require_admin`
+        // returns before the request clock is ever read.
         let req = async_graphql::Request::new(r#"mutation { sendLastCallReminders { sent } }"#)
             .data(CurrentPlayer::Player(Box::new(nonadmin)))
-            .data(crate::clock::RequestNow(Utc::now()));
+            .data(crate::clock::RequestNow(
+                Utc.with_ymd_and_hms(2026, 6, 20, 12, 0, 0).unwrap(),
+            ));
         let resp = schema.execute(req).await;
         assert!(!resp.errors.is_empty(), "non-admin must be rejected");
     }
