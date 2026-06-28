@@ -1052,6 +1052,79 @@ fn score_tournament_partially_predicted_group_counts_filled_games_only() {
     assert_eq!(scores.get(&Round::GroupStage).copied().unwrap_or(0), 4);
 }
 
+/// The group-standings bonus is awarded **only once the group is complete** —
+/// every game in the leaf group has an official (result-user) result entered.
+/// Until then the bonus is `None` (0). This makes a player's committed points
+/// monotonic: the provisional ranking can shift as results land, but the bonus
+/// is never credited (and so can never *decrease*) before the table is final.
+#[test]
+fn standings_bonus_awarded_only_when_group_complete_and_is_monotonic() {
+    let c = default_config();
+    // Round-robin group of three teams → three games.
+    let group = make_leaf_group("g", vec!["m1", "m2", "m3"]);
+    let games = [
+        make_single_game("m1", "g", "A", "B"),
+        make_single_game("m2", "g", "A", "C"),
+        make_single_game("m3", "g", "B", "C"),
+    ];
+    let game_refs: Vec<&SingleGame> = games.iter().collect();
+
+    let now = Utc.with_ymd_and_hms(2026, 6, 2, 0, 0, 0).unwrap();
+    let deadline = Utc.with_ymd_and_hms(2026, 6, 1, 0, 0, 0).unwrap();
+
+    // Prediction nails the eventual final table A, B, C (3 correct pairs).
+    let pred_player = make_player(
+        "p1",
+        vec![
+            mp("m1", 1, 0, true),
+            mp("m2", 1, 0, true),
+            mp("m3", 1, 0, true),
+        ],
+        vec![make_sp("g", vec!["A", "B", "C"], true)],
+    );
+
+    // Official results, added one game at a time: A 1-0 B, A 1-0 C, B 1-0 C.
+    let all_results = [
+        mp("m1", 1, 0, true),
+        mp("m2", 1, 0, true),
+        mp("m3", 1, 0, true),
+    ];
+
+    let bonus_at = |n: usize| -> i64 {
+        let result_player = make_player(
+            "result",
+            all_results[..n].to_vec(),
+            vec![make_sp("g", vec!["A", "B", "C"], true)],
+        );
+        standings_score(
+            &group,
+            &game_refs,
+            &pred_player,
+            &result_player,
+            now,
+            deadline,
+            &c,
+        )
+        .map_or(0, |b| b.bonus)
+    };
+
+    // Incomplete group → no bonus, regardless of how many results are in so far.
+    assert_eq!(bonus_at(0), 0, "0/3 results → incomplete → no bonus");
+    assert_eq!(bonus_at(1), 0, "1/3 results → incomplete → no bonus");
+    assert_eq!(bonus_at(2), 0, "2/3 results → incomplete → no bonus");
+    // The final result lands → group complete → bonus jumps to its final value.
+    assert_eq!(bonus_at(3), 3, "3/3 results → complete → final bonus");
+
+    // Monotonic: the committed bonus never decreases as results accrue.
+    let series: Vec<i64> = (0..=3).map(bonus_at).collect();
+    for w in series.windows(2) {
+        assert!(
+            w[1] >= w[0],
+            "standings bonus must never decrease over time: {series:?}"
+        );
+    }
+}
+
 // ─── multiplier table (explicit, regression §10 #3) ─────────────────────────
 
 #[test]

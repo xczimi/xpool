@@ -144,8 +144,10 @@ test('live match page: per-player max-reachable shows grace ceiling while M8 is 
   await page.goto(`/match/${LIVE_GAME}`)
   await expect(page).toHaveURL(new RegExp(`/match/${LIVE_GAME}`))
 
-  // The per-match still-reachable ceiling appears only while the match is live.
-  const ceiling = page.locator('.max-reachable').first()
+  // The per-match still-reachable ceiling appears only while the match is live —
+  // now its own sortable column (Max), with a header and per-row cells.
+  await expect(page.locator('table.match-grid th.max-col')).toBeVisible()
+  const ceiling = page.locator('.max-cell').first()
   await expect(ceiling).toBeVisible()
 
   // grace's row shows a ceiling of ≤ 4 (her 1–0 tip vs live 1–0 → base 4, ×1).
@@ -153,7 +155,7 @@ test('live match page: per-player max-reachable shows grace ceiling while M8 is 
     .locator('table.match-grid tbody tr')
     .filter({ hasText: 'grace' })
   await expect(graceRow).toBeVisible()
-  await expect(graceRow.locator('.max-reachable')).toContainText('4')
+  await expect(graceRow.locator('.max-cell')).toContainText('4')
 
   await expectNoErrorView(page)
   await net.assertNoGraphqlErrors()

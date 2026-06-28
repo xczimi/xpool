@@ -7,7 +7,11 @@ export default defineConfig({
   test: {
     environment: 'node',
     setupFiles: ['src/test/localStorage.setup.ts'],
-    include: ['src/**/*.test.ts'],
+    // `src/**` is the SPA logic layer; `e2e/**` adds the e2e infra unit tests
+    // (e.g. the dynamic-port reader). Playwright only ever runs `*.spec.ts`
+    // (see playwright.config.ts `testMatch`), so `*.test.ts` under e2e/ belong
+    // to vitest alone.
+    include: ['src/**/*.test.ts', 'e2e/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       // The `src/lib/` pure-logic modules. `usePolledQuery.ts` is a React

@@ -6,10 +6,22 @@ import { useI18n } from '../i18n/useI18n'
 import { MATCH_QUERY, ME_QUERY, POOLS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
 import type { MatchDetail, Me, Pool, Tournament } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
-import { Matchup } from '../components/TeamLabel'
+import { Matchup, TeamLabel } from '../components/TeamLabel'
 import { PointsBadge } from '../components/PointsBadge'
 import { PredictionStats } from '../components/PredictionStats'
 import { teamIndex, formatKickoff } from '../lib/format'
+import {
+  sortRows,
+  nextSort,
+  readMatchSort,
+  writeMatchSort,
+  type MatchSort,
+  type MatchSortColumn,
+} from '../lib/matchSort'
+import { STAGE_MULTIPLIERS } from '../lib/rounds'
+import { knockoutGroupIds } from '../lib/knockoutGroups'
+import { computeWhatIf } from '../lib/whatIf'
+import { WhatIfCell } from '../components/WhatIfCell'
 
 /**
  * Match page (#2). The all-players tip grid is the spine in every state; the
@@ -24,6 +36,12 @@ export function MatchPage() {
   // Pool scoping mirrors the scoreboard: `undefined` = default to the player's
   // first pool, `null` = the explicit "everyone" global view, a string = a pool.
   const [poolId, setPoolId] = useState<string | null | undefined>(undefined)
+  const [sort, setSort] = useState<MatchSort>(() => readMatchSort())
+  const applySort = (column: MatchSortColumn) => {
+    const next = nextSort(sort, column)
+    setSort(next)
+    writeMatchSort(next)
+  }
   const [poolsResult] = useQuery<{ pools: Pool[] }>({
     query: POOLS_QUERY,
     pause: !label,
@@ -106,6 +124,36 @@ export function MatchPage() {
     (r) => r.playerId !== viewerId && r.prediction != null,
   )
 
+  const sortedRows = sortRows(rows, sort)
+  // Points are only sortable once at least one row has been scored.
+  const pointsSortable = rows.some((r) => r.points != null)
+  const ariaSort = (
+    column: MatchSortColumn,
+  ): 'ascending' | 'descending' | 'none' =>
+    sort.column === column
+      ? sort.direction === 'asc'
+        ? 'ascending'
+        : 'descending'
+      : 'none'
+
+  // What-if is live-only and gated: show it once tips are revealable AND the
+  // match is live (provisional). `liveActual` narrows `actual` to non-null so
+  // the re-scoring below is type-safe.
+  const liveActual = isLive && actual ? actual : null
+  const showWhatIf = liveActual != null && gateOpen
+  // Max-reachable is server-derived and live-only: the column appears when any
+  // row carries a ceiling (the live window). No Date.now() — purely the field.
+  const showMax = rows.some((r) => r.maxReachable != null)
+  // The round multiplier for this match comes from its leaf group's round.
+  const group = tournament?.groups.find((g) => g.id === game.groupId) ?? null
+  const multiplier = group ? STAGE_MULTIPLIERS[group.round] : 1
+  // A knockout match is a single-game leaf group (derived from arity, not the
+  // round name — same predicate the knockout tip labels use). The "Open this
+  // group" link then becomes "Open this KO match".
+  const isKnockoutGroup = group
+    ? knockoutGroupIds([group], tournament?.games ?? []).has(group.id)
+    : false
+
   return (
     <section className="page match-page">
       <h2>{t('match')}</h2>
@@ -140,7 +188,9 @@ export function MatchPage() {
           </div>
         )}
         <div className="match-card-open-group">
-          <Link to={`/mytips/${game.groupId}`}>{t('openGroup')}</Link>
+          <Link to={`/mytips/${game.groupId}#${game.groupId}`}>
+            {isKnockoutGroup ? t('openKoMatch') : t('openGroup')}
+          </Link>
         </div>
 
         <div className="match-refresh">
@@ -201,43 +251,116 @@ export function MatchPage() {
       <table className="data-table compact match-grid">
         <thead>
           <tr>
-            <th>{t('player')}</th>
-            <th>{t('prediction')}</th>
-            <th className="num">{t('points')}</th>
+            <th
+              className={`sortable${sort.column === 'player' ? ' active' : ''}`}
+              aria-sort={ariaSort('player')}
+              onClick={() => applySort('player')}
+            >
+              {t('player')}
+            </th>
+            <th
+              className={`sortable${sort.column === 'prediction' ? ' active' : ''}`}
+              aria-sort={ariaSort('prediction')}
+              onClick={() => applySort('prediction')}
+            >
+              {t('prediction')}
+            </th>
+            <th
+              className={`num sortable${pointsSortable ? '' : ' disabled'}${
+                sort.column === 'points' ? ' active' : ''
+              }`}
+              aria-sort={pointsSortable ? ariaSort('points') : 'none'}
+              onClick={pointsSortable ? () => applySort('points') : undefined}
+            >
+              {t('points')}
+            </th>
+            {showMax && (
+              <th
+                className={`num max-col sortable${sort.column === 'max' ? ' active' : ''}`}
+                aria-sort={ariaSort('max')}
+                title={t('maxReachableTooltip')}
+                onClick={() => applySort('max')}
+              >
+                {t('maxColumn')}
+              </th>
+            )}
+            {showWhatIf && (
+              <>
+                <th className="num what-if-col" title={t('whatIfHint')}>
+                  {t('ifTeamScoresPrefix')}
+                  <TeamLabel slot={game.home} teams={teams} compact />
+                  {t('ifTeamScoresSuffix')}
+                </th>
+                <th className="num what-if-col" title={t('whatIfHint')}>
+                  {t('ifTeamScoresPrefix')}
+                  <TeamLabel slot={game.away} teams={teams} compact />
+                  {t('ifTeamScoresSuffix')}
+                </th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.playerId}>
-              <td className="nick">{row.nick}</td>
-              <td className="pred">
-                {row.prediction ? (
-                  `${row.prediction.homeScore}–${row.prediction.awayScore}`
-                ) : (
-                  <span className="match-hidden">{t('hiddenTip')}</span>
+          {sortedRows.map((row) => {
+            const whatIf =
+              liveActual && row.prediction
+                ? computeWhatIf(row.prediction, liveActual, multiplier)
+                : null
+            return (
+              <tr
+                key={row.playerId}
+                className={row.playerId === viewerId ? 'is-self' : undefined}
+              >
+                <td className="nick">
+                  {row.nick}
+                  {row.playerId === viewerId && (
+                    <span className="you-badge">{t('youBadge')}</span>
+                  )}
+                </td>
+                <td className="pred">
+                  {row.prediction ? (
+                    `${row.prediction.homeScore}–${row.prediction.awayScore}`
+                  ) : (
+                    <span className="match-hidden">{t('hiddenTip')}</span>
+                  )}
+                </td>
+                <td className="pts num">
+                  {row.points != null ? (
+                    <PointsBadge
+                      breakdown={row.breakdown}
+                      points={row.points}
+                      isPerfect={row.isPerfect}
+                    />
+                  ) : (
+                    '—'
+                  )}
+                </td>
+                {showMax && (
+                  <td className="num max-cell" title={t('maxReachableTooltip')}>
+                    {row.maxReachable != null ? `≤ ${row.maxReachable}` : '—'}
+                  </td>
                 )}
-              </td>
-              <td className="pts num">
-                {row.points != null ? (
-                  <PointsBadge
-                    breakdown={row.breakdown}
-                    points={row.points}
-                    isPerfect={row.isPerfect}
-                  />
-                ) : (
-                  '—'
+                {showWhatIf && (
+                  <>
+                    <td className="num what-if-cell">
+                      {whatIf ? (
+                        <WhatIfCell outcome={whatIf.ifHome} />
+                      ) : (
+                        <span className="match-hidden">{t('hiddenTip')}</span>
+                      )}
+                    </td>
+                    <td className="num what-if-cell">
+                      {whatIf ? (
+                        <WhatIfCell outcome={whatIf.ifAway} />
+                      ) : (
+                        <span className="match-hidden">{t('hiddenTip')}</span>
+                      )}
+                    </td>
+                  </>
                 )}
-                {row.maxReachable != null && (
-                  <span
-                    className="max-reachable"
-                    title={t('maxReachableTooltip')}
-                  >
-                    {t('maxReachableShort')} ≤ {row.maxReachable}
-                  </span>
-                )}
-              </td>
-            </tr>
-          ))}
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </section>

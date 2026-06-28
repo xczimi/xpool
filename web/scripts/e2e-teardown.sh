@@ -8,12 +8,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-PID_FILE="$REPO_ROOT/web/.e2e-api.pid"
 
-# The e2e stack's own ports — distinct from dev (:3000 / :8000), which this
-# teardown must NEVER touch.
-API_PORT=3001
+# THIS run's dynamic API port (set by global-teardown; falls back to :3001 for a
+# bare `playwright test`). Per-run state files are namespaced by it, so teardown
+# only ever stops THIS run's API and drops THIS run's table — never a concurrent
+# run's. DynamoDB (:8001) is shared and isolated by the unique table name; dev
+# (:3000 / :8000) is NEVER touched.
+API_PORT="${XPOOL_E2E_API_PORT:-3001}"
 DYNAMO_PORT=8001
+PID_FILE="$REPO_ROOT/web/.e2e-api.${API_PORT}.pid"
 export DYNAMO_ENDPOINT="http://localhost:${DYNAMO_PORT}"
 export AWS_REGION="${AWS_REGION:-us-east-1}"
 export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID:-local}"
@@ -32,7 +35,7 @@ if [ -f "$PID_FILE" ]; then
   rm -f "$PID_FILE"
 fi
 
-# Belt and braces: anything still bound to the e2e API port (:3001) only.
+# Belt and braces: anything still bound to THIS run's e2e API port only.
 PIDS="$(lsof -ti tcp:${API_PORT} 2>/dev/null || true)"
 if [ -n "$PIDS" ]; then
   log "killing leftover process(es) on :${API_PORT} — $PIDS"
@@ -40,7 +43,7 @@ if [ -n "$PIDS" ]; then
   kill -9 $PIDS 2>/dev/null || true
 fi
 
-TABLE_FILE="$REPO_ROOT/web/.e2e-table"
+TABLE_FILE="$REPO_ROOT/web/.e2e-table.${API_PORT}"
 if [ -f "$TABLE_FILE" ]; then
   XPOOL_TABLE="$(cat "$TABLE_FILE")"
   export XPOOL_TABLE
@@ -48,5 +51,8 @@ if [ -f "$TABLE_FILE" ]; then
   (cd "$REPO_ROOT" && cargo run -q -p xtask -- drop-table) || true
   rm -f "$TABLE_FILE"
 fi
+
+# Drop this run's API log too, so namespaced files don't accumulate.
+rm -f "$REPO_ROOT/web/.e2e-api.${API_PORT}.log"
 
 log "done (docker left running — 'docker compose down' to stop it)"

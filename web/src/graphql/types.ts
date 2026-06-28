@@ -118,6 +118,23 @@ export interface StageScore {
   points: number
 }
 
+/** One step on a player's points trajectory (`pointsTimeline`). */
+export interface TimelinePoint {
+  gameId: string
+  kickoff: string
+  /** Per-game points (round-stage multiplier already applied server-side). */
+  points: number
+  /** Running sum through this game. */
+  cumulative: number
+}
+
+/** One player's whole points trajectory — one line on the chart. */
+export interface PlayerTimeline {
+  playerId: string
+  nick: string
+  points: TimelinePoint[]
+}
+
 export interface Pool {
   id: string
   name: string

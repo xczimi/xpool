@@ -23,10 +23,11 @@ web/dist
 # real names remain — these stay on local disk only, never committed.
 /snapshots/
 
-# E2E run artefacts
-web/.e2e-table
-web/.e2e-api.pid
-web/.e2e-api.log
+# E2E run artefacts (per-run files are namespaced by the dynamic API port)
+web/.e2e-table*
+web/.e2e-api.*.pid
+web/.e2e-api.*.log
+web/.e2e-stack.lock
 
 # OpenTofu
 infrastructure/.terraform/
@@ -43,3 +44,6 @@ infrastructure/env.auto.tfvars
 .claude/worktrees/
 .agents/
 skills-lock.json
+
+# Playwright e2e output (also runs from repo root)
+/test-results/

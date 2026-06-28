@@ -433,6 +433,35 @@ a:hover { color: var(--amber); }
    TABLES (scoreboard data display)
    ============================================================================ */
 
+/* Overall ⇄ Knockout-only scoreboard switch. Segmented look; the active
+   option (current route) gets the amber accent. */
+.scoreboard-toggle {
+  display: inline-flex;
+  gap: 0;
+  margin: 8px 0 4px;
+  border: 2px solid var(--bg-card-border);
+}
+
+.scoreboard-toggle a {
+  padding: 6px 14px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--text-dim);
+  background: var(--bg-card);
+}
+
+.scoreboard-toggle a + a {
+  border-left: 2px solid var(--bg-card-border);
+}
+
+.scoreboard-toggle a.active {
+  color: var(--bg-card);
+  background: var(--amber);
+}
+
 .data-table {
   width: 100%;
   border-collapse: collapse;
@@ -901,16 +930,15 @@ button.danger:hover:not(:disabled) {
   letter-spacing: 0.5px;
 }
 
-/* Per-player still-reachable ceiling on the live match page — muted,
-   provisional look, shown beside the points badge only while the match is live. */
-.max-reachable {
-  display: block;
-  margin-top: 2px;
+/* Per-player still-reachable ceiling on the live match page — its own column,
+   muted/provisional look, shown only while the match is live. */
+.match-grid td.max-cell {
   color: var(--muted, #777);
   font-style: italic;
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .hint {
@@ -1521,3 +1549,257 @@ button.danger:hover:not(:disabled) {
 .match-note.match-warn { color: var(--amber); }
 .match-grid td.pred { font-size: 16px; }
 .match-grid .match-hidden { color: var(--muted); }
+.match-grid th.sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.match-grid th.sortable.active {
+  color: var(--accent-bright);
+}
+.match-grid th.sortable[aria-sort='ascending']::after {
+  content: ' ▲';
+  font-size: 9px;
+}
+.match-grid th.sortable[aria-sort='descending']::after {
+  content: ' ▼';
+  font-size: 9px;
+}
+.match-grid th.sortable.disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.match-grid tr.is-self {
+  background: var(--bg-bar);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.you-badge {
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 8px;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: var(--accent);
+  color: var(--accent-ink);
+  vertical-align: middle;
+}
+.what-if {
+  display: inline-flex;
+  gap: 5px;
+  align-items: baseline;
+  justify-content: flex-end;
+}
+.what-if-total {
+  font-size: 13px;
+}
+.what-if-delta {
+  font-size: 11px;
+  font-weight: 600;
+}
+.what-if-delta.up {
+  color: #33ff66;
+}
+.what-if-delta.down {
+  color: #ff6b6b;
+}
+.what-if-delta.flat {
+  color: var(--muted);
+}
+.match-grid th.what-if-col {
+  white-space: nowrap;
+}
+.match-grid th.what-if-col .team-label {
+  vertical-align: middle;
+}
+.match-grid th.max-col {
+  white-space: nowrap;
+}
+
+/* === player-analytics: timeline chart === */
+.points-timeline { margin: 16px 0; max-width: 520px; }
+.points-timeline figcaption {
+  font-family: 'VT323', monospace;
+  color: var(--accent-bright);
+  margin-bottom: 4px;
+}
+.points-timeline svg { width: 100%; height: auto; display: block; }
+.points-timeline .pt-axis { stroke: var(--border); stroke-width: 1; }
+.points-timeline .pt-line { stroke-width: 2; }
+.points-timeline .pt-xlabel {
+  fill: var(--muted);
+  font-size: 11px;
+  font-family: 'VT323', monospace;
+}
+.pt-legend { list-style: none; display: flex; gap: 16px; padding: 0; margin: 8px 0 0; }
+.pt-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-family: 'VT323', monospace;
+}
+.pt-swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+.points-timeline .pt-empty {
+  color: var(--muted);
+  font-family: 'VT323', monospace;
+  margin: 0;
+}
+/* Legend can wrap when many players overlay on the scoreboard. */
+.pt-legend { flex-wrap: wrap; gap: 8px 16px; }
+/* --- end timeline chart --- */
+
+/* === player-analytics: head-to-head === */
+.h2h-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 12px 0;
+  max-width: 520px;
+}
+.h2h-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.h2h-stat-value {
+  font-family: 'VT323', monospace;
+  font-size: 28px;
+  color: var(--accent-bright);
+}
+.h2h-stat-rank,
+.h2h-stat-label { color: var(--muted); font-family: 'VT323', monospace; }
+.h2h-delta-table td:last-child,
+.h2h-delta-table th:last-child { text-align: right; }
+.h2h-round-select {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin: 8px 0;
+  color: var(--ink);
+}
+.h2h-match-table .h2h-hidden { color: var(--muted); }
+.h2h-no-diffs { color: var(--muted); font-family: 'VT323', monospace; }
+/* --- end head-to-head --- */
+
+/* === player-analytics: h2h picker === */
+.h2h-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 16px;
+  flex-wrap: wrap;
+}
+.h2h-picker-label { color: var(--muted); font-family: 'VT323', monospace; }
+/* --- end h2h picker --- */
+
+/* ============================================================================
+   MY TIPS ANCHORS — smooth-scroll target offset + brief arrive pulse
+   ============================================================================ */
+.tip-form {
+  scroll-margin-top: 16px;
+}
+@keyframes anchor-pulse {
+  0%   { box-shadow: 0 0 0 2px var(--amber, #ff8c00); }
+  100% { box-shadow: 0 0 0 2px transparent; }
+}
+.tip-form--anchored {
+  animation: anchor-pulse 1.4s ease-out;
+}
+
+/* ============================================================================
+   MOBILE PREDICTION ENTRY — swipe one-group-per-screen card + big steppers
+   ============================================================================ */
+.mobile-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  touch-action: pan-y;
+}
+.mobile-entry-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--amber-bright);
+}
+.mobile-entry-nav {
+  display: flex;
+  gap: 8px;
+}
+.mobile-group-card {
+  border: 1px solid var(--bg-card-border);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mobile-group-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mobile-group-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--amber-dim);
+}
+.mobile-save-status.saved {
+  color: #5fd35f;
+}
+.mobile-matches {
+  display: flex;
+  flex-direction: column;
+}
+.mobile-match {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--bg-card-border);
+}
+.mobile-match:last-child {
+  border-bottom: none;
+}
+.mobile-match-scores {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.mobile-match-sep {
+  font-family: 'Press Start 2P', monospace;
+  color: var(--amber-bright);
+}
+.mobile-match-result {
+  font-size: 10px;
+  color: var(--amber-dim);
+  text-align: center;
+}
+.score-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.score-stepper button {
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.score-stepper-value {
+  min-width: 40px;
+  text-align: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  color: var(--amber-bright);
+}

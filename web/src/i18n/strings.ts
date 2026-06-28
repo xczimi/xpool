@@ -85,9 +85,13 @@ const en = {
   result: 'Result',
   prediction: 'Prediction',
   points: 'Points',
+  ifTeamScoresPrefix: 'If ',
+  ifTeamScoresSuffix: ' scores',
+  whatIfHint: 'Points if the next goal goes in',
   rank: 'Rank',
   player: 'Player',
   unknownPlayer: '(unknown)',
+  youBadge: 'you',
   total: 'Total',
   // points breakdown / standings transparency
   exactHome: 'Exact home score',
@@ -166,6 +170,7 @@ const en = {
   // my tips
   myTipsTitle: 'My Tips',
   openGroup: 'Open this group',
+  openKoMatch: 'Open this KO match',
   selectGroup: 'Select a group',
   nextToFinalize: 'Next to finalize',
   finalizeBy: 'finalize by',
@@ -185,6 +190,15 @@ const en = {
   koAdvanceHint:
     "Predict the score after 90 minutes. If it's a draw, drag to pick who advances on extra time / penalties.",
   saved: 'Saved.',
+  // mobile prediction entry
+  mobileOf: 'of',
+  mobilePredicted: 'predicted',
+  mobileSaving: 'Saving…',
+  mobileSaveError: 'Save failed',
+  nextGroup: 'Next group',
+  prevGroup: 'Previous group',
+  incScore: 'increase',
+  decScore: 'decrease',
   lockedNotice: 'This group is locked — predictions are read-only.',
   teamsNotDetermined: 'Teams not yet determined',
   moveUp: 'Move up',
@@ -205,9 +219,23 @@ const en = {
 
   // scoreboard
   scoreboardTitle: 'Scoreboard',
+
+  // player analytics (head-to-head + points timeline)
+  timelineTitle: 'Points trajectory',
+  timelineEmpty: 'No scored games yet',
+  h2hTitle: 'Head-to-head',
+  h2hCompareMe: 'Compare me with…',
+  h2hCompareNamed: 'Compare {name} with…',
+  h2hTotalDelta: 'Total difference',
+  h2hPerMatch: 'Where they differ',
+  h2hRoundLabel: 'Round',
+  h2hMatch: 'Match',
+  h2hNoDiffs: 'No differences in this round',
   pool: 'Pool',
   everyone: 'Everyone',
   overall: 'Overall',
+  knockoutOnly: 'Knockout only',
+  scoreboardKnockoutTitle: 'Knockout Scoreboard',
   multiplier: 'Multiplier',
 
   // perfect
@@ -353,6 +381,7 @@ const en = {
 
   // per-player max-reachable on the live match page (live-scoring cluster)
   maxReachableShort: 'max',
+  maxColumn: 'Max',
   maxReachableTooltip:
     'Best points still reachable in this match — provisional while it is live',
 
@@ -440,9 +469,13 @@ const hu: Record<StringKey, string> = {
   result: 'Eredmény',
   prediction: 'Tipp',
   points: 'Pont',
+  ifTeamScoresPrefix: 'Ha ',
+  ifTeamScoresSuffix: ' gólt szerez',
+  whatIfHint: 'Pontok, ha bemegy a következő gól',
   rank: 'Helyezés',
   player: 'Játékos',
   unknownPlayer: '(ismeretlen)',
+  youBadge: 'te',
   total: 'Összesen',
   // pontozás részletei / tabella átláthatóság
   exactHome: 'Pontos hazai eredmény',
@@ -516,6 +549,7 @@ const hu: Record<StringKey, string> = {
 
   myTipsTitle: 'Tippjeim',
   openGroup: 'Ugrás a csoporthoz',
+  openKoMatch: 'Ugrás a kieséses meccshez',
   selectGroup: 'Válassz csoportot',
   nextToFinalize: 'Következő véglegesítés',
   finalizeBy: 'véglegesítés eddig',
@@ -535,6 +569,15 @@ const hu: Record<StringKey, string> = {
   koAdvanceHint:
     'Tippeld meg a 90 perc utáni eredményt. Döntetlen esetén húzd a sorrendet, hogy eldöntsd, ki jut tovább hosszabbítás / büntetők után.',
   saved: 'Mentve.',
+  // mobile prediction entry
+  mobileOf: '/',
+  mobilePredicted: 'megtippelve',
+  mobileSaving: 'Mentés…',
+  mobileSaveError: 'Mentés sikertelen',
+  nextGroup: 'Következő csoport',
+  prevGroup: 'Előző csoport',
+  incScore: 'növel',
+  decScore: 'csökkent',
   lockedNotice: 'Tippek véglegesek – csak nézni, ne nyúlj hozzá!',
   teamsNotDetermined: 'A csapatok még nem dőltek el',
   moveUp: 'Fel',
@@ -552,9 +595,23 @@ const hu: Record<StringKey, string> = {
   roundFinal: 'Döntő',
 
   scoreboardTitle: 'Tippverseny',
+
+  // player analytics (head-to-head + points timeline)
+  timelineTitle: 'Pontok alakulása',
+  timelineEmpty: 'Még nincs pontozott meccs',
+  h2hTitle: 'Párharc',
+  h2hCompareMe: 'Hasonlíts engem ezzel…',
+  h2hCompareNamed: '{name} összevetése ezzel…',
+  h2hTotalDelta: 'Összpont-különbség',
+  h2hPerMatch: 'Ahol eltérnek',
+  h2hRoundLabel: 'Forduló',
+  h2hMatch: 'Mérkőzés',
+  h2hNoDiffs: 'Nincs eltérés ebben a fordulóban',
   pool: 'Liga',
   everyone: 'Mindenki',
   overall: 'Összesített',
+  knockoutOnly: 'Csak kieséses',
+  scoreboardKnockoutTitle: 'Kieséses tippverseny',
   multiplier: 'Szorzó',
 
   perfectTitle: 'Telitalálatok',
@@ -694,6 +751,7 @@ const hu: Record<StringKey, string> = {
 
   // per-player max-reachable on the live match page (live-scoring cluster)
   maxReachableShort: 'max',
+  maxColumn: 'Max',
   maxReachableTooltip:
     'Ebben a meccsben még elérhető legjobb pont — ideiglenes, amíg él',
 

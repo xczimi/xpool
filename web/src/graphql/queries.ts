@@ -72,6 +72,35 @@ export const SCOREBOARD_QUERY = `
   }
 `
 
+/**
+ * Knockout-only scoreboard — re-sums points from knockout-stage matches only
+ * (re-engagement view). The field is aliased back to `scoreboard` so the page
+ * reads the same `data.scoreboard` shape in both modes.
+ */
+export const KNOCKOUT_SCOREBOARD_QUERY = `
+  query KnockoutScoreboard($pool: ID) {
+    scoreboard: knockoutScoreboard(pool: $pool) {
+      playerId nick total
+      stages { round points }
+    }
+  }
+`
+
+/**
+ * Per-game cumulative points over time — one series per competitor. The x-axis
+ * is the schedule walked game by game (kickoff order), so each line climbs as
+ * matches are scored. Pool-scoped like the scoreboard.
+ */
+export const POINTS_TIMELINE_QUERY = `
+  query PointsTimeline($pool: ID) {
+    pointsTimeline(pool: $pool) {
+      playerId
+      nick
+      points { gameId kickoff points cumulative }
+    }
+  }
+`
+
 export const POOLS_QUERY = `
   query Pools {
     pools { id name owner members prefix }
