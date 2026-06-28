@@ -1677,3 +1677,117 @@ button.danger:hover:not(:disabled) {
 }
 .h2h-picker-label { color: var(--muted); font-family: 'VT323', monospace; }
 /* --- end h2h picker --- */
+
+/* ============================================================================
+   MY TIPS ANCHORS — smooth-scroll target offset + brief arrive pulse
+   ============================================================================ */
+.tip-form {
+  scroll-margin-top: 16px;
+}
+@keyframes anchor-pulse {
+  0%   { box-shadow: 0 0 0 2px var(--amber, #ff8c00); }
+  100% { box-shadow: 0 0 0 2px transparent; }
+}
+.tip-form--anchored {
+  animation: anchor-pulse 1.4s ease-out;
+}
+
+/* ============================================================================
+   MOBILE PREDICTION ENTRY — swipe one-group-per-screen card + big steppers
+   ============================================================================ */
+.mobile-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  touch-action: pan-y;
+}
+.mobile-entry-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 10px;
+  color: var(--amber-bright);
+}
+.mobile-entry-nav {
+  display: flex;
+  gap: 8px;
+}
+.mobile-group-card {
+  border: 1px solid var(--bg-card-border);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mobile-group-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mobile-group-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px;
+  color: var(--amber-dim);
+}
+.mobile-save-status.saved {
+  color: #5fd35f;
+}
+.mobile-matches {
+  display: flex;
+  flex-direction: column;
+}
+.mobile-match {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--bg-card-border);
+}
+.mobile-match:last-child {
+  border-bottom: none;
+}
+.mobile-match-scores {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+}
+.mobile-match-sep {
+  font-family: 'Press Start 2P', monospace;
+  color: var(--amber-bright);
+}
+.mobile-match-result {
+  font-size: 10px;
+  color: var(--amber-dim);
+  text-align: center;
+}
+.score-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.score-stepper button {
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.score-stepper-value {
+  min-width: 40px;
+  text-align: center;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 18px;
+  color: var(--amber-bright);
+}

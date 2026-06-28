@@ -189,6 +189,15 @@ const en = {
   koAdvanceHint:
     "Predict the score after 90 minutes. If it's a draw, drag to pick who advances on extra time / penalties.",
   saved: 'Saved.',
+  // mobile prediction entry
+  mobileOf: 'of',
+  mobilePredicted: 'predicted',
+  mobileSaving: 'Saving…',
+  mobileSaveError: 'Save failed',
+  nextGroup: 'Next group',
+  prevGroup: 'Previous group',
+  incScore: 'increase',
+  decScore: 'decrease',
   lockedNotice: 'This group is locked — predictions are read-only.',
   teamsNotDetermined: 'Teams not yet determined',
   moveUp: 'Move up',
@@ -556,6 +565,15 @@ const hu: Record<StringKey, string> = {
   koAdvanceHint:
     'Tippeld meg a 90 perc utáni eredményt. Döntetlen esetén húzd a sorrendet, hogy eldöntsd, ki jut tovább hosszabbítás / büntetők után.',
   saved: 'Mentve.',
+  // mobile prediction entry
+  mobileOf: '/',
+  mobilePredicted: 'megtippelve',
+  mobileSaving: 'Mentés…',
+  mobileSaveError: 'Mentés sikertelen',
+  nextGroup: 'Következő csoport',
+  prevGroup: 'Előző csoport',
+  incScore: 'növel',
+  decScore: 'csökkent',
   lockedNotice: 'Tippek véglegesek – csak nézni, ne nyúlj hozzá!',
   teamsNotDetermined: 'A csapatok még nem dőltek el',
   moveUp: 'Fel',

@@ -22,17 +22,7 @@ import { Countdown } from '../../components/Countdown'
 import { PointsBadge } from '../../components/PointsBadge'
 import { InlineConfirm } from '../../components/InlineConfirm'
 import { StandingsTable, PredictedStandingsEditor } from './StandingsTables'
-
-interface PredictionInput {
-  gameId: string
-  homeScore: number
-  awayScore: number
-}
-
-interface StandingsInput {
-  ordering: string[]
-  drawOrder: string[]
-}
+import type { PredictionInput, StandingsInput } from './types'
 
 interface DraftMatch {
   homeScore: string
@@ -241,7 +231,7 @@ export function GroupTipForm({
   }
 
   return (
-    <div className="tip-form">
+    <div className="tip-form" id={group.id}>
       <h3>
         {group.name}{' '}
         <span className={groupLocked ? 'state-locked' : 'state-draft'}>
