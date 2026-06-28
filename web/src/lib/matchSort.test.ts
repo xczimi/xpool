@@ -80,6 +80,24 @@ describe('sortRows', () => {
     ])
   })
 
+  it('sorts by max-reachable with nulls always last', () => {
+    // ada ceiling 4, bob ceiling 7, cyd none (null) → sinks regardless.
+    const aMax = tip({ playerId: 'ada', nick: 'Ada', maxReachable: 4 })
+    const bMax = tip({ playerId: 'bob', nick: 'Bob', maxReachable: 7 })
+    const cMax = tip({ playerId: 'cyd', nick: 'Cyd', maxReachable: null })
+    const maxRows: Tip[] = [aMax, bMax, cMax]
+    expect(sortRows(maxRows, { column: 'max', direction: 'desc' }).map((r) => r.playerId)).toEqual([
+      'bob',
+      'ada',
+      'cyd',
+    ])
+    expect(sortRows(maxRows, { column: 'max', direction: 'asc' }).map((r) => r.playerId)).toEqual([
+      'ada',
+      'bob',
+      'cyd',
+    ])
+  })
+
   it('does not mutate the input array', () => {
     const input = [...rows]
     sortRows(input, { column: 'player', direction: 'asc' })
@@ -103,6 +121,10 @@ describe('nextSort', () => {
     expect(nextSort({ column: 'points', direction: 'desc' }, 'player')).toEqual({
       column: 'player',
       direction: 'asc',
+    })
+    expect(nextSort({ column: 'player', direction: 'asc' }, 'max')).toEqual({
+      column: 'max',
+      direction: 'desc',
     })
   })
 })

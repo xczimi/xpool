@@ -1,7 +1,7 @@
 import type { Tip } from '../graphql/types'
 
 /** Which column the match-page prediction grid is sorted by. */
-export type MatchSortColumn = 'standing' | 'player' | 'prediction' | 'points'
+export type MatchSortColumn = 'standing' | 'player' | 'prediction' | 'points' | 'max'
 
 export type SortDirection = 'asc' | 'desc'
 
@@ -21,6 +21,7 @@ const DEFAULT_DIRECTION: Record<MatchSortColumn, SortDirection> = {
   player: 'asc',
   prediction: 'asc',
   points: 'desc',
+  max: 'desc',
 }
 
 /**
@@ -56,6 +57,14 @@ export function sortRows(rows: readonly Tip[], sort: MatchSort): Tip[] {
         if (vb == null) return -1
         return (va - vb) * factor || a.index - b.index
       }
+      case 'max': {
+        const va = a.row.maxReachable
+        const vb = b.row.maxReachable
+        if (va == null && vb == null) return a.index - b.index
+        if (va == null) return 1
+        if (vb == null) return -1
+        return (va - vb) * factor || a.index - b.index
+      }
       case 'standing':
       default:
         return (a.index - b.index) * factor || a.row.nick.localeCompare(b.row.nick)
@@ -80,7 +89,8 @@ function isMatchSort(value: unknown): value is MatchSort {
     (v.column === 'standing' ||
       v.column === 'player' ||
       v.column === 'prediction' ||
-      v.column === 'points') &&
+      v.column === 'points' ||
+      v.column === 'max') &&
     (v.direction === 'asc' || v.direction === 'desc')
   )
 }
