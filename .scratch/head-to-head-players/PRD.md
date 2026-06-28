@@ -1,6 +1,6 @@
 # Head-to-head view comparing two players
 
-Status: needs-triage
+Status: done — shipped via backlog-parallel-build (cluster/player-analytics), merged to master 2026-06-27
 Area: web (+ possibly api)
 
 ## Idea

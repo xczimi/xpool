@@ -1,6 +1,6 @@
 # Knockout-only scoreboard — a re-entry point for late joiners
 
-Status: needs-triage
+Status: done — shipped via backlog-parallel-build (cluster/standings), merged to master 2026-06-27
 Area: web (+ possibly domain scoring)
 
 ## Idea

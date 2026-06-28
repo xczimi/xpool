@@ -1,6 +1,6 @@
 # SES deadline reminder emails
 
-Status: needs-triage
+Status: deferred build — design settled (2026-06-27 grill); execution-ready plan at docs/superpowers/plans/2026-06-27-cluster-backend-infra.md (awaiting go-ahead)
 
 ## Idea
 

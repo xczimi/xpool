@@ -1,6 +1,6 @@
 # Sortable player predictions on the match page
 
-Status: needs-triage
+Status: done — shipped via backlog-parallel-build (cluster/match-page), merged to master 2026-06-27
 Area: web
 
 ## Idea

@@ -1,6 +1,6 @@
 # bin/local-dev option to start from a fresh production data snapshot
 
-Status: needs-triage
+Status: deferred build — part of the cluster/backend-infra plan (Task 1), docs/superpowers/plans/2026-06-27-cluster-backend-infra.md
 Area: bin / tooling
 
 ## Idea

@@ -1,6 +1,6 @@
 # Fun, fast mobile prediction entry — per group
 
-Status: needs-triage
+Status: done — shipped via backlog-parallel-build (cluster/mytips-nav), merged to master 2026-06-27
 Area: web
 
 ## Idea

@@ -1,6 +1,6 @@
 # Highlight the current player in the live match player list
 
-Status: needs-triage
+Status: done — shipped via backlog-parallel-build (cluster/match-page), merged to master 2026-06-27
 Area: web
 
 ## Idea

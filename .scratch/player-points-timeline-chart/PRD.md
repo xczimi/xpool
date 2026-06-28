@@ -1,6 +1,6 @@
 # Timeline chart of player points and position
 
-Status: needs-triage
+Status: done — shipped via backlog-parallel-build (cluster/player-analytics; game-by-game rework in follow/match-page-polish), merged to master 2026-06-27
 Area: web (+ possibly api)
 
 ## Idea

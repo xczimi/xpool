@@ -1,6 +1,6 @@
 # Max-possible as its own column on the match page
 
-Status: ready-for-agent — decisions resolved 2026-06-27 (follow-up to cluster/match-page)
+Status: done — shipped via follow/match-page-polish, merged to master 2026-06-27
 Area: web
 
 ## Idea

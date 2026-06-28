@@ -1,6 +1,6 @@
 # What-if scoreline columns on the live match page
 
-Status: needs-triage
+Status: done — shipped via backlog-parallel-build (cluster/match-page; named-team headers in follow/match-page-polish), merged to master 2026-06-27
 Area: web (+ possibly domain scoring)
 
 ## Idea

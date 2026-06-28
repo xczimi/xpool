@@ -1,6 +1,6 @@
 # Hash anchors to jump into knockout sub-groups (no extra tab level)
 
-Status: ready-for-agent — decisions resolved 2026-06-27 (Wave 2, cluster/mytips-nav)
+Status: done — shipped via backlog-parallel-build (cluster/mytips-nav; link wiring in follow/match-page-polish), merged to master 2026-06-27
 Area: web
 
 ## Resolved decisions (2026-06-27 grill)

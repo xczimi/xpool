@@ -1,6 +1,6 @@
 # Group-standings bonus must be monotonic (award only at group completion)
 
-Status: ready-for-agent — decided 2026-06-27; implementing on backlog-parallel-build
+Status: done — shipped on backlog-parallel-build (fix(domain) b55c4e7), merged to master 2026-06-27
 Area: domain scoring (locked contract) + .specs/SCORING.md
 
 ## Problem

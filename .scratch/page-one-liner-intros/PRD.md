@@ -1,6 +1,6 @@
 # One-liner intro on every page
 
-Status: needs-triage
+Status: deferred — Wave 2 (cluster/cross-cutting-ux); design in .scratch/backlog-parallel-build/DESIGN-REVIEW.md
 Area: web / content
 
 ## Idea
