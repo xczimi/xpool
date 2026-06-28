@@ -76,11 +76,19 @@ test('Match page: "Open this group" jumps to that match\'s group on My Tips', as
     hasText: 'Open this group',
   })
   await expect(openLink).toBeVisible()
-  await expect(openLink).toHaveAttribute('href', `/mytips/${TEST_GROUP_ID}`)
+  // The link carries the leaf group as both the path and the #anchor, so the
+  // target match scrolls into view (essential for stacked knockout rounds,
+  // harmless for the group stage).
+  await expect(openLink).toHaveAttribute(
+    'href',
+    `/mytips/${TEST_GROUP_ID}#${TEST_GROUP_ID}`,
+  )
 
-  // Clicking it navigates to /mytips/E and shows Group E's form.
+  // Clicking it navigates to /mytips/E#E and shows Group E's form.
   await openLink.click()
-  await expect(page).toHaveURL(new RegExp(`/mytips/${TEST_GROUP_ID}$`))
+  await expect(page).toHaveURL(
+    new RegExp(`/mytips/${TEST_GROUP_ID}#${TEST_GROUP_ID}$`),
+  )
   await expect(page.locator('.tip-form h3')).toContainText(TEST_GROUP)
 
   await expectNoErrorView(page)

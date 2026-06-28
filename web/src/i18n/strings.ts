@@ -170,6 +170,7 @@ const en = {
   // my tips
   myTipsTitle: 'My Tips',
   openGroup: 'Open this group',
+  openKoMatch: 'Open this KO match',
   selectGroup: 'Select a group',
   nextToFinalize: 'Next to finalize',
   finalizeBy: 'finalize by',
@@ -547,6 +548,7 @@ const hu: Record<StringKey, string> = {
 
   myTipsTitle: 'Tippjeim',
   openGroup: 'Ugrás a csoporthoz',
+  openKoMatch: 'Ugrás a kieséses meccshez',
   selectGroup: 'Válassz csoportot',
   nextToFinalize: 'Következő véglegesítés',
   finalizeBy: 'véglegesítés eddig',
