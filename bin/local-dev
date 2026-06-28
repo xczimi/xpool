@@ -9,6 +9,7 @@
 #   bin/local-dev <name>        target = .claude/worktrees/<name>, an existing dir,
 #                               or the worktree checked out on branch <name>
 #   bin/local-dev [...] --reseed  force drop + import + seed of the target's table
+#   bin/local-dev [...] --fresh   load newest snapshots/*.json into the branch table
 #
 # See docs/superpowers/specs/2026-06-06-unified-tmux-dev-session-design.md
 set -euo pipefail
@@ -18,12 +19,14 @@ BIN="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT="$(git -C "$BIN" rev-parse --show-toplevel)"
 source "$BIN/lib.sh"
 
-# --- parse args: an optional worktree name/dir + an optional --reseed --------
+# --- parse args: an optional worktree name/dir + flags ----------------------
 RESEED=""
+FRESH=0
 ARG=""
 for a in "$@"; do
   case "$a" in
     --reseed) RESEED="--reseed" ;;
+    --fresh)  FRESH=1 ;;
     *)        ARG="$a" ;;
   esac
 done
@@ -69,6 +72,23 @@ BRANCH="$(git -C "$TARGET" rev-parse --abbrev-ref HEAD)"
 
 # --- 1. infra + data (self-healing) -----------------------------------------
 ( cd "$TARGET" && XPOOL_TABLE="$TABLE" "$BIN/local-stack" ${RESEED:+--reseed} )
+
+# --- 1b. optional: load the latest cached snapshot into the branch table -----
+# Opt-in (--fresh), non-destructive, local-only. Loads snapshots/<newest>.json
+# into THIS branch's table (xpool-<branch>) — fixing the master-vs-branch
+# mismatch (pull-data seeds xpool-master). Pulling a fresh snapshot from AWS
+# stays a separate explicit step (bin/pull-data); --fresh only reuses on-disk.
+if [ "$FRESH" = 1 ]; then
+  SNAP="$(latest_snapshot "$PROJECT/snapshots")"
+  if [ -z "$SNAP" ]; then
+    echo "bin/local-dev: --fresh: no snapshot under $PROJECT/snapshots (run bin/pull-data first)" >&2
+    exit 1
+  fi
+  echo "==> --fresh: loading $SNAP into $TABLE"
+  ( cd "$TARGET" \
+      && XPOOL_TABLE="$TABLE" DYNAMO_ENDPOINT="${DYNAMO_ENDPOINT:-http://localhost:8000}" \
+         cargo run -q -p xtask -- load "$SNAP" )
+fi
 
 # --- tmux helpers -----------------------------------------------------------
 pane_by_role() {
