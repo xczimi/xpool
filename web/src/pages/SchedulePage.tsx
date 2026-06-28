@@ -5,6 +5,7 @@ import { useI18n } from '../i18n/useI18n'
 import type { StringKey } from '../i18n/strings'
 import { RESULTS_QUERY, THIRD_PLACE_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
 import type {
+  GroupGame,
   MatchPrediction,
   SingleGame,
   Team,
@@ -102,8 +103,51 @@ export function SchedulePage() {
       return da - db
     })
 
+  // Partition the chronological leaf groups into the group stage and the
+  // knockout rounds, so the Best-thirds ranking can sit BETWEEN them (it
+  // explains which thirds advance) rather than dangling after the FINAL. Each
+  // block keeps the chronological order from `leafGroups`.
+  const groupStageLeaves = leafGroups.filter((g) => g.round === 'GROUP_STAGE')
+  const knockoutLeaves = leafGroups.filter((g) => g.round !== 'GROUP_STAGE')
+
   // By-date sections — all games bucketed by the viewer's local calendar day.
   const daySections = groupByDay(tournament.games, locale)
+
+  // One fixture group block, shared by the group-stage and knockout lists.
+  const renderScheduleGroup = (group: GroupGame) => {
+    const games = tournament.games
+      .filter((m) => group.childGameIds.includes(m.id))
+      .sort(byKickoff)
+    return (
+      <div key={group.id} className="schedule-group">
+        <h3>
+          {group.name}{' '}
+          <span className="round-tag">{roundLabel(group.round, t)}</span>
+        </h3>
+        <ScheduleTable
+          games={games}
+          teams={teams}
+          resultsByGame={resultsByGame}
+          koGroupIds={koGroupIds}
+          locale={locale}
+          t={t}
+        />
+      </div>
+    )
+  }
+
+  // The official Best-third-placed-teams ranking — rendered between the group
+  // stage and the knockouts in the group view, at the end of the date view.
+  const thirdsSection = (
+    <div className="thirds-section" data-testid="third-place-section">
+      <h3>{t('thirdsScheduleTitle')}</h3>
+      <ThirdPlaceTable
+        title={t('thirdsOfficial')}
+        ranking={officialThirds}
+        teams={teams}
+      />
+    </div>
+  )
 
   return (
     <section className="page">
@@ -132,31 +176,15 @@ export function SchedulePage() {
         </button>
       </div>
 
-      {view === 'group'
-        ? leafGroups.map((group) => {
-            const games = tournament.games
-              .filter((m) => group.childGameIds.includes(m.id))
-              .sort(byKickoff)
-            return (
-              <div key={group.id} className="schedule-group">
-                <h3>
-                  {group.name}{' '}
-                  <span className="round-tag">
-                    {roundLabel(group.round, t)}
-                  </span>
-                </h3>
-                <ScheduleTable
-                  games={games}
-                  teams={teams}
-                  resultsByGame={resultsByGame}
-                  koGroupIds={koGroupIds}
-                  locale={locale}
-                  t={t}
-                />
-              </div>
-            )
-          })
-        : daySections.map((section) => (
+      {view === 'group' ? (
+        <>
+          {groupStageLeaves.map(renderScheduleGroup)}
+          {thirdsSection}
+          {knockoutLeaves.map(renderScheduleGroup)}
+        </>
+      ) : (
+        <>
+          {daySections.map((section) => (
             <div key={section.key} className="schedule-day">
               <h3>{section.label}</h3>
               <ScheduleTable
@@ -169,11 +197,9 @@ export function SchedulePage() {
               />
             </div>
           ))}
-
-      <div className="thirds-section" data-testid="third-place-section">
-        <h3>{t('thirdsScheduleTitle')}</h3>
-        <ThirdPlaceTable title={t('thirdsOfficial')} ranking={officialThirds} teams={teams} />
-      </div>
+          {thirdsSection}
+        </>
+      )}
     </section>
   )
 }
