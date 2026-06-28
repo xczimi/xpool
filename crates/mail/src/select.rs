@@ -32,8 +32,9 @@ pub fn la_date(now: DateTime<Utc>) -> NaiveDate {
     now.with_timezone(&Los_Angeles).date_naive()
 }
 
-/// True when `deadline` falls on the same LA calendar day as `now`.
-pub fn is_matchday_group(deadline: DateTime<Utc>, now: DateTime<Utc>) -> bool {
+/// True when `deadline` falls on the same LA calendar day as `now`. Arg order
+/// matches `last_call_due`'s `(now, deadline)` convention.
+pub fn is_matchday_group(now: DateTime<Utc>, deadline: DateTime<Utc>) -> bool {
     la_date(deadline) == la_date(now)
 }
 
@@ -42,7 +43,7 @@ pub fn is_matchday_group(deadline: DateTime<Utc>, now: DateTime<Utc>) -> bool {
 /// double-counting. Group-stage groups and one-match knockout groups are both
 /// leaves, so the treatment is uniform.
 fn leaf_groups(t: &Tournament) -> impl Iterator<Item = (&GroupId, DateTime<Utc>)> {
-    t.groups.values().filter_map(move |g| {
+    t.groups.values().filter_map(|g| {
         if matches!(g.children, GroupChildren::Games(_)) {
             t.deadline(&g.id).map(|d| (&g.id, d))
         } else {
@@ -67,7 +68,7 @@ pub fn groups_due_last_call(t: &Tournament, now: DateTime<Utc>) -> Vec<DueGroup>
 /// Leaf groups whose deadline falls on the LA calendar day of `now`.
 pub fn matchday_groups(t: &Tournament, now: DateTime<Utc>) -> Vec<DueGroup> {
     let mut out: Vec<DueGroup> = leaf_groups(t)
-        .filter(|(_, d)| is_matchday_group(*d, now))
+        .filter(|(_, d)| is_matchday_group(now, *d))
         .map(|(id, d)| DueGroup {
             group_id: id.clone(),
             deadline: d,
@@ -166,10 +167,10 @@ mod tests {
         let deadline = at(2026, 6, 21, 5, 0);
         // Digest tick at LA-midnight 2026-06-20 (== 2026-06-20 07:00 UTC).
         let tick = at(2026, 6, 20, 7, 0);
-        assert!(is_matchday_group(deadline, tick));
+        assert!(is_matchday_group(tick, deadline));
         // A deadline on the next LA day must NOT match this tick.
         let next_day = at(2026, 6, 22, 5, 0); // 2026-06-21 22:00 LA
-        assert!(!is_matchday_group(next_day, tick));
+        assert!(!is_matchday_group(tick, next_day));
     }
 
     #[test]
@@ -253,6 +254,71 @@ mod tests {
         assert_eq!(due.len(), 1);
         assert_eq!(due[0].group_id, gid);
         assert!(matchday_groups(&t, at(2026, 6, 21, 7, 0)).is_empty()); // wrong day
+    }
+
+    #[test]
+    fn leaf_groups_excludes_parent_nodes() {
+        // Two-level tree: root "R" (GroupChildren::Groups) over leaf groups
+        // "A" and "B" that each hold a game. The parent's recursive deadline
+        // (earliest child kickoff) would itself fall in the window, so this
+        // proves parent nodes are excluded — only the leaves come back.
+        fn game(id: &str, kickoff: chrono::DateTime<Utc>) -> SingleGame {
+            SingleGame {
+                id: format!("{id}-g"),
+                kickoff,
+                venue: None,
+                group_id: id.into(),
+                home: TeamSlot {
+                    team_id: Some("X".into()),
+                    description: "x".into(),
+                },
+                away: TeamSlot {
+                    team_id: Some("Y".into()),
+                    description: "y".into(),
+                },
+                external_id: None,
+            }
+        }
+        fn leaf(id: &str, game_id: &str) -> GroupGame {
+            GroupGame {
+                id: id.into(),
+                name: format!("Group {id}"),
+                parent: Some("R".into()),
+                round: Round::GroupStage,
+                lock_mode: LockMode::LockTogether,
+                carries_standings: true,
+                children: GroupChildren::Games(vec![game_id.into()]),
+            }
+        }
+        let deadline = at(2026, 6, 20, 18, 0);
+        let ga = game("A", deadline);
+        let gb = game("B", deadline);
+        let root = GroupGame {
+            id: "R".into(),
+            name: "Root".into(),
+            parent: None,
+            round: Round::GroupStage,
+            lock_mode: LockMode::LockTogether,
+            carries_standings: false,
+            children: GroupChildren::Groups(vec!["A".into(), "B".into()]),
+        };
+        let t = Tournament {
+            root: "R".into(),
+            groups: HashMap::from([
+                ("R".to_string(), root),
+                ("A".to_string(), leaf("A", &ga.id)),
+                ("B".to_string(), leaf("B", &gb.id)),
+            ]),
+            games: HashMap::from([(ga.id.clone(), ga), (gb.id.clone(), gb)]),
+            teams: HashMap::new(),
+        };
+        // Sanity: the parent node DOES have an in-window deadline, so its
+        // absence below is exclusion, not a missing deadline.
+        assert_eq!(t.deadline("R"), Some(deadline));
+
+        let due = groups_due_last_call(&t, at(2026, 6, 20, 17, 30));
+        let ids: Vec<&str> = due.iter().map(|g| g.group_id.as_str()).collect();
+        assert_eq!(ids, vec!["A", "B"]); // only leaves, never "R"
     }
 
     #[test]
