@@ -12,6 +12,13 @@ path = "src/lib.rs"
 name = "api"
 path = "src/main.rs"
 
+[[bin]]
+name = "reminder"
+path = "src/bin/reminder.rs"
+# Only built for the Lambda artifact; the default `cargo build` skips it so the
+# local API build is unaffected.
+required-features = ["lambda"]
+
 [features]
 # Compiled in for `cargo build` / `cargo run` (no feature flags) and the
 # default `cargo test`. Disabled in `--features lambda` production builds.

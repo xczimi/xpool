@@ -1,0 +1,50 @@
+#!/bin/bash
+# xpool reminder Lambda: cross-compile + push to ca-central-1.
+#
+# Usage: bin/deploy-reminder [dev|prod]   # default: dev
+#
+# Mirrors bin/deploy-api. Code is decoupled from tofu
+# (module.reminder_lambda has ignore_source_code_hash = true); this is the only
+# thing that ships new reminder-Lambda code.
+#
+# FIRST-TIME bootstrap order (the function must exist before this can update it,
+# and tofu's first apply needs the zip on disk because create_package = false):
+#   1. cargo lambda build -p api --bin reminder --release --arm64 \
+#        --features lambda --output-format zip   # produces target/lambda/reminder/bootstrap.zip
+#   2. bin/deploy-infra <env>                    # creates the Lambda shell from that zip
+#                                                # (triggers stay off: var.reminder_enabled=false)
+#   3. bin/deploy-reminder <env>                 # ships code (this script; also rebuilds the zip)
+# Thereafter only step 3 is needed to ship new code. Arm the automated heartbeat
+# separately by setting reminder_enabled = true in infrastructure/env/<env>.tfvars
+# and re-running bin/deploy-infra — only after the R1 activation gate is met.
+set -euo pipefail
+
+ENV="${1:-dev}"
+case "$ENV" in
+    dev|prod) ;;
+    *) echo "Usage: $0 [dev|prod]"; exit 2 ;;
+esac
+
+PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT"
+
+export AWS_PROFILE="${AWS_PROFILE:-xczimi}"
+export AWS_REGION="${AWS_REGION:-ca-central-1}"
+
+echo "==> cargo lambda build reminder (arm64, --features lambda)"
+cargo lambda build -p api --bin reminder --release --arm64 --features lambda --output-format zip
+
+ZIP="$PROJECT/target/lambda/reminder/bootstrap.zip"
+if [[ ! -f "$ZIP" ]]; then
+    echo "build did not produce $ZIP" >&2
+    exit 1
+fi
+
+SIZE=$(stat -f%z "$ZIP" 2>/dev/null || stat -c%s "$ZIP")
+echo "==> aws lambda update-function-code xpool-reminder-${ENV} ($((SIZE / 1024)) KB)"
+aws lambda update-function-code \
+    --function-name "xpool-reminder-${ENV}" \
+    --zip-file "fileb://$ZIP" \
+    --no-cli-pager \
+    --query '{Version:Version,LastModified:LastModified,CodeSha256:CodeSha256}' \
+    --output table

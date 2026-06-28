@@ -54,20 +54,41 @@ pub fn render_last_call(ctx: &LastCallContext) -> RenderedReminder {
     let when = fmt_deadline(ctx.deadline);
     let link = mytips_link(&ctx.origin, &ctx.group_id);
     let subject = format!(
-        "Last call: {group} predictions close soon / Utolsó hívás: {group}",
+        "Last call: your {group} predictions close soon \
+         / Utolsó hívás: hamarosan lezárul a(z) {group} tippelés",
         group = ctx.group_name
     );
     let body_text = format!(
-        "EN\n\
-         The prediction deadline for {group} is at {when}. \
-         You still have unlocked or missing predictions — finish them here:\n\
+        "Hi there!\n\
+         \n\
+         The deadline for your {group} predictions is almost here — {when}. \
+         You still have unlocked or missing tips, so jump in and finish them while there's time:\n\
+         \n\
          {link}\n\
+         \n\
+         And no stress if you couldn't fill in every group-stage match — we run a \
+         knockout-only scoreboard too, so you're still in the running.\n\
+         \n\
+         Lock them in before kick-off — good luck!\n\
+         — xPool\n\
+         \n\
          To stop these reminders, just reply to this email.\n\
          \n\
-         HU\n\
-         A(z) {group} tippelési határidő: {when}. \
-         Még van zárolatlan vagy hiányzó tipped — itt fejezd be:\n\
+         ---\n\
+         \n\
+         Szia!\n\
+         \n\
+         A(z) {group} tippelési határidő mindjárt itt van — {when}. \
+         Még van zárolatlan vagy hiányzó tipped, úgyhogy ugorj be, és fejezd be, amíg van idő:\n\
+         \n\
          {link}\n\
+         \n\
+         És semmi gond, ha nem jön össze minden csoportkörös tipp — van egy csak \
+         egyenes kieséses eredménytábla is, úgyhogy ott is versenyben maradsz.\n\
+         \n\
+         Zárold le a kezdő sípszó előtt — sok sikert!\n\
+         — xPool\n\
+         \n\
          Ha nem kérsz több emlékeztetőt, válaszolj erre az emailre.\n",
         group = ctx.group_name,
         when = when,
@@ -83,7 +104,8 @@ pub fn render_digest(ctx: &DigestContext) -> RenderedReminder {
         "render_digest expects non-empty groups; the sweep skips empty digests"
     );
     let subject = format!(
-        "Today's matches ({day}) — predictions to finish / Mai meccsek ({day})",
+        "Today's matches ({day}) — finish your predictions \
+         / Mai meccsek ({day}) — fejezd be a tippeket",
         day = ctx.day
     );
     let lines: String = ctx
@@ -99,14 +121,32 @@ pub fn render_digest(ctx: &DigestContext) -> RenderedReminder {
         })
         .collect();
     let body_text = format!(
-        "EN\n\
-         Today's matches ({day}) you still have unlocked or missing predictions for:\n\
+        "Hi there!\n\
+         \n\
+         Matches kick off today ({day}) that you still have unlocked or missing tips for:\n\
+         \n\
          {lines}\n\
+         And no stress if you couldn't fill in every group-stage match — we run a \
+         knockout-only scoreboard too, so you're still in the running.\n\
+         \n\
+         Pop in and lock your tips before each deadline — good luck!\n\
+         — xPool\n\
+         \n\
          To stop these reminders, just reply to this email.\n\
          \n\
-         HU\n\
-         Mai meccsek ({day}), amikhez még van zárolatlan vagy hiányzó tipped:\n\
+         ---\n\
+         \n\
+         Szia!\n\
+         \n\
+         Ma ({day}) ilyen meccsek jönnek, amikhez még van zárolatlan vagy hiányzó tipped:\n\
+         \n\
          {lines}\n\
+         És semmi gond, ha nem jön össze minden csoportkörös tipp — van egy csak \
+         egyenes kieséses eredménytábla is, úgyhogy ott is versenyben maradsz.\n\
+         \n\
+         Ugorj be, és zárold le a tippjeidet minden határidő előtt — sok sikert!\n\
+         — xPool\n\
+         \n\
          Ha nem kérsz több emlékeztetőt, válaszolj erre az emailre.\n",
         day = ctx.day,
         lines = lines,
@@ -137,12 +177,27 @@ mod tests {
             deadline: Utc.with_ymd_and_hms(2026, 6, 20, 18, 0, 0).unwrap(),
             origin: "https://pool.xczimi.com".into(),
         });
-        assert!(r.subject.contains("Group A"));
-        assert!(r.body_text.contains("deadline")); // EN
-        assert!(r.body_text.contains("határidő")); // HU
+        // Subject is bilingual and names the group.
+        assert!(r.subject.contains("Last call: your Group A")); // EN
+        assert!(r.subject.contains("Utolsó hívás")); // HU (accents preserved)
+                                                     // EN body: warm greeting + deadline + the call to action.
+        assert!(r.body_text.contains("Hi there!"));
+        assert!(r
+            .body_text
+            .contains("The deadline for your Group A predictions is almost here"));
+        // HU body: greeting + the deadline noun (accents preserved).
+        assert!(r.body_text.contains("Szia!"));
+        assert!(r.body_text.contains("tippelési határidő"));
+        // The deadline timestamp is present.
         assert!(r.body_text.contains("2026-06-20 18:00 UTC"));
-        assert!(r.body_text.contains("https://pool.xczimi.com/mytips/A#A")); // deep link
-                                                                             // R4: opt-out lines in both language blocks
+        // The My Tips deep link keeps its exact shape.
+        assert!(r.body_text.contains("https://pool.xczimi.com/mytips/A#A"));
+        // Knockout-only scoreboard reassurance, both languages.
+        assert!(r.body_text.contains("knockout-only scoreboard"));
+        assert!(r.body_text.contains("egyenes kieséses eredménytábla"));
+        // Brand sign-off in both blocks.
+        assert_eq!(r.body_text.matches("— xPool").count(), 2);
+        // R4: opt-out lines in both language blocks.
         assert!(r
             .body_text
             .contains("To stop these reminders, just reply to this email."));
@@ -169,14 +224,29 @@ mod tests {
                 },
             ],
         });
+        // Subject is bilingual and carries the day.
         assert!(r.subject.contains("2026-06-20"));
+        assert!(r.subject.contains("Today's matches")); // EN
+        assert!(r.subject.contains("Mai meccsek")); // HU
+                                                    // Both language blocks open with a warm greeting.
+        assert!(r.body_text.contains("Hi there!")); // EN
+        assert!(r.body_text.contains("Szia!")); // HU
+                                                // EN body lead-in + HU body lead-in (accents preserved).
+        assert!(r.body_text.contains("Matches kick off today"));
+        assert!(r.body_text.contains("hiányzó tipped"));
+        // Every group is listed with its deadline + deep link.
         assert!(r.body_text.contains("Group A"));
         assert!(r.body_text.contains("Group B"));
+        assert!(r.body_text.contains("2026-06-20 18:00 UTC"));
+        assert!(r.body_text.contains("2026-06-20 21:00 UTC"));
         assert!(r.body_text.contains("/mytips/A#A"));
         assert!(r.body_text.contains("/mytips/B#B"));
-        assert!(r.body_text.contains("Today's matches")); // EN
-        assert!(r.body_text.contains("Mai meccsek")); // HU
-                                                      // R4: opt-out lines in both language blocks
+        // Knockout-only scoreboard reassurance, both languages.
+        assert!(r.body_text.contains("knockout-only scoreboard"));
+        assert!(r.body_text.contains("egyenes kieséses eredménytábla"));
+        // Brand sign-off in both blocks.
+        assert_eq!(r.body_text.matches("— xPool").count(), 2);
+        // R4: opt-out lines in both language blocks.
         assert!(r
             .body_text
             .contains("To stop these reminders, just reply to this email."));
