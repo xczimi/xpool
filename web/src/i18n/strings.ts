@@ -379,6 +379,7 @@ const en = {
 
   // per-player max-reachable on the live match page (live-scoring cluster)
   maxReachableShort: 'max',
+  maxColumn: 'Max',
   maxReachableTooltip:
     'Best points still reachable in this match — provisional while it is live',
 
@@ -746,6 +747,7 @@ const hu: Record<StringKey, string> = {
 
   // per-player max-reachable on the live match page (live-scoring cluster)
   maxReachableShort: 'max',
+  maxColumn: 'Max',
   maxReachableTooltip:
     'Ebben a meccsben még elérhető legjobb pont — ideiglenes, amíg él',
 

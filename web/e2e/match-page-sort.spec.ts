@@ -16,6 +16,9 @@ import { devLogin, expectNoErrorView, watchNetwork } from './helpers'
 
 const TEST_GROUP = 'Group D'
 const FIRST_GAME = 'M4'
+// M8 (external id 2461105) is the hermetic live stub (XPOOL_LIVE_SCORES="…=1:0:2H")
+// set by web/scripts/e2e-stack.sh — the only game provisional inside its window.
+const LIVE_GAME = 'M8'
 
 async function setPreset(page: Page, gameId: string, phase: 'before' | 'during' | 'after') {
   const selects = page.locator('.dev-clock select')
@@ -93,6 +96,51 @@ test('match page: clicking column headers reorders the prediction rows', async (
 
   // Points header is disabled — no result entered yet.
   await expect(grid.locator('th.sortable.disabled')).toContainText('Points')
+
+  await expectNoErrorView(page)
+  await net.assertNoGraphqlErrors()
+  net.assertNoPageErrors()
+})
+
+test('match page: Max column renders live and its header sorts by ceiling', async ({ page }) => {
+  const net = watchNetwork(page)
+  await page.goto('/')
+
+  // Two players tip Group D while editable. Against the live 1–0 (M8):
+  //   grace 1–0 → ceiling 4 (exact final 1–0 still reachable)
+  //   ada   0–2 → ceiling 3 (exact_away 2 + away-win outcome reachable, e.g. 1–2)
+  await enterTips(page, 'demo-ada', '0', '2')
+  await enterTips(page, 'demo-grace', '1', '0')
+
+  // Move into M8's live window so the server emits per-row maxReachable.
+  await setPreset(page, LIVE_GAME, 'during')
+
+  await page.goto(`/match/${LIVE_GAME}`)
+  await expect(page).toHaveURL(new RegExp(`/match/${LIVE_GAME}`))
+
+  // Live confirms the provisional path that drives the Max column.
+  await expect(page.locator('.match-scoreline.is-live')).toBeVisible()
+
+  const grid = page.locator('table.match-grid')
+  await expect(grid).toBeVisible()
+  const nicks = () => grid.locator('tbody tr .nick')
+
+  // (a) The Max column renders during the live window: a header + per-row cells.
+  const maxHeader = grid.locator('th.max-col')
+  await expect(maxHeader).toBeVisible()
+  await expect(maxHeader).toContainText('Max')
+  await expect(grid.locator('tbody tr .max-cell')).toHaveCount(2)
+
+  // (b) Clicking the Max header sorts by ceiling. First click → descending
+  // (its default): grace (4) before ada (3).
+  await maxHeader.click()
+  await expect(grid.locator('th.max-col[aria-sort="descending"]')).toBeVisible()
+  await expect(nicks().first()).toContainText('grace')
+
+  // Click again → ascending: ada (3) before grace (4).
+  await maxHeader.click()
+  await expect(grid.locator('th.max-col[aria-sort="ascending"]')).toBeVisible()
+  await expect(nicks().first()).toContainText('ada')
 
   await expectNoErrorView(page)
   await net.assertNoGraphqlErrors()

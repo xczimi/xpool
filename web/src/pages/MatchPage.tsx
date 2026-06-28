@@ -140,6 +140,9 @@ export function MatchPage() {
   // the re-scoring below is type-safe.
   const liveActual = isLive && actual ? actual : null
   const showWhatIf = liveActual != null && gateOpen
+  // Max-reachable is server-derived and live-only: the column appears when any
+  // row carries a ceiling (the live window). No Date.now() — purely the field.
+  const showMax = rows.some((r) => r.maxReachable != null)
   // The round multiplier for this match comes from its leaf group's round.
   const group = tournament?.groups.find((g) => g.id === game.groupId) ?? null
   const multiplier = group ? STAGE_MULTIPLIERS[group.round] : 1
@@ -262,6 +265,16 @@ export function MatchPage() {
             >
               {t('points')}
             </th>
+            {showMax && (
+              <th
+                className={`num max-col sortable${sort.column === 'max' ? ' active' : ''}`}
+                aria-sort={ariaSort('max')}
+                title={t('maxReachableTooltip')}
+                onClick={() => applySort('max')}
+              >
+                {t('maxColumn')}
+              </th>
+            )}
             {showWhatIf && (
               <>
                 <th className="num what-if-col" title={t('whatIfHint')}>
@@ -308,15 +321,18 @@ export function MatchPage() {
                   ) : (
                     '—'
                   )}
-                  {row.maxReachable != null && (
-                    <span
-                      className="max-reachable"
-                      title={t('maxReachableTooltip')}
-                    >
-                      {t('maxReachableShort')} ≤ {row.maxReachable}
-                    </span>
-                  )}
                 </td>
+                {showMax && (
+                  <td className="num max-cell" title={t('maxReachableTooltip')}>
+                    {row.maxReachable != null ? (
+                      <>
+                        {t('maxReachableShort')} ≤ {row.maxReachable}
+                      </>
+                    ) : (
+                      '—'
+                    )}
+                  </td>
+                )}
                 {showWhatIf && (
                   <>
                     <td className="num what-if-cell">

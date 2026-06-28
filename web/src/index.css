@@ -930,16 +930,15 @@ button.danger:hover:not(:disabled) {
   letter-spacing: 0.5px;
 }
 
-/* Per-player still-reachable ceiling on the live match page — muted,
-   provisional look, shown beside the points badge only while the match is live. */
-.max-reachable {
-  display: block;
-  margin-top: 2px;
+/* Per-player still-reachable ceiling on the live match page — its own column,
+   muted/provisional look, shown only while the match is live. */
+.match-grid td.max-cell {
   color: var(--muted, #777);
   font-style: italic;
-  font-size: 11px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 .hint {
@@ -1608,6 +1607,9 @@ button.danger:hover:not(:disabled) {
   color: var(--muted);
 }
 .match-grid th.what-if-col {
+  white-space: nowrap;
+}
+.match-grid th.max-col {
   white-space: nowrap;
 }
 
