@@ -7,7 +7,7 @@ use crate::{Repository, Scoreboard};
 use async_trait::async_trait;
 use domain::{Identity, Invite, Person, Player, PlayerId, Pool, Tournament};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     sync::{Arc, Mutex},
 };
 
@@ -24,7 +24,7 @@ struct Inner {
     identities: HashMap<String, Identity>,
     persons: HashMap<String, Person>,
     /// Reminder-dedup marker keys (see `mail::select`).
-    reminder_markers: std::collections::HashSet<String>,
+    reminder_markers: HashSet<String>,
 }
 
 /// Mutex-wrapped in-memory store. Cheap to clone (all clones share the inner
@@ -235,6 +235,8 @@ impl Repository for InMemoryRepository {
             .cloned()
             .collect())
     }
+
+    // ── Reminder dedup markers ───────────────────────────────────────────
 
     async fn put_reminder_marker(&self, key: &str) -> anyhow::Result<()> {
         let mut inner = self.inner.lock().unwrap();
