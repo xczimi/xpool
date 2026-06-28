@@ -22,6 +22,7 @@ pub trait MailSender: Send + Sync {
 /// Discards everything. The default injected into the schema so tests and the
 /// e2e stack never touch a real transport, and dev runs without MailHog stay
 /// quiet rather than crashing.
+#[derive(Clone, Copy)]
 pub struct NullSender;
 
 #[async_trait]
@@ -73,6 +74,7 @@ mod tests {
         sender.send(&email).await.unwrap();
         assert_eq!(sender.sent().len(), 2);
         assert_eq!(sender.sent()[0], email);
+        assert_eq!(sender.sent()[1], email);
     }
 
     #[tokio::test]
