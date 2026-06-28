@@ -64,9 +64,15 @@ test('match page: live what-if columns show next-goal totals and deltas', async 
   // Live score confirms the provisional path.
   await expect(page.locator('.match-scoreline.is-live')).toBeVisible()
 
-  // What-if headers render.
+  // What-if headers render, naming the actual teams (M8 = AUS vs TUR) rather
+  // than the generic "home"/"away". `compact` mode downgrades names to codes.
   const grid = page.locator('table.match-grid')
-  await expect(grid.locator('th.what-if-col')).toHaveCount(2)
+  const whatIfHeaders = grid.locator('th.what-if-col')
+  await expect(whatIfHeaders).toHaveCount(2)
+  await expect(whatIfHeaders.nth(0)).toContainText('AUS')
+  await expect(whatIfHeaders.nth(1)).toContainText('TUR')
+  await expect(whatIfHeaders.nth(0)).not.toContainText('home')
+  await expect(whatIfHeaders.nth(1)).not.toContainText('away')
 
   // grace's row: two what-if cells. nth(0) = if home scores, nth(1) = if away.
   const graceRow = grid.locator('tbody tr').filter({ hasText: 'grace' })

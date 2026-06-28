@@ -6,7 +6,7 @@ import { useI18n } from '../i18n/useI18n'
 import { MATCH_QUERY, ME_QUERY, POOLS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
 import type { MatchDetail, Me, Pool, Tournament } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
-import { Matchup } from '../components/TeamLabel'
+import { Matchup, TeamLabel } from '../components/TeamLabel'
 import { PointsBadge } from '../components/PointsBadge'
 import { PredictionStats } from '../components/PredictionStats'
 import { teamIndex, formatKickoff } from '../lib/format'
@@ -278,10 +278,14 @@ export function MatchPage() {
             {showWhatIf && (
               <>
                 <th className="num what-if-col" title={t('whatIfHint')}>
-                  {t('ifHomeScores')}
+                  {t('ifTeamScoresPrefix')}
+                  <TeamLabel slot={game.home} teams={teams} compact />
+                  {t('ifTeamScoresSuffix')}
                 </th>
                 <th className="num what-if-col" title={t('whatIfHint')}>
-                  {t('ifAwayScores')}
+                  {t('ifTeamScoresPrefix')}
+                  <TeamLabel slot={game.away} teams={teams} compact />
+                  {t('ifTeamScoresSuffix')}
                 </th>
               </>
             )}
