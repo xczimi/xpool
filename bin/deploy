@@ -28,6 +28,9 @@
 #   bin/deploy dev spa             # ship just the SPA (e.g. a web-only change)
 #   bin/deploy prod infra api spa reminder data   # the works
 #
+# First deploy of a brand-new env: run `bin/build` once first so infra can create
+# each Lambda from its zip (create_package = false). Steady-state needs nothing.
+#
 # For deploy-data's own flags (--seed / --bootstrap / --dry-run), run
 # bin/deploy-data directly — this wrapper only does a plain import.
 #

@@ -10,8 +10,7 @@
 #
 # First deploy in a brand-new env: infra's create reads the zip from disk
 # (create_package = false), so the zip must exist before that first `bin/deploy`
-# — build it once up front (run this script, or `cargo lambda build -p api --bin
-# reminder --release --arm64 --features lambda --output-format zip`). Steady-state
+# — run `bin/build` once up front (it builds both Lambda zips). Steady-state
 # deploys need nothing extra (each run leaves a fresh zip in target/). The
 # automated heartbeat is armed separately: reminder_enabled = true in
 # infrastructure/env/<env>.tfvars, then bin/deploy-infra — after the R1 gate.

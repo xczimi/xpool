@@ -1,0 +1,33 @@
+#!/bin/bash
+# Build both Lambda zips (api + reminder) locally — no AWS, no deploy.
+#
+# Usage: bin/build
+#
+# Why: bin/deploy runs `infra` first, and infra creates each Lambda from a zip on
+# disk (create_package = false). On a brand-new env that zip doesn't exist yet, so
+# the first `bin/deploy <env>` would fail at infra. Run `bin/build` once up front
+# and both artifacts are present for the create; steady-state deploys don't need it
+# (each deploy-api / deploy-reminder run leaves a fresh zip in target/).
+#
+# One `cargo lambda build` over the api crate cross-compiles BOTH binary targets —
+# `api` and the lambda-gated `reminder` — and zips each to
+# target/lambda/<bin>/bootstrap.zip. Mirrors the build in bin/deploy-api /
+# bin/deploy-reminder, so the artifacts are identical.
+set -euo pipefail
+
+PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$PROJECT"
+
+echo "==> cargo lambda build api + reminder (arm64, --features lambda)"
+cargo lambda build -p api --release --arm64 --features lambda --output-format zip
+
+for bin in api reminder; do
+    ZIP="$PROJECT/target/lambda/$bin/bootstrap.zip"
+    [[ -f "$ZIP" ]] || {
+        echo "build did not produce $ZIP" >&2
+        exit 1
+    }
+    SIZE=$(stat -f%z "$ZIP" 2>/dev/null || stat -c%s "$ZIP")
+    echo "    $bin -> $ZIP ($((SIZE / 1024)) KB)"
+done
+echo "==> built both Lambda zips"
