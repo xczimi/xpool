@@ -2,11 +2,13 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship the Wave-1 `cluster/backend-infra` work: SES-backed deadline-reminder emails (manual admin mutation + two automated EventBridge triggers) and a `bin/local-dev --fresh` flag that loads the cached prod snapshot into the current branch's table.
+**Goal:** Ship the Wave-1 `cluster/backend-infra` work: SES-backed deadline-reminder emails (an admin on-demand mutation + two automated EventBridge triggers) and a `bin/local-dev --fresh` flag that loads the cached prod snapshot into the current branch's table.
 
-**Architecture:** A new pure-and-I/O-light `crates/mail` crate owns email: a `MailSender` trait (SES in prod via `aws-sdk-sesv2`, SMTP→MailHog locally via `lettre`, plus a `CapturingSender`/`NullSender` for tests), pure recipient-selection + window + dedup-key functions, bilingual EN/HU templates, and a `sweep` orchestrator that resolves recipients from `storage::Repository`, dedups via new reminder-marker rows, and sends. Two trigger entrypoints invoke the same sweep: an admin GraphQL mutation (manual, per-pool) and a scheduled Lambda (`crates/api/src/bin/reminder.rs`) driven by two EventBridge schedules — an hourly last-call rule and a daily LA-midnight matchday-digest schedule. The clock is always injected (`now` param), never `Utc::now()` inside logic, so every path is deterministically testable. `bin/local-dev --fresh` reuses the existing snapshot tooling, targeting `xpool-<branch>` directly.
+**Architecture:** A new pure-and-I/O-light `crates/mail` crate owns email: a `MailSender` trait (SES in prod via `aws-sdk-sesv2`, SMTP→MailHog locally via `lettre`, plus a `CapturingSender`/`NullSender` for tests), pure recipient-selection + window + dedup-key functions, bilingual EN/HU templates, and a `sweep` orchestrator that resolves pending players **globally** from `storage::Repository`, dedups via new reminder-marker rows, and sends. **Predictions are per-player and global** — a player has one prediction set for the whole tournament and pools are only competition groupings, so reminders carry no pool dimension (targeting and dedup are keyed by person, never by pool). Two trigger entrypoints invoke the same per-player sweep: an admin GraphQL mutation (on-demand, for dev testing) and a scheduled Lambda (`crates/api/src/bin/reminder.rs`) driven by two EventBridge schedules — an hourly last-call rule and a daily LA-midnight matchday-digest schedule. The clock is always injected (`now` param), never `Utc::now()` inside logic, so every path is deterministically testable. `bin/local-dev --fresh` reuses the existing snapshot tooling, targeting `xpool-<branch>` directly.
 
 **Tech Stack:** Rust workspace (axum + async-graphql, aws-sdk-sesv2, aws-config, lettre, chrono, chrono-tz), DynamoDB single-table storage, Terraform (terraform-aws-modules/lambda, EventBridge Rules + EventBridge Scheduler), bash `bin/` tooling, MailHog for local mail capture.
+
+> **Build status: DEFERRED.** This cluster's implementation is on hold pending the user's explicit go-ahead. The plan is written to be correct and execution-ready; do not start the tasks until the user confirms.
 
 ---
 
@@ -16,11 +18,16 @@
 
 2. **Scheduled checker — a second Lambda entrypoint in `crates/api`, not a new lambda crate.** `crates/api/src/bin/reminder.rs` (gated `required-features = ["lambda"]`) wraps `lambda_runtime::service_fn` and calls the shared `mail::sweep` orchestrator, reusing the existing repo/domain wiring. The EventBridge schedules pass a `{"mode": "..."}` payload so one Lambda serves both triggers. The identical sweep is runnable locally via a new `xtask send-reminders --mode ...` subcommand against MailHog — this is how the scheduled path is tested without deploying. The default `cargo build` skips the bin (required-features), so the local API build is unaffected.
 
-3. **Two automated triggers (no 24h nudge):**
-   - **Last-call (hourly):** ~1h before a group/match deadline, remind players still incomplete/unlocked for that group. Deadline = `Tournament::deadline(group_id)` (earliest kickoff in subtree). Dedup key = `(pool, group, person, "1h")`. Driven by an hourly `aws_cloudwatch_event_rule`.
-   - **Matchday digest (daily, LA-midnight):** at `00:00 America/Los_Angeles`, one email per (pool, person) listing that LA-calendar-day's groups the person is incomplete/unlocked on. Dedup key = `(pool, person, matchday-date)`. Driven by a separate `aws_scheduler_schedule` with `schedule_expression_timezone = "America/Los_Angeles"` (named TZ, DST-aware — never a hard-coded UTC offset).
+3. **Two automated triggers (no 24h nudge), both per-player and global:**
+   - **Last-call (hourly):** ~1h before a group/match deadline, remind every player (globally, across all players — not per pool) still incomplete/unlocked for that group. Deadline = `Tournament::deadline(group_id)` (earliest kickoff in subtree). Dedup key = `(person, group, "1h")` — **no pool**. Driven by an hourly `aws_cloudwatch_event_rule`.
+   - **Matchday digest (daily, LA-midnight):** at `00:00 America/Los_Angeles`, one email per **person** listing that LA-calendar-day's groups they are incomplete/unlocked on. Dedup key = `(person, matchday-date)` — **no pool**. Driven by a separate `aws_scheduler_schedule` with `schedule_expression_timezone = "America/Los_Angeles"` (named TZ, DST-aware — never a hard-coded UTC offset).
 
-4. **Recipients / targeting / opt-out:** send to **all** verified emails of each targeted person (skip persons with none; surface the skipped count to the admin). Target **only** players with incomplete or unlocked predictions for the soon-to-lock group(s). **No opt-out** this round; SES bounce/complaint handling is explicitly future work.
+4. **Recipients / targeting / content / opt-out:**
+   - Predictions are **per-player and global**; pools do **not** factor into reminders at all. The recipient set is computed globally over players — "players with incomplete/unlocked predictions for the relevant group/match" — never per pool.
+   - **Only send when the player actually has something pending** — never an empty email (the digest skips a person whose day has no pending groups).
+   - Send to **all** verified emails of each targeted person (skip persons with none; surface the skipped count to the admin).
+   - Email **content** names the pending group(s)/match(es) + the deadline + a deep link to the relevant My Tips section. The deep link is `<origin>/mytips/<group.id>#<group.id>` — the `/mytips/:groupId` route resolves a leaf group id to the right round+group (`web/src/lib/groupRoute.ts`), and `#<group.id>` is the stable scroll anchor from the knockout-subgroup-anchors work (anchor ids use `group.id`). `origin` comes from `XPOOL_PUBLIC_ORIGIN` (default `http://localhost:5173`), the same env the invite links use.
+   - **No opt-out** this round; SES bounce/complaint handling is explicitly future work.
 
 5. **Dedup persistence — new reminder-marker rows on the existing single table.** Two new `Repository` methods (`put_reminder_marker` / `reminder_marker_exists`). Keys are pure functions (unit-tested). This is an additive change to the trait; both adapters (`InMemoryRepository`, `DynamoRepository`) implement it.
 
@@ -35,9 +42,9 @@
 - `crates/mail/src/lib.rs` — module wiring + `now_from_env`.
 - `crates/mail/src/sender.rs` — `Email`, `MailSender` trait, `CapturingSender`, `NullSender`.
 - `crates/mail/src/select.rs` — pure selection/window/dedup-key functions.
-- `crates/mail/src/templates.rs` — bilingual EN/HU last-call + digest renderers.
+- `crates/mail/src/templates.rs` — bilingual EN/HU last-call + digest renderers + the My Tips deep-link helper.
 - `crates/mail/src/transport.rs` — `choose_transport`, `SmtpSender`, `SesSender`, `build_sender_from_env`.
-- `crates/mail/src/sweep.rs` — `ReminderMode`, `ReminderSummary`, sweep orchestration.
+- `crates/mail/src/sweep.rs` — `ReminderMode`, `ReminderSummary`, the two **global** per-player sweeps (no pool dimension).
 - `crates/api/src/bin/reminder.rs` — scheduled Lambda entrypoint.
 - `infrastructure/reminder.tf` — reminder Lambda + 2 EventBridge schedules + scheduler IAM role + var.
 - `bin/deploy-reminder` — build + push the reminder Lambda zip (Peter runs it; not in this plan's scope to execute).
@@ -50,7 +57,7 @@
 - `crates/api/Cargo.toml` — `mail` dep + `[[bin]] reminder`.
 - `crates/api/src/lib.rs` — `build_app` gains a `mail` param.
 - `crates/api/src/gql/mod.rs` — `build_schema_with_mail`; `build_schema` defaults to `NullSender`.
-- `crates/api/src/gql/mutation.rs` — `sendDeadlineReminders` mutation + `ReminderReport` + test wiring.
+- `crates/api/src/gql/mutation.rs` — `sendDeadlineReminders(mode)` mutation (no pool arg) + `ReminderReport` + test wiring.
 - `crates/api/src/main.rs` — build the real sender; pass to `build_app`.
 - `crates/api/tests/common/mod.rs`, `crates/api/tests/cloudfront_auth.rs` — pass `NullSender` to `build_app`.
 - `crates/xtask/Cargo.toml`, `crates/xtask/src/main.rs` — `send-reminders` subcommand.
@@ -566,35 +573,25 @@ mod tests {
     }
 
     #[test]
-    fn select_recipients_excludes_locked_and_result_user() {
+    fn pending_players_excludes_locked_and_result_user() {
+        // Targeting is GLOBAL over all players — no pool dimension.
         let game_ids = vec!["A-g".to_string()];
-        let needs = player("needs", vec![]); // no prediction
-        let done = player("done", vec![pred("A-g", true)]);
+        let needs = player("needs", vec![]); // no prediction -> pending
+        let done = player("done", vec![pred("A-g", true)]); // locked -> not pending
         let mut ru = player("ru", vec![]);
-        ru.is_result_user = true;
-        let by_id: HashMap<&str, &Player> = [
-            ("needs", &needs),
-            ("done", &done),
-            ("ru", &ru),
-        ]
-        .into_iter()
-        .collect();
-        let members = vec!["needs".to_string(), "done".to_string(), "ru".to_string()];
-        assert_eq!(select_recipients(&members, &by_id, &game_ids), vec!["needs".to_string()]);
+        ru.is_result_user = true; // result user -> excluded
+        let all = vec![needs, done, ru];
+        let got: Vec<&str> = pending_players(&all, &game_ids).iter().map(|p| p.id.as_str()).collect();
+        assert_eq!(got, vec!["needs"]);
     }
 
     #[test]
-    fn dedup_keys_are_stable_and_distinct() {
-        assert_eq!(
-            dedup_key_last_call("pool1", "A", "person-x"),
-            "pool1|A|person-x|1h"
-        );
+    fn dedup_keys_are_stable_and_distinct_with_no_pool() {
+        // Per-player keys — pool plays no part.
+        assert_eq!(dedup_key_last_call("person-x", "A"), "person-x|A|1h");
         let d = chrono::NaiveDate::from_ymd_opt(2026, 6, 20).unwrap();
-        assert_eq!(dedup_key_digest("pool1", "person-x", d), "pool1|person-x|2026-06-20");
-        assert_ne!(
-            dedup_key_last_call("pool1", "A", "person-x"),
-            dedup_key_digest("pool1", "person-x", d)
-        );
+        assert_eq!(dedup_key_digest("person-x", d), "person-x|2026-06-20");
+        assert_ne!(dedup_key_last_call("person-x", "A"), dedup_key_digest("person-x", d));
     }
 }
 ```
@@ -612,8 +609,7 @@ Expected: FAIL — functions not defined.
 
 use chrono::{DateTime, Duration, NaiveDate, Utc};
 use chrono_tz::America::Los_Angeles;
-use domain::{GameId, GroupChildren, GroupId, Player, PlayerId, Tournament};
-use std::collections::HashMap;
+use domain::{GameId, GroupChildren, GroupId, Player, Tournament};
 
 /// The last-call lead time. The hourly EventBridge tick + this 1h window means
 /// each deadline is caught by exactly one tick (the one 0–60 min before it).
@@ -687,37 +683,25 @@ pub fn needs_reminder(player: &Player, game_ids: &[GameId]) -> bool {
     })
 }
 
-/// Pool members (by id) who should be reminded for a group's games: present in
-/// the player map, not the result user, and `needs_reminder`. Deterministic
-/// (sorted, deduped).
-pub fn select_recipients(
-    members: &[PlayerId],
-    by_id: &HashMap<&str, &Player>,
-    game_ids: &[GameId],
-) -> Vec<PlayerId> {
-    let mut out: Vec<PlayerId> = members
+/// Players (globally — predictions are per-player, pools don't matter) who
+/// should be reminded for a group's games: not the result user, and
+/// `needs_reminder`. Returns references into the input slice, in input order.
+pub fn pending_players<'a>(players: &'a [Player], game_ids: &[GameId]) -> Vec<&'a Player> {
+    players
         .iter()
-        .filter_map(|m| {
-            let p = by_id.get(m.as_str())?;
-            if p.is_result_user || !needs_reminder(p, game_ids) {
-                return None;
-            }
-            Some(p.id.clone())
-        })
-        .collect();
-    out.sort();
-    out.dedup();
-    out
+        .filter(|p| !p.is_result_user && needs_reminder(p, game_ids))
+        .collect()
 }
 
-/// Dedup key for the hourly last-call nudge: one per (pool, group, person).
-pub fn dedup_key_last_call(pool_id: &str, group_id: &str, person_id: &str) -> String {
-    format!("{pool_id}|{group_id}|{person_id}|1h")
+/// Dedup key for the hourly last-call nudge: one per (person, group). No pool —
+/// predictions are per-player and global.
+pub fn dedup_key_last_call(person_id: &str, group_id: &str) -> String {
+    format!("{person_id}|{group_id}|1h")
 }
 
-/// Dedup key for the daily matchday digest: one per (pool, person, LA-day).
-pub fn dedup_key_digest(pool_id: &str, person_id: &str, day: NaiveDate) -> String {
-    format!("{pool_id}|{person_id}|{day}")
+/// Dedup key for the daily matchday digest: one per (person, LA-day). No pool.
+pub fn dedup_key_digest(person_id: &str, day: NaiveDate) -> String {
+    format!("{person_id}|{day}")
 }
 ```
 
@@ -756,31 +740,44 @@ mod tests {
     use chrono::{TimeZone, Utc};
 
     #[test]
-    fn last_call_is_bilingual_and_interpolated() {
-        let r = render_last_call(&LastCallContext {
-            pool_name: "South Curve".into(),
-            group_name: "Group A".into(),
-            deadline: Utc.with_ymd_and_hms(2026, 6, 20, 18, 0, 0).unwrap(),
-        });
-        assert!(r.subject.contains("Group A"));
-        assert!(r.body_text.contains("South Curve"));
-        assert!(r.body_text.contains("deadline")); // EN
-        assert!(r.body_text.contains("határidő")); // HU
-        assert!(r.body_text.contains("2026-06-20 18:00 UTC"));
+    fn mytips_link_targets_the_group_route_and_anchor() {
+        // /mytips/<group.id>#<group.id> — leaf group id resolves round+group,
+        // the hash is the stable anchor (knockout-subgroup-anchors).
+        assert_eq!(
+            mytips_link("https://pool.xczimi.com", "M76"),
+            "https://pool.xczimi.com/mytips/M76#M76"
+        );
     }
 
     #[test]
-    fn digest_lists_every_group_in_both_languages() {
+    fn last_call_is_bilingual_with_deadline_and_deep_link() {
+        let r = render_last_call(&LastCallContext {
+            group_name: "Group A".into(),
+            group_id: "A".into(),
+            deadline: Utc.with_ymd_and_hms(2026, 6, 20, 18, 0, 0).unwrap(),
+            origin: "https://pool.xczimi.com".into(),
+        });
+        assert!(r.subject.contains("Group A"));
+        assert!(r.body_text.contains("deadline")); // EN
+        assert!(r.body_text.contains("határidő")); // HU
+        assert!(r.body_text.contains("2026-06-20 18:00 UTC"));
+        assert!(r.body_text.contains("https://pool.xczimi.com/mytips/A#A")); // deep link
+    }
+
+    #[test]
+    fn digest_lists_every_group_in_both_languages_with_links() {
         let r = render_digest(&DigestContext {
-            pool_name: "South Curve".into(),
             day: chrono::NaiveDate::from_ymd_opt(2026, 6, 20).unwrap(),
+            origin: "https://pool.xczimi.com".into(),
             groups: vec![
                 DigestItem {
                     group_name: "Group A".into(),
+                    group_id: "A".into(),
                     deadline: Utc.with_ymd_and_hms(2026, 6, 20, 18, 0, 0).unwrap(),
                 },
                 DigestItem {
                     group_name: "Group B".into(),
+                    group_id: "B".into(),
                     deadline: Utc.with_ymd_and_hms(2026, 6, 20, 21, 0, 0).unwrap(),
                 },
             ],
@@ -788,6 +785,8 @@ mod tests {
         assert!(r.subject.contains("2026-06-20"));
         assert!(r.body_text.contains("Group A"));
         assert!(r.body_text.contains("Group B"));
+        assert!(r.body_text.contains("/mytips/A#A"));
+        assert!(r.body_text.contains("/mytips/B#B"));
         assert!(r.body_text.contains("Today's matches")); // EN
         assert!(r.body_text.contains("Mai meccsek")); // HU
     }
@@ -815,23 +814,27 @@ pub struct RenderedReminder {
     pub body_text: String,
 }
 
-/// Context for the hourly last-call nudge.
+/// Context for the hourly last-call nudge. No pool — predictions are per-player.
 pub struct LastCallContext {
-    pub pool_name: String,
     pub group_name: String,
+    /// The leaf group/match id — used for the My Tips deep link + anchor.
+    pub group_id: String,
     pub deadline: DateTime<Utc>,
+    /// SPA origin for absolute deep links (`XPOOL_PUBLIC_ORIGIN`).
+    pub origin: String,
 }
 
 /// One line of the daily digest.
 pub struct DigestItem {
     pub group_name: String,
+    pub group_id: String,
     pub deadline: DateTime<Utc>,
 }
 
-/// Context for the daily matchday digest.
+/// Context for the daily matchday digest. No pool.
 pub struct DigestContext {
-    pub pool_name: String,
     pub day: NaiveDate,
+    pub origin: String,
     pub groups: Vec<DigestItem>,
 }
 
@@ -839,26 +842,34 @@ fn fmt_deadline(d: DateTime<Utc>) -> String {
     d.format("%Y-%m-%d %H:%M UTC").to_string()
 }
 
+/// Deep link into the My Tips page for a group. The `/mytips/:groupId` route
+/// resolves a leaf group id to the right round+group (`web/src/lib/groupRoute.ts`);
+/// `#<group.id>` is the stable scroll anchor (knockout-subgroup-anchors).
+pub fn mytips_link(origin: &str, group_id: &str) -> String {
+    format!("{origin}/mytips/{group_id}#{group_id}")
+}
+
 /// The last-call (≈1h before deadline) email.
 pub fn render_last_call(ctx: &LastCallContext) -> RenderedReminder {
     let when = fmt_deadline(ctx.deadline);
+    let link = mytips_link(&ctx.origin, &ctx.group_id);
     let subject = format!(
         "Last call: {group} predictions close soon / Utolsó hívás: {group}",
         group = ctx.group_name
     );
     let body_text = format!(
         "EN\n\
-         Pool: {pool}\n\
          The prediction deadline for {group} is at {when}. \
-         You still have unlocked or missing predictions — lock them before then.\n\
+         You still have unlocked or missing predictions — finish them here:\n\
+         {link}\n\
          \n\
          HU\n\
-         Pool: {pool}\n\
          A(z) {group} tippelési határidő: {when}. \
-         Még van zárolatlan vagy hiányzó tipped — zárold le a határidő előtt.\n",
-        pool = ctx.pool_name,
+         Még van zárolatlan vagy hiányzó tipped — itt fejezd be:\n\
+         {link}\n",
         group = ctx.group_name,
         when = when,
+        link = link,
     );
     RenderedReminder { subject, body_text }
 }
@@ -872,18 +883,22 @@ pub fn render_digest(ctx: &DigestContext) -> RenderedReminder {
     let lines: String = ctx
         .groups
         .iter()
-        .map(|g| format!("  - {} ({})\n", g.group_name, fmt_deadline(g.deadline)))
+        .map(|g| {
+            format!(
+                "  - {} ({})\n    {}\n",
+                g.group_name,
+                fmt_deadline(g.deadline),
+                mytips_link(&ctx.origin, &g.group_id)
+            )
+        })
         .collect();
     let body_text = format!(
         "EN\n\
-         Pool: {pool}\n\
          Today's matches ({day}) you still have unlocked or missing predictions for:\n\
          {lines}\n\
          HU\n\
-         Pool: {pool}\n\
          Mai meccsek ({day}), amikhez még van zárolatlan vagy hiányzó tipped:\n\
          {lines}",
-        pool = ctx.pool_name,
         day = ctx.day,
         lines = lines,
     );
@@ -1144,7 +1159,7 @@ mod reminder_marker_tests {
     #[tokio::test]
     async fn marker_absent_then_present_and_idempotent() {
         let repo = InMemoryRepository::new();
-        let key = "pool1|A|person-x|1h";
+        let key = "person-x|A|1h"; // per-person key shape (no pool)
         assert!(!repo.reminder_marker_exists(key).await.unwrap());
         repo.put_reminder_marker(key).await.unwrap();
         assert!(repo.reminder_marker_exists(key).await.unwrap());
@@ -1273,7 +1288,7 @@ mod tests {
     use crate::sender::CapturingSender;
     use chrono::{TimeZone, Utc};
     use domain::{
-        GroupChildren, GroupGame, Identity, LockMode, Person, Player, Pool, Round, SingleGame,
+        GroupChildren, GroupGame, Identity, LockMode, Person, Player, Round, SingleGame,
         TeamSlot, Tournament,
     };
     use std::collections::HashMap;
@@ -1325,11 +1340,12 @@ mod tests {
         }
     }
 
-    async fn setup(kickoff: chrono::DateTime<Utc>) -> (InMemoryRepository, Pool) {
+    // Two players exist GLOBALLY (no pool): alice (has a verified email, no
+    // predictions -> a target) and bob (no verified email -> skipped_no_email).
+    async fn setup(kickoff: chrono::DateTime<Utc>) -> InMemoryRepository {
         let repo = InMemoryRepository::new();
         repo.put_tournament(&tournament(kickoff)).await.unwrap();
 
-        // "alice" has a verified email and no predictions -> a target.
         let alice = player("alice");
         repo.put_player(&alice).await.unwrap();
         repo.put_person(&Person { id: "person-alice".into(), identity_ids: vec!["id-a".into()] })
@@ -1345,7 +1361,6 @@ mod tests {
         .await
         .unwrap();
 
-        // "bob" has NO verified email -> skipped_no_email.
         let bob = player("bob");
         repo.put_player(&bob).await.unwrap();
         repo.put_person(&Person { id: "person-bob".into(), identity_ids: vec!["id-b".into()] })
@@ -1361,21 +1376,13 @@ mod tests {
         .await
         .unwrap();
 
-        let pool = Pool {
-            id: "pool1".into(),
-            name: "South Curve".into(),
-            owner: "alice".into(),
-            members: vec!["alice".into(), "bob".into()],
-            prefix: "SOUTH".into(),
-        };
-        repo.put_pool(&pool).await.unwrap();
-        (repo, pool)
+        repo
     }
 
     #[tokio::test]
     async fn last_call_sends_once_and_dedups() {
         let kickoff = at(2026, 6, 20, 18, 0);
-        let (repo, _pool) = setup(kickoff).await;
+        let repo = setup(kickoff).await;
         let mail = CapturingSender::new();
 
         // Tick ~50min before the deadline -> in the last-call window.
@@ -1385,6 +1392,8 @@ mod tests {
         assert_eq!(s1.skipped_no_email, 1, "bob has no verified email");
         assert_eq!(mail.sent().len(), 1);
         assert_eq!(mail.sent()[0].to, vec!["alice@dev.invalid".to_string()]);
+        // The email carries the My Tips deep link for the pending group.
+        assert!(mail.sent()[0].body_text.contains("/mytips/A#A"));
 
         // A second tick in the same window must NOT re-send (dedup).
         let s2 = run_last_call_sweep(&repo, &mail, at(2026, 6, 20, 17, 40)).await.unwrap();
@@ -1395,7 +1404,7 @@ mod tests {
 
     #[tokio::test]
     async fn last_call_silent_outside_window() {
-        let (repo, _pool) = setup(at(2026, 6, 20, 18, 0)).await;
+        let repo = setup(at(2026, 6, 20, 18, 0)).await;
         let mail = CapturingSender::new();
         let s = run_last_call_sweep(&repo, &mail, at(2026, 6, 20, 12, 0)).await.unwrap();
         assert_eq!(s.sent, 0);
@@ -1405,7 +1414,7 @@ mod tests {
     #[tokio::test]
     async fn digest_sends_once_per_la_day_and_dedups() {
         // Deadline 2026-06-21 05:00 UTC == 2026-06-20 22:00 LA.
-        let (repo, _pool) = setup(at(2026, 6, 21, 5, 0)).await;
+        let repo = setup(at(2026, 6, 21, 5, 0)).await;
         let mail = CapturingSender::new();
 
         // Digest tick at LA-midnight 2026-06-20 (07:00 UTC).
@@ -1432,18 +1441,18 @@ Expected: FAIL — sweep items not defined.
 - [ ] **Step 3: Write the implementation (prepend above the tests)**
 
 ```rust
-//! The reminder sweep: resolve recipients from the repository, dedup, and send.
-//! Two modes — hourly last-call and daily LA-matchday digest. Clock is injected.
+//! The reminder sweep: resolve pending players GLOBALLY from the repository,
+//! dedup, and send. Predictions are per-player and global — pools do NOT factor
+//! in. Two modes — hourly last-call and daily LA-matchday digest. Clock is
+//! injected; the SPA origin (for deep links) comes from `XPOOL_PUBLIC_ORIGIN`.
 
 use crate::select::{
     dedup_key_digest, dedup_key_last_call, groups_due_last_call, la_date, matchday_groups,
-    needs_reminder, select_recipients,
+    needs_reminder, pending_players,
 };
 use crate::sender::{Email, MailSender};
 use crate::templates::{render_digest, render_last_call, DigestContext, DigestItem, LastCallContext};
 use chrono::{DateTime, Utc};
-use domain::{Player, Pool};
-use std::collections::HashMap;
 use storage::Repository;
 
 /// Which reminder trigger to run. The scheduled Lambda picks this from the
@@ -1495,48 +1504,24 @@ async fn verified_emails(repo: &dyn Repository, person_id: &str) -> anyhow::Resu
     Ok(ids.into_iter().filter_map(|i| i.verified_email).collect())
 }
 
-/// Last-call sweep over every pool.
+/// The SPA origin for absolute deep links (same env as invite links).
+fn public_origin() -> String {
+    std::env::var("XPOOL_PUBLIC_ORIGIN").unwrap_or_else(|_| "http://localhost:5173".to_owned())
+}
+
+/// Hourly last-call sweep, GLOBAL over all players: for each group ~1h from
+/// locking, email every incomplete/unlocked player once (dedup by person|group|1h).
 pub async fn run_last_call_sweep(
     repo: &dyn Repository,
     mail: &dyn MailSender,
     now: DateTime<Utc>,
-) -> anyhow::Result<ReminderSummary> {
-    let pools = repo.list_pools().await?;
-    let mut total = ReminderSummary::default();
-    for pool in &pools {
-        total = total.add(sweep_pool_last_call(repo, mail, now, pool).await?);
-    }
-    Ok(total)
-}
-
-/// Digest sweep over every pool.
-pub async fn run_digest_sweep(
-    repo: &dyn Repository,
-    mail: &dyn MailSender,
-    now: DateTime<Utc>,
-) -> anyhow::Result<ReminderSummary> {
-    let pools = repo.list_pools().await?;
-    let mut total = ReminderSummary::default();
-    for pool in &pools {
-        total = total.add(sweep_pool_digest(repo, mail, now, pool).await?);
-    }
-    Ok(total)
-}
-
-/// Hourly last-call for one pool: for each group ~1h from locking, send to its
-/// incomplete/unlocked members once (dedup by pool|group|person|1h).
-pub async fn sweep_pool_last_call(
-    repo: &dyn Repository,
-    mail: &dyn MailSender,
-    now: DateTime<Utc>,
-    pool: &Pool,
 ) -> anyhow::Result<ReminderSummary> {
     let tournament = repo
         .get_tournament()
         .await?
         .ok_or_else(|| anyhow::anyhow!("no tournament loaded"))?;
     let players = repo.list_players().await?;
-    let by_id: HashMap<&str, &Player> = players.iter().map(|p| (p.id.as_str(), p)).collect();
+    let origin = public_origin();
     let mut summary = ReminderSummary::default();
 
     for due in groups_due_last_call(&tournament, now) {
@@ -1551,12 +1536,9 @@ pub async fn sweep_pool_last_call(
             .map(|g| g.name.clone())
             .unwrap_or_default();
 
-        for pid in select_recipients(&pool.members, &by_id, &game_ids) {
-            let Some(player) = by_id.get(pid.as_str()).copied() else {
-                continue;
-            };
+        for player in pending_players(&players, &game_ids) {
             summary.recipients += 1;
-            let key = dedup_key_last_call(&pool.id, &due.group_id, &player.person_id);
+            let key = dedup_key_last_call(&player.person_id, &due.group_id);
             if repo.reminder_marker_exists(&key).await? {
                 summary.deduped += 1;
                 continue;
@@ -1567,9 +1549,10 @@ pub async fn sweep_pool_last_call(
                 continue;
             }
             let rendered = render_last_call(&LastCallContext {
-                pool_name: pool.name.clone(),
                 group_name: group_name.clone(),
+                group_id: due.group_id.clone(),
                 deadline: due.deadline,
+                origin: origin.clone(),
             });
             mail.send(&Email {
                 to: emails,
@@ -1584,28 +1567,25 @@ pub async fn sweep_pool_last_call(
     Ok(summary)
 }
 
-/// Daily digest for one pool: one email per member listing the LA-day's groups
-/// they are incomplete on (dedup by pool|person|LA-date).
-pub async fn sweep_pool_digest(
+/// Daily matchday digest, GLOBAL over all players: one email per person listing
+/// the LA-day's groups they are still incomplete on (dedup by person|LA-date).
+/// Never sends an empty email — a person with nothing pending is skipped silently.
+pub async fn run_digest_sweep(
     repo: &dyn Repository,
     mail: &dyn MailSender,
     now: DateTime<Utc>,
-    pool: &Pool,
 ) -> anyhow::Result<ReminderSummary> {
     let tournament = repo
         .get_tournament()
         .await?
         .ok_or_else(|| anyhow::anyhow!("no tournament loaded"))?;
     let players = repo.list_players().await?;
-    let by_id: HashMap<&str, &Player> = players.iter().map(|p| (p.id.as_str(), p)).collect();
+    let origin = public_origin();
     let day = la_date(now);
     let due_groups = matchday_groups(&tournament, now);
     let mut summary = ReminderSummary::default();
 
-    for member in &pool.members {
-        let Some(player) = by_id.get(member.as_str()).copied() else {
-            continue;
-        };
+    for player in &players {
         if player.is_result_user {
             continue;
         }
@@ -1623,14 +1603,18 @@ pub async fn sweep_pool_digest(
                     .get(&due.group_id)
                     .map(|g| g.name.clone())
                     .unwrap_or_default();
-                items.push(DigestItem { group_name, deadline: due.deadline });
+                items.push(DigestItem {
+                    group_name,
+                    group_id: due.group_id.clone(),
+                    deadline: due.deadline,
+                });
             }
         }
         if items.is_empty() {
-            continue;
+            continue; // never an empty email
         }
         summary.recipients += 1;
-        let key = dedup_key_digest(&pool.id, &player.person_id, day);
+        let key = dedup_key_digest(&player.person_id, day);
         if repo.reminder_marker_exists(&key).await? {
             summary.deduped += 1;
             continue;
@@ -1641,8 +1625,8 @@ pub async fn sweep_pool_digest(
             continue;
         }
         let rendered = render_digest(&DigestContext {
-            pool_name: pool.name.clone(),
             day,
+            origin: origin.clone(),
             groups: items,
         });
         mail.send(&Email {
@@ -1816,7 +1800,7 @@ mod send_reminders_tests {
     use crate::auth::CurrentPlayer;
     use chrono::{TimeZone, Utc};
     use domain::{
-        GroupChildren, GroupGame, Identity, LockMode, Person, Player, Pool, Round, SingleGame,
+        GroupChildren, GroupGame, Identity, LockMode, Person, Player, Round, SingleGame,
         TeamSlot, Tournament,
     };
     use mail::CapturingSender;
@@ -1901,16 +1885,8 @@ mod send_reminders_tests {
         })
         .await
         .unwrap();
-        repo.put_pool(&Pool {
-            id: "pool1".into(),
-            name: "South Curve".into(),
-            owner: "alice".into(),
-            members: vec!["alice".into()],
-            prefix: "SOUTH".into(),
-        })
-        .await
-        .unwrap();
 
+        // No pool needed — the sweep is global over players (per-player predictions).
         let mail = CapturingSender::new();
         let repo_arc: Arc<dyn Repository> = Arc::new(repo);
         let source: Arc<dyn crate::reported::ReportedResultSource> = Arc::new(NoSource);
@@ -1919,7 +1895,7 @@ mod send_reminders_tests {
 
         let now = Utc.with_ymd_and_hms(2026, 6, 20, 17, 10, 0).unwrap();
         let req = async_graphql::Request::new(
-            r#"mutation { sendDeadlineReminders(poolId: "pool1", mode: LAST_CALL) { sent skippedNoEmail recipients deduped } }"#,
+            r#"mutation { sendDeadlineReminders(mode: LAST_CALL) { sent skippedNoEmail recipients deduped } }"#,
         )
         .data(CurrentPlayer::Player(Box::new(admin())))
         .data(crate::clock::RequestNow(now));
@@ -1939,7 +1915,7 @@ mod send_reminders_tests {
         let mut nonadmin = admin();
         nonadmin.is_result_user = false;
         let req = async_graphql::Request::new(
-            r#"mutation { sendDeadlineReminders(poolId: "pool1", mode: LAST_CALL) { sent } }"#,
+            r#"mutation { sendDeadlineReminders(mode: LAST_CALL) { sent } }"#,
         )
         .data(CurrentPlayer::Player(Box::new(nonadmin)))
         .data(crate::clock::RequestNow(Utc::now()));
@@ -2002,28 +1978,28 @@ keep whichever the compiler accepts.)
 Then add the mutation method inside `impl MutationRoot` (after `recompute`):
 
 ```rust
-    /// Admin: send deadline-reminder emails for one pool now (manual trigger).
-    /// `mode` selects the hourly last-call sweep or the daily matchday digest.
-    /// Uses the request clock, so a dev can drive it via `X-Dev-Now`. Recipients
-    /// are members with incomplete/unlocked predictions; all their verified
-    /// emails are used; persons with none are counted in `skippedNoEmail`.
+    /// Admin: run a deadline-reminder sweep on demand (for dev testing). This is
+    /// the SAME per-player, global pending sweep the scheduled Lambda runs — there
+    /// is no pool argument (predictions are per-player and global). `mode` selects
+    /// the hourly last-call sweep or the daily matchday digest. Uses the request
+    /// clock, so a dev can drive it via `X-Dev-Now`. Targets only players with
+    /// incomplete/unlocked predictions; all their verified emails are used; persons
+    /// with none are counted in `skippedNoEmail`; never sends an empty email.
     async fn send_deadline_reminders(
         &self,
         ctx: &Context<'_>,
-        pool_id: String,
         mode: ReminderModeArg,
     ) -> async_graphql::Result<ReminderReport> {
         CurrentPlayer::require_admin(ctx)?;
         let repo = repo(ctx);
         let mail = ctx.data_unchecked::<Arc<dyn mail::MailSender>>();
-        let pool = load_pool(repo, &pool_id).await?;
         let now = now(ctx);
         let summary = match mode {
             ReminderModeArg::LastCall => {
-                mail::sweep::sweep_pool_last_call(repo.as_ref(), mail.as_ref(), now, &pool).await
+                mail::run_last_call_sweep(repo.as_ref(), mail.as_ref(), now).await
             }
             ReminderModeArg::Digest => {
-                mail::sweep::sweep_pool_digest(repo.as_ref(), mail.as_ref(), now, &pool).await
+                mail::run_digest_sweep(repo.as_ref(), mail.as_ref(), now).await
             }
         }
         .map_err(|e| {
@@ -2542,24 +2518,39 @@ git commit -m "chore(cluster/backend-infra): address code-review feedback"
 
 ## Self-review notes (author)
 
-- **Spec coverage — ses-deadline-reminders:** manual admin mutation (Task 8);
-  hourly last-call + daily LA-midnight digest triggers (Tasks 7, 9, 10);
-  all-verified-emails recipients + skipped count (Task 7 `verified_emails` +
-  `skipped_no_email`); incomplete/unlocked targeting (Task 3 `needs_reminder`);
-  dedup per trigger window (Task 3 keys + Task 6 markers + Task 7 sweep);
-  no opt-out this round (not implemented, by design); EN+HU templates (Task 4);
-  testable scheduled path via `XPOOL_NOW` + `xtask send-reminders` (Task 9).
+- **Spec coverage — ses-deadline-reminders (revised 2026-06-27):**
+  - **Per-player, global predictions; no pool dimension** — sweeps iterate
+    `list_players()` directly (Task 7); dedup keys are `(person, group, "1h")` and
+    `(person, LA-date)` with no pool (Task 3 `dedup_key_last_call`/`dedup_key_digest`);
+    targeting is `pending_players` over all players (Task 3).
+  - **Admin on-demand mutation** is `sendDeadlineReminders(mode)` — no pool arg —
+    running the same global sweep for dev testing (Task 8).
+  - Two automated triggers: hourly last-call + daily LA-midnight digest, timezone
+    `America/Los_Angeles` via EventBridge Scheduler, no hard-coded offset (Tasks 9, 10).
+  - **Only send when pending; never an empty email** — digest skips a person with no
+    pending groups (Task 7 `if items.is_empty() { continue }`); last-call only iterates
+    `pending_players` (Task 3/7).
+  - All-verified-emails recipients + `skipped_no_email` count (Task 7 `verified_emails`).
+  - **Email content** names the pending group(s)/match(es) + deadline + a deep link
+    `<origin>/mytips/<group.id>#<group.id>` (Task 4 `mytips_link`, tested).
+  - Bilingual EN+HU stacked in one body (Task 4); incomplete/unlocked targeting
+    (Task 3 `needs_reminder`); dedup markers (Task 6); no opt-out this round (by design);
+    testable scheduled path via `XPOOL_NOW` + `xtask send-reminders` (Task 9);
+    sender injected/mocked with `CapturingSender` in every unit test (Tasks 2,7,8).
 - **Spec coverage — local-dev-fresh-snapshot:** opt-in `--fresh` (Task 1);
   newest cached snapshot under `snapshots/` (Task 1 `latest_snapshot`); loads
   into `xpool-<branch>` (Task 1 uses `$TABLE`); non-destructive/local-only
   (additive `xtask load`, never touches AWS).
 - **Type consistency:** `ReminderMode`/`ReminderSummary`/`Email`/`MailSender`/
-  `RenderedReminder`/`DueGroup`/`DigestItem`/`DigestContext`/`LastCallContext`
-  are defined once and reused; `build_schema_with_mail`, `build_app(.. , mail)`,
-  and `ctx.data_unchecked::<Arc<dyn mail::MailSender>>()` agree on the
-  `Arc<dyn mail::MailSender>` type; dedup-key strings match between `select.rs`
+  `RenderedReminder`/`DueGroup`/`DigestItem`/`DigestContext`/`LastCallContext`/
+  `mytips_link`/`pending_players` are defined once and reused; `run_last_call_sweep`
+  /`run_digest_sweep` have the same `(repo, mail, now)` signature called from the
+  mutation (Task 8), the Lambda (Task 9), and xtask (Task 9); `build_schema_with_mail`,
+  `build_app(.., mail)`, and `ctx.data_unchecked::<Arc<dyn mail::MailSender>>()` agree
+  on `Arc<dyn mail::MailSender>`; the no-pool dedup-key shapes match between `select.rs`
   and the sweep callers.
 - **No placeholders:** every code step contains complete code; commands have
   expected output.
-</content>
-</invoke>
+- **Build deferred:** the header records that execution waits on the user's go-ahead.
+  The coordinator's design corrections were applied as technical input; they are not
+  treated as user approval to start the build.
