@@ -1521,3 +1521,17 @@ button.danger:hover:not(:disabled) {
 .match-note.match-warn { color: var(--amber); }
 .match-grid td.pred { font-size: 16px; }
 .match-grid .match-hidden { color: var(--muted); }
+
+/* ============================================================================
+   MY TIPS ANCHORS — smooth-scroll target offset + brief arrive pulse
+   ============================================================================ */
+.tip-form {
+  scroll-margin-top: 16px;
+}
+@keyframes anchor-pulse {
+  0%   { box-shadow: 0 0 0 2px var(--amber, #ff8c00); }
+  100% { box-shadow: 0 0 0 2px transparent; }
+}
+.tip-form--anchored {
+  animation: anchor-pulse 1.4s ease-out;
+}
