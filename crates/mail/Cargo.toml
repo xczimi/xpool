@@ -1,0 +1,25 @@
+[package]
+name = "mail"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+name = "mail"
+path = "src/lib.rs"
+
+[dependencies]
+domain.workspace = true
+storage.workspace = true
+chrono.workspace = true
+chrono-tz = "0.10"
+anyhow.workspace = true
+async-trait.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+lettre = { version = "0.11", default-features = false, features = ["builder", "tokio1", "tokio1-rustls-tls", "smtp-transport"] }
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+aws-sdk-sesv2 = "1"
+
+[dev-dependencies]
+serde_json.workspace = true

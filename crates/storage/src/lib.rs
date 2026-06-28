@@ -92,4 +92,15 @@ pub trait Repository: Send + Sync {
     /// needs the player's *actual* identity (Google sub or e-mail) rather than
     /// assuming a seed-convention address.
     async fn find_identities_by_person(&self, person_id: &str) -> anyhow::Result<Vec<Identity>>;
+
+    // ── Reminder dedup markers ───────────────────────────────────────────────
+    //
+    // Idempotent set of "this reminder was already sent" keys (see
+    // `mail::select` for the key shapes). Lets the hourly/daily reminder sweep
+    // run repeatedly without re-sending. Keys are opaque strings.
+
+    /// Record a reminder-dedup marker. Idempotent (re-storing is a no-op).
+    async fn put_reminder_marker(&self, key: &str) -> anyhow::Result<()>;
+    /// Whether a reminder-dedup marker exists.
+    async fn reminder_marker_exists(&self, key: &str) -> anyhow::Result<bool>;
 }

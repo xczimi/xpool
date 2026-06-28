@@ -292,7 +292,12 @@ pub fn data(resp: &async_graphql::Response) -> Value {
 /// `tests/seam.rs` that need to drive the full request stack.
 pub async fn test_app() -> (axum::Router, Arc<dyn Repository>) {
     let repo = seeded_repo(Duration::hours(24)).await;
-    let app = api::build_app(repo.clone(), false, None);
+    let app = api::build_app(
+        repo.clone(),
+        false,
+        None,
+        std::sync::Arc::new(mail::NullSender),
+    );
     (app, repo)
 }
 
