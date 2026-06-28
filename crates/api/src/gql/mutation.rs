@@ -895,9 +895,9 @@ impl MutationRoot {
         Ok(true)
     }
 
-    /// Admin: send last-call reminders to all players with incomplete
-    /// predictions for groups locking within the next ~60 min. Idempotent —
-    /// dedup markers prevent double-sending within a window.
+    /// Admin: send last-call reminders to all players with incomplete or
+    /// unlocked predictions for groups locking within the next ~40 min.
+    /// Idempotent — dedup markers prevent double-sending within a window.
     async fn send_last_call_reminders(
         &self,
         ctx: &Context<'_>,
@@ -915,8 +915,9 @@ impl MutationRoot {
         Ok(ReminderReport::from(summary))
     }
 
-    /// Admin: send the matchday digest to all players with any predictions on
-    /// today's games. Idempotent — dedup markers prevent double-sending.
+    /// Admin: send the matchday digest to players with incomplete or unlocked
+    /// predictions for today's games (players with nothing pending are skipped —
+    /// never an empty email). Idempotent — dedup markers prevent double-sending.
     async fn send_matchday_digest(
         &self,
         ctx: &Context<'_>,
