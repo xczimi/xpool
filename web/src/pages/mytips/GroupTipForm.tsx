@@ -241,7 +241,7 @@ export function GroupTipForm({
   }
 
   return (
-    <div className="tip-form">
+    <div className="tip-form" id={group.id}>
       <h3>
         {group.name}{' '}
         <span className={groupLocked ? 'state-locked' : 'state-draft'}>
