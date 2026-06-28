@@ -73,15 +73,37 @@ log "using fresh table $XPOOL_TABLE"
 log "API clock (XPOOL_NOW) = $XPOOL_NOW"
 
 # ── infra + seed via the shared primitive ────────────────────────────────────
+# Serialize bring-up across concurrent e2e runs: `docker compose up` under the
+# shared compose project can race on cold container/network creation. A
+# mkdir-based lock is portable (flock isn't on macOS); the EXIT trap releases it
+# even on failure, and the ~5-min budget keeps a crashed run from wedging the
+# next. Released right after seeding so the API build/start phases still overlap
+# (cargo's own target lock serializes the builds safely).
+STACK_LOCK="$REPO_ROOT/web/.e2e-stack.lock"
+release_stack_lock() { rmdir "$STACK_LOCK" 2>/dev/null || true; }
+for _ in $(seq 1 600); do
+  if mkdir "$STACK_LOCK" 2>/dev/null; then
+    trap release_stack_lock EXIT
+    break
+  fi
+  sleep 0.5
+done
 "$REPO_ROOT/bin/local-stack"
+release_stack_lock
+trap - EXIT
 
-# ── stop any stale process on THIS run's dynamic API port only — never touch
-#    dev's :3000. Vite is owned by Playwright. ─────────────────────────────────
-kill_port "$API_PORT"
-sleep 1
-stale="$(port_pids "$API_PORT")"
-# shellcheck disable=SC2086
-[ -n "$stale" ] && kill -9 $stale 2>/dev/null || true
+# ── stop any stale process on the API port — ONLY on the fixed fallback path
+#    (a bare `playwright test`). On the DYNAMIC path the port was just
+#    OS-allocated and is free, so a pre-emptive kill is both pointless and
+#    dangerous: it could hit a *sibling* concurrent run that bound this number
+#    first. Never touch dev's :3000; Vite is owned by Playwright. ──────────────
+if [ -z "${XPOOL_E2E_API_PORT:-}" ]; then
+  kill_port "$API_PORT"
+  sleep 1
+  stale="$(port_pids "$API_PORT")"
+  # shellcheck disable=SC2086
+  [ -n "$stale" ] && kill -9 $stale 2>/dev/null || true
+fi
 
 # ── build + start the API detached, recording the real PID ───────────────────
 log "building the API"

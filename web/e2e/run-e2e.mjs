@@ -10,6 +10,12 @@
 // runs execute concurrently — each gets its own free ports and (via the API
 // port) its own per-run state files and DynamoDB table. See e2e/ports.ts.
 //
+// Concurrency note: two runs from the SAME worktree share that worktree's cargo
+// `target/`, so their `cargo build`/`cargo run` phases serialize on cargo's
+// build lock (correct, just not parallel). The test-execution phase still runs
+// concurrently. For fully parallel runs, use separate git worktrees (each has
+// its own target/).
+//
 // Args after `npm run e2e --` are forwarded to `playwright test`.
 import net from 'node:net'
 import { spawn } from 'node:child_process'

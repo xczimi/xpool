@@ -34,3 +34,4 @@ dist-ssr
 .e2e-api.*.pid
 .e2e-api.*.log
 .e2e-table*
+.e2e-stack.lock

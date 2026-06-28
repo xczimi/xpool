@@ -27,6 +27,7 @@ web/dist
 web/.e2e-table*
 web/.e2e-api.*.pid
 web/.e2e-api.*.log
+web/.e2e-stack.lock
 
 # OpenTofu
 infrastructure/.terraform/

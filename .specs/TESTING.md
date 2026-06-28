@@ -31,20 +31,29 @@ A test must not see state left by another test or another run.
 - **DynamoDB integration** — each test uses a uniquely-named table
   (`xpool-test-<nanos>`), creates it, and drops it on completion.
 - **End-to-end** — **one fresh table per run**. `e2e-stack.sh` generates
-  `XPOOL_TABLE=xpool-e2e-<timestamp>` and threads it to `import`, `seed`, and
-  the API; `global-teardown` drops it. Within a single run the tests share
-  that table, so **each test creates its own uniquely-named data** (unique pool
-  names, its own players' predictions) and never asserts on global collections
-  like "all pools".
+  `XPOOL_TABLE=xpool-e2e-<timestamp>-<pid>-<rand>` and threads it to `import`,
+  `seed`, and the API; `global-teardown` drops it. Within a single run the tests
+  share that table, so **each test creates its own uniquely-named data** (unique
+  pool names, its own players' predictions) and never asserts on global
+  collections like "all pools".
 
-  The e2e stack also runs on its **own ports** — API `:3001`, Vite `:5174`, and
-  an isolated DynamoDB Local container on `:8001` (the `e2e` compose profile) —
-  distinct from the dev stack (`:3000` / `:5173` / `:8000`). Playwright sets
-  `reuseExistingServer: false`, and `e2e-stack.sh` / `e2e-teardown.sh` only ever
-  kill processes on the e2e ports. So `npm run e2e` and a running
-  `npm run dev` / `bin/local-dev` session **coexist** — the suite never hijacks or
-  tears down your dev servers. (Ports are threaded via `XPOOL_PORT` for the API
-  and `XPOOL_API_PORT` for the Vite proxy; see `web/playwright.config.ts`.)
+  The e2e stack also runs on its **own ports**, **dynamic per run**: `npm run e2e`
+  (`e2e/run-e2e.mjs`) allocates two free TCP ports — one for the API, one for
+  Vite — and exports them as `XPOOL_E2E_API_PORT` / `XPOOL_E2E_WEB_PORT`; the
+  whole Playwright process tree (config, workers, global setup/teardown, the
+  spawned API + Vite) inherits them via `web/e2e/ports.ts`. A bare
+  `playwright test` (no wrapper) falls back to the legacy fixed ports
+  (`:3001` / `:5174`). DynamoDB is the isolated `:8001` container (the `e2e`
+  compose profile), shared but isolated per run by the unique table name. All
+  per-run state files (pid/log/table) and Playwright's `outputDir` are namespaced
+  by the API port. Playwright sets `reuseExistingServer: false`, and
+  `e2e-stack.sh` / `e2e-teardown.sh` only ever kill processes on **this run's**
+  dynamic API port (and only pre-emptively on the fixed fallback path). So
+  `npm run e2e` and a running `npm run dev` / `bin/local-dev` session **coexist**
+  (dev's `:3000` / `:5173` / `:8000` are never touched), and **multiple e2e runs
+  can execute concurrently** without colliding. (Ports are threaded via
+  `XPOOL_PORT` for the API and `XPOOL_API_PORT` for the Vite proxy; see
+  `web/e2e/ports.ts` and `web/playwright.config.ts`.)
 
 **Rule:** DynamoDB Local is in-memory and the container is long-lived — it is
 *not* a clean slate. Never rely on an empty database; rely on the isolation
