@@ -12,6 +12,16 @@ import { devLogin, expectNoErrorView, watchNetwork } from './helpers'
  * `/scoreboard/knockout` route render a board that drops the Group Stage column
  * and totals strictly less than the overall board (group-stage points excluded
  * — everyone starts the knockouts from zero).
+ *
+ * NAMING IS load-bearing: this file is deliberately named `scenario-*` so it
+ * runs in the late "scenario zone" alongside `scenario-scoreboard.spec.ts`.
+ * Seeding the `balanced` scenario writes OFFICIAL RESULTS for the whole
+ * tournament and ~5 extra ("whacky") players' predictions for every match —
+ * global mutations that pollute the shared e2e table. Specs that assume the
+ * minimal seed (e.g. `live-scoring`, `match-page-*`, `mobile-prediction-entry`
+ * — M8 has no result, Group D/G have only the tips they enter) run earlier in
+ * the alphabetical order and must execute BEFORE any scenario is seeded. Do not
+ * rename this back to an early-sorting name.
  */
 
 const here = dirname(fileURLToPath(import.meta.url))

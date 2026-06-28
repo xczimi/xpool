@@ -12,6 +12,24 @@ import { devLogin, expectNoErrorView, watchNetwork } from './helpers'
  * viewer's own page (`/me`) and on another player's page (`/player/:id`, from
  * that player's POV). demo-ada's nick renders as "ada", demo-alan's as "alan";
  * the route params are the player handles.
+ *
+ * STATE ISOLATION — this spec sorts EARLY (position 5), which matters twice:
+ *
+ *  1. Seeding the `balanced` scenario writes OFFICIAL RESULTS for the whole
+ *     tournament and ~5 extra ("whacky") players' predictions for every match —
+ *     global, irreversible mutations on the shared e2e table. Specs that assume
+ *     the MINIMAL seed (`live-scoring`, `match-page-*`, `mobile-prediction-entry`:
+ *     M8 has no result; Group D/G hold only the tips they enter) sort LATER, so
+ *     this spec would pollute them. The `afterAll` below RESETS the table to the
+ *     minimal seed (drop + import + seed) so it leaves no trace — a full reset is
+ *     the only way to remove the whacky players, which `seed` alone cannot delete.
+ *  2. It must NOT move late either: `H2HPage` scopes the board to the viewer's
+ *     default pool, and pool-creating specs (`pools`, invites) that sort later
+ *     would shadow `pool-demo` with a pool missing one of the two players, so
+ *     `h2hSummary` would return null ("playerNotInPool"). Running before any
+ *     pool-creating spec keeps `pool-demo` (with all demo players) the default.
+ *
+ * Net: seed early, assert, then reset — self-contained and non-polluting.
  */
 const here = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(here, '../..')
@@ -38,17 +56,35 @@ async function lastGameIndex(page: Page): Promise<number> {
   return count - 1
 }
 
-test.beforeAll(() => {
+function xtableEnv() {
   const table = readFileSync(resolve(repoRoot, 'web/.e2e-table'), 'utf8').trim()
-  execFileSync('cargo', ['run', '-p', 'xtask', '--', 'scenario', 'balanced'], {
+  return {
+    ...process.env,
+    XPOOL_TABLE: table,
+    DYNAMO_ENDPOINT: 'http://localhost:8001',
+  }
+}
+
+function xtask(...args: string[]) {
+  execFileSync('cargo', ['run', '-p', 'xtask', '--', ...args], {
     cwd: repoRoot,
     stdio: 'inherit',
-    env: {
-      ...process.env,
-      XPOOL_TABLE: table,
-      DYNAMO_ENDPOINT: 'http://localhost:8001',
-    },
+    env: xtableEnv(),
   })
+}
+
+test.beforeAll(() => {
+  xtask('scenario', 'balanced')
+})
+
+// Reset the shared e2e table to the MINIMAL seed so this early spec leaves no
+// scenario residue for the later minimal-seed specs (see the header note). A
+// full drop + import + seed is required: `seed` overwrites the demo players'
+// predictions but cannot DELETE the whacky players the scenario created.
+test.afterAll(() => {
+  xtask('drop-table')
+  xtask('import', 'tournaments/fwc26.json')
+  xtask('seed')
 })
 
 test('direct route compares two players with an overlaid trajectory', async ({
