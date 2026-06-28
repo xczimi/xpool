@@ -3,26 +3,27 @@
 #
 # Usage: bin/deploy-reminder [dev|prod]   # default: dev
 #
-# Mirrors bin/deploy-api. Code is decoupled from tofu
-# (module.reminder_lambda has ignore_source_code_hash = true); this is the only
-# thing that ships new reminder-Lambda code.
+# Mirrors bin/deploy-api: build the arm64 zip, then update-function-code. Code is
+# decoupled from tofu (module.reminder_lambda has ignore_source_code_hash = true),
+# so this is what ships new reminder-Lambda code. It's a normal step of bin/deploy
+# (infra api spa reminder), so a plain `bin/deploy <env>` keeps it current too.
 #
-# FIRST-TIME bootstrap order (the function must exist before this can update it,
-# and tofu's first apply needs the zip on disk because create_package = false):
-#   1. cargo lambda build -p api --bin reminder --release --arm64 \
-#        --features lambda --output-format zip   # produces target/lambda/reminder/bootstrap.zip
-#   2. bin/deploy-infra <env>                    # creates the Lambda shell from that zip
-#                                                # (triggers stay off: var.reminder_enabled=false)
-#   3. bin/deploy-reminder <env>                 # ships code (this script; also rebuilds the zip)
-# Thereafter only step 3 is needed to ship new code. Arm the automated heartbeat
-# separately by setting reminder_enabled = true in infrastructure/env/<env>.tfvars
-# and re-running bin/deploy-infra — only after the R1 activation gate is met.
+# First deploy in a brand-new env: infra's create reads the zip from disk
+# (create_package = false), so the zip must exist before that first `bin/deploy`
+# — build it once up front (run this script, or `cargo lambda build -p api --bin
+# reminder --release --arm64 --features lambda --output-format zip`). Steady-state
+# deploys need nothing extra (each run leaves a fresh zip in target/). The
+# automated heartbeat is armed separately: reminder_enabled = true in
+# infrastructure/env/<env>.tfvars, then bin/deploy-infra — after the R1 gate.
 set -euo pipefail
 
 ENV="${1:-dev}"
 case "$ENV" in
-    dev|prod) ;;
-    *) echo "Usage: $0 [dev|prod]"; exit 2 ;;
+    dev | prod) ;;
+    *)
+        echo "Usage: $0 [dev|prod]"
+        exit 2
+        ;;
 esac
 
 PROJECT="$(cd "$(dirname "$0")/.." && pwd)"
