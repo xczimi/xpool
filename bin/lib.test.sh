@@ -30,4 +30,15 @@ sha="$(git -C "$tmp" rev-parse --short HEAD)"
 check "detached HEAD -> xpool-<sha>" "xpool-$sha" "$(table_for "$tmp")"
 rm -rf "$tmp"
 
+# latest_snapshot prints the newest *.json under a snapshots dir (by mtime),
+# empty when the dir has no snapshots.
+snapdir="$(mktemp -d)"
+check "empty dir -> empty" "" "$(latest_snapshot "$snapdir")"
+: > "$snapdir/prod-snapshot.json"
+sleep 1
+: > "$snapdir/dev-snapshot.json"
+check "newest wins" "$snapdir/dev-snapshot.json" "$(latest_snapshot "$snapdir")"
+check "missing dir -> empty" "" "$(latest_snapshot "$snapdir/nope")"
+rm -rf "$snapdir"
+
 [ "$fails" -eq 0 ] && { echo "all passed"; exit 0; } || { echo "$fails failed"; exit 1; }

@@ -57,3 +57,61 @@ test('schedule groups render in chronological order', async ({ page }) => {
   await net.assertNoGraphqlErrors()
   net.assertNoPageErrors()
 })
+
+/**
+ * The "Best third-placed teams" section belongs *between* the group stage and
+ * the knockout rounds (it explains which thirds advance), not dangling after
+ * the FINAL. Walk the page blocks in DOM order and assert the thirds section
+ * sits after the last group-stage group and before the first knockout round.
+ */
+test('best third-placed teams render between group stage and knockouts', async ({
+  page,
+}) => {
+  const net = watchNetwork(page)
+  await page.goto('/games')
+
+  await expect(page.locator('h2')).toHaveText('Schedule')
+  await expectNoErrorView(page)
+
+  // Fixture groups and the thirds section, in document order.
+  const blocks = page.locator('.schedule-group, .thirds-section')
+  const count = await blocks.count()
+  expect(
+    count,
+    'schedule renders fixture groups plus a thirds section',
+  ).toBeGreaterThan(2)
+
+  type Kind = 'group-stage' | 'knockout' | 'thirds'
+  const kinds: Kind[] = []
+  for (let i = 0; i < count; i++) {
+    const block = blocks.nth(i)
+    const cls = (await block.getAttribute('class')) ?? ''
+    if (cls.includes('thirds-section')) {
+      kinds.push('thirds')
+      continue
+    }
+    const tag = (await block.locator('.round-tag').textContent())?.trim() ?? ''
+    kinds.push(/group/i.test(tag) ? 'group-stage' : 'knockout')
+  }
+
+  const thirdsIdx = kinds.indexOf('thirds')
+  expect(thirdsIdx, 'a thirds section is present').toBeGreaterThanOrEqual(0)
+  const lastGroupStage = kinds.lastIndexOf('group-stage')
+  const firstKnockout = kinds.indexOf('knockout')
+
+  // After the whole group stage…
+  expect(
+    thirdsIdx,
+    'thirds section after the last group-stage group',
+  ).toBeGreaterThan(lastGroupStage)
+  // …and before the first knockout round.
+  if (firstKnockout >= 0) {
+    expect(
+      thirdsIdx,
+      'thirds section before the first knockout round',
+    ).toBeLessThan(firstKnockout)
+  }
+
+  await net.assertNoGraphqlErrors()
+  net.assertNoPageErrors()
+})

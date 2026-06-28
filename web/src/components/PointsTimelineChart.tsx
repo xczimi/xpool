@@ -1,9 +1,15 @@
+import { useLayoutEffect, useRef, useState } from 'react'
 import type { TimelineSeries } from '../lib/timeline'
 import { pickTickIndices } from '../lib/timeline'
 
 export type { TimelineSeries }
 
-const W = 480
+// The viewBox WIDTH tracks the container's pixel width (measured below) so the
+// chart fills its column with no distortion: rendered 1:1, the aspect ratio
+// always matches, so the svg height stays pinned at H (~200px) at every width
+// instead of ballooning on wide screens (the `meet` + height:auto trap).
+const DEFAULT_W = 480
+const MIN_W = 320
 const H = 200
 const PAD_L = 36
 const PAD_R = 12
@@ -35,6 +41,24 @@ export function PointsTimelineChart({
   title?: string
   emptyLabel?: string
 }) {
+  // Measure the container width and feed it back as the viewBox width so the
+  // plot stretches to fill the column while the height stays bounded at H.
+  const ref = useRef<HTMLElement>(null)
+  const [W, setW] = useState(DEFAULT_W)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const measure = () => {
+      const cw = el.clientWidth
+      if (cw > 0) setW(Math.max(MIN_W, Math.round(cw)))
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   // All series share the same game x-axis; take the longest to be safe.
   const axis = series.reduce(
     (longest, s) => (s.points.length > longest.length ? s.points : longest),
@@ -52,7 +76,7 @@ export function PointsTimelineChart({
   const ticks = pickTickIndices(n)
 
   return (
-    <figure className="points-timeline">
+    <figure className="points-timeline" ref={ref}>
       {title && <figcaption>{title}</figcaption>}
       {n === 0 ? (
         <p className="pt-empty">{emptyLabel ?? ''}</p>

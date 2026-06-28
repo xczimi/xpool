@@ -1617,13 +1617,16 @@ button.danger:hover:not(:disabled) {
 }
 
 /* === player-analytics: timeline chart === */
-.points-timeline { margin: 16px 0; max-width: 520px; }
+/* No max-width cap: the chart stretches to fill its column. The viewBox width
+   tracks the container (PointsTimelineChart), so height stays ~H without the
+   `meet` + height:auto balloon on wide screens; max-height is a safety bound. */
+.points-timeline { margin: 16px 0; }
 .points-timeline figcaption {
   font-family: 'VT323', monospace;
   color: var(--accent-bright);
   margin-bottom: 4px;
 }
-.points-timeline svg { width: 100%; height: auto; display: block; }
+.points-timeline svg { width: 100%; height: auto; max-height: 280px; display: block; }
 .points-timeline .pt-axis { stroke: var(--border); stroke-width: 1; }
 .points-timeline .pt-line { stroke-width: 2; }
 .points-timeline .pt-xlabel {

@@ -15,6 +15,17 @@ table_for() {
   printf 'xpool-%s\n' "$(printf '%s' "$branch" | tr '/' '-')"
 }
 
+# Newest *.json snapshot under a directory (by mtime), or empty if none.
+# Pure: reads the filesystem only; no network, no mutation.
+latest_snapshot() {  # <snapshots-dir>
+  local dir="$1"
+  [ -d "$dir" ] || return 0
+  # Snapshot names are controlled (alphanumeric, *.json from bin/pull-data) and
+  # `ls -t` sorts by mtime — the portable choice (BSD/macOS `find` lacks -printf).
+  # shellcheck disable=SC2012
+  ls -t "$dir"/*.json 2>/dev/null | head -n1
+}
+
 # PIDs listening on a TCP port (empty if none).
 port_pids() {
   lsof -ti tcp:"$1" -sTCP:LISTEN 2>/dev/null || true
