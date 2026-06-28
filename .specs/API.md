@@ -59,6 +59,7 @@ Queries mirror the coarse storage items, so each is near-zero assembly:
 | `tournament` | the `<t>#TOURNAMENT` structure (tree, matches, teams) with time-derived flags (see below) |
 | `scoreboard(pool?)` | the materialised `<t>#SCOREBOARD`, filtered to a pool |
 | `knockoutScoreboard(pool?)` | the same materialised board re-summed over knockout rounds only (group-stage points excluded → everyone starts the knockouts from zero); identical shape, pool-scoping and participant rules as `scoreboard` — a re-engagement VIEW, no new materialisation |
+| `pointsTimeline(pool?)` | per-game cumulative points over time, one `PlayerTimeline` per competitor — the points-trajectory chart backbone. The x-axis is the schedule walked GAME BY GAME in kickoff order (not by round), so each line climbs as matches are scored. Includes only games that have an official result AND have kicked off at/before the request clock; every included player gets one aligned `TimelinePoint` per such game (`points = 0` when they had no prediction). Pool-scoping + participant rules identical to `scoreboard`; the result user is excluded. Per-game `points` already has the round-stage multiplier applied. Pure: `domain::timeline::player_timelines`. |
 | `me` | the current player + their predictions |
 | `pools` | the player's pools |
 | `tips(groupId)` | all players' *visible* predictions for a group (computed — visibility-filtered) |
