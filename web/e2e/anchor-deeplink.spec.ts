@@ -103,7 +103,7 @@ test('Schedule: "Open this KO match" link carries the #hash and scrolls there', 
   // Target KO-M80 specifically — it sits LOW in the stacked R32 list (the
   // sibling test relies on the same) so the scroll is unambiguous.
   await devLogin(page, 'demo-margaret')
-  await page.goto('/schedule')
+  await page.goto('/games')
 
   const koLink = page.locator(
     `.open-group-link[href="/mytips/${TARGET}#${TARGET}"]`,
