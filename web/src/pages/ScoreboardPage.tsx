@@ -4,6 +4,7 @@ import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import {
+  KNOCKOUT_SCOREBOARD_QUERY,
   POOLS_QUERY,
   SCOREBOARD_QUERY,
   TOURNAMENT_QUERY,
@@ -14,6 +15,7 @@ import type {
   Tournament,
 } from '../graphql/types'
 import { ErrorView, Loading } from '../components/StatusViews'
+import { ScoreboardModeToggle } from '../components/ScoreboardModeToggle'
 import { usePolledQuery } from '../lib/usePolledQuery'
 import { pollIntervalMs } from '../lib/polling'
 import { readyRounds, roundLabel, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
@@ -21,8 +23,16 @@ import { PoolSelector } from '../pools/PoolSelector'
 import { useSelectedPool } from '../pools/useSelectedPool'
 import { effectiveSelectedPool } from '../lib/selectedPool'
 
-/** Ranked leaderboard, overall + per stage, with pool selector (UC-8). */
-export function ScoreboardPage() {
+type ScoreboardMode = 'overall' | 'knockout'
+
+/**
+ * Ranked leaderboard, overall + per stage, with pool selector (UC-8).
+ * `mode` picks the board: `overall` (group + knockout) or `knockout` (knockout
+ * matches only, summed fresh from zero — a re-engagement view). The mode is
+ * route-driven (`/scoreboard` vs `/scoreboard/knockout`) so the knockout board
+ * is directly linkable.
+ */
+export function ScoreboardPage({ mode = 'overall' }: { mode?: ScoreboardMode }) {
   const { t } = useI18n()
   const { label } = useAuth()
   // Sticky, cross-page pool selection (see SelectedPoolProvider): `undefined`
@@ -51,20 +61,26 @@ export function ScoreboardPage() {
     () => pollIntervalMs(probe.data?.tournament?.games ?? []),
     [probe.data],
   )
+  // Both queries return `{ scoreboard: ScoreEntry[] }` — the knockout query
+  // aliases the field — so the rest of the component is mode-agnostic.
+  const query = mode === 'knockout' ? KNOCKOUT_SCOREBOARD_QUERY : SCOREBOARD_QUERY
   const [result, reexecute] = usePolledQuery<{
     scoreboard: ScoreEntry[]
-  }>({ query: SCOREBOARD_QUERY, variables: { pool: effectivePool } }, interval)
+  }>({ query, variables: { pool: effectivePool } }, interval)
 
   const scoreboard = result.data?.scoreboard ?? null
 
   // Only show round columns whose teams are known — a future round with no
   // game determined yet (knockouts before the bracket resolves) is hidden,
-  // mirroring the My Tips / All Tips round tabs. GROUP_STAGE is always ready.
+  // mirroring the My Tips / All Tips round tabs. GROUP_STAGE is always ready,
+  // but it is dropped in knockout mode (it never contributes there).
   const ready = readyRounds(
     probe.data?.tournament?.groups ?? [],
     probe.data?.tournament?.games ?? [],
   )
-  const visibleRounds = ROUND_ORDER.filter((r) => ready.has(r))
+  const visibleRounds = ROUND_ORDER.filter(
+    (r) => ready.has(r) && (mode === 'overall' || r !== 'GROUP_STAGE'),
+  )
 
   if (result.fetching && !scoreboard) return <Loading />
   if (result.error)
@@ -77,12 +93,15 @@ export function ScoreboardPage() {
   if (!scoreboard) return <ErrorView />
 
   const ranked = [...scoreboard].sort((a, b) => b.total - a.total)
+  const title =
+    mode === 'knockout' ? t('scoreboardKnockoutTitle') : t('scoreboardTitle')
 
   return (
     <section className="page">
-      <h2>{t('scoreboardTitle')}</h2>
+      <h2>{title}</h2>
       {interval > 0 && <p className="poll-note">● live</p>}
 
+      <ScoreboardModeToggle />
       <PoolSelector pools={pools} />
 
       <table className="data-table">

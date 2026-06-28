@@ -31,7 +31,15 @@ export function App() {
         <Route path="mytips" element={<MyTipsPage />} />
         <Route path="mytips/:groupId" element={<MyTipsPage />} />
         <Route path="alltips" element={<AllTipsPage />} />
+        {/* SEAM: keep on merge — cluster/standings. App.tsx is owned by cluster
+            player-analytics, which also appends routes here; on merge, keep BOTH
+            route sets. The knockout board is a standalone linkable route as well
+            as a toggle on the page. */}
         <Route path="scoreboard" element={<ScoreboardPage />} />
+        <Route
+          path="scoreboard/knockout"
+          element={<ScoreboardPage mode="knockout" />}
+        />
         <Route path="me" element={<PlayerPage />} />
         <Route path="player/:id" element={<PlayerPage />} />
         <Route path="perfect" element={<PerfectPage />} />
