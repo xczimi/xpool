@@ -9,7 +9,10 @@ use crate::sender::{Email, MailSender};
 use anyhow::Context as _;
 use async_trait::async_trait;
 use aws_sdk_sesv2::types::{Body, Content, Destination, EmailContent, Message as SesMessage};
-use lettre::{message::Mailbox, AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
+use lettre::{
+    message::{Mailbox, SinglePart},
+    AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor,
+};
 use std::sync::Arc;
 
 /// Which transport to construct.
@@ -116,8 +119,12 @@ impl MailSender for SmtpSender {
                 .with_context(|| format!("parsing to-address {addr}"))?;
             builder = builder.to(mbox);
         }
+        // `SinglePart::plain` sets `Content-Type: text/plain; charset=utf-8`
+        // (+ MIME-Version) so the bilingual EN/HU body decodes correctly. A bare
+        // `.body(String)` omits Content-Type, leaving clients to guess the
+        // charset and mojibake the Hungarian.
         let msg = builder
-            .body(email.body_text.clone())
+            .singlepart(SinglePart::plain(email.body_text.clone()))
             .context("building SMTP message")?;
         self.transport.send(msg).await.context("SMTP send")?;
         Ok(())
@@ -147,12 +154,16 @@ impl MailSender for SesSender {
         let dest = Destination::builder()
             .set_to_addresses(Some(email.to.clone()))
             .build();
+        // charset=UTF-8 is required: SES defaults `Content` to 7-bit ASCII, which
+        // would mangle the Hungarian (é/ő/á…) in both subject and body.
         let subject = Content::builder()
             .data(&email.subject)
+            .charset("UTF-8")
             .build()
             .context("SES subject content")?;
         let text = Content::builder()
             .data(&email.body_text)
+            .charset("UTF-8")
             .build()
             .context("SES body content")?;
         let body = Body::builder().text(text).build();
