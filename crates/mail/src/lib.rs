@@ -14,7 +14,7 @@ pub mod transport;
 
 pub use sender::{CapturingSender, Email, MailSender, NullSender};
 // pub use sweep::{run_digest_sweep, run_last_call_sweep, ReminderMode, ReminderSummary};
-// pub use transport::build_sender_from_env;
+pub use transport::build_sender_from_env;
 
 use chrono::{DateTime, Utc};
 
