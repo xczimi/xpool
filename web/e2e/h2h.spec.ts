@@ -7,9 +7,11 @@ import { devLogin, expectNoErrorView, watchNetwork } from './helpers'
 
 /**
  * Head-to-head end to end. Seeds the `balanced` scenario, logs in, clocks past
- * the Final (board materialised + tips revealed), then drives both the direct
- * route and the scoreboard "pick two" entry. demo-ada's nick renders as "ada",
- * demo-alan's as "alan"; the route params are the player handles.
+ * the Final (board materialised + tips revealed), then drives the direct route
+ * and the player-centric entry points: the anchored opponent picker on the
+ * viewer's own page (`/me`) and on another player's page (`/player/:id`, from
+ * that player's POV). demo-ada's nick renders as "ada", demo-alan's as "alan";
+ * the route params are the player handles.
  */
 const here = dirname(fileURLToPath(import.meta.url))
 const repoRoot = resolve(here, '../..')
@@ -72,22 +74,45 @@ test('direct route compares two players with an overlaid trajectory', async ({
   net.assertNoPageErrors()
 })
 
-test('scoreboard "pick two" navigates to the head-to-head view', async ({
+test('own page picker compares me with the chosen opponent', async ({
   page,
 }) => {
   const net = watchNetwork(page)
   await page.goto('/')
   await devLogin(page, 'demo-ada')
   await setClock(page, await lastGameIndex(page), 'after')
-  await page.goto('/scoreboard')
+  await page.goto('/me')
 
   const picker = page.locator('.h2h-picker')
   await expect(picker).toBeVisible()
-  await picker.locator('select').nth(0).selectOption('demo-ada')
-  await picker.locator('select').nth(1).selectOption('demo-alan')
-  await picker.locator('.h2h-picker-go').click()
+  // Anchored to the viewer (demo-ada); the anchor is excluded from the options.
+  await expect(picker.locator('option[value="demo-ada"]')).toHaveCount(0)
+  await picker.locator('select').selectOption('demo-alan')
 
   await expect(page).toHaveURL(/\/h2h\/demo-ada\/demo-alan$/)
+  await expect(page.locator('.h2h-summary')).toBeVisible()
+
+  await expectNoErrorView(page)
+  await net.assertNoGraphqlErrors()
+  net.assertNoPageErrors()
+})
+
+test("another player's page picker compares from that player's POV", async ({
+  page,
+}) => {
+  const net = watchNetwork(page)
+  await page.goto('/')
+  await devLogin(page, 'demo-ada')
+  await setClock(page, await lastGameIndex(page), 'after')
+  await page.goto('/player/demo-alan')
+
+  const picker = page.locator('.h2h-picker')
+  await expect(picker).toBeVisible()
+  // Anchored to the page owner (demo-alan), not the viewer (demo-ada).
+  await expect(picker.locator('option[value="demo-alan"]')).toHaveCount(0)
+  await picker.locator('select').selectOption('demo-grace')
+
+  await expect(page).toHaveURL(/\/h2h\/demo-alan\/demo-grace$/)
   await expect(page.locator('.h2h-summary')).toBeVisible()
 
   await expectNoErrorView(page)

@@ -26,6 +26,7 @@ import {
   playerRank,
   sharedPoolWith,
 } from '../lib/playerPage'
+import { H2HPicker } from '../components/H2HPicker'
 import { PlayerHeader } from './player/PlayerHeader'
 import { PlayerTodaySlice } from './player/PlayerTodaySlice'
 import { PlayerPerfects } from './player/PlayerPerfects'
@@ -162,11 +163,15 @@ export function PlayerPage() {
           <Link to="/profile">{t('playerProfileLink')}</Link>
         </p>
       )}
-      {!isOwn && myId && (
-        <p className="player-profile-link">
-          <Link to={`/h2h/${myId}/${id}`}>{t('h2hCompareWithMe')}</Link>
-        </p>
-      )}
+      <H2HPicker
+        anchorId={id}
+        label={
+          isOwn
+            ? t('h2hCompareMe')
+            : t('h2hCompareNamed').replace('{name}', shownEntry.nick)
+        }
+        candidates={scoreboard}
+      />
       <PlayerHeader entry={shownEntry} rank={rank} />
       <PointsTimelineChart
         title={t('timelineTitle')}

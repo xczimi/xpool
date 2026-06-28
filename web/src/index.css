@@ -1676,7 +1676,4 @@ button.danger:hover:not(:disabled) {
   flex-wrap: wrap;
 }
 .h2h-picker-label { color: var(--muted); font-family: 'VT323', monospace; }
-.h2h-picker-vs { color: var(--accent); font-family: 'VT323', monospace; }
-.h2h-picker-go { font-family: 'VT323', monospace; }
-.h2h-picker-go:disabled { opacity: 0.5; cursor: not-allowed; }
 /* --- end h2h picker --- */
