@@ -324,13 +324,7 @@ export function MatchPage() {
                 </td>
                 {showMax && (
                   <td className="num max-cell" title={t('maxReachableTooltip')}>
-                    {row.maxReachable != null ? (
-                      <>
-                        {t('maxReachableShort')} ≤ {row.maxReachable}
-                      </>
-                    ) : (
-                      '—'
-                    )}
+                    {row.maxReachable != null ? `≤ ${row.maxReachable}` : '—'}
                   </td>
                 )}
                 {showWhatIf && (
