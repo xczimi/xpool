@@ -99,6 +99,20 @@ the pair's relative order in the player's predicted standings matches the
 official standings (the result user's standings, computed by the same ladder).
 A 4-team group → up to 6 pairs; a knockout one-match group → 1 pair.
 
+**Completion gate (monotonicity).** The standings bonus is awarded **only once
+the group is complete** — i.e. every game in the leaf group has an official
+(result-user) result entered and effective-locked. Until the group is complete
+the bonus is `None` / 0. Rationale: the provisional official ranking shifts as
+results land, so a bonus credited from partial results could *decrease* later;
+a player's committed points must never go down. Gating on completion makes the
+bonus final-and-stable (monotonic) and reconciles the materialised scoreboard
+exactly with the points-timeline, which already settles a group's bonus at its
+last resulted game. This **supersedes** any earlier wording that described the
+bonus as awarded provisionally from the group's first kickoff. (Match points are
+already monotonic — fixed once a result is entered — so only the standings bonus
+needed this gate.) Enforced in `domain::scoring::standings_score`, so it flows to
+the scoreboard, the `standings` resolver, and the timeline alike.
+
 ## 5. The 90-minute rule
 
 Match scores are evaluated at **full time / 90 minutes**. Extra time and

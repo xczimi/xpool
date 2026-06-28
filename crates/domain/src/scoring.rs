@@ -543,6 +543,25 @@ pub fn standings_score(
         return None;
     }
 
+    // Completion gate (monotonicity): award the bonus ONLY when the group is
+    // complete — every game in the leaf group has an official (result-user)
+    // result entered and effective-locked. Until then the provisional ranking
+    // can still shift as results land, so `pairs_correct` — and the bonus —
+    // could decrease; a player's committed points must never go down. Gating on
+    // completion makes the bonus final-and-stable, and reconciles the
+    // materialised scoreboard exactly with the points-timeline (which settles a
+    // group's bonus at its last game). The per-game check mirrors the
+    // result-presence gate in `score_leaf_group` so the definition stays
+    // consistent.
+    let group_complete = games.iter().all(|game| {
+        result
+            .match_prediction(&game.id)
+            .is_some_and(|r| effective_locked(r.locked, now, deadline, true))
+    });
+    if !group_complete {
+        return None;
+    }
+
     let official = rank_group(
         group,
         games,
