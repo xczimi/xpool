@@ -104,6 +104,20 @@ digest always lands before that day's deadlines regardless of recipient TZ.
 stays future work (addresses are real+verified; audience ~41). Revisit if anyone
 complains or bounces appear.
 
+**R7 — Two admin mutations, not one with a `mode` arg.** Replace the single
+`sendDeadlineReminders(mode)` (Task 8) with **two parameterless mutations**:
+`sendLastCallReminders: ReminderReport!` and `sendMatchdayDigest: ReminderReport!`.
+Both `require_admin`, both read the request clock (`X-Dev-Now`), delegating to
+`mail::run_last_call_sweep` / `mail::run_digest_sweep` respectively. **Drop the
+GraphQL `ReminderModeArg` enum** — not needed at the API layer. **Keep
+`mail::ReminderMode`** (still used by the Phase B Lambda `{mode}` payload and the
+`xtask send-reminders --mode` runner). Update the Task 8 tests accordingly: the
+send test calls `mutation { sendLastCallReminders { sent skippedNoEmail recipients deduped } }`;
+the rejection test calls either one as a non-admin and expects an error. Rationale:
+the midnight digest and the pre-match last-call are two distinct admin actions
+(different cadence/content/dedup) — separate named mutations are self-documenting
+for manual admin use in GraphiQL, with no behavioral cost.
+
 ---
 
 ## Design decisions (read before starting)
