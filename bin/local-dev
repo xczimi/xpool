@@ -78,7 +78,13 @@ pane_by_role() {
 pane_opt() { tmux display-message -p -t "$1" "#{$2}" 2>/dev/null; }
 
 normalise_layout() {
-  tmux set-option -w -t "$SESSION:0" pane-border-status top
+  # No pane-border-status row: we attach with `tmux -CC` (iTerm2 control mode),
+  # where iTerm2 renders panes natively and draws its own per-pane title bars.
+  # A tmux-drawn border row at each pane's top shifts iTerm2's native text
+  # selection down by a row per pane (the offset grows down a stacked column),
+  # so leave it off and rely on iTerm2's titles for the role label. The format
+  # stays defined (harmless while status is off) for a plain `tmux attach`.
+  tmux set-option -w -t "$SESSION:0" pane-border-status off
   tmux set-option -w -t "$SESSION:0" pane-border-format ' #{?@role,#{@role},#{pane_title}} '
   tmux select-layout -t "$SESSION" main-vertical
 }
