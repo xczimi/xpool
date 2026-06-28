@@ -1609,6 +1609,9 @@ button.danger:hover:not(:disabled) {
 .match-grid th.what-if-col {
   white-space: nowrap;
 }
+.match-grid th.what-if-col .team-label {
+  vertical-align: middle;
+}
 .match-grid th.max-col {
   white-space: nowrap;
 }

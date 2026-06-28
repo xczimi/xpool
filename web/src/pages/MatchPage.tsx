@@ -6,7 +6,7 @@ import { useI18n } from '../i18n/useI18n'
 import { MATCH_QUERY, ME_QUERY, POOLS_QUERY, TOURNAMENT_QUERY } from '../graphql/queries'
 import type { MatchDetail, Me, Pool, Tournament } from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
-import { Matchup } from '../components/TeamLabel'
+import { Matchup, TeamLabel } from '../components/TeamLabel'
 import { PointsBadge } from '../components/PointsBadge'
 import { PredictionStats } from '../components/PredictionStats'
 import { teamIndex, formatKickoff } from '../lib/format'
@@ -19,6 +19,7 @@ import {
   type MatchSortColumn,
 } from '../lib/matchSort'
 import { STAGE_MULTIPLIERS } from '../lib/rounds'
+import { knockoutGroupIds } from '../lib/knockoutGroups'
 import { computeWhatIf } from '../lib/whatIf'
 import { WhatIfCell } from '../components/WhatIfCell'
 
@@ -146,6 +147,12 @@ export function MatchPage() {
   // The round multiplier for this match comes from its leaf group's round.
   const group = tournament?.groups.find((g) => g.id === game.groupId) ?? null
   const multiplier = group ? STAGE_MULTIPLIERS[group.round] : 1
+  // A knockout match is a single-game leaf group (derived from arity, not the
+  // round name — same predicate the knockout tip labels use). The "Open this
+  // group" link then becomes "Open this KO match".
+  const isKnockoutGroup = group
+    ? knockoutGroupIds([group], tournament?.games ?? []).has(group.id)
+    : false
 
   return (
     <section className="page match-page">
@@ -181,7 +188,9 @@ export function MatchPage() {
           </div>
         )}
         <div className="match-card-open-group">
-          <Link to={`/mytips/${game.groupId}`}>{t('openGroup')}</Link>
+          <Link to={`/mytips/${game.groupId}#${game.groupId}`}>
+            {isKnockoutGroup ? t('openKoMatch') : t('openGroup')}
+          </Link>
         </div>
 
         <div className="match-refresh">
@@ -278,10 +287,14 @@ export function MatchPage() {
             {showWhatIf && (
               <>
                 <th className="num what-if-col" title={t('whatIfHint')}>
-                  {t('ifHomeScores')}
+                  {t('ifTeamScoresPrefix')}
+                  <TeamLabel slot={game.home} teams={teams} compact />
+                  {t('ifTeamScoresSuffix')}
                 </th>
                 <th className="num what-if-col" title={t('whatIfHint')}>
-                  {t('ifAwayScores')}
+                  {t('ifTeamScoresPrefix')}
+                  <TeamLabel slot={game.away} teams={teams} compact />
+                  {t('ifTeamScoresSuffix')}
                 </th>
               </>
             )}

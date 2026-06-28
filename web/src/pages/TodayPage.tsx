@@ -13,6 +13,7 @@ import { ErrorView, Loading } from '../components/StatusViews'
 import { usePolledQuery } from '../lib/usePolledQuery'
 import { pollIntervalMs } from '../lib/polling'
 import { byKickoff, formatKickoff, teamIndex } from '../lib/format'
+import { knockoutGroupIds } from '../lib/knockoutGroups'
 import { Matchup } from '../components/TeamLabel'
 
 /**
@@ -65,6 +66,12 @@ export function TodayPage() {
   const teams = useMemo(
     () => teamIndex(tournament?.teams ?? [], locale),
     [tournament, locale],
+  )
+  // Leaf groups that are single-game knockout ties — their "open" link reads
+  // "Open this KO match" instead of "Open this group".
+  const koGroupIds = useMemo(
+    () => knockoutGroupIds(tournament?.groups ?? [], tournament?.games ?? []),
+    [tournament],
   )
   const tipFor = useMemo(() => {
     const map = new Map<string, { home: number; away: number; locked: boolean }>()
@@ -121,10 +128,12 @@ export function TodayPage() {
                     </Link>
                     {' '}
                     <Link
-                      to={`/mytips/${m.groupId}`}
+                      to={`/mytips/${m.groupId}#${m.groupId}`}
                       className="open-group-link"
                     >
-                      {t('openGroup')}
+                      {koGroupIds.has(m.groupId)
+                        ? t('openKoMatch')
+                        : t('openGroup')}
                     </Link>
                   </td>
                   <td>

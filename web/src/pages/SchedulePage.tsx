@@ -15,6 +15,7 @@ import { ErrorView, Loading } from '../components/StatusViews'
 import { ThirdPlaceTable } from '../components/ThirdPlaceTable'
 import { byKickoff, formatKickoff, teamIndex } from '../lib/format'
 import { groupByDay } from '../lib/scheduleByDate'
+import { knockoutGroupIds } from '../lib/knockoutGroups'
 import { Matchup } from '../components/TeamLabel'
 import { roundLabel } from '../lib/rounds'
 
@@ -68,6 +69,12 @@ export function SchedulePage() {
     }
     return map
   }, [resultsResult.data])
+  // Leaf groups that are single-game knockout ties — their "open" link reads
+  // "Open this KO match" instead of "Open this group".
+  const koGroupIds = useMemo(
+    () => knockoutGroupIds(tournament?.groups ?? [], tournament?.games ?? []),
+    [tournament],
+  )
 
   function chooseView(next: ScheduleView) {
     setView(next)
@@ -142,6 +149,7 @@ export function SchedulePage() {
                   games={games}
                   teams={teams}
                   resultsByGame={resultsByGame}
+                  koGroupIds={koGroupIds}
                   locale={locale}
                   t={t}
                 />
@@ -155,6 +163,7 @@ export function SchedulePage() {
                 games={section.games}
                 teams={teams}
                 resultsByGame={resultsByGame}
+                koGroupIds={koGroupIds}
                 locale={locale}
                 t={t}
               />
@@ -174,12 +183,14 @@ function ScheduleTable({
   games,
   teams,
   resultsByGame,
+  koGroupIds,
   locale,
   t,
 }: {
   games: SingleGame[]
   teams: Map<string, Team>
   resultsByGame: Map<string, MatchPrediction>
+  koGroupIds: Set<string>
   locale: string
   t: (key: StringKey) => string
 }) {
@@ -204,8 +215,13 @@ function ScheduleTable({
                   <Matchup home={m.home} away={m.away} teams={teams} />
                 </Link>
                 {' '}
-                <Link to={`/mytips/${m.groupId}`} className="open-group-link">
-                  {t('openGroup')}
+                <Link
+                  to={`/mytips/${m.groupId}#${m.groupId}`}
+                  className="open-group-link"
+                >
+                  {koGroupIds.has(m.groupId)
+                    ? t('openKoMatch')
+                    : t('openGroup')}
                 </Link>
               </td>
               <td>{m.venue ?? '—'}</td>

@@ -79,3 +79,58 @@ test('My Tips: deep-link scrolls to a knockout sub-section', async ({ page }) =>
   await net.assertNoGraphqlErrors()
   net.assertNoPageErrors()
 })
+
+test('Schedule: "Open this KO match" link carries the #hash and scrolls there', async ({
+  page,
+}) => {
+  await page.addInitScript((value: string) => {
+    localStorage.setItem('xpool.devNow', value)
+  }, CLOCK)
+
+  const net = watchNetwork(page)
+  await page.goto('/')
+
+  // Make R32 visible by resolving its feeding groups (as above).
+  await devLogin(page, 'result-user')
+  await openGroupStageGroup(page, 'Group C')
+  await fillAllAndSave(page)
+  await openGroupStageGroup(page, 'Group F')
+  await fillAllAndSave(page)
+
+  // A regular player browses the schedule and follows a knockout match's link.
+  // Knockout leaf groups (single-game ties) render "Open this KO match"; group
+  // stage rows keep "Open this group". The link now carries `#<group.id>`.
+  // Target KO-M80 specifically — it sits LOW in the stacked R32 list (the
+  // sibling test relies on the same) so the scroll is unambiguous.
+  await devLogin(page, 'demo-margaret')
+  await page.goto('/schedule')
+
+  const koLink = page.locator(
+    `.open-group-link[href="/mytips/${TARGET}#${TARGET}"]`,
+  )
+  await expect(koLink).toHaveText('Open this KO match')
+
+  await koLink.click()
+
+  // The hash lands in the URL and the target match section exists.
+  await expect(page).toHaveURL(new RegExp(`#${TARGET}$`))
+  const target = page.locator(`#${TARGET}`)
+  await expect(target).toBeVisible()
+
+  // The page scrolled to bring the match section into view.
+  await expect
+    .poll(async () => page.evaluate(() => window.scrollY), { timeout: 10_000 })
+    .toBeGreaterThan(0)
+  await expect
+    .poll(async () =>
+      target.evaluate((el) => {
+        const r = el.getBoundingClientRect()
+        return r.top >= 0 && r.top < window.innerHeight
+      }),
+    )
+    .toBe(true)
+
+  await expectNoErrorView(page)
+  await net.assertNoGraphqlErrors()
+  net.assertNoPageErrors()
+})
