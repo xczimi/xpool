@@ -78,6 +78,14 @@ enum Command {
     /// `M# -> idEvent` mappings. Read-only: prints a table for the human to
     /// paste into `tournaments/fwc26.json`. Requires THESPORTSDB_API_KEY.
     ReconcileEvents,
+    /// Run a deadline-reminder sweep against the configured table + mail
+    /// transport (local: MailHog SMTP). Honours XPOOL_NOW. This is how the
+    /// scheduled Lambda path is exercised locally.
+    SendReminders {
+        /// `last-call` (hourly) or `digest` (daily matchday).
+        #[arg(long, default_value = "last-call")]
+        mode: String,
+    },
 }
 
 #[tokio::main]
@@ -203,6 +211,25 @@ async fn main() -> anyhow::Result<()> {
                 unresolved_teams.join(", ")
             );
             println!("# Review, then set each game's `external_id` in tournaments/fwc26.json.");
+        }
+        Command::SendReminders { mode } => {
+            let mode = mail::ReminderMode::parse(&mode)
+                .ok_or_else(|| anyhow::anyhow!("unknown mode `{mode}` (use last-call|digest)"))?;
+            let mail_sender = mail::build_sender_from_env().await?;
+            let now = mail::now_from_env();
+            let repo: std::sync::Arc<dyn Repository> = std::sync::Arc::new(repo);
+            let summary = match mode {
+                mail::ReminderMode::LastCall => {
+                    mail::run_last_call_sweep(repo.as_ref(), mail_sender.as_ref(), now).await?
+                }
+                mail::ReminderMode::Digest => {
+                    mail::run_digest_sweep(repo.as_ref(), mail_sender.as_ref(), now).await?
+                }
+            };
+            println!(
+                "reminders ({mode:?}): {} recipients, {} sent, {} skipped (no email), {} deduped",
+                summary.recipients, summary.sent, summary.skipped_no_email, summary.deduped
+            );
         }
     }
 

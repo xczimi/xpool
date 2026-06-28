@@ -4208,6 +4208,7 @@ dependencies = [
  "domain",
  "dotenvy",
  "fwc26",
+ "mail",
  "rand",
  "serde",
  "serde_json",
