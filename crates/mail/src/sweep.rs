@@ -11,6 +11,7 @@ use crate::sender::{Email, MailSender};
 use crate::templates::{
     render_digest, render_last_call, DigestContext, DigestItem, LastCallContext,
 };
+use anyhow::Context as _;
 use chrono::{DateTime, Utc};
 use storage::Repository;
 
@@ -36,7 +37,12 @@ impl ReminderMode {
 /// Counts surfaced to the admin / logged by the Lambda.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ReminderSummary {
-    /// Persons selected as needing a reminder (before email resolution/dedup).
+    /// Reminder candidates counted before email resolution/dedup. **The unit
+    /// differs by sweep:** `run_last_call_sweep` counts per (player, due group)
+    /// — a player pending in two groups counts twice — whereas
+    /// `run_digest_sweep` counts per unique player (one digest per person/day).
+    /// Callers combining summaries via `Add` should not read this as a distinct
+    /// head count across modes.
     pub recipients: usize,
     /// Emails actually sent.
     pub sent: usize,
@@ -60,7 +66,10 @@ impl std::ops::Add for ReminderSummary {
 
 /// All verified emails attached to a person (possibly several; possibly none).
 async fn verified_emails(repo: &dyn Repository, person_id: &str) -> anyhow::Result<Vec<String>> {
-    let ids = repo.find_identities_by_person(person_id).await?;
+    let ids = repo
+        .find_identities_by_person(person_id)
+        .await
+        .with_context(|| format!("resolving identities for {person_id}"))?;
     Ok(ids.into_iter().filter_map(|i| i.verified_email).collect())
 }
 
@@ -71,6 +80,11 @@ fn public_origin() -> String {
 
 /// Hourly last-call sweep, GLOBAL over all players: for each group ~40min from
 /// locking, email every incomplete/unlocked player once (dedup by person|group|1h).
+/// `summary.recipients` is counted per (player, due group) here.
+///
+/// Fail-fast: a `mail.send()` (or repo) error aborts the rest of the batch.
+/// This is intended for transport-level SES failures — a later retry sweep
+/// resumes safely because a marker is written only for recipients already sent.
 pub async fn run_last_call_sweep(
     repo: &dyn Repository,
     mail: &dyn MailSender,
@@ -78,9 +92,10 @@ pub async fn run_last_call_sweep(
 ) -> anyhow::Result<ReminderSummary> {
     let tournament = repo
         .get_tournament()
-        .await?
+        .await
+        .context("loading tournament")?
         .ok_or_else(|| anyhow::anyhow!("no tournament loaded"))?;
-    let players = repo.list_players().await?;
+    let players = repo.list_players().await.context("listing players")?;
     let origin = public_origin();
     let mut summary = ReminderSummary::default();
 
@@ -99,7 +114,11 @@ pub async fn run_last_call_sweep(
         for player in pending_players(&players, &game_ids) {
             summary.recipients += 1;
             let key = dedup_key_last_call(&player.person_id, &due.group_id);
-            if repo.reminder_marker_exists(&key).await? {
+            if repo
+                .reminder_marker_exists(&key)
+                .await
+                .context("checking reminder marker")?
+            {
                 summary.deduped += 1;
                 continue;
             }
@@ -119,8 +138,11 @@ pub async fn run_last_call_sweep(
                 subject: rendered.subject,
                 body_text: rendered.body_text,
             })
-            .await?;
-            repo.put_reminder_marker(&key).await?;
+            .await
+            .context("sending last-call email")?;
+            repo.put_reminder_marker(&key)
+                .await
+                .context("writing reminder marker")?;
             summary.sent += 1;
         }
     }
@@ -130,6 +152,11 @@ pub async fn run_last_call_sweep(
 /// Daily matchday digest, GLOBAL over all players: one email per person listing
 /// the LA-day's groups they are still incomplete on (dedup by person|LA-date).
 /// Never sends an empty email — a person with nothing pending is skipped silently.
+/// `summary.recipients` is counted per unique player here (one digest per person).
+///
+/// Fail-fast: a `mail.send()` (or repo) error aborts the rest of the batch.
+/// This is intended for transport-level SES failures — a later retry sweep
+/// resumes safely because a marker is written only for recipients already sent.
 pub async fn run_digest_sweep(
     repo: &dyn Repository,
     mail: &dyn MailSender,
@@ -137,9 +164,10 @@ pub async fn run_digest_sweep(
 ) -> anyhow::Result<ReminderSummary> {
     let tournament = repo
         .get_tournament()
-        .await?
+        .await
+        .context("loading tournament")?
         .ok_or_else(|| anyhow::anyhow!("no tournament loaded"))?;
-    let players = repo.list_players().await?;
+    let players = repo.list_players().await.context("listing players")?;
     let origin = public_origin();
     let day = la_date(now);
     let due_groups = matchday_groups(&tournament, now);
@@ -175,7 +203,11 @@ pub async fn run_digest_sweep(
         }
         summary.recipients += 1;
         let key = dedup_key_digest(&player.person_id, day);
-        if repo.reminder_marker_exists(&key).await? {
+        if repo
+            .reminder_marker_exists(&key)
+            .await
+            .context("checking reminder marker")?
+        {
             summary.deduped += 1;
             continue;
         }
@@ -194,8 +226,11 @@ pub async fn run_digest_sweep(
             subject: rendered.subject,
             body_text: rendered.body_text,
         })
-        .await?;
-        repo.put_reminder_marker(&key).await?;
+        .await
+        .context("sending digest email")?;
+        repo.put_reminder_marker(&key)
+            .await
+            .context("writing reminder marker")?;
         summary.sent += 1;
     }
     Ok(summary)
@@ -319,6 +354,7 @@ mod tests {
         // Tick 30min before the deadline -> in the 40-min last-call window (R2).
         let now = at(2026, 6, 20, 17, 30);
         let s1 = run_last_call_sweep(&repo, &mail, now).await.unwrap();
+        assert_eq!(s1.recipients, 2, "alice + bob both pending for group A");
         assert_eq!(s1.sent, 1, "only alice (has email, incomplete) is sent");
         assert_eq!(s1.skipped_no_email, 1, "bob has no verified email");
         assert_eq!(mail.sent().len(), 1);
@@ -330,8 +366,10 @@ mod tests {
         let s2 = run_last_call_sweep(&repo, &mail, at(2026, 6, 20, 17, 50))
             .await
             .unwrap();
+        assert_eq!(s2.recipients, 2, "both still candidates on the retick");
         assert_eq!(s2.sent, 0);
-        assert_eq!(s2.deduped, 1);
+        assert_eq!(s2.deduped, 1, "alice already has a marker");
+        assert_eq!(s2.skipped_no_email, 1, "bob still has no verified email");
         assert_eq!(mail.sent().len(), 1, "still just the one email");
     }
 
@@ -366,5 +404,81 @@ mod tests {
         assert_eq!(s2.sent, 0);
         assert_eq!(s2.deduped, 1);
         assert_eq!(mail.sent().len(), 1);
+    }
+
+    #[tokio::test]
+    async fn last_call_fans_out_to_all_of_a_persons_emails() {
+        let repo = setup(at(2026, 6, 20, 18, 0)).await;
+        // Give alice a SECOND identity with a different verified email. The
+        // sweep must fan out BOTH addresses into one `Email.to`, not send twice.
+        repo.put_identity(&Identity {
+            id: "id-a2".into(),
+            provider: "email".into(),
+            provider_id: "e-alice".into(),
+            person_id: "person-alice".into(),
+            verified_email: Some("alice.alt@dev.invalid".into()),
+        })
+        .await
+        .unwrap();
+
+        let mail = CapturingSender::new();
+        let s = run_last_call_sweep(&repo, &mail, at(2026, 6, 20, 17, 30))
+            .await
+            .unwrap();
+
+        assert_eq!(s.sent, 1, "one email to alice, not one per address");
+        assert_eq!(mail.sent().len(), 1, "a single send, not two");
+        let mut to = mail.sent()[0].to.clone();
+        to.sort(); // identity iteration order is unspecified
+        assert_eq!(
+            to,
+            vec![
+                "alice.alt@dev.invalid".to_string(),
+                "alice@dev.invalid".to_string()
+            ]
+        );
+    }
+
+    #[tokio::test]
+    async fn digest_excludes_the_result_user() {
+        // Deadline 2026-06-21 05:00 UTC == 2026-06-20 22:00 LA.
+        let repo = setup(at(2026, 6, 21, 5, 0)).await;
+        // A result user with a verified email but no predictions: must be
+        // skipped entirely (not counted, not sent) by the digest sweep.
+        let mut ru = player("ru");
+        ru.is_result_user = true;
+        repo.put_player(&ru).await.unwrap();
+        repo.put_person(&Person {
+            id: "person-ru".into(),
+            identity_ids: vec!["id-ru".into()],
+        })
+        .await
+        .unwrap();
+        repo.put_identity(&Identity {
+            id: "id-ru".into(),
+            provider: "google".into(),
+            provider_id: "g-ru".into(),
+            person_id: "person-ru".into(),
+            verified_email: Some("ru@dev.invalid".into()),
+        })
+        .await
+        .unwrap();
+
+        let mail = CapturingSender::new();
+        let s = run_digest_sweep(&repo, &mail, at(2026, 6, 20, 7, 0))
+            .await
+            .unwrap();
+
+        // alice + bob are recipients; the result user is excluded (else 3).
+        assert_eq!(s.recipients, 2, "result user is not counted as a recipient");
+        assert_eq!(s.sent, 1, "only alice has a verified email");
+        assert_eq!(s.skipped_no_email, 1, "bob has no verified email");
+        assert_eq!(mail.sent().len(), 1);
+        assert!(
+            mail.sent()
+                .iter()
+                .all(|e| !e.to.contains(&"ru@dev.invalid".to_string())),
+            "the result user must never be emailed"
+        );
     }
 }
