@@ -8,7 +8,88 @@
 
 **Tech Stack:** Rust workspace (axum + async-graphql, aws-sdk-sesv2, aws-config, lettre, chrono, chrono-tz), DynamoDB single-table storage, Terraform (terraform-aws-modules/lambda, EventBridge Rules + EventBridge Scheduler), bash `bin/` tooling, MailHog for local mail capture.
 
-> **Build status: DEFERRED.** This cluster's implementation is on hold pending the user's explicit go-ahead. The plan is written to be correct and execution-ready; do not start the tasks until the user confirms.
+> **Build status: Phase A ready to build; Phase B gated.** Grilled and revised
+> 2026-06-27 — see **"## Revisions (post-grill 2026-06-27)"** immediately below;
+> those entries OVERRIDE the task bodies. Phase A (the mail crate, storage
+> markers, admin mutation, xtask runner, MailHog) is execution-ready and merges
+> with zero unattended sends. Phase B (the scheduled Lambda + EventBridge
+> Terraform) is written but must NOT be `apply`-ed until the activation gate is met.
+
+---
+
+## Revisions (post-grill 2026-06-27) — READ FIRST; these override the tasks below
+
+A grilling pass validated the two assumptions the original draft never checked,
+and replaced the most aggressive defaults. Apply these on top of the task bodies.
+
+**Verified facts (were unstated assumptions):**
+- **Recipients exist.** ~41 real persons have a non-null `Identity.verified_email`
+  in prod (22 google + 20 email providers), inferred from the anonymized
+  `snapshots/prod-snapshot.json` — `anonymize_emails` rewrites addresses to
+  `<nick>@dev.invalid` but **preserves presence/null-ness**, so 42/42 non-null in
+  the snapshot ⇒ 42/42 real emails in prod.
+- **SES production access is confirmed** for the `xczimi.com` sending identity
+  (out of sandbox — can send to arbitrary recipients).
+
+**R1 — Phasing + activation gate.**
+- **Phase A (merge now, NO unattended sends):** Tasks 1–8 plus the *xtask runner*
+  half of Task 9 (the `send-reminders` subcommand). This yields the mail crate,
+  reminder-dedup markers, the admin `sendDeadlineReminders` mutation, the local
+  MailHog path, and the local xtask runner.
+- **Phase B (write now, DO NOT apply):** the scheduled Lambda entrypoint
+  (`crates/api/src/bin/reminder.rs`, the rest of Task 9) and all of Task 10
+  (`infrastructure/reminder.tf`, `bin/deploy-reminder`).
+- **Gate:** apply Phase B only after the admin mutation has been exercised
+  against prod and real deliveries/bounces observed.
+- **Operational note:** running the admin mutation against prod **writes real
+  dedup markers**. Re-testing the same window therefore needs a fresh window
+  (`X-Dev-Now`) or the markers cleared — otherwise the cron later sees them and
+  (correctly) skips.
+
+**R2 — Last-call window becomes slot + slack (replaces the 1-hour window).**
+The `last_call_due` *body* is unchanged; only the lead constant + its doc change
+(Task 3, Step 3):
+
+```rust
+/// Last-call lead = trigger interval (30 min) + jitter slack (10 min) = 40 min.
+/// Each 30-min tick sends for deadlines in `(now, now + 40min]`; consecutive
+/// windows overlap ~10 min to absorb EventBridge jitter, and the per-(person,
+/// group) dedup marker stops the overlap double-sending. The window is
+/// continuous, so a deadline's minute-of-hour is irrelevant — `:30` kickoffs are
+/// covered without any tick-phase alignment.
+pub const LAST_CALL_LEAD: Duration = Duration::minutes(40);
+```
+
+**Test ripple — REQUIRED (else the suite fails).** Any test whose `now` sits
+41–60 min before its deadline must move to within 40 min:
+- Task 3 `last_call_due_only_within_the_final_hour` → rename `..._final_window`;
+  new cases for an 18:00 deadline: `17:00` (60m) = false, `17:15` (45m) = false,
+  `17:25` (35m) = true, `17:20` (exactly 40m) = true, `18:00`/`18:30` = false.
+- Task 3 `groups_due_last_call_…`: change `now` `17:10` → `17:30`.
+- Task 7 sweep tests (`last_call_sends_once_and_dedups`): change the two ticks
+  `17:10`/`17:40` → `17:30`/`17:50`.
+- Task 8 mutation test (`…sends_to_incomplete_member`): change `now` `17:10` → `17:30`.
+
+**R3 — 30-minute ticks.** In Task 10, `reminder_last_call_schedule` default
+`rate(1 hour)` → `rate(30 minutes)`. (Fixture: 99/104 FWC26 kickoffs are `:00`,
+5 are `:30`; slot+slack + 30-min ticks cover all and keep "last call" ≤40 min out.)
+
+**R4 — Manual opt-out (no SES→SNS infra).** Task 4: append a manual opt-out line
+to BOTH bodies (last-call + digest), bilingual — e.g. EN "To stop these
+reminders, just reply to this email." / HU "Ha nem kérsz több emlékeztetőt,
+válaszolj erre az emailre." Add a template-test assertion for it. Plus an
+admin-side exclude: simplest v1 form is an env/config list of `person_id`s
+skipped inside `pending_players`/the digest loop (a stored per-person preference
+can come later).
+
+**R5 — Digest timezone, documented.** Task 10
+`aws_scheduler_schedule.reminder_digest`: keep `America/Los_Angeles`, but add a
+comment — midnight LA sits a few hours before the earliest NA kickoff, so the
+digest always lands before that day's deadlines regardless of recipient TZ.
+
+**R6 — No bounce/complaint plumbing in v1.** SES→SNS bounce/complaint handling
+stays future work (addresses are real+verified; audience ~41). Revisit if anyone
+complains or bounces appear.
 
 ---
 
