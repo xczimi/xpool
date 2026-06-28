@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useMutation, useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
@@ -35,6 +35,7 @@ import { resolveGroupParam, roundNodeIdFor } from '../lib/groupRoute'
 import { readTipsGroup, writeTipsGroup } from '../lib/tipsGroup'
 import { useServerClock } from '../lib/useServerClock'
 import { GroupTipForm } from './mytips/GroupTipForm'
+import { useHashScroll } from '../hooks/useHashScroll'
 
 /**
  * My Tips (UC-5/6) — a group-level prediction form. Round tabs pick a round;
@@ -50,6 +51,7 @@ export function MyTipsPage() {
   // present (`/mytips`) — the default-round/group behaviour.
   const { groupId: groupParam } = useParams<{ groupId?: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const [selectedRound, setSelectedRound] = useState<Round | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
 
@@ -153,6 +155,11 @@ export function MyTipsPage() {
   const activeGroupId =
     effectiveResolved?.groupId ?? selectedGroupId ?? roundLeaves[0]?.id ?? null
   const tipsGroupId = isGroupStage ? activeGroupId : (activeRoundNode?.id ?? null)
+
+  // Hash anchors: scroll the `#<group.id>` section into view once the active
+  // round's sections have rendered. `contentKey` re-triggers the scroll after
+  // async data loads or a round switch changes which sections exist.
+  useHashScroll(location.hash, `${activeRound ?? ''}:${roundLeaves.length}`)
 
   // Remember the group across My Tips ⇄ All Tips (and reloads).
   useEffect(() => {
