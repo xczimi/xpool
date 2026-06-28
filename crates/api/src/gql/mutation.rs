@@ -310,6 +310,26 @@ pub struct ClaimResult {
     pub player: PlayerSummary,
 }
 
+/// GraphQL mirror of [`mail::ReminderSummary`].
+#[derive(SimpleObject)]
+pub struct ReminderReport {
+    pub recipients: i32,
+    pub sent: i32,
+    pub skipped_no_email: i32,
+    pub deduped: i32,
+}
+
+impl From<mail::ReminderSummary> for ReminderReport {
+    fn from(s: mail::ReminderSummary) -> Self {
+        Self {
+            recipients: s.recipients as i32,
+            sent: s.sent as i32,
+            skipped_no_email: s.skipped_no_email as i32,
+            deduped: s.deduped as i32,
+        }
+    }
+}
+
 /// Derive the `(provider, provider_id)` key for storing an Identity row,
 /// based on the unclaimed session's verified contact — mirrors the
 /// `resolution::identity_key_for` logic but operates on `VerifiedIdentity`.
@@ -874,6 +894,45 @@ impl MutationRoot {
         repo.revoke_invite(&invite.code).await?;
         Ok(true)
     }
+
+    /// Admin: send last-call reminders to all players with incomplete
+    /// predictions for groups locking within the next ~60 min. Idempotent —
+    /// dedup markers prevent double-sending within a window.
+    async fn send_last_call_reminders(
+        &self,
+        ctx: &Context<'_>,
+    ) -> async_graphql::Result<ReminderReport> {
+        CurrentPlayer::require_admin(ctx)?;
+        let repo = repo(ctx);
+        let mail = ctx.data_unchecked::<Arc<dyn mail::MailSender>>();
+        let now = now(ctx);
+        let summary = mail::run_last_call_sweep(repo.as_ref(), mail.as_ref(), now)
+            .await
+            .map_err(|e| {
+                tracing::error!("send_last_call_reminders failed: {e}");
+                async_graphql::Error::new("reminder sweep failed; please retry")
+            })?;
+        Ok(ReminderReport::from(summary))
+    }
+
+    /// Admin: send the matchday digest to all players with any predictions on
+    /// today's games. Idempotent — dedup markers prevent double-sending.
+    async fn send_matchday_digest(
+        &self,
+        ctx: &Context<'_>,
+    ) -> async_graphql::Result<ReminderReport> {
+        CurrentPlayer::require_admin(ctx)?;
+        let repo = repo(ctx);
+        let mail = ctx.data_unchecked::<Arc<dyn mail::MailSender>>();
+        let now = now(ctx);
+        let summary = mail::run_digest_sweep(repo.as_ref(), mail.as_ref(), now)
+            .await
+            .map_err(|e| {
+                tracing::error!("send_matchday_digest failed: {e}");
+                async_graphql::Error::new("digest sweep failed; please retry")
+            })?;
+        Ok(ReminderReport::from(summary))
+    }
 }
 
 #[cfg(test)]
@@ -1009,5 +1068,142 @@ mod submit_group_tests {
             msg.contains("not yet determined"),
             "expected 'not yet determined' in error message, got: {msg:?}"
         );
+    }
+}
+
+#[cfg(test)]
+mod send_reminders_tests {
+    use crate::auth::CurrentPlayer;
+    use chrono::{TimeZone, Utc};
+    use domain::{
+        GroupChildren, GroupGame, Identity, LockMode, Person, Player, Round, SingleGame, TeamSlot,
+        Tournament,
+    };
+    use mail::CapturingSender;
+    use std::sync::Arc;
+    use storage::{InMemoryRepository, Repository};
+
+    struct NoSource;
+    #[async_trait::async_trait]
+    impl crate::reported::ReportedResultSource for NoSource {
+        async fn lookup_events(&self, _ids: &[String]) -> anyhow::Result<Vec<sportsdb::Event>> {
+            Ok(vec![])
+        }
+    }
+
+    fn admin() -> Player {
+        Player {
+            id: "ru".into(),
+            person_id: "person-ru".into(),
+            nick: "ru".into(),
+            full_name: "ru".into(),
+            referrer: None,
+            is_result_user: true,
+            version: 0,
+            match_predictions: vec![],
+            standings_predictions: vec![],
+        }
+    }
+
+    #[tokio::test]
+    async fn admin_send_last_call_reminders_sends_to_incomplete_member() {
+        let repo = InMemoryRepository::new();
+
+        // One leaf group "A" locking ~30min after `now` (17:30 → 18:00 kickoff).
+        let game = SingleGame {
+            id: "A-g".into(),
+            kickoff: Utc.with_ymd_and_hms(2026, 6, 20, 18, 0, 0).unwrap(),
+            venue: None,
+            group_id: "A".into(),
+            home: TeamSlot {
+                team_id: Some("X".into()),
+                description: "x".into(),
+            },
+            away: TeamSlot {
+                team_id: Some("Y".into()),
+                description: "y".into(),
+            },
+            external_id: None,
+        };
+        let group = GroupGame {
+            id: "A".into(),
+            name: "Group A".into(),
+            parent: None,
+            round: Round::GroupStage,
+            lock_mode: LockMode::LockTogether,
+            carries_standings: true,
+            children: GroupChildren::Games(vec!["A-g".into()]),
+        };
+        repo.put_tournament(&Tournament {
+            root: "A".into(),
+            groups: std::collections::HashMap::from([("A".to_string(), group)]),
+            games: std::collections::HashMap::from([("A-g".to_string(), game)]),
+            teams: std::collections::HashMap::new(),
+        })
+        .await
+        .unwrap();
+
+        let alice = Player {
+            id: "alice".into(),
+            person_id: "person-alice".into(),
+            nick: "alice".into(),
+            full_name: "alice".into(),
+            referrer: None,
+            is_result_user: false,
+            version: 0,
+            match_predictions: vec![],
+            standings_predictions: vec![],
+        };
+        repo.put_player(&alice).await.unwrap();
+        repo.put_person(&Person {
+            id: "person-alice".into(),
+            identity_ids: vec!["id-a".into()],
+        })
+        .await
+        .unwrap();
+        repo.put_identity(&Identity {
+            id: "id-a".into(),
+            provider: "google".into(),
+            provider_id: "g-alice".into(),
+            person_id: "person-alice".into(),
+            verified_email: Some("alice@dev.invalid".into()),
+        })
+        .await
+        .unwrap();
+
+        // No pool needed — the sweep is global over players (per-player predictions).
+        let mail = CapturingSender::new();
+        let repo_arc: Arc<dyn Repository> = Arc::new(repo);
+        let source: Arc<dyn crate::reported::ReportedResultSource> = Arc::new(NoSource);
+        let mail_arc: Arc<dyn mail::MailSender> = Arc::new(mail.clone());
+        let schema = crate::gql::build_schema_with_mail(repo_arc, source, mail_arc);
+
+        // R2: use 17:30 — inside the 40-min last-call window before 18:00 kickoff.
+        let now = Utc.with_ymd_and_hms(2026, 6, 20, 17, 30, 0).unwrap();
+        let req = async_graphql::Request::new(
+            r#"mutation { sendLastCallReminders { sent skippedNoEmail recipients deduped } }"#,
+        )
+        .data(CurrentPlayer::Player(Box::new(admin())))
+        .data(crate::clock::RequestNow(now));
+        let resp = schema.execute(req).await;
+        assert!(resp.errors.is_empty(), "errors: {:?}", resp.errors);
+        assert_eq!(mail.sent().len(), 1);
+        assert_eq!(mail.sent()[0].to, vec!["alice@dev.invalid".to_string()]);
+    }
+
+    #[tokio::test]
+    async fn non_admin_is_rejected() {
+        let repo = InMemoryRepository::new();
+        let repo_arc: Arc<dyn Repository> = Arc::new(repo);
+        let source: Arc<dyn crate::reported::ReportedResultSource> = Arc::new(NoSource);
+        let mail_arc: Arc<dyn mail::MailSender> = Arc::new(CapturingSender::new());
+        let schema = crate::gql::build_schema_with_mail(repo_arc, source, mail_arc);
+        let mut nonadmin = admin();
+        nonadmin.is_result_user = false;
+        let req = async_graphql::Request::new(r#"mutation { sendLastCallReminders { sent } }"#)
+            .data(CurrentPlayer::Player(Box::new(nonadmin)))
+            .data(crate::clock::RequestNow(Utc::now()));
+        let resp = schema.execute(req).await;
+        assert!(!resp.errors.is_empty(), "non-admin must be rejected");
     }
 }

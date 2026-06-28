@@ -29,6 +29,7 @@ pub fn build_app(
     repo: Arc<dyn Repository>,
     cors: bool,
     cloudfront_secret: Option<String>,
+    mail: Arc<dyn mail::MailSender>,
 ) -> axum::Router {
     use crate::reported::{
         CachingSource, NullSource, ReportedResultSource, SportsDbSource, StubLiveSource,
@@ -41,6 +42,6 @@ pub fn build_app(
     } else {
         Arc::new(NullSource)
     };
-    let schema = gql::build_schema(repo.clone(), reported);
+    let schema = gql::build_schema_with_mail(repo.clone(), reported, mail);
     router::build_router(schema, repo, cors, cloudfront_secret)
 }

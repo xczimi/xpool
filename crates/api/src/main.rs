@@ -20,7 +20,8 @@ async fn app() -> anyhow::Result<axum::Router> {
     // Absent (typical `cargo run -p api`) → the middleware is not attached
     // and the local stack stays open the same as it always was.
     let cloudfront_secret = api::cloudfront_auth::read_secret_from_env();
-    Ok(api::build_app(repo, true, cloudfront_secret))
+    let mail = mail::build_sender_from_env().await?;
+    Ok(api::build_app(repo, true, cloudfront_secret, mail))
 }
 
 #[cfg(not(feature = "lambda"))]

@@ -101,6 +101,7 @@ dependencies = [
  "jsonwebtoken",
  "lambda_http",
  "lambda_runtime",
+ "mail",
  "reqwest",
  "serde",
  "serde_json",

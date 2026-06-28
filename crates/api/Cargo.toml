@@ -24,6 +24,7 @@ lambda = ["dep:lambda_http", "dep:lambda_runtime"]
 domain.workspace = true
 fwc26.workspace = true
 storage.workspace = true
+mail.workspace = true
 sportsdb = { path = "../sportsdb" }
 async-trait.workspace = true
 anyhow.workspace = true
@@ -48,5 +49,6 @@ lambda_runtime = { version = "0.13", optional = true }
 dotenvy = { version = "0.15", optional = true }
 
 [dev-dependencies]
+mail.workspace = true
 tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"

@@ -20,7 +20,12 @@ fn router(cloudfront_secret: Option<&str>) -> Router {
     let repo: Arc<dyn Repository> = Arc::new(InMemoryRepository::new());
     // `cors = false` keeps the layer stack minimal and avoids hitting CORS
     // preflight branches; we're testing the secret check, not CORS.
-    api::build_app(repo, false, cloudfront_secret.map(String::from))
+    api::build_app(
+        repo,
+        false,
+        cloudfront_secret.map(String::from),
+        std::sync::Arc::new(mail::NullSender),
+    )
 }
 
 async fn status_for(router: Router, secret_header: Option<&str>) -> (StatusCode, String) {
