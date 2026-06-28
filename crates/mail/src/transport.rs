@@ -30,7 +30,17 @@ pub fn choose_transport(
         Some("ses") => TransportKind::Ses,
         Some("smtp") => TransportKind::Smtp,
         Some("null") => TransportKind::Null,
-        _ => {
+        other => {
+            // A non-empty but unrecognized value (typo / wrong case) is a
+            // misconfig: surface it rather than silently honouring the endpoint
+            // heuristic, which in local dev would quietly pick SMTP. The
+            // legitimate unset (`None`) / empty cases stay quiet.
+            if let Some(value) = other.filter(|v| !v.is_empty()) {
+                tracing::warn!(
+                    value = %value,
+                    "unrecognised MAIL_TRANSPORT; falling back to endpoint heuristic"
+                );
+            }
             let local = dynamo_endpoint
                 .map(str::trim)
                 .is_some_and(|e| !e.is_empty());
@@ -64,7 +74,7 @@ fn reply_to_address() -> String {
 /// `lettre` SMTP sender (local MailHog by default; plaintext, no TLS).
 pub struct SmtpSender {
     transport: AsyncSmtpTransport<Tokio1Executor>,
-    from: String,
+    from: Mailbox,
 }
 
 impl SmtpSender {
@@ -72,28 +82,32 @@ impl SmtpSender {
         let host = std::env::var("SMTP_HOST").unwrap_or_else(|_| "localhost".to_owned());
         let port: u16 = std::env::var("SMTP_PORT")
             .ok()
-            .and_then(|p| p.parse().ok())
+            .map(|raw| {
+                raw.parse().unwrap_or_else(|_| {
+                    tracing::warn!(value = %raw, "invalid SMTP_PORT; falling back to 1025");
+                    1025
+                })
+            })
             .unwrap_or(1025);
         // builder_dangerous = plaintext (MailHog speaks no TLS).
         let transport = AsyncSmtpTransport::<Tokio1Executor>::builder_dangerous(&host)
             .port(port)
             .build();
-        Ok(Self {
-            transport,
-            from: from_address(),
-        })
+        // Parse the From address at construction so a bad `MAIL_FROM` fails
+        // fast (at startup) rather than on the first `send()`.
+        let from: Mailbox = from_address().parse().context("parsing MAIL_FROM")?;
+        Ok(Self { transport, from })
     }
 }
 
 #[async_trait]
 impl MailSender for SmtpSender {
     async fn send(&self, email: &Email) -> anyhow::Result<()> {
-        let from: Mailbox = self.from.parse().context("parsing MAIL_FROM")?;
         let reply_to: Mailbox = reply_to_address()
             .parse()
             .context("parsing MAIL_REPLY_TO / MAIL_FROM as reply-to")?;
         let mut builder = Message::builder()
-            .from(from)
+            .from(self.from.clone())
             .reply_to(reply_to)
             .subject(&email.subject);
         for addr in &email.to {
@@ -147,6 +161,8 @@ impl MailSender for SesSender {
         self.client
             .send_email()
             .from_email_address(&self.from)
+            // Reply-to here is validated server-side by SES (the SMTP path
+            // validates client-side via `Mailbox` parse) — asymmetry intended.
             .set_reply_to_addresses(Some(vec![reply_to]))
             .destination(dest)
             .content(content)
