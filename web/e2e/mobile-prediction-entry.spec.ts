@@ -33,14 +33,19 @@ test('Mobile My Tips: stepper entry autosaves and persists', async ({ page }) =>
   // Enter a COMPLETE prediction on the first match (both sides). A match with
   // one side unset cannot be persisted (the server requires both scores), so
   // only a complete entry survives a reload.
+  //
+  // The stepper starts UNSET ("–"); the first `+` commits 0, so reaching a
+  // displayed `3` takes FOUR taps (– → 0 → 1 → 2 → 3). The away side is the
+  // same: one tap from unset commits 0. (See `lib/score.ts` `stepScore`.)
   const firstMatch = page.locator('.mobile-match').first()
   const homeStepper = firstMatch.locator('.score-stepper').first()
   const awayStepper = firstMatch.locator('.score-stepper').nth(1)
-  await homeStepper.locator('.score-stepper-inc').click()
-  await homeStepper.locator('.score-stepper-inc').click()
-  await homeStepper.locator('.score-stepper-inc').click()
+  await homeStepper.locator('.score-stepper-inc').click() // – → 0
+  await homeStepper.locator('.score-stepper-inc').click() // 0 → 1
+  await homeStepper.locator('.score-stepper-inc').click() // 1 → 2
+  await homeStepper.locator('.score-stepper-inc').click() // 2 → 3
   await expect(homeStepper.locator('.score-stepper-value')).toHaveText('3')
-  await awayStepper.locator('.score-stepper-inc').click()
+  await awayStepper.locator('.score-stepper-inc').click() // – → 0
   await expect(awayStepper.locator('.score-stepper-value')).toHaveText('0')
 
   // Autosave fires (debounced) → status shows the saved string.
