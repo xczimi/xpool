@@ -5,6 +5,7 @@ pub mod model;
 pub mod participation;
 pub mod pool;
 pub mod scoring;
+pub mod timeline;
 
 pub use model::*;
 pub use scoring::*;

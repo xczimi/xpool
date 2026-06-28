@@ -538,6 +538,50 @@ pub struct ThirdPlaceRanking {
     pub complete: bool,
 }
 
+/// One step on a player's points trajectory (`pointsTimeline`): the per-game
+/// points and the running total through that game. Mirrors
+/// `domain::timeline::TimelinePoint`.
+#[derive(SimpleObject, Clone, Debug)]
+pub struct TimelinePoint {
+    pub game_id: String,
+    pub kickoff: chrono::DateTime<chrono::Utc>,
+    /// Per-game points (round-stage multiplier already applied).
+    pub points: i64,
+    /// Running sum through this game.
+    pub cumulative: i64,
+}
+
+impl From<domain::timeline::TimelinePoint> for TimelinePoint {
+    fn from(p: domain::timeline::TimelinePoint) -> Self {
+        TimelinePoint {
+            game_id: p.game_id,
+            kickoff: p.kickoff,
+            points: p.points,
+            cumulative: p.cumulative,
+        }
+    }
+}
+
+/// One player's whole points trajectory over the scored-so-far schedule
+/// (`pointsTimeline`). One line on the chart. Mirrors
+/// `domain::timeline::PlayerTimeline`.
+#[derive(SimpleObject, Clone, Debug)]
+pub struct PlayerTimeline {
+    pub player_id: String,
+    pub nick: String,
+    pub points: Vec<TimelinePoint>,
+}
+
+impl From<domain::timeline::PlayerTimeline> for PlayerTimeline {
+    fn from(p: domain::timeline::PlayerTimeline) -> Self {
+        PlayerTimeline {
+            player_id: p.player_id,
+            nick: p.nick,
+            points: p.points.into_iter().map(TimelinePoint::from).collect(),
+        }
+    }
+}
+
 /// One match's detail (`#2`): the all-players tip grid plus the best-available
 /// actual score. Read-only and ephemeral.
 #[derive(SimpleObject, Clone, Debug)]

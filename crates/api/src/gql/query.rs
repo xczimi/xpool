@@ -293,6 +293,37 @@ impl QueryRoot {
         ))
     }
 
+    /// Per-game cumulative points over time, one series per competitor — the
+    /// backbone of the points-trajectory chart
+    /// (`.scratch/player-points-timeline-chart`). Unlike the by-round
+    /// scoreboard slice, the x-axis is the schedule walked GAME BY GAME in
+    /// kickoff order, so a line climbs as each match is scored (a flat
+    /// group-stage line is impossible). Pool-scoped exactly like `scoreboard`
+    /// (the shared `pool_member_filter`); the result user is excluded and only
+    /// participants appear. The pure `domain::timeline::player_timelines` does
+    /// the work — no domain logic here.
+    async fn points_timeline(
+        &self,
+        ctx: &Context<'_>,
+        pool: Option<String>,
+    ) -> async_graphql::Result<Vec<PlayerTimeline>> {
+        let repo = repo(ctx);
+        let Some(tournament) = repo.get_tournament().await? else {
+            return Ok(Vec::new());
+        };
+        let players = repo.list_players().await?;
+        let allowed = pool_member_filter(ctx, repo, pool).await?;
+        let config = ScoringConfig::default();
+        let timelines = domain::timeline::player_timelines(
+            &tournament,
+            &players,
+            now(ctx),
+            allowed.as_deref(),
+            &config,
+        );
+        Ok(timelines.into_iter().map(PlayerTimeline::from).collect())
+    }
+
     /// The current viewer — either a resolved `Player` or an `UnclaimedViewer`
     /// (authenticated but not yet linked to a Person/Player). Returns `null`
     /// for unauthenticated visitors. When `UnclaimedViewer.linkCandidate` is
@@ -1996,7 +2027,11 @@ mod scoreboard_tests {
         repo
     }
 
-    async fn exec(repo: InMemoryRepository, viewer: CurrentPlayer, query: &str) -> serde_json::Value {
+    async fn exec(
+        repo: InMemoryRepository,
+        viewer: CurrentPlayer,
+        query: &str,
+    ) -> serde_json::Value {
         let repo: Arc<dyn Repository> = Arc::new(repo);
         let source: Arc<dyn ReportedResultSource> = Arc::new(NoSource);
         let schema = crate::gql::build_schema(repo, source);
@@ -2081,5 +2116,182 @@ mod scoreboard_tests {
             .collect();
         assert!(ids.contains(&"alice".to_string()), "alice (member) shown");
         assert!(!ids.contains(&"bob".to_string()), "bob (non-member) hidden");
+    }
+}
+
+#[cfg(test)]
+mod points_timeline_tests {
+    use crate::auth::CurrentPlayer;
+    use crate::reported::ReportedResultSource;
+    use async_trait::async_trait;
+    use chrono::{TimeZone, Utc};
+    use domain::{
+        GroupChildren, GroupGame, LockMode, MatchPrediction, Player, Pool, Round, SingleGame,
+        TeamSlot, Tournament,
+    };
+    use sportsdb::Event;
+    use std::collections::HashMap;
+    use std::sync::Arc;
+    use storage::{InMemoryRepository, Repository};
+
+    struct NoSource;
+    #[async_trait]
+    impl ReportedResultSource for NoSource {
+        async fn lookup_events(&self, _ids: &[String]) -> anyhow::Result<Vec<Event>> {
+            Ok(vec![])
+        }
+    }
+
+    fn game(id: &str, day: u32) -> SingleGame {
+        SingleGame {
+            id: id.into(),
+            kickoff: Utc.with_ymd_and_hms(2026, 6, day, 18, 0, 0).unwrap(),
+            venue: None,
+            group_id: "A".into(),
+            home: TeamSlot {
+                team_id: Some("H".into()),
+                description: "H".into(),
+            },
+            away: TeamSlot {
+                team_id: Some("A".into()),
+                description: "A".into(),
+            },
+            external_id: None,
+        }
+    }
+
+    fn pred(game_id: &str, h: u8, a: u8) -> MatchPrediction {
+        MatchPrediction {
+            game_id: game_id.into(),
+            home_score: h,
+            away_score: a,
+            locked: true,
+        }
+    }
+
+    fn player(id: &str, is_result_user: bool, mp: Vec<MatchPrediction>) -> Player {
+        Player {
+            id: id.into(),
+            person_id: format!("p-{id}"),
+            nick: id.into(),
+            full_name: id.into(),
+            referrer: None,
+            is_result_user,
+            version: 0,
+            match_predictions: mp,
+            standings_predictions: vec![],
+        }
+    }
+
+    async fn repo_with_games() -> InMemoryRepository {
+        let group = GroupGame {
+            id: "A".into(),
+            name: "A".into(),
+            parent: None,
+            round: Round::GroupStage,
+            lock_mode: LockMode::LockTogether,
+            carries_standings: true,
+            children: GroupChildren::Games(vec!["M1".into(), "M2".into()]),
+        };
+        let t = Tournament {
+            root: "A".into(),
+            groups: HashMap::from([("A".to_string(), group)]),
+            games: HashMap::from([
+                ("M1".to_string(), game("M1", 11)),
+                ("M2".to_string(), game("M2", 12)),
+            ]),
+            teams: HashMap::new(),
+        };
+        let repo = InMemoryRepository::new();
+        repo.put_tournament(&t).await.unwrap();
+        // Official: M1 2-0, M2 1-1.
+        repo.put_player(&player(
+            "result-user",
+            true,
+            vec![pred("M1", 2, 0), pred("M2", 1, 1)],
+        ))
+        .await
+        .unwrap();
+        // ada nails both (4 + 4); alan misses both (0 + 0).
+        repo.put_player(&player(
+            "demo-ada",
+            false,
+            vec![pred("M1", 2, 0), pred("M2", 1, 1)],
+        ))
+        .await
+        .unwrap();
+        repo.put_player(&player(
+            "demo-alan",
+            false,
+            vec![pred("M1", 0, 2), pred("M2", 0, 3)],
+        ))
+        .await
+        .unwrap();
+        repo
+    }
+
+    async fn exec(
+        repo: InMemoryRepository,
+        viewer: CurrentPlayer,
+        query: &str,
+    ) -> serde_json::Value {
+        let repo: Arc<dyn Repository> = Arc::new(repo);
+        let source: Arc<dyn ReportedResultSource> = Arc::new(NoSource);
+        let schema = crate::gql::build_schema(repo, source);
+        let req = async_graphql::Request::new(query)
+            .data(viewer)
+            .data(crate::clock::RequestNow(
+                "2026-06-20T12:00:00Z".parse().unwrap(),
+            ));
+        let resp = schema.execute(req).await;
+        assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+        resp.data.into_json().unwrap()
+    }
+
+    #[tokio::test]
+    async fn global_timeline_climbs_game_by_game_excluding_result_user() {
+        let repo = repo_with_games().await;
+        let data = exec(
+            repo,
+            CurrentPlayer::Visitor,
+            r#"{ pointsTimeline { playerId nick points { gameId points cumulative } } }"#,
+        )
+        .await;
+        let rows = data["pointsTimeline"].as_array().unwrap();
+        // result user excluded; ada + alan, sorted by id.
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0]["playerId"], "demo-ada");
+        let ada = rows[0]["points"].as_array().unwrap();
+        assert_eq!(ada.len(), 2, "one point per resulted, past game");
+        assert_eq!(ada[0]["gameId"], "M1");
+        assert_eq!(ada[0]["cumulative"], 4);
+        assert_eq!(ada[1]["cumulative"], 8);
+        // alan missed both → flat zero line, but x-axis still aligned (2 points).
+        let alan = rows[1]["points"].as_array().unwrap();
+        assert_eq!(alan.len(), 2);
+        assert_eq!(alan[1]["cumulative"], 0);
+    }
+
+    #[tokio::test]
+    async fn pool_filter_requires_membership_and_restricts() {
+        let repo = repo_with_games().await;
+        repo.put_pool(&Pool {
+            id: "P1".into(),
+            name: "Pool 1".into(),
+            owner: "demo-ada".into(),
+            members: vec!["demo-ada".into()],
+            prefix: "P1".into(),
+        })
+        .await
+        .unwrap();
+        let data = exec(
+            repo,
+            CurrentPlayer::Player(Box::new(player("demo-ada", false, vec![pred("M1", 2, 0)]))),
+            r#"{ pointsTimeline(pool: "P1") { playerId } }"#,
+        )
+        .await;
+        let rows = data["pointsTimeline"].as_array().unwrap();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0]["playerId"], "demo-ada");
     }
 }

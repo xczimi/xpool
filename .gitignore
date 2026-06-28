@@ -43,3 +43,6 @@ infrastructure/env.auto.tfvars
 .claude/worktrees/
 .agents/
 skills-lock.json
+
+# Playwright e2e output (also runs from repo root)
+/test-results/
