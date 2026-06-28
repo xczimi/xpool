@@ -4,3 +4,4 @@ route53_zone_name     = "xczimi.com"
 current_tournament_id = "fwc26"
 auth0_domain          = "xpool.ca.auth0.com"
 result_user_email     = "pool@xczimi.com"
+reminder_enabled      = true
