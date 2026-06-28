@@ -16,9 +16,9 @@ variable "reminder_lambda_package_path" {
 }
 
 variable "reminder_last_call_schedule" {
-  description = "EventBridge rate/cron for the last-call reminder rule (every 30 minutes; R2 slot+slack)."
+  description = "EventBridge schedule for the last-call reminder rule. cron(0,30) fires at :00 and :30 UTC for deterministic ticks; the 40-min send window (R2) still absorbs delivery jitter and the per-(person,group) dedup marker stops double-sends."
   type        = string
-  default     = "rate(30 minutes)"
+  default     = "cron(0,30 * * * ? *)"
 }
 
 variable "reminder_digest_schedule" {
@@ -116,7 +116,7 @@ module "reminder_lambda" {
 resource "aws_cloudwatch_event_rule" "reminder_last_call" {
   count               = var.reminder_enabled ? 1 : 0
   name                = "xpool-reminder-last-call-${var.environment}"
-  description         = "Last-call deadline reminder sweep (every 30 minutes)."
+  description         = "Last-call deadline reminder sweep (at :00 and :30 UTC)."
   schedule_expression = var.reminder_last_call_schedule
 }
 
