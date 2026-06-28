@@ -6,6 +6,7 @@ import { useI18n } from '../i18n/useI18n'
 import {
   ME_QUERY,
   PERFECTS_QUERY,
+  POINTS_TIMELINE_QUERY,
   POOLS_QUERY,
   RESULTS_QUERY,
   SCOREBOARD_QUERY,
@@ -15,6 +16,7 @@ import type {
   Me,
   MatchPrediction,
   Perfect,
+  PlayerTimeline,
   Pool,
   ScoreEntry,
   Tournament,
@@ -32,9 +34,7 @@ import { PlayerTodaySlice } from './player/PlayerTodaySlice'
 import { PlayerPerfects } from './player/PlayerPerfects'
 import { PlayerRounds } from './player/PlayerRounds'
 import { PointsTimelineChart } from '../components/PointsTimelineChart'
-import { TIMELINE_COLORS } from '../components/timelineColors'
-import { cumulativeSeries } from '../lib/cumulativePoints'
-import { ROUND_ORDER, readyRounds, roundLabel } from '../lib/rounds'
+import { buildSeries } from '../lib/timeline'
 
 /**
  * One participant's complete tournament view (consumer #3). Read-only,
@@ -80,6 +80,11 @@ export function PlayerPage() {
     variables: { pool: effectivePool },
     pause: !label,
   })
+  const [timelineResult] = useQuery<{ pointsTimeline: PlayerTimeline[] }>({
+    query: POINTS_TIMELINE_QUERY,
+    variables: { pool: effectivePool },
+    pause: !label,
+  })
   const [perfectsResult] = useQuery<{ perfects: Perfect[] }>({
     query: PERFECTS_QUERY,
   })
@@ -105,6 +110,12 @@ export function PlayerPage() {
   )
   const tournament = tournamentResult.data?.tournament ?? null
   const now = tournamentResult.data?.now ?? ''
+  // The page owner's own trajectory only — a single line (H2H is the only place
+  // two lines overlay). Pool-scoped via the same effective pool as the board.
+  const timeline = useMemo(
+    () => buildSeries(timelineResult.data?.pointsTimeline ?? [], [id]),
+    [timelineResult.data, id],
+  )
   const resultByGame = useMemo(() => {
     const map = new Map<string, MatchPrediction>()
     for (const r of resultsResult.data?.results ?? []) map.set(r.gameId, r)
@@ -150,11 +161,6 @@ export function PlayerPage() {
     )
   }
 
-  // x-axis rounds = the canonical order filtered to rounds whose teams are
-  // known (server-derived; no Date.now()). `tournament` is non-null here.
-  const ready = readyRounds(tournament.groups, tournament.games)
-  const timelineRounds = ROUND_ORDER.filter((r) => ready.has(r))
-
   return (
     <section className="page player-page">
       <h2>{shownEntry.nick}</h2>
@@ -175,14 +181,9 @@ export function PlayerPage() {
       <PlayerHeader entry={shownEntry} rank={rank} />
       <PointsTimelineChart
         title={t('timelineTitle')}
-        xLabels={timelineRounds.map((r) => roundLabel(r, t))}
-        series={[
-          {
-            label: shownEntry.nick,
-            color: TIMELINE_COLORS[0],
-            points: cumulativeSeries(shownEntry, timelineRounds),
-          },
-        ]}
+        locale={locale}
+        emptyLabel={t('timelineEmpty')}
+        series={timeline}
       />
       <PlayerTodaySlice
         playerId={id}

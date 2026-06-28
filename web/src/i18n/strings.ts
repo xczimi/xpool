@@ -221,6 +221,7 @@ const en = {
 
   // player analytics (head-to-head + points timeline)
   timelineTitle: 'Points trajectory',
+  timelineEmpty: 'No scored games yet',
   h2hTitle: 'Head-to-head',
   h2hCompareMe: 'Compare me with…',
   h2hCompareNamed: 'Compare {name} with…',
@@ -595,6 +596,7 @@ const hu: Record<StringKey, string> = {
 
   // player analytics (head-to-head + points timeline)
   timelineTitle: 'Pontok alakulása',
+  timelineEmpty: 'Még nincs pontozott meccs',
   h2hTitle: 'Párharc',
   h2hCompareMe: 'Hasonlíts engem ezzel…',
   h2hCompareNamed: '{name} összevetése ezzel…',

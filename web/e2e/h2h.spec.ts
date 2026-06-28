@@ -56,6 +56,19 @@ async function lastGameIndex(page: Page): Promise<number> {
   return count - 1
 }
 
+/** y-coords of the nth <polyline>; inverted y means rising cumulative = last < first. */
+async function polylineYs(page: Page, nth: number): Promise<number[]> {
+  const attr = await page
+    .locator('.points-timeline polyline')
+    .nth(nth)
+    .getAttribute('points')
+  return (attr ?? '')
+    .trim()
+    .split(/\s+/)
+    .map((pair) => Number(pair.split(',')[1]))
+    .filter((y) => !Number.isNaN(y))
+}
+
 function xtableEnv() {
   const table = readFileSync(resolve(repoRoot, 'web/.e2e-table'), 'utf8').trim()
   return {
@@ -97,8 +110,14 @@ test('direct route compares two players with an overlaid trajectory', async ({
   await page.goto('/h2h/demo-ada/demo-alan')
 
   await expect(page.locator('.h2h-summary')).toBeVisible()
-  // Both players overlaid → two polylines.
+  // Both players overlaid → two GAME-BY-GAME polylines, and each climbs
+  // (last cumulative above the first — the chart is no longer flat).
   await expect(page.locator('.points-timeline polyline')).toHaveCount(2)
+  for (const nth of [0, 1]) {
+    const ys = await polylineYs(page, nth)
+    expect(ys.length).toBeGreaterThan(1)
+    expect(ys[ys.length - 1]).toBeLessThan(ys[0])
+  }
   await expect(page.locator('.h2h-delta-table')).toBeVisible()
   // The per-match section renders either a diff table or the "no differences" note.
   await expect(

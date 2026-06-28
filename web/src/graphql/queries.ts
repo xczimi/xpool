@@ -86,6 +86,21 @@ export const KNOCKOUT_SCOREBOARD_QUERY = `
   }
 `
 
+/**
+ * Per-game cumulative points over time — one series per competitor. The x-axis
+ * is the schedule walked game by game (kickoff order), so each line climbs as
+ * matches are scored. Pool-scoped like the scoreboard.
+ */
+export const POINTS_TIMELINE_QUERY = `
+  query PointsTimeline($pool: ID) {
+    pointsTimeline(pool: $pool) {
+      playerId
+      nick
+      points { gameId kickoff points cumulative }
+    }
+  }
+`
+
 export const POOLS_QUERY = `
   query Pools {
     pools { id name owner members prefix }

@@ -4,12 +4,20 @@ import { useQuery } from 'urql'
 import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import {
+  POINTS_TIMELINE_QUERY,
   POOLS_QUERY,
   SCOREBOARD_QUERY,
   TIPS_QUERY,
   TOURNAMENT_QUERY,
 } from '../graphql/queries'
-import type { Pool, Round, ScoreEntry, Tip, Tournament } from '../graphql/types'
+import type {
+  PlayerTimeline,
+  Pool,
+  Round,
+  ScoreEntry,
+  Tip,
+  Tournament,
+} from '../graphql/types'
 import { ErrorView, Loading, NeedsLogin } from '../components/StatusViews'
 import { PoolSelector } from '../pools/PoolSelector'
 import { useSelectedPool } from '../pools/useSelectedPool'
@@ -22,11 +30,10 @@ import {
   roundLabel,
   visibleRoundNodes,
 } from '../lib/rounds'
-import { cumulativeSeries } from '../lib/cumulativePoints'
 import { h2hSummary, matchDiffs, roundDeltas } from '../lib/headToHead'
 import type { ScoreCell } from '../lib/headToHead'
 import { PointsTimelineChart } from '../components/PointsTimelineChart'
-import { TIMELINE_COLORS } from '../components/timelineColors'
+import { buildSeries } from '../lib/timeline'
 
 /**
  * Head-to-head: two players compared within the selected pool. All data is
@@ -37,7 +44,7 @@ import { TIMELINE_COLORS } from '../components/timelineColors'
  */
 export function H2HPage() {
   const { a = '', b = '' } = useParams<{ a: string; b: string }>()
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { label } = useAuth()
   const { selected } = useSelectedPool()
   const [selectedRound, setSelectedRound] = useState<Round | null>(null)
@@ -54,6 +61,10 @@ export function H2HPage() {
 
   const [scoreboardResult] = useQuery<{ scoreboard: ScoreEntry[] }>({
     query: SCOREBOARD_QUERY,
+    variables: { pool: effectivePool },
+  })
+  const [timelineResult] = useQuery<{ pointsTimeline: PlayerTimeline[] }>({
+    query: POINTS_TIMELINE_QUERY,
     variables: { pool: effectivePool },
   })
   const [tournamentResult] = useQuery<{ tournament: Tournament | null }>({
@@ -107,18 +118,8 @@ export function H2HPage() {
 
   const ready = readyRounds(tournament.groups, tournament.games)
   const rounds = ROUND_ORDER.filter((r) => ready.has(r))
-  const series = [
-    {
-      label: summary.a.nick,
-      color: TIMELINE_COLORS[0],
-      points: cumulativeSeries(summary.a, rounds),
-    },
-    {
-      label: summary.b.nick,
-      color: TIMELINE_COLORS[1],
-      points: cumulativeSeries(summary.b, rounds),
-    },
-  ]
+  // Both players' GAME-BY-GAME trajectories overlaid (the only two-line view).
+  const series = buildSeries(timelineResult.data?.pointsTimeline ?? [], [a, b])
   const deltas = roundDeltas(summary.a, summary.b, rounds)
   const diffs = matchDiffs(tipsResult.data?.tips ?? [], a, b)
 
@@ -152,7 +153,8 @@ export function H2HPage() {
 
       <PointsTimelineChart
         title={t('timelineTitle')}
-        xLabels={rounds.map((r) => roundLabel(r, t))}
+        locale={locale}
+        emptyLabel={t('timelineEmpty')}
         series={series}
       />
 

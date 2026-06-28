@@ -5,11 +5,13 @@ import { useAuth } from '../auth/useAuth'
 import { useI18n } from '../i18n/useI18n'
 import {
   KNOCKOUT_SCOREBOARD_QUERY,
+  POINTS_TIMELINE_QUERY,
   POOLS_QUERY,
   SCOREBOARD_QUERY,
   TOURNAMENT_QUERY,
 } from '../graphql/queries'
 import type {
+  PlayerTimeline,
   Pool,
   Round,
   ScoreEntry,
@@ -17,6 +19,8 @@ import type {
 } from '../graphql/types'
 import { ErrorView, Loading } from '../components/StatusViews'
 import { ScoreboardModeToggle } from '../components/ScoreboardModeToggle'
+import { PointsTimelineChart } from '../components/PointsTimelineChart'
+import { buildSeries } from '../lib/timeline'
 import { usePolledQuery } from '../lib/usePolledQuery'
 import { pollIntervalMs } from '../lib/polling'
 import {
@@ -133,7 +137,7 @@ function ScoreboardBoard({
  * is directly linkable.
  */
 export function ScoreboardPage({ mode = 'overall' }: { mode?: ScoreboardMode }) {
-  const { t } = useI18n()
+  const { t, locale } = useI18n()
   const { label } = useAuth()
   // Sticky, cross-page pool selection (see SelectedPoolProvider): `undefined`
   // = not chosen → default to the first pool; `null` = explicit "everyone";
@@ -152,6 +156,18 @@ export function ScoreboardPage({ mode = 'overall' }: { mode?: ScoreboardMode }) 
   const effectivePool = effectiveSelectedPool(
     selected,
     pools.map((p) => p.id),
+  )
+
+  // The all-pool points trajectory — one line per member of the selected pool,
+  // pool-scoped like the board. Mode-independent (group + knockout points), so
+  // it lives on the page, not inside the remounting board.
+  const [timelineResult] = useQuery<{ pointsTimeline: PlayerTimeline[] }>({
+    query: POINTS_TIMELINE_QUERY,
+    variables: { pool: effectivePool },
+  })
+  const trajectory = useMemo(
+    () => buildSeries(timelineResult.data?.pointsTimeline ?? [], null),
+    [timelineResult.data],
   )
 
   const [probe] = useQuery<{
@@ -189,6 +205,13 @@ export function ScoreboardPage({ mode = 'overall' }: { mode?: ScoreboardMode }) 
         pool={effectivePool}
         interval={interval}
         ready={ready}
+      />
+
+      <PointsTimelineChart
+        title={t('timelineTitle')}
+        locale={locale}
+        emptyLabel={t('timelineEmpty')}
+        series={trajectory}
       />
     </section>
   )
