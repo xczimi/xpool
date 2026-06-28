@@ -213,6 +213,7 @@ async fn main() -> anyhow::Result<()> {
             println!("# Review, then set each game's `external_id` in tournaments/fwc26.json.");
         }
         Command::SendReminders { mode } => {
+            let mode_label = mode.clone();
             let mode = mail::ReminderMode::parse(&mode)
                 .ok_or_else(|| anyhow::anyhow!("unknown mode `{mode}` (use last-call|digest)"))?;
             let mail_sender = mail::build_sender_from_env().await?;
@@ -227,7 +228,7 @@ async fn main() -> anyhow::Result<()> {
                 }
             };
             println!(
-                "reminders ({mode:?}): {} recipients, {} sent, {} skipped (no email), {} deduped",
+                "reminders ({mode_label}): {} recipients, {} sent, {} skipped (no email), {} deduped",
                 summary.recipients, summary.sent, summary.skipped_no_email, summary.deduped
             );
         }
