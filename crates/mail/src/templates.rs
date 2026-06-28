@@ -66,6 +66,9 @@ pub fn render_last_call(ctx: &LastCallContext) -> RenderedReminder {
          \n\
          {link}\n\
          \n\
+         And no stress if you can't fill in every group-stage match — we run a \
+         knockout-only scoreboard too, so you're still in the running.\n\
+         \n\
          Lock them in before kick-off — good luck!\n\
          — xPool\n\
          \n\
@@ -79,6 +82,9 @@ pub fn render_last_call(ctx: &LastCallContext) -> RenderedReminder {
          Még van zárolatlan vagy hiányzó tipped, úgyhogy ugorj be, és fejezd be, amíg van idő:\n\
          \n\
          {link}\n\
+         \n\
+         És semmi gond, ha nem jön össze minden csoportkörös tipp — van egy csak \
+         egyenes kieséses eredménytábla is, úgyhogy ott is versenyben maradsz.\n\
          \n\
          Zárold le a kezdő sípszó előtt — sok sikert!\n\
          — xPool\n\
@@ -120,6 +126,9 @@ pub fn render_digest(ctx: &DigestContext) -> RenderedReminder {
          Matches kick off today ({day}) that you still have unlocked or missing tips for:\n\
          \n\
          {lines}\n\
+         And no stress if you can't fill in every group-stage match — we run a \
+         knockout-only scoreboard too, so you're still in the running.\n\
+         \n\
          Pop in and lock your tips before each deadline — good luck!\n\
          — xPool\n\
          \n\
@@ -132,6 +141,9 @@ pub fn render_digest(ctx: &DigestContext) -> RenderedReminder {
          Ma ({day}) ilyen meccsek jönnek, amikhez még van zárolatlan vagy hiányzó tipped:\n\
          \n\
          {lines}\n\
+         És semmi gond, ha nem jön össze minden csoportkörös tipp — van egy csak \
+         egyenes kieséses eredménytábla is, úgyhogy ott is versenyben maradsz.\n\
+         \n\
          Ugorj be, és zárold le a tippjeidet minden határidő előtt — sok sikert!\n\
          — xPool\n\
          \n\
@@ -180,6 +192,9 @@ mod tests {
         assert!(r.body_text.contains("2026-06-20 18:00 UTC"));
         // The My Tips deep link keeps its exact shape.
         assert!(r.body_text.contains("https://pool.xczimi.com/mytips/A#A"));
+        // Knockout-only scoreboard reassurance, both languages.
+        assert!(r.body_text.contains("knockout-only scoreboard"));
+        assert!(r.body_text.contains("egyenes kieséses eredménytábla"));
         // Brand sign-off in both blocks.
         assert_eq!(r.body_text.matches("— xPool").count(), 2);
         // R4: opt-out lines in both language blocks.
@@ -226,6 +241,9 @@ mod tests {
         assert!(r.body_text.contains("2026-06-20 21:00 UTC"));
         assert!(r.body_text.contains("/mytips/A#A"));
         assert!(r.body_text.contains("/mytips/B#B"));
+        // Knockout-only scoreboard reassurance, both languages.
+        assert!(r.body_text.contains("knockout-only scoreboard"));
+        assert!(r.body_text.contains("egyenes kieséses eredménytábla"));
         // Brand sign-off in both blocks.
         assert_eq!(r.body_text.matches("— xPool").count(), 2);
         // R4: opt-out lines in both language blocks.
