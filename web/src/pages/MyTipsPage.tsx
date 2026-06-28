@@ -36,6 +36,9 @@ import { readTipsGroup, writeTipsGroup } from '../lib/tipsGroup'
 import { useServerClock } from '../lib/useServerClock'
 import { GroupTipForm } from './mytips/GroupTipForm'
 import { useHashScroll } from '../hooks/useHashScroll'
+import { useIsMobile } from '../hooks/useIsMobile'
+import { MobileGroupEntry } from './mytips/MobileGroupEntry'
+import type { PredictionInput, StandingsInput } from './mytips/types'
 
 /**
  * My Tips (UC-5/6) — a group-level prediction form. Round tabs pick a round;
@@ -52,6 +55,7 @@ export function MyTipsPage() {
   const { groupId: groupParam } = useParams<{ groupId?: string }>()
   const navigate = useNavigate()
   const location = useLocation()
+  const isMobile = useIsMobile()
   const [selectedRound, setSelectedRound] = useState<Round | null>(null)
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
 
@@ -264,6 +268,32 @@ export function MyTipsPage() {
     refetchMe({ requestPolicy: 'network-only' })
   }
 
+  // One submit path for both desktop and mobile. Autosave (lock=false) skips
+  // the `me` refetch so typing is never interrupted; finalize (lock=true)
+  // refetches so the locked/read-only state re-seeds from the server.
+  const saveGroup = async (
+    groupId: string,
+    predictions: PredictionInput[],
+    standings: StandingsInput | null,
+    lock: boolean,
+  ) => {
+    const res = await submitGroup({ groupId, predictions, standings, lock })
+    if (lock) await refetchMe({ requestPolicy: 'network-only' })
+    return res
+  }
+
+  const selectGroup = (groupId: string) => {
+    setSelectedGroupId(groupId)
+    navigate(`/mytips/${groupId}`)
+  }
+
+  const useMobileEntry =
+    isMobile &&
+    isGroupStage &&
+    !me.isResultUser &&
+    roundLeaves.length > 0 &&
+    activeGroupId !== null
+
   return (
     <section className="page">
       <h2>{t('myTipsTitle')}</h2>
@@ -293,12 +323,28 @@ export function MyTipsPage() {
           navigate(nodeId ? `/mytips/${nodeId}` : '/mytips')
         }}
         selectedGroupId={activeGroupId}
-        onSelectGroup={(groupId) => {
-          setSelectedGroupId(groupId)
-          navigate(`/mytips/${groupId}`)
-        }}
+        onSelectGroup={selectGroup}
       />
-      {shownGroups.length > 0 ? (
+      {useMobileEntry ? (
+        <MobileGroupEntry
+          tournament={tournament}
+          groups={roundLeaves}
+          activeGroupId={activeGroupId}
+          onSelectGroup={selectGroup}
+          me={me}
+          results={results}
+          pointsByGame={pointsByGame}
+          standingsByGroup={standingsByGroup}
+          serverNowMs={serverNowMs}
+          onExpire={refetchAll}
+          onAutosave={(groupId, predictions, standings) =>
+            saveGroup(groupId, predictions, standings, false)
+          }
+          onFinalize={(groupId, predictions, standings) =>
+            saveGroup(groupId, predictions, standings, true)
+          }
+        />
+      ) : shownGroups.length > 0 ? (
         shownGroups.map((group) => {
           // Remount the form when this group's locked state flips, so a
           // successful Lock re-seeds the form from the refetched `me` (the
