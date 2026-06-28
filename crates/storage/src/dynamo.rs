@@ -19,6 +19,7 @@
 //! | Pool | `<t>#POOL` | `<poolId>` | JSON |
 //! | Invite | `<t>#INVITE` | `<code>` | JSON |
 //! | Scoreboard | `<t>#SCOREBOARD` | `#` | JSON |
+//! | ReminderMarker | `<t>#REMINDER` | `<key>` | `true` |
 //!
 //! Players additionally store a bare numeric `version` attribute so that a
 //! DynamoDB conditional expression (`version = :v`) can guard `put_player`
@@ -715,5 +716,17 @@ impl Repository for DynamoRepository {
         }
 
         Ok(results)
+    }
+
+    // ── Reminder dedup markers ───────────────────────────────────────────────
+
+    async fn put_reminder_marker(&self, key: &str) -> anyhow::Result<()> {
+        let pk = format!("{}#REMINDER", self.t());
+        self.put_item_simple(&pk, key, &true).await
+    }
+
+    async fn reminder_marker_exists(&self, key: &str) -> anyhow::Result<bool> {
+        let pk = format!("{}#REMINDER", self.t());
+        Ok(self.get_item::<bool>(&pk, key).await?.is_some())
     }
 }

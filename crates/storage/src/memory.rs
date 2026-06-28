@@ -23,6 +23,8 @@ struct Inner {
     /// Keyed `"<provider>#<provider_id>"` → `Identity`.
     identities: HashMap<String, Identity>,
     persons: HashMap<String, Person>,
+    /// Reminder-dedup marker keys (see `mail::select`).
+    reminder_markers: std::collections::HashSet<String>,
 }
 
 /// Mutex-wrapped in-memory store. Cheap to clone (all clones share the inner
@@ -232,5 +234,35 @@ impl Repository for InMemoryRepository {
             .filter(|i| i.person_id == person_id)
             .cloned()
             .collect())
+    }
+
+    async fn put_reminder_marker(&self, key: &str) -> anyhow::Result<()> {
+        let mut inner = self.inner.lock().unwrap();
+        inner.reminder_markers.insert(key.to_owned());
+        Ok(())
+    }
+
+    async fn reminder_marker_exists(&self, key: &str) -> anyhow::Result<bool> {
+        let inner = self.inner.lock().unwrap();
+        Ok(inner.reminder_markers.contains(key))
+    }
+}
+
+#[cfg(test)]
+mod reminder_marker_tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn marker_absent_then_present_and_idempotent() {
+        let repo = InMemoryRepository::new();
+        let key = "person-x|A|1h"; // per-person key shape (no pool)
+        assert!(!repo.reminder_marker_exists(key).await.unwrap());
+        repo.put_reminder_marker(key).await.unwrap();
+        assert!(repo.reminder_marker_exists(key).await.unwrap());
+        // idempotent
+        repo.put_reminder_marker(key).await.unwrap();
+        assert!(repo.reminder_marker_exists(key).await.unwrap());
+        // distinct key unaffected
+        assert!(!repo.reminder_marker_exists("other").await.unwrap());
     }
 }
