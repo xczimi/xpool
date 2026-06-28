@@ -82,6 +82,19 @@ admin-side exclude: simplest v1 form is an env/config list of `person_id`s
 skipped inside `pending_players`/the digest loop (a stored per-person preference
 can come later).
 
+**R4a — From / Reply-To (the opt-out destination).** The "reply to opt out" line
+above only works if replies reach a human, so:
+- **From = `pool@xczimi.com`** — the address Auth0 already sends from: established,
+  monitored (xczimi.com receives via Google Workspace), and DKIM/SPF-aligned on
+  the verified SES domain. Change the default in Task 5 `from_address()` and the
+  Task 10 `var.mail_from` default from `xpool@xczimi.com` → **`pool@xczimi.com`**.
+- **Reply-To defaults to the From** (`pool@xczimi.com`), but make it overridable:
+  add a `MAIL_REPLY_TO` env (`MailSender` sets a `reply_to` when present) — SES via
+  `EmailContent`'s `reply_to_addresses`, lettre via `.reply_to(..)`. Add a
+  `var.reminder_reply_to` (default empty → falls back to From) wired into the
+  reminder Lambda env in Task 10. This lets the opt-out inbox be repointed without
+  a code change.
+
 **R5 — Digest timezone, documented.** Task 10
 `aws_scheduler_schedule.reminder_digest`: keep `America/Los_Angeles`, but add a
 comment — midnight LA sits a few hours before the earliest NA kickoff, so the
