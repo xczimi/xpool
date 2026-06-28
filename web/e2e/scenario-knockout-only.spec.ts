@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test, expect, type Page } from '@playwright/test'
 import { devLogin, expectNoErrorView, watchNetwork } from './helpers'
+import { e2eTableFile } from './ports'
 
 /**
  * Knockout-only scoreboard, end to end. Seed the `balanced` scenario (full
@@ -56,8 +57,8 @@ async function setClock(page: Page, gameId: string, phase: 'before' | 'during' |
 
 test.beforeAll(() => {
   // Seed the `balanced` scenario into the same table the live stack booted
-  // (its name is written by the e2e stack script to web/.e2e-table).
-  const table = readFileSync(resolve(repoRoot, 'web/.e2e-table'), 'utf8').trim()
+  // (its name is written by scripts/e2e-stack.sh to web/.e2e-table.<api-port>).
+  const table = readFileSync(resolve(repoRoot, e2eTableFile()), 'utf8').trim()
   execFileSync('cargo', ['run', '-p', 'xtask', '--', 'scenario', 'balanced'], {
     cwd: repoRoot,
     stdio: 'inherit',

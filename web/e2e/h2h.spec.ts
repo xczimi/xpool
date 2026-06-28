@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test, expect, type Page } from '@playwright/test'
 import { devLogin, expectNoErrorView, watchNetwork } from './helpers'
+import { e2eTableFile } from './ports'
 
 /**
  * Head-to-head end to end. Seeds the `balanced` scenario, logs in, clocks past
@@ -70,7 +71,7 @@ async function polylineYs(page: Page, nth: number): Promise<number[]> {
 }
 
 function xtableEnv() {
-  const table = readFileSync(resolve(repoRoot, 'web/.e2e-table'), 'utf8').trim()
+  const table = readFileSync(resolve(repoRoot, e2eTableFile()), 'utf8').trim()
   return {
     ...process.env,
     XPOOL_TABLE: table,
