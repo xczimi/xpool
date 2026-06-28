@@ -6,6 +6,17 @@
 # Mirrors bin/deploy-api. Code is decoupled from tofu
 # (module.reminder_lambda has ignore_source_code_hash = true); this is the only
 # thing that ships new reminder-Lambda code.
+#
+# FIRST-TIME bootstrap order (the function must exist before this can update it,
+# and tofu's first apply needs the zip on disk because create_package = false):
+#   1. cargo lambda build -p api --bin reminder --release --arm64 \
+#        --features lambda --output-format zip   # produces target/lambda/reminder/bootstrap.zip
+#   2. bin/deploy-infra <env>                    # creates the Lambda shell from that zip
+#                                                # (triggers stay off: var.reminder_enabled=false)
+#   3. bin/deploy-reminder <env>                 # ships code (this script; also rebuilds the zip)
+# Thereafter only step 3 is needed to ship new code. Arm the automated heartbeat
+# separately by setting reminder_enabled = true in infrastructure/env/<env>.tfvars
+# and re-running bin/deploy-infra — only after the R1 activation gate is met.
 set -euo pipefail
 
 ENV="${1:-dev}"

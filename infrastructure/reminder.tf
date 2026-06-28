@@ -1,6 +1,13 @@
 # Scheduled deadline-reminder Lambda (the reminder heartbeat) + its two
 # EventBridge triggers. Code is shipped out-of-band by bin/deploy-reminder
 # (like the api Lambda); tofu manages the function shell + schedules only.
+#
+# Activation gate (plan R1): the Lambda *shell* is always created, but the two
+# automated triggers are gated behind var.reminder_enabled (default false). So a
+# routine `bin/deploy [dev|prod]` (which runs `infra` by default) provisions the
+# function WITHOUT arming the email heartbeat — apply, then `aws lambda invoke`
+# it by hand to validate, and only flip reminder_enabled = true once the R1 gate
+# is met. This makes "merge ≠ activate" an enforced invariant, not a promise.
 
 variable "reminder_lambda_package_path" {
   description = "Path to the reminder cargo-lambda zip artifact, relative to infrastructure/."
@@ -36,6 +43,12 @@ variable "reminder_reply_to" {
   description = "Reply-To for reminder emails (the opt-out destination). Empty -> the mail crate falls back to the From address; set to repoint replies without a code change."
   type        = string
   default     = ""
+}
+
+variable "reminder_enabled" {
+  description = "Arm the two automated EventBridge triggers (R1 activation gate). false (default) provisions only the Lambda shell — no scheduled sends. Set true per-env in tfvars once the R1 gate is met."
+  type        = bool
+  default     = false
 }
 
 module "reminder_lambda" {
@@ -77,9 +90,13 @@ module "reminder_lambda" {
   policy_statements = {
     dynamodb = {
       effect = "Allow"
+      # The reminder sweep is read + marker-write only: GetItem/Query/Scan to
+      # resolve players/identities/tournament, PutItem for dedup markers. No
+      # UpdateItem/BatchGetItem (the storage crate never calls them) and no
+      # DeleteItem/BatchWriteItem — narrower than the api Lambda by design.
       actions = [
-        "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem",
-        "dynamodb:Query", "dynamodb:Scan", "dynamodb:BatchGetItem",
+        "dynamodb:GetItem", "dynamodb:PutItem",
+        "dynamodb:Query", "dynamodb:Scan",
         "dynamodb:DescribeTable",
       ]
       resources = [module.dynamodb.dynamodb_table_arn]
@@ -95,24 +112,28 @@ module "reminder_lambda" {
 }
 
 # ── Trigger A: last-call every 30 minutes (EventBridge Rules) ────────────────
+# Gated by var.reminder_enabled (R1): no rule/target/permission until armed.
 resource "aws_cloudwatch_event_rule" "reminder_last_call" {
+  count               = var.reminder_enabled ? 1 : 0
   name                = "xpool-reminder-last-call-${var.environment}"
   description         = "Last-call deadline reminder sweep (every 30 minutes)."
   schedule_expression = var.reminder_last_call_schedule
 }
 
 resource "aws_cloudwatch_event_target" "reminder_last_call" {
-  rule  = aws_cloudwatch_event_rule.reminder_last_call.name
+  count = var.reminder_enabled ? 1 : 0
+  rule  = aws_cloudwatch_event_rule.reminder_last_call[0].name
   arn   = module.reminder_lambda.lambda_function_arn
   input = jsonencode({ mode = "last_call" })
 }
 
 resource "aws_lambda_permission" "reminder_last_call" {
+  count         = var.reminder_enabled ? 1 : 0
   statement_id  = "AllowEventBridgeLastCall"
   action        = "lambda:InvokeFunction"
   function_name = module.reminder_lambda.lambda_function_name
   principal     = "events.amazonaws.com"
-  source_arn    = aws_cloudwatch_event_rule.reminder_last_call.arn
+  source_arn    = aws_cloudwatch_event_rule.reminder_last_call[0].arn
 }
 
 # ── Trigger B: daily matchday digest (EventBridge Scheduler, LA timezone) ────
@@ -121,7 +142,8 @@ resource "aws_lambda_permission" "reminder_last_call" {
 # deadlines regardless of the recipient's timezone. A named TZ is DST-aware
 # (PDT during the tournament) — never a hard-coded UTC offset.
 resource "aws_iam_role" "reminder_scheduler" {
-  name = "xpool-reminder-scheduler-${var.environment}"
+  count = var.reminder_enabled ? 1 : 0
+  name  = "xpool-reminder-scheduler-${var.environment}"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -133,8 +155,9 @@ resource "aws_iam_role" "reminder_scheduler" {
 }
 
 resource "aws_iam_role_policy" "reminder_scheduler_invoke" {
-  name = "invoke-reminder-lambda"
-  role = aws_iam_role.reminder_scheduler.id
+  count = var.reminder_enabled ? 1 : 0
+  name  = "invoke-reminder-lambda"
+  role  = aws_iam_role.reminder_scheduler[0].id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -146,7 +169,8 @@ resource "aws_iam_role_policy" "reminder_scheduler_invoke" {
 }
 
 resource "aws_scheduler_schedule" "reminder_digest" {
-  name = "xpool-reminder-digest-${var.environment}"
+  count = var.reminder_enabled ? 1 : 0
+  name  = "xpool-reminder-digest-${var.environment}"
 
   flexible_time_window {
     mode = "OFF"
@@ -157,7 +181,7 @@ resource "aws_scheduler_schedule" "reminder_digest" {
 
   target {
     arn      = module.reminder_lambda.lambda_function_arn
-    role_arn = aws_iam_role.reminder_scheduler.arn
+    role_arn = aws_iam_role.reminder_scheduler[0].arn
     input    = jsonencode({ mode = "digest" })
   }
 }
