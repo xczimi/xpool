@@ -1,6 +1,6 @@
 # Better access to your own player-detail page
 
-Status: needs-triage
+Status: done (shipped via backlog-parallel-build round 1, merged to master; verified in git 2026-06-27)
 Area: web
 
 ## Idea

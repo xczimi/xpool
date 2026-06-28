@@ -1,6 +1,6 @@
 # Prediction stats on the match page — most common scoreline, etc.
 
-Status: needs-triage
+Status: done (shipped via backlog-parallel-build round 1, merged to master; verified in git 2026-06-27)
 Area: web (+ possibly api)
 
 ## Idea
