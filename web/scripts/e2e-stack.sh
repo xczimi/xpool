@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 #
-# Boots an ISOLATED xpool stack for the Playwright E2E suite, on its OWN ports
-# (API :3001, DynamoDB :8001) so it never collides with — or tears down — a
-# running dev session (API :3000, DynamoDB :8000, Vite :5173). Vite (:5174) is
-# owned by Playwright's webServer. Delegates infra + seed to bin/local-stack
-# (shared with bin/local-dev), then starts the API detached with a PID file so
-# globalTeardown can stop it. A fresh unique table per run isolates runs;
-# bin/local-stack seeds it because a brand-new table is always empty.
+# Boots an ISOLATED xpool stack for the Playwright E2E suite. The API port is
+# DYNAMIC (XPOOL_E2E_API_PORT, decided per run by e2e/run-e2e.mjs; falls back to
+# :3001) and the Vite web port is dynamic too (XPOOL_E2E_WEB_PORT, fallback
+# :5174). DynamoDB stays on the shared isolated :8001 container. This never
+# collides with — or tears down — a running dev session (API :3000, DynamoDB
+# :8000, Vite :5173). Per-run state files (PID/log/table) are namespaced by the
+# API port so multiple e2e runs can run concurrently without clobbering each
+# other. Delegates infra + seed to bin/local-stack (shared with bin/local-dev),
+# then starts the API detached with a PID file so globalTeardown can stop it.
+# A fresh unique table per run isolates runs; bin/local-stack seeds it because a
+# brand-new table is always empty.
 #
 # Run from anywhere — paths resolve relative to the repo root.
 set -euo pipefail
@@ -16,8 +20,9 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 cd "$REPO_ROOT"
 source "$REPO_ROOT/bin/lib.sh"
 
-# Dedicated e2e ports — distinct from the dev stack so the two coexist.
-API_PORT=3001
+# Per-run dynamic e2e ports — distinct from the dev stack so the two coexist.
+API_PORT="${XPOOL_E2E_API_PORT:-3001}"
+WEB_PORT="${XPOOL_E2E_WEB_PORT:-5174}"
 export XPOOL_PORT="$API_PORT"
 export DYNAMO_ENDPOINT="http://localhost:8001"
 export AWS_REGION="${AWS_REGION:-us-east-1}"
@@ -30,12 +35,17 @@ export XPOOL_COMPOSE_PROFILE=e2e
 export XPOOL_COMPOSE_SERVICES="dynamodb-e2e mailhog"
 
 # Invite links the API builds must point at the e2e web port, not dev's :5173.
-export XPOOL_PUBLIC_ORIGIN="${XPOOL_PUBLIC_ORIGIN:-http://localhost:5174}"
+export XPOOL_PUBLIC_ORIGIN="${XPOOL_PUBLIC_ORIGIN:-http://localhost:${WEB_PORT}}"
 
 # A fresh table per run; teardown drops it. (DynamoDB Local is in-memory and the
-# container is long-lived, so the table name must be unique.)
-export XPOOL_TABLE="xpool-e2e-$(date +%s)"
-echo "$XPOOL_TABLE" > "$REPO_ROOT/web/.e2e-table"
+# container is long-lived, so the table name must be unique.) The pid ($$) +
+# $RANDOM suffix keeps it unique even for runs that start in the same second.
+export XPOOL_TABLE="xpool-e2e-$(date +%s)-$$-${RANDOM}"
+
+# Per-run state files, namespaced by the (dynamic) API port so concurrent runs
+# never clobber each other's pid/log/table bookkeeping.
+TABLE_FILE="$REPO_ROOT/web/.e2e-table.${API_PORT}"
+echo "$XPOOL_TABLE" > "$TABLE_FILE"
 
 # Pin the API clock mid-tournament so the seeded fixture is "live"; tests
 # override per-request via X-Dev-Now. Auth: local JWT issuer + HMAC secret.
@@ -56,8 +66,8 @@ export THESPORTSDB_API_KEY=""
 # live score" under their groups stay green.
 export XPOOL_LIVE_SCORES="${XPOOL_LIVE_SCORES:-2461105=1:0:2H}"
 
-PID_FILE="$REPO_ROOT/web/.e2e-api.pid"
-API_LOG="$REPO_ROOT/web/.e2e-api.log"
+PID_FILE="$REPO_ROOT/web/.e2e-api.${API_PORT}.pid"
+API_LOG="$REPO_ROOT/web/.e2e-api.${API_PORT}.log"
 log() { echo "[e2e-stack] $*"; }
 log "using fresh table $XPOOL_TABLE"
 log "API clock (XPOOL_NOW) = $XPOOL_NOW"
@@ -65,8 +75,8 @@ log "API clock (XPOOL_NOW) = $XPOOL_NOW"
 # ── infra + seed via the shared primitive ────────────────────────────────────
 "$REPO_ROOT/bin/local-stack"
 
-# ── stop any stale *e2e* API on :3001 only — never touch dev's :3000. Vite is
-#    owned by Playwright. ───────────────────────────────────────────────────────
+# ── stop any stale process on THIS run's dynamic API port only — never touch
+#    dev's :3000. Vite is owned by Playwright. ─────────────────────────────────
 kill_port "$API_PORT"
 sleep 1
 stale="$(port_pids "$API_PORT")"
