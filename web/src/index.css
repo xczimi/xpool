@@ -1610,3 +1610,73 @@ button.danger:hover:not(:disabled) {
 .match-grid th.what-if-col {
   white-space: nowrap;
 }
+
+/* === player-analytics: timeline chart === */
+.points-timeline { margin: 16px 0; max-width: 520px; }
+.points-timeline figcaption {
+  font-family: 'VT323', monospace;
+  color: var(--accent-bright);
+  margin-bottom: 4px;
+}
+.points-timeline svg { width: 100%; height: auto; display: block; }
+.points-timeline .pt-axis { stroke: var(--border); stroke-width: 1; }
+.points-timeline .pt-line { stroke-width: 2; }
+.points-timeline .pt-xlabel {
+  fill: var(--muted);
+  font-size: 11px;
+  font-family: 'VT323', monospace;
+}
+.pt-legend { list-style: none; display: flex; gap: 16px; padding: 0; margin: 8px 0 0; }
+.pt-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink);
+  font-family: 'VT323', monospace;
+}
+.pt-swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+/* --- end timeline chart --- */
+
+/* === player-analytics: head-to-head === */
+.h2h-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 12px 0;
+  max-width: 520px;
+}
+.h2h-stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.h2h-stat-value {
+  font-family: 'VT323', monospace;
+  font-size: 28px;
+  color: var(--accent-bright);
+}
+.h2h-stat-rank,
+.h2h-stat-label { color: var(--muted); font-family: 'VT323', monospace; }
+.h2h-delta-table td:last-child,
+.h2h-delta-table th:last-child { text-align: right; }
+.h2h-round-select {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  margin: 8px 0;
+  color: var(--ink);
+}
+.h2h-match-table .h2h-hidden { color: var(--muted); }
+.h2h-no-diffs { color: var(--muted); font-family: 'VT323', monospace; }
+/* --- end head-to-head --- */
+
+/* === player-analytics: h2h picker === */
+.h2h-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 16px;
+  flex-wrap: wrap;
+}
+.h2h-picker-label { color: var(--muted); font-family: 'VT323', monospace; }
+.h2h-picker-vs { color: var(--accent); font-family: 'VT323', monospace; }
+.h2h-picker-go { font-family: 'VT323', monospace; }
+.h2h-picker-go:disabled { opacity: 0.5; cursor: not-allowed; }
+/* --- end h2h picker --- */

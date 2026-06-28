@@ -21,6 +21,7 @@ import { pollIntervalMs } from '../lib/polling'
 import { readyRounds, roundLabel, ROUND_ORDER, STAGE_MULTIPLIERS } from '../lib/rounds'
 import { PoolSelector } from '../pools/PoolSelector'
 import { useSelectedPool } from '../pools/useSelectedPool'
+import { H2HPicker } from '../components/H2HPicker'
 import { effectiveSelectedPool } from '../lib/selectedPool'
 
 type ScoreboardMode = 'overall' | 'knockout'
@@ -103,6 +104,7 @@ export function ScoreboardPage({ mode = 'overall' }: { mode?: ScoreboardMode }) 
 
       <ScoreboardModeToggle />
       <PoolSelector pools={pools} />
+      <H2HPicker entries={ranked} />
 
       <table className="data-table">
         <thead>

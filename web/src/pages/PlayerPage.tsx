@@ -30,6 +30,10 @@ import { PlayerHeader } from './player/PlayerHeader'
 import { PlayerTodaySlice } from './player/PlayerTodaySlice'
 import { PlayerPerfects } from './player/PlayerPerfects'
 import { PlayerRounds } from './player/PlayerRounds'
+import { PointsTimelineChart } from '../components/PointsTimelineChart'
+import { TIMELINE_COLORS } from '../components/timelineColors'
+import { cumulativeSeries } from '../lib/cumulativePoints'
+import { ROUND_ORDER, readyRounds, roundLabel } from '../lib/rounds'
 
 /**
  * One participant's complete tournament view (consumer #3). Read-only,
@@ -145,6 +149,11 @@ export function PlayerPage() {
     )
   }
 
+  // x-axis rounds = the canonical order filtered to rounds whose teams are
+  // known (server-derived; no Date.now()). `tournament` is non-null here.
+  const ready = readyRounds(tournament.groups, tournament.games)
+  const timelineRounds = ROUND_ORDER.filter((r) => ready.has(r))
+
   return (
     <section className="page player-page">
       <h2>{shownEntry.nick}</h2>
@@ -153,7 +162,23 @@ export function PlayerPage() {
           <Link to="/profile">{t('playerProfileLink')}</Link>
         </p>
       )}
+      {!isOwn && myId && (
+        <p className="player-profile-link">
+          <Link to={`/h2h/${myId}/${id}`}>{t('h2hCompareWithMe')}</Link>
+        </p>
+      )}
       <PlayerHeader entry={shownEntry} rank={rank} />
+      <PointsTimelineChart
+        title={t('timelineTitle')}
+        xLabels={timelineRounds.map((r) => roundLabel(r, t))}
+        series={[
+          {
+            label: shownEntry.nick,
+            color: TIMELINE_COLORS[0],
+            points: cumulativeSeries(shownEntry, timelineRounds),
+          },
+        ]}
+      />
       <PlayerTodaySlice
         playerId={id}
         tournament={tournament}
