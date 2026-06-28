@@ -31,7 +31,10 @@ much, and exactly which matches decided it.
 
 - **Two players only** this round: `/h2h/:a/:b` with clean aliases (not UUIDs, per [[prefer-clean-url-aliases-over-uuids]]).
 - **Data:** reuse existing per-player scoreboard data client-side where possible; add a resolver only if the data shape forces it.
-- **Entry points — both:** pick two from the scoreboard, and a link from a player page.
+- **Entry points — player-centric (revised 2026-06-27 after review):** the comparison is
+  anchored to a player page, not a generic scoreboard picker. On `/me` it reads "Compare me
+  with…"; on `/player/:playerId` the same picker works from THAT player's POV ("Compare
+  <nick> with…"). The Scoreboard "pick two" picker is removed.
 - **Pool-scoped** comparison.
 - Show points + positions, total delta, and a per-match breakdown where predictions/points differ. Respect tip-gating.
 - Companion to [[player-points-timeline-chart]] (overlay both players' trajectories).

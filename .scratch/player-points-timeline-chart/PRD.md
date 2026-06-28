@@ -33,9 +33,26 @@ the [[timeline-schedule]] date-ordered framing.
 - **Hand-rolled SVG** (`<polyline>`, ~5–10KB) — no charting library. Fits the project's
   lean / no-deps philosophy and the existing hand-rolled SVG pattern (`BrandIcon.tsx`).
 - **Cumulative points trajectory** first; position/rank trajectory deferred.
-- **x-axis by round** (matches `SCOREBOARD_QUERY` stage granularity); calendar-date deferred.
-- **Compute client-side** from the existing `SCOREBOARD_QUERY` stages (running totals) —
-  **no new resolver**.
 - **Overlay support** so [[head-to-head-players]] can plot both players on one chart.
 - Honour the server-authoritative clock — **no `Date.now()`**.
 - Cluster: `cluster/player-analytics` (Wave 1).
+
+## REVISION (2026-06-27, after review — flat-line fix + scoreboard chart)
+
+The first build used an **x-axis by round computed client-side** from `SCOREBOARD_QUERY`
+stages. During the group stage all points sit in the single `GROUP_STAGE` bucket, so the
+cumulative line was **flat for everyone**. Revised:
+
+- **x-axis is GAME-BY-GAME (chronological by kickoff)** so the line climbs as each match is
+  scored — supersedes the by-round axis.
+- **New pool-scoped resolver** `pointsTimeline(pool)` returns each player's per-game
+  cumulative points over resulted games up to the server "now" (computed via a pure,
+  unit-tested domain helper; resolver does no domain logic). Supersedes the
+  "no resolver / client-side by round" decision (which caused the flat line).
+- **Player page:** the page-owner's trajectory ONLY (a single line — no other players
+  unless it's an H2H comparison); the player's **current standing stays prominent** ("around
+  now"). 
+- **Scoreboard:** a new **all-pool-members trajectory** overlay (one line per player in the
+  selected pool).
+- **H2H:** the two players' game-by-game lines (the surface where the flat line was reported).
+- The old by-round reducer (`web/src/lib/cumulativePoints.ts`) is superseded/removed.

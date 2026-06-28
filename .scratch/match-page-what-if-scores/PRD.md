@@ -38,3 +38,17 @@ live scoreline by one goal and re-scores on the spot.
 - **Client-side:** reuse the already-loaded, gated tip rows and run the existing scoring rules in the browser — **no new resolver**.
 - Respect tip-visibility gating (only once revealable; same gate as [[match-page-prediction-stats]]).
 - Cluster: `cluster/match-page` (Wave 1).
+
+## Follow-up (2026-06-27, after review): name the actual teams
+
+- The what-if column headers must use the **actual team (flag + code, as configured)** via
+  the existing `TeamLabel` component, not generic "home" / "away".
+- Headers become "If ⟨TeamLabel home⟩ scores" / "If ⟨TeamLabel away⟩ scores", respecting
+  the user's display-mode setting (flag+code vs name).
+- i18n: split `ifHomeScores`/`ifAwayScores` into a prefix/suffix pair (or a `{team}` token)
+  so the team renders inline AND HU word order works ("Ha ⟨team⟩ gólt szerez"). EN+HU.
+- Update `web/e2e/match-page-what-if.spec.ts` to assert the header shows the team code.
+- Files: `web/src/pages/MatchPage.tsx` (headers ~280-284), `web/src/i18n/strings.ts`,
+  maybe `web/src/index.css` (column may widen).
+- **Sequenced AFTER the timeline rework** — same worktree (`backlog-parallel-build`), so it
+  can't run concurrently with that agent.

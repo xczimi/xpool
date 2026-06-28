@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test, expect } from '@playwright/test'
 import { devLogin, expectNoErrorView, watchNetwork } from './helpers'
+import { e2eTableFile } from './ports'
 
 /**
  * Per-prediction earned points, end to end (prediction-points-on-tips). We seed
@@ -25,8 +26,8 @@ const AFTER_TOURNAMENT = '2026-07-20T00:00:00Z'
 
 test.beforeAll(() => {
   // Seed the `balanced` scenario into the table the live stack booted (its name
-  // is written by scripts/e2e-stack.sh to web/.e2e-table).
-  const table = readFileSync(resolve(repoRoot, 'web/.e2e-table'), 'utf8').trim()
+  // is written by scripts/e2e-stack.sh to the per-run web/.e2e-table.<api-port>).
+  const table = readFileSync(resolve(repoRoot, e2eTableFile()), 'utf8').trim()
   execFileSync('cargo', ['run', '-p', 'xtask', '--', 'scenario', 'balanced'], {
     cwd: repoRoot,
     stdio: 'inherit',

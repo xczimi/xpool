@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "e2e": "playwright test"
+    "e2e": "node e2e/run-e2e.mjs"
   },
   "dependencies": {
     "@auth0/auth0-react": "^2.17.0",

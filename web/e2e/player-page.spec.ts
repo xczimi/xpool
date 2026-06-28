@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { test, expect, type Page } from '@playwright/test'
 import { devLogin, expectNoErrorView, watchNetwork } from './helpers'
+import { e2eTableFile } from './ports'
 
 /**
  * Player-detail page (#3) end to end. Seeds the `balanced` scenario (full demo
@@ -46,7 +47,7 @@ async function lastGameIndex(page: Page): Promise<number> {
 }
 
 test.beforeAll(() => {
-  const table = readFileSync(resolve(repoRoot, 'web/.e2e-table'), 'utf8').trim()
+  const table = readFileSync(resolve(repoRoot, e2eTableFile()), 'utf8').trim()
   execFileSync('cargo', ['run', '-p', 'xtask', '--', 'scenario', 'balanced'], {
     cwd: repoRoot,
     stdio: 'inherit',

@@ -37,10 +37,14 @@ cargo fmt
 - `npm run lint` — eslint
 - `npm run e2e` — Playwright suite; **boots the whole live stack itself**
   (docker, import, seed, API) via `e2e/global-setup.ts`. The `e2e/` specs are
-  not type-checked by `tsc -b`. The e2e stack runs on its **own ports** (API
-  `:3001`, Vite `:5174`, isolated DynamoDB `:8001` via the `e2e` compose
-  profile), so it **coexists** with a running `npm run dev` / `bin/local-dev` session
-  — it never hijacks or tears those down. See `.specs/TESTING.md` §2.
+  not type-checked by `tsc -b`. The e2e stack runs on its **own ports** — the
+  API and Vite ports are **dynamic per run** (allocated by `e2e/run-e2e.mjs`;
+  legacy fixed fallback `:3001` / `:5174` for a bare `playwright test`), and
+  DynamoDB is the isolated `:8001` container (shared, isolated per run by a
+  unique table) via the `e2e` compose profile. So it **coexists** with a running
+  `npm run dev` / `bin/local-dev` session — never hijacking or tearing those down
+  — and **multiple e2e runs can run concurrently** (each gets its own ports,
+  per-run state files, and table). See `.specs/TESTING.md` §2.
 
 ### Running locally (the full stack)
 
