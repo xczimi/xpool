@@ -12,6 +12,7 @@ pub struct RenderedReminder {
 }
 
 /// Context for the hourly last-call nudge. No pool — predictions are per-player.
+#[derive(Debug)]
 pub struct LastCallContext {
     pub group_name: String,
     /// The leaf group/match id — used for the My Tips deep link + anchor.
@@ -22,6 +23,7 @@ pub struct LastCallContext {
 }
 
 /// One line of the daily digest.
+#[derive(Debug)]
 pub struct DigestItem {
     pub group_name: String,
     pub group_id: String,
@@ -29,6 +31,7 @@ pub struct DigestItem {
 }
 
 /// Context for the daily matchday digest. No pool.
+#[derive(Debug)]
 pub struct DigestContext {
     pub day: NaiveDate,
     pub origin: String,
@@ -75,6 +78,10 @@ pub fn render_last_call(ctx: &LastCallContext) -> RenderedReminder {
 
 /// The daily matchday digest email.
 pub fn render_digest(ctx: &DigestContext) -> RenderedReminder {
+    debug_assert!(
+        !ctx.groups.is_empty(),
+        "render_digest expects non-empty groups; the sweep skips empty digests"
+    );
     let subject = format!(
         "Today's matches ({day}) — predictions to finish / Mai meccsek ({day})",
         day = ctx.day
@@ -110,7 +117,7 @@ pub fn render_digest(ctx: &DigestContext) -> RenderedReminder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use chrono::{TimeZone, Utc};
+    use chrono::TimeZone;
 
     #[test]
     fn mytips_link_targets_the_group_route_and_anchor() {
