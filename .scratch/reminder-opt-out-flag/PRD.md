@@ -52,7 +52,7 @@ untouched, and (ideally) the user flips it themselves.
 
 ## Migration note
 
-`REDACTED` (player REDACTED) was opted out the manual way 2026-06-29
-(verified_email blanked on both identities). When this ships, restore that
+One recipient was opted out the manual way on 2026-06-29 (their `verified_email`
+was blanked on both of their identities). When this ships, restore that
 `verified_email` and set the opt-out flag instead, so login/linking is normal.
 See the SES-reminders opt-out decision and `xtask clear-verified-email`.
