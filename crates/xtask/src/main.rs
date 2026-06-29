@@ -76,14 +76,16 @@ enum Command {
     },
     /// Reconcile xpool games against TheSportsDB and print proposed
     /// `M# -> idEvent` mappings. Read-only by default: prints a table for the
-    /// human to paste into `tournaments/fwc26.json`. With `--apply` it also
-    /// writes the matched `external_id`s onto the stored games in place
-    /// (non-destructive — resolved knockout team slots are preserved, so it is
-    /// safe to run mid-tournament as later rounds resolve). Requires
-    /// THESPORTSDB_API_KEY.
+    /// human to paste into `tournaments/fwc26.json`. With `--apply` it writes,
+    /// in place and non-destructively: the matched `external_id`s on every game,
+    /// and the real `kickoff` on **knockout** games (broadcast scheduling shifts
+    /// those after the draw, breaking the live-score window + the per-match
+    /// lock). Resolved knockout team slots are preserved, so it is safe to run
+    /// mid-tournament and is idempotent — re-run it as rounds resolve or times
+    /// move. Requires THESPORTSDB_API_KEY.
     ReconcileEvents {
-        /// Write the matched `external_id`s to the table. Without this flag the
-        /// command reports only.
+        /// Write the matched `external_id`s + corrected knockout kickoffs to the
+        /// table. Without this flag the command reports only.
         #[arg(long)]
         apply: bool,
     },
@@ -220,12 +222,20 @@ async fn main() -> anyhow::Result<()> {
                 unresolved_teams.join(", ")
             );
             if apply {
-                let (next, changed) = xtask::reconcile::apply_external_ids(&tournament, &matched);
+                let (next, report) = xtask::reconcile::apply_matches(&tournament, &matched);
+                for c in &report.kickoff_changes {
+                    println!("# kickoff {}: {} -> {}", c.game_id, c.from, c.to);
+                }
                 repo.put_tournament(&next).await?;
-                println!("# Applied: wrote {changed} external_id(s) to the table (idempotent).");
                 println!(
-                    "# Also paste the mappings above into tournaments/fwc26.json so they \
-                     survive a future re-import."
+                    "# Applied: wrote {} external_id(s) and corrected {} knockout kickoff(s) \
+                     in the table (idempotent).",
+                    report.external_id_changed,
+                    report.kickoff_changes.len()
+                );
+                println!(
+                    "# Also paste the mappings + corrected kickoffs into tournaments/fwc26.json \
+                     so they survive a future re-import."
                 );
             } else {
                 println!(
