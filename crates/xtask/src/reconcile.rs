@@ -7,11 +7,14 @@ use domain::Tournament;
 use sportsdb::{Event, TeamRow};
 use std::collections::HashMap;
 
-/// One proposed mapping row.
+/// One proposed mapping row: our game aligned to a SportsDB event, carrying the
+/// event's real kickoff so `--apply` can correct broadcast-shifted times.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Match {
     pub game_id: String,
     pub id_event: String,
+    /// The matched event's kickoff (from `strTimestamp`/`dateEvent`), if known.
+    pub event_kickoff: Option<DateTime<Utc>>,
 }
 
 /// The outcome of a reconcile pass — matches plus games we could not align.
@@ -107,8 +110,14 @@ pub fn reconcile(
 ) -> Report {
     fn event_kickoff(e: &Event) -> Option<DateTime<Utc>> {
         if let Some(ts) = &e.str_timestamp {
+            // TheSportsDB `strTimestamp` is UTC but usually carries NO offset
+            // (e.g. "2026-06-29T17:00:00"), which RFC3339 rejects. Try RFC3339
+            // first (in case an offset form appears), then a naive UTC datetime.
             if let Ok(dt) = DateTime::parse_from_rfc3339(ts) {
                 return Some(dt.with_timezone(&Utc));
+            }
+            if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(ts, "%Y-%m-%dT%H:%M:%S") {
+                return Some(DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc));
             }
         }
         chrono::NaiveDate::parse_from_str(&e.date_event, "%Y-%m-%d")
@@ -161,9 +170,10 @@ pub fn reconcile(
                     })
             });
         match hit {
-            Some((e, _)) => report.matched.push(Match {
+            Some((e, k)) => report.matched.push(Match {
                 game_id: g.game_id.clone(),
                 id_event: e.id_event.clone(),
+                event_kickoff: *k,
             }),
             None => report.unmatched_games.push(g.game_id.clone()),
         }
@@ -171,25 +181,66 @@ pub fn reconcile(
     report
 }
 
-/// Set each matched game's `external_id` to its proposed `idEvent` (immutable:
-/// returns a new tournament, leaving `t` untouched). Only games whose stored
-/// `external_id` differs from the proposal are changed — every other field,
-/// notably resolved knockout `team_id`s written by the post-result recompute,
-/// is preserved. So `reconcile-events --apply` is safe to run mid-tournament
-/// (no destructive re-import) and idempotent. Returns the new tournament and
-/// how many games changed.
-pub fn apply_external_ids(t: &Tournament, matched: &[Match]) -> (Tournament, usize) {
+/// One corrected kickoff: a knockout game whose stored time was wrong.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KickoffChange {
+    pub game_id: String,
+    pub from: DateTime<Utc>,
+    pub to: DateTime<Utc>,
+}
+
+/// What `apply_matches` changed.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct ApplyReport {
+    pub external_id_changed: usize,
+    pub kickoff_changes: Vec<KickoffChange>,
+}
+
+/// Align each matched game to its SportsDB event (immutable: returns a new
+/// tournament, leaving `t` untouched):
+///
+/// - **`external_id`** is set on every matched game whose stored value differs
+///   (group games already carry theirs, so it is a no-op for them).
+/// - **`kickoff`** is corrected from the event's real timestamp, but **only for
+///   knockout games** — broadcast scheduling shifts knockout kickoffs after the
+///   bracket is drawn, and a wrong stored kickoff breaks both the live-score
+///   window and the per-match prediction lock. Group-stage times are already
+///   played out, so they are left untouched to keep the blast radius small.
+///
+/// Every other field — notably the resolved knockout `team_id`s the post-result
+/// recompute writes — is preserved, so this is safe to run mid-tournament and is
+/// idempotent. Returns the new tournament and a report of what changed.
+pub fn apply_matches(t: &Tournament, matched: &[Match]) -> (Tournament, ApplyReport) {
     let mut next = t.clone();
-    let mut changed = 0usize;
+    let mut report = ApplyReport::default();
     for m in matched {
+        // Read knockout-ness from the untouched input (groups never change).
+        let is_knockout = t
+            .games
+            .get(&m.game_id)
+            .and_then(|g| t.groups.get(&g.group_id))
+            .is_some_and(|grp| grp.round != domain::Round::GroupStage);
+
         if let Some(game) = next.games.get_mut(&m.game_id) {
             if game.external_id.as_deref() != Some(m.id_event.as_str()) {
                 game.external_id = Some(m.id_event.clone());
-                changed += 1;
+                report.external_id_changed += 1;
+            }
+            if is_knockout {
+                if let Some(real) = m.event_kickoff {
+                    if game.kickoff != real {
+                        report.kickoff_changes.push(KickoffChange {
+                            game_id: m.game_id.clone(),
+                            from: game.kickoff,
+                            to: real,
+                        });
+                        game.kickoff = real;
+                    }
+                }
             }
         }
     }
-    (next, changed)
+    (next, report)
 }
 
 #[cfg(test)]
@@ -233,10 +284,38 @@ mod tests {
             report.matched,
             vec![Match {
                 game_id: "M5".into(),
-                id_event: "2461106".into()
+                id_event: "2461106".into(),
+                // No str_timestamp on the event → kickoff falls back to dateEvent midnight.
+                event_kickoff: Some(kickoff("2026-06-15T00:00:00+00:00")),
             }]
         );
         assert!(report.unmatched_games.is_empty());
+    }
+
+    #[test]
+    fn matched_kickoff_parses_offsetless_timestamp_as_utc() {
+        // TheSportsDB strTimestamp has no zone ("2026-06-29T17:00:00"); it must
+        // be read as 17:00 UTC, not silently dropped to dateEvent midnight.
+        let mut e = ev("2499835", "2026-06-29", "10", "20");
+        e.str_timestamp = Some("2026-06-29T17:00:00".into());
+        let team_ext: HashMap<String, String> = [
+            ("BRA".to_string(), "10".to_string()),
+            ("JPN".to_string(), "20".to_string()),
+        ]
+        .into_iter()
+        .collect();
+        // Our stored kickoff is 8h off — still within the 2-day match tolerance.
+        let games = vec![GameStub {
+            game_id: "M76".into(),
+            kickoff: kickoff("2026-06-30T01:00:00+00:00"),
+            home_team_id: Some("BRA".into()),
+            away_team_id: Some("JPN".into()),
+        }];
+        let report = reconcile(&games, &team_ext, &[e]);
+        assert_eq!(
+            report.matched[0].event_kickoff,
+            Some(kickoff("2026-06-29T17:00:00+00:00"))
+        );
     }
 
     #[test]
@@ -326,18 +405,18 @@ mod tests {
         assert_eq!(resolved.get("SWE"), Some(&"999".to_string()));
     }
 
-    // apply_external_ids tests
+    // apply_matches tests
 
-    use domain::{SingleGame, TeamSlot};
+    use domain::{GroupChildren, GroupGame, LockMode, Round, SingleGame, TeamSlot};
 
-    /// A knockout game with resolved teams (as the post-result recompute leaves
-    /// it) and the given external_id.
-    fn ko_game(id: &str, ext: Option<&str>) -> SingleGame {
+    /// A game in `group_id` with resolved teams (as the post-result recompute
+    /// leaves a knockout game), kicking off `2026-06-28T19:00:00Z`.
+    fn game_in(id: &str, group_id: &str, ext: Option<&str>) -> SingleGame {
         SingleGame {
             id: id.into(),
-            kickoff: "2026-06-28T19:00:00Z".parse().unwrap(),
+            kickoff: kickoff("2026-06-28T19:00:00+00:00"),
             venue: None,
-            group_id: format!("KO-{id}"),
+            group_id: group_id.into(),
             home: TeamSlot {
                 team_id: Some("ARG".into()),
                 description: "2A".into(),
@@ -350,26 +429,47 @@ mod tests {
         }
     }
 
-    fn tournament_with(games: Vec<SingleGame>) -> Tournament {
+    fn one_game_group(id: &str, round: Round, game_id: &str) -> GroupGame {
+        GroupGame {
+            id: id.into(),
+            name: id.into(),
+            parent: Some("root".into()),
+            round,
+            lock_mode: LockMode::LockPerMatch,
+            carries_standings: false,
+            children: GroupChildren::Games(vec![game_id.into()]),
+        }
+    }
+
+    /// A one-game tournament whose single game sits in a group of the given round.
+    fn tournament_of(round: Round, game: SingleGame) -> Tournament {
+        let grp = one_game_group(&game.group_id.clone(), round, &game.id.clone());
         Tournament {
             root: "root".into(),
-            groups: HashMap::new(),
-            games: games.into_iter().map(|g| (g.id.clone(), g)).collect(),
+            groups: HashMap::from([(grp.id.clone(), grp)]),
+            games: HashMap::from([(game.id.clone(), game)]),
             teams: HashMap::new(),
+        }
+    }
+
+    fn match_of(game_id: &str, id_event: &str, event_kickoff: Option<DateTime<Utc>>) -> Match {
+        Match {
+            game_id: game_id.into(),
+            id_event: id_event.into(),
+            event_kickoff,
         }
     }
 
     #[test]
     fn apply_sets_external_id_and_preserves_resolved_teams() {
-        let t = tournament_with(vec![ko_game("M73", None)]);
-        let matched = vec![Match {
-            game_id: "M73".into(),
-            id_event: "2499618".into(),
-        }];
+        let t = tournament_of(Round::R32, game_in("M73", "KO-M73", None));
+        // event_kickoff None → isolate the external_id behaviour.
+        let matched = vec![match_of("M73", "2499618", None)];
 
-        let (next, changed) = apply_external_ids(&t, &matched);
+        let (next, report) = apply_matches(&t, &matched);
 
-        assert_eq!(changed, 1);
+        assert_eq!(report.external_id_changed, 1);
+        assert!(report.kickoff_changes.is_empty());
         let g = &next.games["M73"];
         assert_eq!(g.external_id, Some("2499618".to_string()));
         // The resolved knockout teams must survive untouched.
@@ -380,38 +480,77 @@ mod tests {
     }
 
     #[test]
-    fn apply_is_idempotent_noop_when_already_set() {
-        let t = tournament_with(vec![ko_game("M73", Some("2499618"))]);
-        let matched = vec![Match {
-            game_id: "M73".into(),
-            id_event: "2499618".into(),
-        }];
+    fn apply_is_idempotent_noop_when_already_aligned() {
+        let g = game_in("M73", "KO-M73", Some("2499618"));
+        let stored_kickoff = g.kickoff;
+        let t = tournament_of(Round::R32, g);
+        // Same id, same kickoff → nothing to change.
+        let matched = vec![match_of("M73", "2499618", Some(stored_kickoff))];
 
-        let (next, changed) = apply_external_ids(&t, &matched);
+        let (next, report) = apply_matches(&t, &matched);
 
-        assert_eq!(changed, 0, "re-applying the same id must be a no-op");
+        assert_eq!(report.external_id_changed, 0, "same id must be a no-op");
+        assert!(
+            report.kickoff_changes.is_empty(),
+            "same kickoff must be a no-op"
+        );
         assert_eq!(next.games["M73"].external_id, Some("2499618".to_string()));
     }
 
     #[test]
     fn apply_overwrites_a_changed_id_and_ignores_unknown_games() {
-        let t = tournament_with(vec![ko_game("M73", Some("old"))]);
+        let t = tournament_of(Round::R32, game_in("M73", "KO-M73", Some("old")));
         let matched = vec![
-            Match {
-                game_id: "M73".into(),
-                id_event: "2499618".into(),
-            },
+            match_of("M73", "2499618", None),
             // A game id not present in the tournament is silently skipped.
-            Match {
-                game_id: "M999".into(),
-                id_event: "1".into(),
-            },
+            match_of("M999", "1", None),
         ];
 
-        let (next, changed) = apply_external_ids(&t, &matched);
+        let (next, report) = apply_matches(&t, &matched);
 
-        assert_eq!(changed, 1);
+        assert_eq!(report.external_id_changed, 1);
         assert_eq!(next.games["M73"].external_id, Some("2499618".to_string()));
         assert!(!next.games.contains_key("M999"));
+    }
+
+    #[test]
+    fn apply_corrects_a_broadcast_shifted_knockout_kickoff() {
+        let t = tournament_of(Round::R32, game_in("M76", "KO-M76", Some("2499835")));
+        // Real kickoff is 8h earlier than what we stored (the broadcast shift).
+        let real = kickoff("2026-06-29T17:00:00+00:00");
+        let matched = vec![match_of("M76", "2499835", Some(real))];
+
+        let (next, report) = apply_matches(&t, &matched);
+
+        assert_eq!(report.external_id_changed, 0, "id already correct");
+        assert_eq!(report.kickoff_changes.len(), 1);
+        let change = &report.kickoff_changes[0];
+        assert_eq!(change.game_id, "M76");
+        assert_eq!(change.from, kickoff("2026-06-28T19:00:00+00:00"));
+        assert_eq!(change.to, real);
+        assert_eq!(next.games["M76"].kickoff, real);
+        // Immutability: the input keeps its original kickoff.
+        assert_eq!(t.games["M76"].kickoff, kickoff("2026-06-28T19:00:00+00:00"));
+    }
+
+    #[test]
+    fn apply_leaves_group_stage_kickoffs_untouched() {
+        // A group-stage game whose stored kickoff differs from the event's — the
+        // sync must NOT touch it (group stage is already played out).
+        let t = tournament_of(Round::GroupStage, game_in("M1", "A", Some("2391728")));
+        let other = kickoff("2026-06-11T22:00:00+00:00");
+        let matched = vec![match_of("M1", "2391728", Some(other))];
+
+        let (next, report) = apply_matches(&t, &matched);
+
+        assert!(
+            report.kickoff_changes.is_empty(),
+            "group-stage kickoff must not be synced"
+        );
+        assert_eq!(
+            next.games["M1"].kickoff,
+            kickoff("2026-06-28T19:00:00+00:00"),
+            "group-stage kickoff unchanged"
+        );
     }
 }
