@@ -3,6 +3,7 @@
 //! does the fetching + writing.
 
 use chrono::{DateTime, Utc};
+use domain::Tournament;
 use sportsdb::{Event, TeamRow};
 use std::collections::HashMap;
 
@@ -170,6 +171,27 @@ pub fn reconcile(
     report
 }
 
+/// Set each matched game's `external_id` to its proposed `idEvent` (immutable:
+/// returns a new tournament, leaving `t` untouched). Only games whose stored
+/// `external_id` differs from the proposal are changed — every other field,
+/// notably resolved knockout `team_id`s written by the post-result recompute,
+/// is preserved. So `reconcile-events --apply` is safe to run mid-tournament
+/// (no destructive re-import) and idempotent. Returns the new tournament and
+/// how many games changed.
+pub fn apply_external_ids(t: &Tournament, matched: &[Match]) -> (Tournament, usize) {
+    let mut next = t.clone();
+    let mut changed = 0usize;
+    for m in matched {
+        if let Some(game) = next.games.get_mut(&m.game_id) {
+            if game.external_id.as_deref() != Some(m.id_event.as_str()) {
+                game.external_id = Some(m.id_event.clone());
+                changed += 1;
+            }
+        }
+    }
+    (next, changed)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -302,5 +324,94 @@ mod tests {
         )];
         let (resolved, _) = resolve_team_ids(&our, &rows);
         assert_eq!(resolved.get("SWE"), Some(&"999".to_string()));
+    }
+
+    // apply_external_ids tests
+
+    use domain::{SingleGame, TeamSlot};
+
+    /// A knockout game with resolved teams (as the post-result recompute leaves
+    /// it) and the given external_id.
+    fn ko_game(id: &str, ext: Option<&str>) -> SingleGame {
+        SingleGame {
+            id: id.into(),
+            kickoff: "2026-06-28T19:00:00Z".parse().unwrap(),
+            venue: None,
+            group_id: format!("KO-{id}"),
+            home: TeamSlot {
+                team_id: Some("ARG".into()),
+                description: "2A".into(),
+            },
+            away: TeamSlot {
+                team_id: Some("BRA".into()),
+                description: "2B".into(),
+            },
+            external_id: ext.map(|s| s.into()),
+        }
+    }
+
+    fn tournament_with(games: Vec<SingleGame>) -> Tournament {
+        Tournament {
+            root: "root".into(),
+            groups: HashMap::new(),
+            games: games.into_iter().map(|g| (g.id.clone(), g)).collect(),
+            teams: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn apply_sets_external_id_and_preserves_resolved_teams() {
+        let t = tournament_with(vec![ko_game("M73", None)]);
+        let matched = vec![Match {
+            game_id: "M73".into(),
+            id_event: "2499618".into(),
+        }];
+
+        let (next, changed) = apply_external_ids(&t, &matched);
+
+        assert_eq!(changed, 1);
+        let g = &next.games["M73"];
+        assert_eq!(g.external_id, Some("2499618".to_string()));
+        // The resolved knockout teams must survive untouched.
+        assert_eq!(g.home.team_id, Some("ARG".to_string()));
+        assert_eq!(g.away.team_id, Some("BRA".to_string()));
+        // Input tournament is not mutated (immutability).
+        assert_eq!(t.games["M73"].external_id, None);
+    }
+
+    #[test]
+    fn apply_is_idempotent_noop_when_already_set() {
+        let t = tournament_with(vec![ko_game("M73", Some("2499618"))]);
+        let matched = vec![Match {
+            game_id: "M73".into(),
+            id_event: "2499618".into(),
+        }];
+
+        let (next, changed) = apply_external_ids(&t, &matched);
+
+        assert_eq!(changed, 0, "re-applying the same id must be a no-op");
+        assert_eq!(next.games["M73"].external_id, Some("2499618".to_string()));
+    }
+
+    #[test]
+    fn apply_overwrites_a_changed_id_and_ignores_unknown_games() {
+        let t = tournament_with(vec![ko_game("M73", Some("old"))]);
+        let matched = vec![
+            Match {
+                game_id: "M73".into(),
+                id_event: "2499618".into(),
+            },
+            // A game id not present in the tournament is silently skipped.
+            Match {
+                game_id: "M999".into(),
+                id_event: "1".into(),
+            },
+        ];
+
+        let (next, changed) = apply_external_ids(&t, &matched);
+
+        assert_eq!(changed, 1);
+        assert_eq!(next.games["M73"].external_id, Some("2499618".to_string()));
+        assert!(!next.games.contains_key("M999"));
     }
 }
