@@ -73,7 +73,12 @@ The feature **never blocks manual entry**: any failure (no key, SportsDB down, u
 
 ## Known follow-ups (not blockers)
 
-- **Knockout fixtures (M73–M104) are unmapped** (`external_id` null) — TheSportsDB hasn't published them and our slots are still placeholders. When they appear: re-run `cargo run -p xtask -- reconcile-events` (against a table with current data), backfill the new ids into `tournaments/fwc26.json`, commit, and `bin/deploy <env> data`.
+- **Knockout fixtures are mapped per round, as their teams resolve.** A knockout game only reconciles once its team slots are filled (by the post-result recompute) *and* TheSportsDB has published the fixture. So this is a **recurring chore through the knockout stage**, one round at a time. R32 (M73–M88) was backfilled 2026-06-29; R16/QF/SF/3rd/Final (M89–M104) follow as each round resolves. Procedure per round:
+  1. `bin/xtask --env prod reconcile-events` — read-only; review the new `M# → idEvent` rows and the `# Unmatched` list (later rounds stay unmatched until played).
+  2. `bin/xtask --env prod reconcile-events --apply` — writes the new `external_id`s **in place** (`reconcile::apply_external_ids`): non-destructive, idempotent, and it **preserves the resolved knockout `team_id` slots**. Repeat for `dev`.
+  3. Paste the same rows into `tournaments/fwc26.json` and commit, so a future re-import keeps them.
+
+  **Do NOT use `bin/deploy <env> data` (re-import) for this mid-tournament** — it `put_tournament`s the fixture wholesale and would reset the resolved knockout `team_id` slots to `null` until the next recompute. `--apply` exists precisely to avoid that. (No api/spa redeploy is needed either: the resolver reads `external_id` from the table per request.)
 - **Team aliases:** three name aliases (`Turkiye→Turkey`, `Czechia→Czech Republic`, `Bosnia…→Bosnia-Herzegovina`) plus diacritic folding resolve the full group roster. If a live reconcile prints `# Unresolved teams (N>0)`, add the alias in `crates/xtask/src/reconcile.rs` and re-run.
 - **No UI status marker** — by decision, the pre-fill shows no source/finality badge; the admin judges finality by watching the match (see the design doc). Don't add one.
 - **#2 live-preview** (provisional points during a match) reuses the same `sportsdb` crate + `ReportedResult` type — a separate future spec.
