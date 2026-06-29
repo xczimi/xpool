@@ -4,6 +4,7 @@
 //! without the CLI shell.
 
 pub mod cleanup_thirds;
+pub mod clear_email;
 pub mod dto;
 pub mod export;
 pub mod migrate_gh;

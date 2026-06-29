@@ -74,6 +74,18 @@ enum Command {
         #[arg(long)]
         apply: bool,
     },
+    /// Manual reminder opt-out: blank the `verified_email` on every Identity
+    /// carrying `<email>`, so the deadline-reminder sweep skips that recipient
+    /// (there is no opt-out flag). Safe — login resolves by (provider,
+    /// provider_id), not this field. Idempotent; a read-only report unless
+    /// `--apply`.
+    ClearVerifiedEmail {
+        /// The address to remove from reminder delivery (exact match).
+        email: String,
+        /// Write the change. Without this flag the command reports only.
+        #[arg(long)]
+        apply: bool,
+    },
     /// Reconcile xpool games against TheSportsDB and print proposed
     /// `M# -> idEvent` mappings. Read-only by default: prints a table for the
     /// human to paste into `tournaments/fwc26.json`. With `--apply` it writes,
@@ -169,6 +181,10 @@ async fn main() -> anyhow::Result<()> {
         Command::CleanupBestThirds { apply } => {
             let report = xtask::cleanup_thirds::run(&repo, apply).await?;
             report.print(apply);
+        }
+        Command::ClearVerifiedEmail { email, apply } => {
+            let report = xtask::clear_email::run(&repo, &email, apply).await?;
+            report.print();
         }
         Command::ReconcileEvents { apply } => {
             let client = sportsdb::SportsDb::from_env()
