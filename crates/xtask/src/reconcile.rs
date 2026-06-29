@@ -110,8 +110,14 @@ pub fn reconcile(
 ) -> Report {
     fn event_kickoff(e: &Event) -> Option<DateTime<Utc>> {
         if let Some(ts) = &e.str_timestamp {
+            // TheSportsDB `strTimestamp` is UTC but usually carries NO offset
+            // (e.g. "2026-06-29T17:00:00"), which RFC3339 rejects. Try RFC3339
+            // first (in case an offset form appears), then a naive UTC datetime.
             if let Ok(dt) = DateTime::parse_from_rfc3339(ts) {
                 return Some(dt.with_timezone(&Utc));
+            }
+            if let Ok(naive) = chrono::NaiveDateTime::parse_from_str(ts, "%Y-%m-%dT%H:%M:%S") {
+                return Some(DateTime::<Utc>::from_naive_utc_and_offset(naive, Utc));
             }
         }
         chrono::NaiveDate::parse_from_str(&e.date_event, "%Y-%m-%d")
@@ -284,6 +290,32 @@ mod tests {
             }]
         );
         assert!(report.unmatched_games.is_empty());
+    }
+
+    #[test]
+    fn matched_kickoff_parses_offsetless_timestamp_as_utc() {
+        // TheSportsDB strTimestamp has no zone ("2026-06-29T17:00:00"); it must
+        // be read as 17:00 UTC, not silently dropped to dateEvent midnight.
+        let mut e = ev("2499835", "2026-06-29", "10", "20");
+        e.str_timestamp = Some("2026-06-29T17:00:00".into());
+        let team_ext: HashMap<String, String> = [
+            ("BRA".to_string(), "10".to_string()),
+            ("JPN".to_string(), "20".to_string()),
+        ]
+        .into_iter()
+        .collect();
+        // Our stored kickoff is 8h off — still within the 2-day match tolerance.
+        let games = vec![GameStub {
+            game_id: "M76".into(),
+            kickoff: kickoff("2026-06-30T01:00:00+00:00"),
+            home_team_id: Some("BRA".into()),
+            away_team_id: Some("JPN".into()),
+        }];
+        let report = reconcile(&games, &team_ext, &[e]);
+        assert_eq!(
+            report.matched[0].event_kickoff,
+            Some(kickoff("2026-06-29T17:00:00+00:00"))
+        );
     }
 
     #[test]
