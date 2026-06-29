@@ -2230,7 +2230,7 @@
     },
     {
       "id": "M74",
-      "kickoff": "2026-06-29T17:00:00Z",
+      "kickoff": "2026-06-29T20:30:00Z",
       "venue": "Gillette Stadium, Boston",
       "group_id": "KO-M74",
       "home": {
@@ -2245,7 +2245,7 @@
     },
     {
       "id": "M75",
-      "kickoff": "2026-06-29T20:30:00Z",
+      "kickoff": "2026-06-30T01:00:00Z",
       "venue": "Estadio BBVA, Monterrey",
       "group_id": "KO-M75",
       "home": {
@@ -2260,7 +2260,7 @@
     },
     {
       "id": "M76",
-      "kickoff": "2026-06-30T01:00:00Z",
+      "kickoff": "2026-06-29T17:00:00Z",
       "venue": "NRG Stadium, Houston",
       "group_id": "KO-M76",
       "home": {
@@ -2275,7 +2275,7 @@
     },
     {
       "id": "M77",
-      "kickoff": "2026-06-30T17:00:00Z",
+      "kickoff": "2026-06-30T21:00:00Z",
       "venue": "MetLife Stadium, New York",
       "group_id": "KO-M77",
       "home": {
@@ -2290,7 +2290,7 @@
     },
     {
       "id": "M78",
-      "kickoff": "2026-06-30T21:00:00Z",
+      "kickoff": "2026-06-30T17:00:00Z",
       "venue": "AT&T Stadium, Dallas",
       "group_id": "KO-M78",
       "home": {
@@ -2335,7 +2335,7 @@
     },
     {
       "id": "M81",
-      "kickoff": "2026-07-01T20:00:00Z",
+      "kickoff": "2026-07-02T00:00:00Z",
       "venue": "Levi's Stadium, San Francisco",
       "group_id": "KO-M81",
       "home": {
@@ -2350,7 +2350,7 @@
     },
     {
       "id": "M82",
-      "kickoff": "2026-07-02T00:00:00Z",
+      "kickoff": "2026-07-01T20:00:00Z",
       "venue": "Lumen Field, Seattle",
       "group_id": "KO-M82",
       "home": {
@@ -2365,7 +2365,7 @@
     },
     {
       "id": "M83",
-      "kickoff": "2026-07-02T19:00:00Z",
+      "kickoff": "2026-07-02T23:00:00Z",
       "venue": "BMO Field, Toronto",
       "group_id": "KO-M83",
       "home": {
@@ -2380,7 +2380,7 @@
     },
     {
       "id": "M84",
-      "kickoff": "2026-07-02T23:00:00Z",
+      "kickoff": "2026-07-02T19:00:00Z",
       "venue": "SoFi Stadium, Los Angeles",
       "group_id": "KO-M84",
       "home": {
@@ -2410,7 +2410,7 @@
     },
     {
       "id": "M86",
-      "kickoff": "2026-07-03T18:00:00Z",
+      "kickoff": "2026-07-03T22:00:00Z",
       "venue": "Hard Rock Stadium, Miami",
       "group_id": "KO-M86",
       "home": {
@@ -2425,7 +2425,7 @@
     },
     {
       "id": "M87",
-      "kickoff": "2026-07-03T22:00:00Z",
+      "kickoff": "2026-07-04T01:30:00Z",
       "venue": "Arrowhead Stadium, Kansas City",
       "group_id": "KO-M87",
       "home": {
@@ -2440,7 +2440,7 @@
     },
     {
       "id": "M88",
-      "kickoff": "2026-07-04T01:30:00Z",
+      "kickoff": "2026-07-03T18:00:00Z",
       "venue": "AT&T Stadium, Dallas",
       "group_id": "KO-M88",
       "home": {
