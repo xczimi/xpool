@@ -75,9 +75,18 @@ enum Command {
         apply: bool,
     },
     /// Reconcile xpool games against TheSportsDB and print proposed
-    /// `M# -> idEvent` mappings. Read-only: prints a table for the human to
-    /// paste into `tournaments/fwc26.json`. Requires THESPORTSDB_API_KEY.
-    ReconcileEvents,
+    /// `M# -> idEvent` mappings. Read-only by default: prints a table for the
+    /// human to paste into `tournaments/fwc26.json`. With `--apply` it also
+    /// writes the matched `external_id`s onto the stored games in place
+    /// (non-destructive — resolved knockout team slots are preserved, so it is
+    /// safe to run mid-tournament as later rounds resolve). Requires
+    /// THESPORTSDB_API_KEY.
+    ReconcileEvents {
+        /// Write the matched `external_id`s to the table. Without this flag the
+        /// command reports only.
+        #[arg(long)]
+        apply: bool,
+    },
     /// Run a deadline-reminder sweep against the configured table + mail
     /// transport (local: MailHog SMTP). Honours XPOOL_NOW. This is how the
     /// scheduled Lambda path is exercised locally.
@@ -159,7 +168,7 @@ async fn main() -> anyhow::Result<()> {
             let report = xtask::cleanup_thirds::run(&repo, apply).await?;
             report.print(apply);
         }
-        Command::ReconcileEvents => {
+        Command::ReconcileEvents { apply } => {
             let client = sportsdb::SportsDb::from_env()
                 .ok_or_else(|| anyhow::anyhow!("THESPORTSDB_API_KEY not set"))?;
             let tournament = repo
@@ -210,7 +219,20 @@ async fn main() -> anyhow::Result<()> {
                 unresolved_teams.len(),
                 unresolved_teams.join(", ")
             );
-            println!("# Review, then set each game's `external_id` in tournaments/fwc26.json.");
+            if apply {
+                let (next, changed) = xtask::reconcile::apply_external_ids(&tournament, &matched);
+                repo.put_tournament(&next).await?;
+                println!("# Applied: wrote {changed} external_id(s) to the table (idempotent).");
+                println!(
+                    "# Also paste the mappings above into tournaments/fwc26.json so they \
+                     survive a future re-import."
+                );
+            } else {
+                println!(
+                    "# Review, then re-run with --apply to write them to the table, and \
+                     paste them into tournaments/fwc26.json."
+                );
+            }
         }
         Command::SendReminders { mode } => {
             let mode_label = mode.clone();
