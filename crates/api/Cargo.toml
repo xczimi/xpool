@@ -3,6 +3,10 @@ name = "api"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+# Two binaries live here (`api` + the `reminder` Lambda), so a bare
+# `cargo run -p api` is ambiguous. Pin the server as the default-run target so
+# `cargo run -p api` (and bin/run-api / bin/local-dev) keep booting the API.
+default-run = "api"
 
 [lib]
 name = "api"
