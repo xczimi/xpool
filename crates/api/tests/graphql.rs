@@ -654,6 +654,52 @@ async fn tips_reveals_after_kickoff_even_if_unlocked() {
 }
 
 #[tokio::test]
+async fn tips_for_knockout_round_gate_each_match_on_its_own_kickoff() {
+    // Knockout leak (Mark's bug report). The SPA queries the *round node* (R32)
+    // for the all-tips grid; R32 spans two matches with staggered kickoffs —
+    // M73 kicked off 2h ago, M74 kicks off in 24h. The node's deadline is the
+    // *earliest* kickoff in its subtree (M73's), so a round-wide deadline would
+    // wrongly open EVERY R32 match the moment the first one starts. Each match
+    // must gate on its OWN kickoff:
+    //   • M74 (not kicked off, viewer has not locked) → Bob's tip stays HIDDEN.
+    //   • M73 (kicked off) → opens to everyone.
+    let repo = seeded_repo_with_knockout_round(Duration::hours(-2), Duration::hours(24)).await;
+    {
+        let mut bob = repo.get_player(BOB).await.unwrap().unwrap();
+        bob.match_predictions.push(locked_pred(KO_EARLY_GAME, 1, 0)); // M73, kicked off
+        bob.match_predictions.push(locked_pred(KO_LATE_GAME, 2, 1)); // M74, future, locked
+        repo.put_player(&bob).await.unwrap();
+    }
+
+    // Alice (viewer) has no predictions and views the whole round.
+    let vars = Variables::from_json(json!({ "g": KO_ROUND }));
+    let resp = run(&repo, TIPS, vars, Some(ALICE)).await;
+    assert!(resp.errors.is_empty(), "{:?}", resp.errors);
+    let tips = data(&resp);
+    let bob_tip = |game: &str| {
+        tips["tips"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|t| t["playerId"] == "bob" && t["gameId"] == game)
+            .unwrap_or_else(|| panic!("no bob tip for {game}"))
+            .clone()
+    };
+
+    assert_eq!(
+        bob_tip(KO_LATE_GAME)["prediction"],
+        json!(null),
+        "a knockout match that has NOT kicked off must stay hidden, even though \
+         an earlier match in the same round has already started"
+    );
+    assert_eq!(
+        bob_tip(KO_EARLY_GAME)["prediction"],
+        json!({ "homeScore": 1, "awayScore": 0 }),
+        "a knockout match that HAS kicked off opens to everyone"
+    );
+}
+
+#[tokio::test]
 async fn tips_always_shows_own_unlocked_prediction() {
     let repo = seeded_repo(Duration::hours(24)).await;
     {

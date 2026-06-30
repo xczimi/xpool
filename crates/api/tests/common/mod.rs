@@ -172,6 +172,123 @@ pub fn tournament_with_knockout(kickoff_offset: Duration) -> Tournament {
     t
 }
 
+/// Round node + per-match group ids for the knockout-round visibility test.
+pub const KO_ROUND: &str = "R32";
+/// The R32 match that has already kicked off in the staggered fixture.
+pub const KO_EARLY_GAME: &str = "M73";
+/// The R32 match that kicks off later (still open) in the staggered fixture.
+pub const KO_LATE_GAME: &str = "M74";
+const KO_EARLY_GROUP: &str = "R32-1";
+const KO_LATE_GROUP: &str = "R32-2";
+
+/// A knockout **round node** (`R32`, `LockTogether`) wrapping two one-match
+/// groups (`LockPerMatch`), each with its own game and **staggered kickoffs**.
+/// Mirrors the production tree shape (round node → one-match groups → games),
+/// which the SPA's all-tips grid queries by the round-node id. Lets a test
+/// exercise per-match deadline gating: the round's deadline (earliest kickoff)
+/// must NOT open a sibling match that has not itself kicked off.
+pub fn tournament_with_knockout_round(early: Duration, late: Duration) -> Tournament {
+    let now = Utc::now();
+    let mut teams = HashMap::new();
+    for t in ["MEX", "RSA", "KOR", "CZE"] {
+        teams.insert(t.to_owned(), team(t));
+    }
+
+    let mk_ko_game = |id: &str, group_id: &str, kickoff: chrono::DateTime<Utc>| SingleGame {
+        id: id.to_owned(),
+        kickoff,
+        venue: None,
+        group_id: group_id.to_owned(),
+        home: TeamSlot {
+            team_id: None,
+            description: "Winner".to_owned(),
+        },
+        away: TeamSlot {
+            team_id: None,
+            description: "Runner-up".to_owned(),
+        },
+        external_id: None,
+    };
+    let mut games = HashMap::new();
+    games.insert(
+        KO_EARLY_GAME.to_owned(),
+        mk_ko_game(KO_EARLY_GAME, KO_EARLY_GROUP, now + early),
+    );
+    games.insert(
+        KO_LATE_GAME.to_owned(),
+        mk_ko_game(KO_LATE_GAME, KO_LATE_GROUP, now + late),
+    );
+
+    let one_match = |id: &str, name: &str, game: &str| GroupGame {
+        id: id.to_owned(),
+        name: name.to_owned(),
+        parent: Some(KO_ROUND.to_owned()),
+        round: Round::R32,
+        lock_mode: LockMode::LockPerMatch,
+        carries_standings: true,
+        children: GroupChildren::Games(vec![game.to_owned()]),
+    };
+    let mut groups = HashMap::new();
+    groups.insert(
+        "ROOT".to_owned(),
+        GroupGame {
+            id: "ROOT".to_owned(),
+            name: "Root".to_owned(),
+            parent: None,
+            round: Round::GroupStage,
+            lock_mode: LockMode::LockTogether,
+            carries_standings: false,
+            children: GroupChildren::Groups(vec![KO_ROUND.to_owned()]),
+        },
+    );
+    groups.insert(
+        KO_ROUND.to_owned(),
+        GroupGame {
+            id: KO_ROUND.to_owned(),
+            name: "Round of 32".to_owned(),
+            parent: Some("ROOT".to_owned()),
+            round: Round::R32,
+            lock_mode: LockMode::LockTogether,
+            carries_standings: false,
+            children: GroupChildren::Groups(vec![
+                KO_EARLY_GROUP.to_owned(),
+                KO_LATE_GROUP.to_owned(),
+            ]),
+        },
+    );
+    groups.insert(
+        KO_EARLY_GROUP.to_owned(),
+        one_match(KO_EARLY_GROUP, "Round of 32 — Match 1", KO_EARLY_GAME),
+    );
+    groups.insert(
+        KO_LATE_GROUP.to_owned(),
+        one_match(KO_LATE_GROUP, "Round of 32 — Match 2", KO_LATE_GAME),
+    );
+
+    Tournament {
+        root: "ROOT".to_owned(),
+        groups,
+        games,
+        teams,
+    }
+}
+
+/// Build an in-memory repo seeded with `tournament_with_knockout_round` +
+/// 3 players (result user, Alice, Bob).
+pub async fn seeded_repo_with_knockout_round(
+    early: Duration,
+    late: Duration,
+) -> Arc<dyn Repository> {
+    let repo = InMemoryRepository::new();
+    repo.put_tournament(&tournament_with_knockout_round(early, late))
+        .await
+        .unwrap();
+    repo.put_player(&player(RESULT_ID, true)).await.unwrap();
+    repo.put_player(&player(ALICE, false)).await.unwrap();
+    repo.put_player(&player(BOB, false)).await.unwrap();
+    Arc::new(repo)
+}
+
 /// Build an in-memory repo seeded with `tournament_with_knockout` + 3 players.
 pub async fn seeded_repo_with_knockout(kickoff_offset: Duration) -> Arc<dyn Repository> {
     let repo = InMemoryRepository::new();

@@ -416,7 +416,6 @@ impl QueryRoot {
 
         let games = tournament.games_in(&group_id);
         let game_ids: Vec<domain::GameId> = games.iter().map(|g| g.id.clone()).collect();
-        let deadline = tournament.deadline(&group_id);
         let now = now(ctx);
 
         // Official results = the result user's predictions. Used to score each
@@ -438,6 +437,13 @@ impl QueryRoot {
             .filter(|p| allowed.as_ref().is_none_or(|m| m.contains(&p.id)))
         {
             for game in &games {
+                // Deadline is PER NODE — the earliest kickoff in the game's own
+                // (one-match, in knockout) group, NOT the queried node's. A
+                // knockout round-node spans many matches with staggered
+                // kickoffs; using the round-wide deadline would open every
+                // sibling tip the moment the first match starts (DATA_MODEL.md
+                // §4/§7). Mirrors the `match` resolver's per-game deadline.
+                let deadline = tournament.deadline(&game.group_id);
                 let result = result_user.and_then(|r| r.match_prediction(&game.id));
                 tips.push(scored_tip(
                     &viewer.id,
