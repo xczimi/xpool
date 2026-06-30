@@ -42,6 +42,7 @@ export function GroupTipForm({
   group,
   me,
   results,
+  resultDrawOrder = [],
   pointsByGame,
   standings,
   serverNowMs,
@@ -54,6 +55,10 @@ export function GroupTipForm({
   me: Player
   /** The result user's locked match predictions — official scores. */
   results: MatchPrediction[]
+  /** The result user's official ordering for this group — breaks a score-tie
+   *  in the RESULT table (e.g. the ET/penalty advancer of a level knockout
+   *  tie). Empty when no official standings prediction exists yet. */
+  resultDrawOrder?: string[]
   /** gameId → earned-points breakdown for the current player (server-computed). */
   pointsByGame?: Map<
     string,
@@ -179,14 +184,21 @@ export function GroupTipForm({
     return applyDrawOrder(ranked, drawOrder)
   }, [games, displayMatches, drawOrder])
 
-  // Actual standings from official results.
+  // Actual standings from official results. A level knockout tie (1-1) leaves
+  // both teams equal on points/GD/goals, so the score-derived order alone would
+  // fall back to home-first; apply the result user's official ordering so the
+  // ✓ marks who actually advanced — the same `ordering` the bracket resolver
+  // reads (DATA_MODEL.md §6).
   const actual = useMemo(
     () =>
-      computeStandings(games, (gameId) => {
-        const r = resultsByGame.get(gameId)
-        return r ? { home: r.homeScore, away: r.awayScore } : null
-      }),
-    [games, resultsByGame],
+      applyDrawOrder(
+        computeStandings(games, (gameId) => {
+          const r = resultsByGame.get(gameId)
+          return r ? { home: r.homeScore, away: r.awayScore } : null
+        }),
+        resultDrawOrder,
+      ),
+    [games, resultsByGame, resultDrawOrder],
   )
 
   const allComplete = games.every((g) => {

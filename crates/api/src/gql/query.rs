@@ -609,6 +609,28 @@ impl QueryRoot {
             .unwrap_or_default())
     }
 
+    /// The result user's *entered* standings predictions — the official group
+    /// orderings, and for a one-match knockout group the ET/penalty advancer
+    /// (`ordering[0]`, `DATA_MODEL.md` §6). Public, like `results`: any client
+    /// overlays the official advancer onto the schedule / tip pages (the
+    /// `results` scores alone can't break a level knockout tie).
+    async fn result_standings(
+        &self,
+        ctx: &Context<'_>,
+    ) -> async_graphql::Result<Vec<StandingsPrediction>> {
+        let players = repo(ctx).list_players().await?;
+        Ok(players
+            .iter()
+            .find(|p| p.is_result_user)
+            .map(|r| {
+                r.standings_predictions
+                    .iter()
+                    .map(StandingsPrediction::from)
+                    .collect()
+            })
+            .unwrap_or_default())
+    }
+
     /// Every player (id, nick) — powers the dev-login picker and the admin
     /// player list (UC-16). Public: the dev auth stub needs it pre-login.
     async fn players(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<PlayerSummary>> {
@@ -1107,6 +1129,44 @@ mod third_place_tests {
         let r = &data["thirdPlaceRanking"];
         assert_eq!(r["complete"], false);
         assert_eq!(r["entries"].as_array().unwrap().len(), 0);
+    }
+
+    #[tokio::test]
+    async fn result_standings_returns_only_the_result_users_orderings() {
+        // The official advancer of a level knockout tie is `ordering[0]` of the
+        // result user's standings prediction for the one-match group. Clients
+        // need it to render who advanced on ET/penalties — `resultStandings`
+        // exposes the result user's orderings (and nobody else's).
+        let repo = InMemoryRepository::new();
+        let mut ru = player("result-user", true, vec![]);
+        ru.standings_predictions = vec![StandingsPrediction {
+            group_id: "KO-M74".into(),
+            ordering: vec!["PAR".into(), "GER".into()],
+            draw_order: vec!["PAR".into(), "GER".into()],
+            locked: true,
+        }];
+        repo.put_player(&ru).await.unwrap();
+        // A normal player's orderings must never leak into the official result.
+        let mut other = player("demo-ada", false, vec![]);
+        other.standings_predictions = vec![StandingsPrediction {
+            group_id: "KO-M74".into(),
+            ordering: vec!["GER".into(), "PAR".into()],
+            draw_order: vec![],
+            locked: true,
+        }];
+        repo.put_player(&other).await.unwrap();
+
+        let data = exec(
+            Arc::new(repo),
+            r#"{ resultStandings { groupId ordering drawOrder locked } }"#,
+        )
+        .await;
+        let rows = data["resultStandings"].as_array().unwrap();
+        assert_eq!(rows.len(), 1, "only the result user's standings");
+        assert_eq!(rows[0]["groupId"], "KO-M74");
+        assert_eq!(rows[0]["ordering"][0], "PAR", "PAR advances on penalties");
+        assert_eq!(rows[0]["drawOrder"][0], "PAR");
+        assert_eq!(rows[0]["locked"], true);
     }
 }
 

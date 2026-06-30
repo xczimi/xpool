@@ -60,6 +60,7 @@ export const ME_QUERY = `
 export const RESULTS_QUERY = `
   query Results {
     results { gameId homeScore awayScore locked }
+    resultStandings { groupId ordering drawOrder locked }
   }
 `
 

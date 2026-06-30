@@ -20,6 +20,7 @@ import type {
   PointsBreakdown,
   ReportedResult,
   Round,
+  StandingsPrediction,
   StandingsScore,
   ThirdPlaceRanking,
   Tip,
@@ -67,7 +68,10 @@ export function MyTipsPage() {
     query: ME_QUERY,
     pause: !label,
   })
-  const [resultsResult] = useQuery<{ results: MatchPrediction[] }>({
+  const [resultsResult] = useQuery<{
+    results: MatchPrediction[]
+    resultStandings: StandingsPrediction[]
+  }>({
     query: RESULTS_QUERY,
   })
   const [, submitGroup] = useMutation(SUBMIT_GROUP_MUTATION)
@@ -95,6 +99,19 @@ export function MyTipsPage() {
   const officialThirds = officialThirdsResult.data?.thirdPlaceRanking ?? null
 
   const results = resultsResult.data?.results ?? []
+
+  // The result user's official group orderings → the advancer of a level
+  // knockout tie (`ordering[0]`). Keyed by group so the RESULT standings table
+  // can break a score-tie the same way the bracket resolver does (a 1-1 draw
+  // ties both teams, so without this the table falls back to home-first). Prefer
+  // the manual `drawOrder`, falling back to `ordering` when it is unset.
+  const resultDrawOrders = useMemo(() => {
+    const map = new Map<string, string[]>()
+    for (const sp of resultsResult.data?.resultStandings ?? []) {
+      map.set(sp.groupId, sp.drawOrder.length > 0 ? sp.drawOrder : sp.ordering)
+    }
+    return map
+  }, [resultsResult.data?.resultStandings])
 
   const teams = useMemo(
     () => teamIndex(tournament?.teams ?? [], locale),
@@ -365,6 +382,7 @@ export function MyTipsPage() {
               group={group}
               me={me}
               results={results}
+              resultDrawOrder={resultDrawOrders.get(group.id) ?? []}
               pointsByGame={pointsByGame}
               standings={standingsByGroup.get(group.id) ?? null}
               serverNowMs={serverNowMs}
