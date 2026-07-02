@@ -86,6 +86,22 @@ enum Command {
         #[arg(long)]
         apply: bool,
     },
+    /// Clear the `locked` flag on a single locked match prediction so it can be
+    /// re-entered. Official results are the result-user's locked predictions, and
+    /// `submitGroup` refuses to overwrite a locked one — so a wrong locked result
+    /// has no in-app fix. This unlocks exactly one game (default player:
+    /// `result-user`); the score is left untouched for the admin to re-enter via
+    /// the normal flow. Idempotent; a read-only report unless `--apply`.
+    Unlock {
+        /// The game id whose prediction to unlock (e.g. `M84`).
+        game: String,
+        /// Player whose prediction to unlock. Defaults to the result-user.
+        #[arg(long, default_value = "result-user")]
+        player: String,
+        /// Write the change. Without this flag the command reports only.
+        #[arg(long)]
+        apply: bool,
+    },
     /// Reconcile xpool games against TheSportsDB and print proposed
     /// `M# -> idEvent` mappings. Read-only by default: prints a table for the
     /// human to paste into `tournaments/fwc26.json`. With `--apply` it writes,
@@ -184,6 +200,14 @@ async fn main() -> anyhow::Result<()> {
         }
         Command::ClearVerifiedEmail { email, apply } => {
             let report = xtask::clear_email::run(&repo, &email, apply).await?;
+            report.print();
+        }
+        Command::Unlock {
+            game,
+            player,
+            apply,
+        } => {
+            let report = xtask::unlock::run(&repo, &player, &game, apply).await?;
             report.print();
         }
         Command::ReconcileEvents { apply } => {

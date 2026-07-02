@@ -12,6 +12,7 @@ pub mod reconcile;
 pub mod scenario;
 pub mod seed;
 pub mod snapshot;
+pub mod unlock;
 pub mod validate;
 
 use anyhow::Context;
