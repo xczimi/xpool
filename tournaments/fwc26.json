@@ -2455,7 +2455,7 @@
     },
     {
       "id": "M89",
-      "kickoff": "2026-07-04T17:00:00Z",
+      "kickoff": "2026-07-04T21:00:00Z",
       "venue": "Lincoln Financial Field, Philadelphia",
       "group_id": "KO-M89",
       "home": {
@@ -2466,11 +2466,11 @@
         "team_id": null,
         "description": "Winner M77"
       },
-      "external_id": null
+      "external_id": "2505624"
     },
     {
       "id": "M90",
-      "kickoff": "2026-07-04T21:00:00Z",
+      "kickoff": "2026-07-04T17:00:00Z",
       "venue": "NRG Stadium, Houston",
       "group_id": "KO-M90",
       "home": {
@@ -2481,7 +2481,7 @@
         "team_id": null,
         "description": "Winner M75"
       },
-      "external_id": null
+      "external_id": "2505183"
     },
     {
       "id": "M91",
@@ -2496,7 +2496,7 @@
         "team_id": null,
         "description": "Winner M78"
       },
-      "external_id": null
+      "external_id": "2505462"
     },
     {
       "id": "M92",
@@ -2511,7 +2511,7 @@
         "team_id": null,
         "description": "Winner M80"
       },
-      "external_id": null
+      "external_id": "2507706"
     },
     {
       "id": "M93",
@@ -2526,7 +2526,7 @@
         "team_id": null,
         "description": "Winner M84"
       },
-      "external_id": null
+      "external_id": "2511721"
     },
     {
       "id": "M94",
@@ -2541,7 +2541,7 @@
         "team_id": null,
         "description": "Winner M82"
       },
-      "external_id": null
+      "external_id": "2507707"
     },
     {
       "id": "M95",
@@ -2556,7 +2556,7 @@
         "team_id": null,
         "description": "Winner M88"
       },
-      "external_id": null
+      "external_id": "2513670"
     },
     {
       "id": "M96",
@@ -2571,7 +2571,7 @@
         "team_id": null,
         "description": "Winner M87"
       },
-      "external_id": null
+      "external_id": "2513671"
     },
     {
       "id": "M97",
