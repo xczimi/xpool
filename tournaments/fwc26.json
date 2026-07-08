@@ -2500,7 +2500,7 @@
     },
     {
       "id": "M92",
-      "kickoff": "2026-07-06T00:00:00Z",
+      "kickoff": "2026-07-06T02:00:00Z",
       "venue": "Estadio Azteca, Mexico City",
       "group_id": "KO-M92",
       "home": {
@@ -2586,7 +2586,7 @@
         "team_id": null,
         "description": "Winner M90"
       },
-      "external_id": null
+      "external_id": "2515305"
     },
     {
       "id": "M98",
@@ -2601,7 +2601,7 @@
         "team_id": null,
         "description": "Winner M94"
       },
-      "external_id": null
+      "external_id": "2519345"
     },
     {
       "id": "M99",
@@ -2616,7 +2616,7 @@
         "team_id": null,
         "description": "Winner M92"
       },
-      "external_id": null
+      "external_id": "2517651"
     },
     {
       "id": "M100",
@@ -2631,7 +2631,7 @@
         "team_id": null,
         "description": "Winner M96"
       },
-      "external_id": null
+      "external_id": "2520608"
     },
     {
       "id": "M101",
