@@ -404,14 +404,19 @@ export function MyTipsPage() {
       ) : (
         <p>{t('selectGroup')}</p>
       )}
-      <div className="thirds-section" data-testid="third-place-section">
-        <h3>{t('thirdsTitle')}</h3>
-        <p className="hint">{t('thirdsBlurb')}</p>
-        <div className="standings-pair">
-          <ThirdPlaceTable title={t('thirdsPredicted')} ranking={myThirds} teams={teams} />
-          <ThirdPlaceTable title={t('thirdsOfficial')} ranking={officialThirds} teams={teams} />
+      {/* Best-thirds ranks the group stage's 3rd-placed teams to decide which
+          advance — a group-stage concept. Only show it on the Group Stage tab,
+          never on a knockout round. */}
+      {isGroupStage && (
+        <div className="thirds-section" data-testid="third-place-section">
+          <h3>{t('thirdsTitle')}</h3>
+          <p className="hint">{t('thirdsBlurb')}</p>
+          <div className="standings-pair">
+            <ThirdPlaceTable title={t('thirdsPredicted')} ranking={myThirds} teams={teams} />
+            <ThirdPlaceTable title={t('thirdsOfficial')} ranking={officialThirds} teams={teams} />
+          </div>
         </div>
-      </div>
+      )}
     </section>
   )
 }
