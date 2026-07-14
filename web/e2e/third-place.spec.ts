@@ -43,6 +43,12 @@ test('My Tips shows predicted + official best-thirds without errors', async ({
   await page.locator('.nav-bar').getByRole('link', { name: 'My Tips' }).click()
   await expect(page).toHaveURL(/\/mytips$/)
 
+  // The best-thirds section is a group-stage concept: since 03edc29 it renders
+  // only on the Group Stage round tab (absent from knockout tabs). Select that
+  // tab explicitly rather than relying on which round the real calendar
+  // happens to default to.
+  await page.locator('.round-tab', { hasText: /^Group Stage$/ }).click()
+
   const section = page.getByTestId('third-place-section')
   await expect(section).toBeVisible()
   await expect(section.locator('h3')).toHaveText('Best third-placed teams')
