@@ -24,6 +24,13 @@ export type Gate = 'page' | 'session-expired' | 'needs-invite'
  * shell over an anonymous session (which bottomed out in a contentless
  * "Something went wrong." on every player page).
  *
+ * Two independent signals reach that verdict, and both must exist:
+ * `sessionExpired` is the **sticky** one (`auth/sessionState.ts` — a credential
+ * we watched fail: an Auth0 refresh rejection or a 401), while
+ * `hasSession && viewer === 'anonymous'` below is the **derived** one (the
+ * server disagrees with us right now, even if no token error was ever
+ * observed). Neither subsumes the other.
+ *
  * Public routes always render: a dead session must not lock a viewer out of
  * Rules/Schedule/Privacy, and `/invite/:code` is the way out of the invite
  * dead-end.

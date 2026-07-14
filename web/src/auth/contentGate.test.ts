@@ -22,6 +22,12 @@ describe('contentGate', () => {
     ).toBe('session-expired')
   })
 
+  it('gates admin routes on a dead session too', () => {
+    expect(
+      contentGate({ access: 'admin', sessionExpired: true, hasSession: false, viewer: 'anonymous' }),
+    ).toBe('session-expired')
+  })
+
   it('leaves public pages reachable with a dead session', () => {
     expect(
       contentGate({ access: 'public', sessionExpired: true, hasSession: false, viewer: 'anonymous' }),
