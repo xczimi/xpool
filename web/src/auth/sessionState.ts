@@ -21,6 +21,15 @@
  *
  * Both paths must exist; neither subsumes the other. Do not delete one on the
  * assumption that the other covers it.
+ *
+ * **This flag alone must never gate the dead-end — always pair it with
+ * `hasSession`.** It says "a credential was rejected", NOT "this viewer had a
+ * session". A visitor who never logged in can still set it: any stray token in
+ * localStorage rides along on the first ungated query (`DevAuthBar`'s
+ * `PLAYERS_QUERY` fires with no `pause`), gets a 401, and marks the flag.
+ * Telling that viewer their session expired is a false positive — they simply
+ * need to log in. `contentGate` therefore requires `hasSession` before it
+ * dead-ends anyone, and any future reader of this flag must do the same.
  */
 
 type Listener = () => void
