@@ -1087,6 +1087,10 @@ button.danger:hover:not(:disabled) {
 .needs-invite { max-width: 40rem; }
 .needs-invite h2 { color: var(--amber-bright); margin: 0 0 8px; }
 .needs-invite p { color: var(--text-dim); margin: 0 0 12px; line-height: 1.5; }
+
+.session-expired { max-width: 40rem; }
+.session-expired h2 { color: var(--amber-bright); margin: 0 0 8px; }
+.session-expired p { color: var(--text-dim); margin: 0 0 12px; line-height: 1.5; }
 .invite-code-entry {
   display: flex;
   flex-wrap: wrap;

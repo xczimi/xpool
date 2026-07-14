@@ -5,12 +5,14 @@ import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY } from '../graphql/queries'
 import type { Me } from '../graphql/types'
 import { accessFor } from '../auth/routeAccess'
+import { contentGate, type ViewerState } from '../auth/contentGate'
 import { detectEnv, envSuffix } from '../lib/env'
 import { AuthBar } from './AuthBar'
 import { BrandIcon } from './BrandIcon'
 import { SettingsMenu } from './SettingsMenu'
 import { NavBar } from './NavBar'
 import { NeedsInvite } from './NeedsInvite'
+import { SessionExpired } from './SessionExpired'
 
 /**
  * Persistent chrome (REWRITE_USE_CASES §4): header (tagline + language),
@@ -21,9 +23,13 @@ import { NeedsInvite } from './NeedsInvite'
  * admin-only page. Public pages stay reachable (incl. the `/invite/:code` claim
  * page, the way out) — see `accessFor`. A viewer WITH a link candidate is mid
  * link/claim flow (handled on the invite page), so they are not dead-ended.
+ *
+ * Dead session: when the server no longer accepts the token (or `me` comes back
+ * null while the SPA still shows a login), `SessionExpired` replaces the page on
+ * every non-public route. See `auth/contentGate.ts`.
  */
 export function Layout() {
-  const { label } = useAuth()
+  const { label, sessionExpired, hasSession } = useAuth()
   const { t } = useI18n()
   const location = useLocation()
   const envTag = envSuffix(detectEnv())
@@ -35,14 +41,35 @@ export function Layout() {
 
   const meRaw = meResult.data?.me ?? null
   const me = meRaw?.__typename === 'Player' ? meRaw : null
-  const isUnclaimed =
-    meRaw?.__typename === 'UnclaimedViewer' && !meRaw.linkCandidate
+
+  // `data === undefined` means the query is still in flight or paused — NOT
+  // that the server said Visitor. Only an explicit null `me` is anonymous;
+  // conflating the two would flash the session-expired view on every load.
+  const viewer: ViewerState =
+    meResult.data === undefined
+      ? 'loading'
+      : meRaw === null
+        ? 'anonymous'
+        : meRaw.__typename === 'Player'
+          ? 'player'
+          : meRaw.linkCandidate
+            ? 'unclaimed-linkable'
+            : 'unclaimed'
+
+  const gate = contentGate({
+    access: accessFor(location.pathname),
+    sessionExpired,
+    // NOT `Boolean(label)` — the label is nulled on expiry, which is exactly
+    // when the dead-end must render. See `AuthState.hasSession`.
+    hasSession,
+    viewer,
+  })
+
   // Optimistic player-nav signal: show player links as soon as a session
   // exists, hiding them only once the viewer is *confirmed* unclaimed. This
   // keeps nav synchronous for a real player (no flash-of-hidden-nav while the
   // `me` query is in flight) and still hides it at the invite dead-end.
-  const showPlayerNav = Boolean(label) && !isUnclaimed
-  const deadEnd = isUnclaimed && accessFor(location.pathname) !== 'public'
+  const showPlayerNav = Boolean(label) && viewer !== 'unclaimed'
 
   return (
     <div className="app">
@@ -66,7 +93,13 @@ export function Layout() {
       <NavBar isPlayer={showPlayerNav} isAdmin={Boolean(me?.isResultUser)} me={me} />
 
       <main className="content">
-        {deadEnd ? <NeedsInvite /> : <Outlet />}
+        {gate === 'session-expired' ? (
+          <SessionExpired />
+        ) : gate === 'needs-invite' ? (
+          <NeedsInvite />
+        ) : (
+          <Outlet />
+        )}
       </main>
 
       <footer className="app-footer">

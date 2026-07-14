@@ -6,6 +6,7 @@ import { useI18n } from '../i18n/useI18n'
 import { ME_QUERY, PLAYERS_QUERY } from '../graphql/queries'
 import type { Me, PlayerSummary } from '../graphql/types'
 import { clearToken } from '../auth/devAuth'
+import { clearSessionExpired } from '../auth/sessionState'
 import { auth0Enabled } from '../auth/auth0Provider'
 import { DevClock } from './DevClock'
 
@@ -28,27 +29,37 @@ export function AuthBar() {
 function ProdAuthBar() {
   const { isAuthenticated, loginWithRedirect, logout, user } = useAuth0()
   const { t } = useI18n()
+  const { sessionExpired } = useAuth()
+  // The SDK keeps a cached `user` that outlives the refresh token, so
+  // `isAuthenticated` alone would keep showing "Logged in as …" over a session
+  // the server has already rejected.
+  const signedIn = isAuthenticated && !sessionExpired
   // Prefer the xPool nick (canonical display name everywhere) over the Auth0
   // profile name; fall back to the Auth0 e-mail only while the viewer is
   // authenticated but not yet a Player (no nick to show).
   const [meResult] = useQuery<{ me: Me }>({
     query: ME_QUERY,
-    pause: !isAuthenticated,
+    pause: !signedIn,
   })
   const meRaw = meResult.data?.me
   const me = meRaw?.__typename === 'Player' ? meRaw : null
-  if (!isAuthenticated) {
+  if (!signedIn) {
     return (
       <div className="auth-bar">
         <span className="front-door-lead">{t('frontDoorLead')}</span>{' '}
         <button
           className="front-door-login"
-          onClick={() =>
+          onClick={() => {
+            // A viewer arriving here from an expired session still has the dead
+            // token in localStorage; drop it so the fresh login is not racing a
+            // stale bearer.
+            clearToken()
+            clearSessionExpired()
             void loginWithRedirect({
               appState: { returnTo: window.location.pathname + window.location.search },
               authorizationParams: { screen_hint: 'login' },
             })
-          }
+          }}
         >
           {t('frontDoorMembers')}
         </button>
