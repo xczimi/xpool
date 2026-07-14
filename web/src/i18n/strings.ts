@@ -106,6 +106,12 @@ const en = {
   notLoggedInBody: 'This screen is for players only. Pick a dev player above.',
   notAdminBody: 'This screen is for admins only.',
 
+  // expired session (the server rejected the token / `me` came back null)
+  sessionExpiredTitle: 'Your session has expired',
+  sessionExpiredBody:
+    'You have been signed out. Log in again to see your tips — nothing you saved is lost.',
+  logInAgain: 'Log in again',
+
   // invite-only funnel + dead-end (invite-only-hardening)
   frontDoorLead: 'Got an invite? Open the link a friend sent you to join.',
   frontDoorMembers: 'Already playing? Log in',
@@ -489,6 +495,12 @@ const hu: Record<StringKey, string> = {
   notLoggedInTitle: 'Belépés szükséges',
   notLoggedInBody: 'Ez az oldal csak játékosoknak. Válassz fent egy dev játékost.',
   notAdminBody: 'Ez az oldal csak adminoknak.',
+
+  // lejárt munkamenet (a szerver elutasította a tokent / a `me` null lett)
+  sessionExpiredTitle: 'A munkameneted lejárt',
+  sessionExpiredBody:
+    'Kiléptettünk. Lépj be újra, hogy lásd a tippjeidet — semmi nem veszett el, amit elmentettél.',
+  logInAgain: 'Belépés újra',
 
   // meghívásos tölcsér + zsákutca (invite-only-hardening)
   frontDoorLead: 'Van meghívód? Nyisd meg a linket, amit egy barátod küldött, hogy csatlakozz.',
