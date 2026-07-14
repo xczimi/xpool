@@ -6,6 +6,8 @@
  * Production builds use Auth0 SPA SDK instead — see auth0Provider.tsx (Phase 5).
  */
 
+import { markSessionExpired } from './sessionState'
+
 const TOKEN_KEY = 'xpool.jwt'
 const PLAYER_KEY = 'xpool.devPlayer'
 
@@ -29,10 +31,20 @@ export function setAuth0Getter(getter: TokenGetter | null): void {
  * - When Auth0 is active: calls `getAccessTokenSilently()` — cheap when the
  *   token is still valid, triggers a silent refresh when it has expired.
  * - Otherwise: reads from localStorage (dev-login / seeded token).
+ *
+ * A rejection means the refresh token is gone or revoked: the session can no
+ * longer authenticate. We must NOT silently fall back to sending no token —
+ * that lands the viewer in the server's Visitor state while the SPA still shows
+ * them logged in, and every player page then renders a contentless error.
  */
 export async function resolveToken(): Promise<string | null> {
   if (auth0Getter) {
-    try { return await auth0Getter() } catch { return null }
+    try {
+      return await auth0Getter()
+    } catch {
+      markSessionExpired()
+      return null
+    }
   }
   return getToken()
 }
