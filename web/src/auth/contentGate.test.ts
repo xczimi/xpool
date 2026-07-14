@@ -10,8 +10,17 @@ describe('contentGate', () => {
 
   it('shows session-expired when a detector has fired', () => {
     expect(
-      contentGate({ access: 'player', sessionExpired: true, hasSession: false, viewer: 'anonymous' }),
+      contentGate({ access: 'player', sessionExpired: true, hasSession: true, viewer: 'anonymous' }),
     ).toBe('session-expired')
+  })
+
+  // A visitor who never logged in but carries a stray token in localStorage:
+  // the 401 marks the flag globally, but they never had a session, so telling
+  // them it "expired" is a false positive. They get the page's login prompt.
+  it('does not tell a never-logged-in visitor their session expired', () => {
+    expect(
+      contentGate({ access: 'player', sessionExpired: true, hasSession: false, viewer: 'anonymous' }),
+    ).toBe('page')
   })
 
   // Detector 3: the client thinks it is logged in, the server says Visitor.
@@ -24,7 +33,7 @@ describe('contentGate', () => {
 
   it('gates admin routes on a dead session too', () => {
     expect(
-      contentGate({ access: 'admin', sessionExpired: true, hasSession: false, viewer: 'anonymous' }),
+      contentGate({ access: 'admin', sessionExpired: true, hasSession: true, viewer: 'anonymous' }),
     ).toBe('session-expired')
   })
 

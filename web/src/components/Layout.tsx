@@ -29,7 +29,7 @@ import { SessionExpired } from './SessionExpired'
  * every non-public route. See `auth/contentGate.ts`.
  */
 export function Layout() {
-  const { label, sessionExpired } = useAuth()
+  const { label, sessionExpired, hasSession } = useAuth()
   const { t } = useI18n()
   const location = useLocation()
   const envTag = envSuffix(detectEnv())
@@ -59,7 +59,9 @@ export function Layout() {
   const gate = contentGate({
     access: accessFor(location.pathname),
     sessionExpired,
-    hasSession: Boolean(label),
+    // NOT `Boolean(label)` — the label is nulled on expiry, which is exactly
+    // when the dead-end must render. See `AuthState.hasSession`.
+    hasSession,
     viewer,
   })
 

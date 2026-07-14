@@ -11,6 +11,16 @@ export type AuthState = {
   label: string | null
   /** The server no longer accepts this session — see `auth/sessionState.ts`. */
   sessionExpired: boolean
+  /**
+   * The client obtained a session in this browser — independent of whether the
+   * server still accepts it. Distinct from `label`, which is forced to null on
+   * expiry: a viewer with a dead session still HAD one, and that is what makes
+   * "your session expired" the right message rather than "log in".
+   *
+   * False for a visitor who never logged in (even one carrying a stray token
+   * in localStorage) — they get the normal login prompt, not a dead-end.
+   */
+  hasSession: boolean
   login: (playerId: string) => Promise<void>
   logout: () => void
   /** Recover from a dead session: drop it, then start a fresh login. */

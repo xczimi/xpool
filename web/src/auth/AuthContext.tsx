@@ -44,6 +44,10 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
     () => ({
       label: sessionExpired ? null : player,
       sessionExpired,
+      // The RAW belief, before the expiry-nulling above: a viewer whose session
+      // died still had one. A visitor who never picked a player has none, even
+      // if a stray token in localStorage provokes a 401.
+      hasSession: player !== null,
       login: async (id: string) => {
         await apiDevLogin(id)
         clearSessionExpired()
@@ -103,15 +107,19 @@ function Auth0AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [isAuthenticated, getAccessTokenSilently])
 
-  const label =
-    isAuthenticated && tokenReady && !sessionExpired
-      ? (user?.email ?? user?.name ?? 'player')
-      : null
+  // The raw session belief: Auth0 authenticated us and we did fetch a token.
+  // `label` is this AND `!sessionExpired` — the two must stay distinct, because
+  // the expired view is exactly the case where the label is nulled.
+  const hasSession = isAuthenticated && tokenReady
+  const label = hasSession && !sessionExpired
+    ? (user?.email ?? user?.name ?? 'player')
+    : null
 
   const value = useMemo<AuthState>(
     () => ({
       label,
       sessionExpired,
+      hasSession,
       // Auth0 login/logout is normally driven from ProdAuthBar via the SDK
       // directly; these keep `useAuth()` consistent for any other caller.
       login: async () => {
@@ -133,7 +141,7 @@ function Auth0AuthProvider({ children }: { children: ReactNode }) {
         })
       },
     }),
-    [label, sessionExpired, loginWithRedirect, logout],
+    [label, sessionExpired, hasSession, loginWithRedirect, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

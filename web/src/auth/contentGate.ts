@@ -27,9 +27,15 @@ export type Gate = 'page' | 'session-expired' | 'needs-invite'
  * Two independent signals reach that verdict, and both must exist:
  * `sessionExpired` is the **sticky** one (`auth/sessionState.ts` — a credential
  * we watched fail: an Auth0 refresh rejection or a 401), while
- * `hasSession && viewer === 'anonymous'` below is the **derived** one (the
- * server disagrees with us right now, even if no token error was ever
- * observed). Neither subsumes the other.
+ * `viewer === 'anonymous'` is the **derived** one (the server disagrees with us
+ * right now, even if no token error was ever observed). Neither subsumes the
+ * other.
+ *
+ * **Both are preconditioned on `hasSession`** — the client must actually have
+ * had a session for "it expired" to mean anything. That is why `hasSession` is
+ * its own `AuthState` field and NOT `Boolean(label)`: `label` is forced to null
+ * precisely when the session expires, so gating on it would make this view
+ * unreachable.
  *
  * Public routes always render: a dead session must not lock a viewer out of
  * Rules/Schedule/Privacy, and `/invite/:code` is the way out of the invite
@@ -38,15 +44,24 @@ export type Gate = 'page' | 'session-expired' | 'needs-invite'
 export function contentGate(input: {
   access: Access
   sessionExpired: boolean
-  /** The client believes a session exists (`label !== null`). */
+  /**
+   * The client obtained a session in this browser — the raw belief, NOT
+   * `Boolean(label)` (which is nulled on expiry). See `AuthState.hasSession`.
+   */
   hasSession: boolean
   viewer: ViewerState
 }): Gate {
   const { access, sessionExpired, hasSession, viewer } = input
 
   if (access === 'public') return 'page'
-  if (sessionExpired) return 'session-expired'
-  if (hasSession && viewer === 'anonymous') return 'session-expired'
+  // Both detectors require that the client believed it had a session: the
+  // sticky flag (a credential we watched the server reject) and the derived
+  // check (the server says Visitor right now). A visitor who never logged in —
+  // even one carrying a stray token — gets the page's own login prompt, not a
+  // "your session expired" dead-end they can make no sense of.
+  if (hasSession && (sessionExpired || viewer === 'anonymous')) {
+    return 'session-expired'
+  }
   if (viewer === 'unclaimed') return 'needs-invite'
   return 'page'
 }
