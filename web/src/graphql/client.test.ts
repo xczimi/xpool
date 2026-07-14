@@ -17,7 +17,7 @@ describe('fetchWithAuth', () => {
   })
 
   it('attaches the bearer token and leaves a healthy session alone', async () => {
-    const spy = vi.fn(async () => new Response('{}', { status: 200 }))
+    const spy = vi.fn<typeof fetch>(async () => new Response('{}', { status: 200 }))
     globalThis.fetch = spy as unknown as typeof fetch
 
     await fetchWithAuth('/api/graphql', { method: 'POST' })
