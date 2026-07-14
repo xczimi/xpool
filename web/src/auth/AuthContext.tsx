@@ -54,7 +54,6 @@ function DevAuthProvider({ children }: { children: ReactNode }) {
     }),
     // `dropSession` is re-created every render but closes over only setState,
     // which is stable — no need to re-memo on it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [player, sessionExpired],
   )
 
