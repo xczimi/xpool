@@ -2646,7 +2646,7 @@
         "team_id": null,
         "description": "Winner M98"
       },
-      "external_id": null
+      "external_id": "2528031"
     },
     {
       "id": "M102",
@@ -2661,7 +2661,7 @@
         "team_id": null,
         "description": "Winner M100"
       },
-      "external_id": null
+      "external_id": "2528727"
     },
     {
       "id": "M103",
@@ -2676,7 +2676,7 @@
         "team_id": null,
         "description": "Loser M102"
       },
-      "external_id": null
+      "external_id": "2533360"
     },
     {
       "id": "M104",
@@ -2691,7 +2691,7 @@
         "team_id": null,
         "description": "Winner M102"
       },
-      "external_id": null
+      "external_id": "2533361"
     }
   ]
 }
